@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do'kon Boshqaruvi</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f5f5f0;--surface:#fff;--surface2:#fafaf8;
+    --border:#e0ddd6;--border2:#ccc;
+    --text:#1a1a17;--text2:#555;--text3:#888;
+    --accent:#2563eb;--accent-bg:#eff6ff;--accent-border:#bfdbfe;
+    --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+    --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
+    --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
+    --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+
+  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
+  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite}
+  #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
+  #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading-screen.hidden{display:none}
+
+  #sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:4px;transition:.3s}
+  #sync-dot.syncing{background:#f59e0b;animation:pulse-dot 1s ease infinite}
+  #sync-dot.error{background:#ef4444}
+  @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
+  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
+  nav .logo span{color:#60a5fa}
+  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s}
+  nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
+  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center}
+
+  .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
+  .page.active{display:block}
+
+  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
+  .login-card{background:#fff;border-radius:16px;padding:2.5rem;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b}
+  .login-card p{color:#64748b;font-size:14px;margin-bottom:2rem}
+  .role-btns{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
+  .role-btn{border:2px solid var(--border2);background:#fff;border-radius:var(--radius);padding:1rem;cursor:pointer;transition:.15s;text-align:center}
+  .role-btn:hover{border-color:#2563eb;background:#eff6ff}
+  .role-btn.selected{border-color:#2563eb;background:#eff6ff}
+  .role-btn .icon{font-size:28px;margin-bottom:.5rem}
+  .role-btn .name{font-weight:600;font-size:15px;color:#1e293b}
+  .role-btn .desc{font-size:12px;color:#64748b;margin-top:2px}
+  .pin-section{margin-top:1rem}
+  .pin-section label{display:block;font-size:13px;color:#64748b;margin-bottom:.5rem;font-weight:500}
+  .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.15s}
+  .pin-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.15s}
+  .btn-primary:hover{background:#1d4ed8}
+  .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+  .stat .val{font-size:26px;font-weight:700;margin-bottom:.15rem}
+  .stat .lbl{font-size:13px;color:var(--text3);font-weight:500}
+  .stat.green .val{color:var(--green)}
+  .stat.blue .val{color:var(--accent)}
+  .stat.amber .val{color:var(--amber)}
+  .stat.red .val{color:var(--red)}
+
+  .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;background:var(--surface)}
+  th{background:var(--surface2);padding:.75rem 1rem;text-align:left;font-size:13px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
+  td{padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafaf8}
+
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+  .form-row.full{grid-template-columns:1fr}
+  .field{display:flex;flex-direction:column;gap:.35rem}
+  .field label{font-size:13px;font-weight:600;color:var(--text2)}
+  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;width:100%}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .field textarea{resize:vertical;min-height:70px}
+
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .btn:hover{background:var(--surface2);border-color:#bbb}
+  .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.blue:hover{background:#1d4ed8;border-color:#1d4ed8}
+  .btn.green{background:var(--green);color:#fff;border-color:var(--green)}
+  .btn.green:hover{background:#15803d}
+  .btn.red{background:var(--red);color:#fff;border-color:var(--red)}
+  .btn.red:hover{background:#b91c1c}
+  .btn.amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+  .btn.amber:hover{background:#b45309}
+  .btn.sm{padding:.25rem .45rem;font-size:11px}
+
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+  .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+  .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+  .badge.blue{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+  .section-header h2{font-size:20px;font-weight:700}
+  .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+  .modal-overlay.hidden{display:none}
+  .modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+  .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
+  .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
+
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.6rem}
+  .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.15s;cursor:pointer}
+  .prod-card:hover{border-color:#aaa;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+  .prod-card .img-wrap{height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
+  .prod-card .img-wrap .no-img{font-size:40px;color:#ccc}
+  .prod-card .stock-badge{position:absolute;top:8px;right:8px}
+  .prod-card .body{padding:.65rem}
+  .prod-card .prod-name{font-weight:700;font-size:14px;margin-bottom:.25rem}
+  .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:15px}
+  .prod-card .prod-stock{font-size:13px;color:var(--text3);margin-top:.25rem}
+  .prod-card .prod-actions{display:flex;gap:.35rem;margin-top:.45rem}
+
+  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.15s}
+  .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
+
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.15s;pointer-events:none;max-width:320px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.green{background:#166534}
+  .toast.red{background:#991b1b}
+  .toast.amber{background:#92400e}
+
+  .revert-info{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius);padding:.75rem 1rem;font-size:13px;color:#92400e;margin-bottom:1rem}
+
+  #sticky-cart{position:fixed;bottom:0;left:0;right:0;z-index:150;background:#1e293b;color:#fff;padding:.85rem 1.25rem;display:none;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,.25);flex-wrap:wrap}
+  #sticky-cart.show{display:flex}
+  #sticky-cart .cart-info{font-size:15px;font-weight:600}
+  #sticky-cart .cart-info span{color:#60a5fa}
+
+  .prod-card.dragging{opacity:.4;border:2px dashed var(--accent)}
+  .prod-card.drag-over{border:2px solid var(--accent);background:var(--accent-bg)}
+  .drag-handle{cursor:grab;color:#bbb;font-size:18px;padding:2px 6px;border-radius:4px;user-select:none}
+  .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
+  .sort-bar span{font-size:13px;color:var(--text2);font-weight:600;margin-right:.25rem}
+
+  /* ===== MOBILE NAV ===== */
+  /* Mobilda nav tugmalari o'rniga pastki tab-bar */
+  #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:58px}
+  #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.15s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
+  #mobile-tabbar button .tab-icon{font-size:20px;line-height:1}
+  #mobile-tabbar button.active{color:#60a5fa}
+  #mobile-tabbar button.active .tab-icon{transform:translateY(-1px)}
+
+  /* Mobil sticky-cart pastki tab-bar dan yuqorida bo'lsin */
+  @media(max-width:768px){
+    #sticky-cart{bottom:58px}
+    .page{padding-bottom:70px}
+  }
+
+  /* Mobil tovar kartasi — kattaroq tap target */
+  @media(max-width:768px){
+    nav{height:52px;padding:0 .75rem}
+    nav .logo{font-size:15px}
+    /* Desktop navni yashiramiz, mobile tabbar ko'rsatamiz */
+    #nav-admin,#nav-seller{display:none!important}
+    nav .user-badge{font-size:12px;padding:3px 10px}
+    #mobile-tabbar{display:flex}
+
+    .page{padding:.65rem .65rem 70px}
+    .page.active{display:block}
+
+    /* Stat grid: 2 ustun */
+    .stat-grid{grid-template-columns:1fr 1fr;gap:.65rem}
+    .stat{padding:1rem}
+    .stat .val{font-size:22px}
+
+    /* Tovar grid: 2 ustun kichik, lekin katta tap area */
+    .product-grid{grid-template-columns:1fr 1fr;gap:.5rem}
+    .prod-card .img-wrap{height:100px}
+    .prod-card .body{padding:.5rem .6rem}
+    .prod-card .prod-name{font-size:13px}
+    .prod-card .prod-price{font-size:14px}
+    .prod-card .prod-actions{flex-wrap:wrap;gap:.25rem}
+    .prod-card .prod-actions .btn{flex:1;justify-content:center;min-width:0;font-size:11px;padding:.3rem .25rem}
+
+    /* Login card */
+    .login-card{width:calc(100% - 2rem);max-width:380px;padding:2rem 1.5rem}
+
+    /* Jadval — mobilda card-style */
+    .tbl-wrap{border-radius:8px}
+    table thead{display:none}
+    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:#fff;box-shadow:var(--shadow)}
+    table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border:none;font-size:13px}
+    table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:12px;flex-shrink:0;margin-right:.5rem}
+    table tbody tr:hover td{background:transparent}
+    table tfoot{display:none}
+
+    /* Filter bar mobilda scroll */
+    .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.6rem .75rem;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .filter-bar::-webkit-scrollbar{display:none}
+    .filter-bar input[type="date"],.filter-bar select{min-width:120px;font-size:12px}
+
+    /* Sort-bar mobilda scroll */
+    .sort-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.35rem}
+    .sort-bar::-webkit-scrollbar{display:none}
+
+    /* Modal mobilda to'liq kenglik */
+    .modal-overlay{padding:.5rem .5rem 0}
+    .modal{border-radius:14px 14px 0 0;max-height:92vh;padding:1.25rem 1rem}
+    .modal h3{font-size:16px}
+
+    /* Section header */
+    .section-header h2{font-size:18px}
+    .section-header .btn{padding:.45rem .85rem;font-size:12px}
+
+    /* Dashboard grid */
+    #dash-grid{grid-template-columns:1fr!important}
+
+    /* Form inputs kattaroq (mobil uchun) */
+    .field input,.field select,.field textarea{padding:.8rem .9rem;font-size:16px} /* 16px = iOS zoom yo'q */
+
+    /* Sticky cart mobilda kichikroq */
+    #sticky-cart{padding:.65rem 1rem}
+    #sticky-cart .cart-info{font-size:14px}
+
+    /* Sell page search */
+    #sell-search{font-size:16px!important;padding:.75rem 1rem!important}
+
+    /* Revert info */
+    .revert-info{font-size:12px}
+
+    /* Toast pastroq */
+    .toast{bottom:72px;right:.75rem;left:.75rem;max-width:none;font-size:13px}
+
+    /* My-sales filter butunlay scroll */
+    #page-my-sales .filter-bar{overflow-x:auto;flex-wrap:nowrap}
+  }
+
+  @media(max-width:400px){
+    .product-grid{grid-template-columns:1fr 1fr}
+    .stat-grid{grid-template-columns:1fr 1fr}
+    .prod-card .img-wrap{height:85px}
+  }
+
+  /* Desktop uchun (o'zgartirmaydi, faqat tovar grid ni biroz yaxshilaymiz) */
+  @media(min-width:769px){
+    .product-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <h2>🏪 Do'kon Tizimi</h2>
+  <p>Firebase bilan ulanmoqda...</p>
+</div>
+
+<div id="login-page" style="display:none">
+  <div class="login-card">
+    <h1>🏪 Do'kon Tizimi</h1>
+    <p>Rolni tanlang va PIN kiriting</p>
+    <div class="role-btns">
+      <div class="role-btn" data-role="admin">
+        <div class="icon">👨‍💼</div>
+        <div class="name">Admin</div>
+        <div class="desc">Tovar boshqaruvi</div>
+      </div>
+      <div class="role-btn" data-role="seller">
+        <div class="icon">🛒</div>
+        <div class="name">Sotuvchi</div>
+        <div class="desc">Savdo qilish</div>
+      </div>
+    </div>
+    <div class="pin-section">
+      <label>PIN kod</label>
+      <input class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="····" id="pin-input">
+      <div class="err-msg" id="err-msg"></div>
+      <button class="btn-primary" onclick="doLogin()">Kirish →</button>
+    </div>
+    <p style="font-size:12px;color:#94a3b8;text-align:center;margin-top:1rem">Admin: 1234 · Sotuvchi: 5678</p>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<nav>
+  <div class="logo">🏪 <span>Do'kon</span></div>
+  <div id="nav-admin" style="display:none;gap:.25rem">
+    <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa</button>
+    <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
+    <button class="tab" onclick="showPage('history','admin')">📋 Savdo tarixi</button>
+    <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
+    <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
+  </div>
+  <div id="nav-seller" style="display:none;gap:.25rem">
+    <button class="tab active" onclick="showPage('sell','seller')">🛒 Sotish</button>
+    <button class="tab" onclick="showPage('my-sales','seller')">📋 Mening sotuvlarim</button>
+  </div>
+  <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
+  <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
+  <button class="btn sm" onclick="logout()" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
+</nav>
+
+<div class="page active" id="page-dashboard">
+  <div class="section-header">
+    <div><h2>Bosh sahifa</h2><p id="today-date"></p></div>
+    <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
+      <option value="today">Bugun</option>
+      <option value="week">Bu hafta</option>
+      <option value="month">Bu oy</option>
+      <option value="all">Hammasi</option>
+    </select>
+  </div>
+  <div class="stat-grid" id="stat-grid"></div>
+  <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;margin-bottom:1rem" id="dash-grid">
+    <div class="card">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">Bugungi savdolar</h3>
+      <div id="recent-sales"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div class="card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🏆 Top sotilganlar</h3>
+        <div id="top-products"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
+        <div id="low-stock-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+  @media(max-width:900px){ #dash-grid{grid-template-columns:1fr!important} }
+</style>
+
+<div class="page" id="page-products">
+  <div class="section-header">
+    <div><h2>Tovar boshqaruvi</h2><p>Tovarlarni qo'shing va yangilang</p></div>
+    <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
+  </div>
+  <div class="sort-bar">
+    <span>Tartib:</span>
+    <button class="btn sm" onclick="sortProducts('az')">A → Z</button>
+    <button class="btn sm" onclick="sortProducts('za')">Z → A</button>
+    <button class="btn sm" onclick="sortProducts('vol')">Hajm bo'yicha</button>
+    <button class="btn sm" onclick="sortProducts('stock_asc')">Kam zaxira</button>
+    <button class="btn sm" onclick="sortProducts('added')">Qo'shilgan tartib</button>
+    <input type="text" id="prod-search" onkeyup="renderProducts()" placeholder="🔍 Qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;outline:none;min-width:160px">
+  </div>
+  <div class="product-grid" id="product-grid"></div>
+  <p id="no-products" style="color:var(--text3);text-align:center;padding:3rem;display:none">Hali tovar yo'q.</p>
+</div>
+
+<div class="page" id="page-history">
+  <div class="section-header"><h2>Savdo tarixi</h2></div>
+  <div class="filter-bar">
+    <button class="btn sm" onclick="quickHistoryFilter('today')">Bugun</button>
+    <button class="btn sm" onclick="quickHistoryFilter('yesterday')">Kecha</button>
+    <input type="date" id="f-from" onchange="renderHistory()">
+    <input type="date" id="f-to" onchange="renderHistory()">
+    <select id="f-month" onchange="renderHistory()">
+      <option value="">Barcha oylar</option>
+      <option value="0">Yanvar</option><option value="1">Fevral</option>
+      <option value="2">Mart</option><option value="3">Aprel</option>
+      <option value="4">May</option><option value="5">Iyun</option>
+      <option value="6">Iyul</option><option value="7">Avgust</option>
+      <option value="8">Sentabr</option><option value="9">Oktabr</option>
+      <option value="10">Noyabr</option><option value="11">Dekabr</option>
+    </select>
+    <select id="f-year" onchange="renderHistory()"><option value="">Barcha yillar</option></select>
+    <select id="f-seller" onchange="renderHistory()"><option value="">Barcha sotuvchilar</option><option value="Sotuvchi">Sotuvchi</option></select>
+    <select id="f-product" onchange="renderHistory()"><option value="">Barcha tovarlar</option></select>
+    <button class="btn sm" onclick="clearFilters()">✕ Tozalash</button>
+    <button class="btn sm green" onclick="exportCSV()">⬇ CSV</button>
+  </div>
+  <div id="history-summary" style="margin-bottom:1rem"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Sana/Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Narx</th><th>Jami</th><th>Sotuvchi</th><th>Holat</th><th>Amal</th></tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+  <p id="no-history" style="color:var(--text3);text-align:center;padding:3rem;display:none">Savdo tarixi topilmadi.</p>
+</div>
+
+<div class="page" id="page-stock-history">
+  <div class="section-header">
+    <div><h2>📦 Kirim / Chiqim tarixi</h2><p>Barcha zaxira o'zgarishlari</p></div>
+  </div>
+  <div class="filter-bar" style="margin-bottom:1rem">
+    <button class="btn sm" id="sh-btn-today" onclick="setStockHistFilter('today')">Bugun</button>
+    <button class="btn sm" id="sh-btn-yesterday" onclick="setStockHistFilter('yesterday')">Kecha</button>
+    <button class="btn sm" id="sh-btn-week" onclick="setStockHistFilter('week')">Bu hafta</button>
+    <button class="btn sm" id="sh-btn-all" onclick="setStockHistFilter('all')">Barchasi</button>
+    <select id="sh-type" onchange="renderStockHistory()">
+      <option value="">Kirim + Chiqim</option>
+      <option value="in">Faqat Kirim</option>
+      <option value="out">Faqat Chiqim</option>
+    </select>
+    <button class="btn sm green" onclick="exportStockCSV()">⬇ CSV</button>
+  </div>
+  <div id="sh-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Sana/Vaqt</th><th>Tovar</th><th>Hajm</th><th>Turi</th><th>Miqdor</th><th>Sabab</th><th>Natija (zaxira)</th>
+      </tr></thead>
+      <tbody id="sh-body"></tbody>
+    </table>
+  </div>
+  <p id="no-sh" style="color:var(--text3);text-align:center;padding:3rem;display:none">Kirim/Chiqim tarixi topilmadi.</p>
+</div>
+
+<div class="page" id="page-settings">
+  <div class="section-header"><h2>Sozlamalar</h2></div>
+  <div class="card" style="max-width:420px">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1.25rem">PIN kodlarni o'zgartirish</h3>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Admin PIN</label>
+      <input type="password" id="new-admin-pin" maxlength="4" placeholder="Yangi 4 raqamli PIN" inputmode="numeric">
+    </div>
+    <div class="field" style="margin-bottom:1.25rem">
+      <label>Sotuvchi PIN</label>
+      <input type="password" id="new-seller-pin" maxlength="4" placeholder="Yangi 4 raqamli PIN" inputmode="numeric">
+    </div>
+    <button class="btn blue" onclick="savePins()">Saqlash</button>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Sotuvchi orqaga qaytarish muddati</h3>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="revert-minutes" min="1" max="1440" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="30">
+      <span style="font-size:14px;color:var(--text2)">daqiqa</span>
+      <button class="btn sm blue" onclick="saveRevertTime()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Ma'lumotlar</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.</p>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+      <button class="btn green" onclick="exportCSV()">⬇ CSV yuklab olish</button>
+      <button class="btn red" onclick="clearAll()">🗑 Hammasini o'chirish</button>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-sell">
+  <div class="section-header">
+    <div><h2>Sotish</h2><p>Tovarlarni tanlang va savat orqali soting</p></div>
+  </div>
+  <div style="margin-bottom:1rem">
+    <input type="text" id="sell-search" onkeyup="handleSellSearchKey(event)" placeholder="🔍 Tovar nomi bo'yicha qidirish... (Enter — birinchisini savatga qo'shadi)" style="width:100%;max-width:400px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem 1rem;font-size:14px;outline:none">
+  </div>
+  <div class="product-grid" id="sell-grid"></div>
+  <p id="no-sell" style="color:var(--text3);text-align:center;padding:3rem;display:none">Tovar topilmadi yoki ombor bo'sh.</p>
+  <div style="height:80px"></div>
+</div>
+
+<div class="page" id="page-my-sales">
+  <div class="section-header"><h2>Mening sotuvlarim</h2></div>
+  <div id="my-revert-info" class="revert-info" style="display:none"></div>
+  <div class="filter-bar" style="margin-bottom:.75rem">
+    <button class="btn sm" id="ms-btn-today" onclick="setMySalesFilter('today')">Bugun</button>
+    <button class="btn sm" id="ms-btn-yesterday" onclick="setMySalesFilter('yesterday')">Kecha</button>
+    <button class="btn sm" id="ms-btn-all" onclick="setMySalesFilter('all')">Barchasi</button>
+    <input type="date" id="ms-date" onchange="setMySalesFilter('custom')">
+  </div>
+  <div id="seller-daily-summary" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Vaqt</th><th>Tovar</th><th>Hajm</th><th>Miqdor</th><th>Jami</th><th>Holat</th><th>Qaytarish</th></tr></thead>
+      <tbody id="my-sales-body"></tbody>
+    </table>
+  </div>
+  <p id="no-my-sales" style="color:var(--text3);text-align:center;padding:3rem;display:none">Savdolar yo'q.</p>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-product">
+  <div class="modal">
+    <h3 id="modal-product-title">Yangi tovar</h3>
+    <div class="form-row full"><div class="field"><label>Tovar nomi *</label><input id="p-name" placeholder="Masalan: Mineral suv"></div></div>
+    <div class="form-row">
+      <div class="field"><label>Hajm (litr)</label>
+        <select id="p-volume">
+          <option value="">— Hajmsiz —</option>
+          <option value="0.25">0.25 L</option>
+          <option value="0.5">0.5 L</option>
+          <option value="1.0">1.0 L</option>
+          <option value="1.5">1.5 L</option>
+          <option value="2.0">2.0 L</option>
+        </select>
+      </div>
+      <div class="field"><label>Narx (so'm) *</label><input id="p-price" type="number" min="0" placeholder="5000"></div>
+    </div>
+    <!-- Yangi tovar qo'shganda BOSHLANG'ICH miqdor kiritiladi.
+         Mavjud tovar tahrirlanganda bu maydon ko'rsatilmaydi (stock faqat Kirim/Chiqim orqali boshqariladi). -->
+    <div class="form-row" id="p-qty-row">
+      <div class="field"><label>Boshlang'ich miqdor *</label><input id="p-qty" type="number" min="0" placeholder="50"></div>
+      <div class="field" style="justify-content:flex-end;padding-bottom:.25rem">
+        <label style="opacity:0">_</label>
+        <p style="font-size:12px;color:var(--text3);line-height:1.5">Keyingi kirim/chiqimlar<br>alohida ro'yxatda saqlanadi.</p>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Rasm URL (ixtiyoriy)</label><input id="p-img" placeholder="https://...jpg" oninput="previewImg()"></div>
+      <div class="field">
+        <label>Yoki rasm yuklash</label>
+        <input type="file" id="p-img-file" accept="image/*" onchange="loadImgFile(this)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem;font-size:13px;background:#fff;cursor:pointer">
+      </div>
+    </div>
+    <div id="img-preview-wrap" style="display:none;margin-bottom:.75rem">
+      <img id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
+    </div>
+    <div class="form-row full">
+      <div class="field"><label>Izoh</label><textarea id="p-note" placeholder="Qo'shimcha ma'lumot..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-product')">Bekor qilish</button>
+      <button class="btn blue" onclick="saveProduct()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-restock">
+  <div class="modal" style="max-width:420px">
+    <h3>📦 Kirim: <span id="rs-name"></span></h3>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
+        <span style="color:var(--text2)">Hozirgi zaxira:</span>
+        <span style="font-weight:700;font-size:18px" id="rs-current-val">0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-top:.5rem">
+        <span style="color:var(--green);font-weight:600">+ Qo'shilayotgan:</span>
+        <span style="font-weight:700;font-size:18px;color:var(--green)" id="rs-adding-val">0</span>
+      </div>
+      <div style="border-top:2px dashed var(--border);margin:.75rem 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:14px">Natija:</span>
+        <span style="font-weight:700;font-size:22px;color:var(--accent)" id="rs-result-val">0</span>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Qo'shiladigan miqdor *</label>
+      <input id="rs-qty" type="number" min="1" placeholder="0" style="font-size:24px;text-align:center;font-weight:700"
+             oninput="updateRestockCalc()">
+    </div>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Sabab / Izoh (ixtiyoriy)</label>
+      <input id="rs-reason" placeholder="Masalan: Yetkazuvchi №3 dan keldi">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-restock')">Bekor qilish</button>
+      <button class="btn green" onclick="doRestock()">✓ Qo'shish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-return-stock">
+  <div class="modal" style="max-width:420px">
+    <h3>↩ Chiqim: <span id="ret-name"></span></h3>
+    <div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
+        <span style="color:var(--text2)">Hozirgi zaxira:</span>
+        <span style="font-weight:700;font-size:18px" id="ret-current-val">0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-top:.5rem">
+        <span style="color:var(--red);font-weight:600">− Kamaytirilayotgan:</span>
+        <span style="font-weight:700;font-size:18px;color:var(--red)" id="ret-removing-val">0</span>
+      </div>
+      <div style="border-top:2px dashed var(--red-border);margin:.75rem 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:14px">Natija:</span>
+        <span style="font-weight:700;font-size:22px;color:var(--red)" id="ret-result-val">0</span>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Chiqim miqdori *</label>
+      <input id="ret-qty" type="number" min="1" placeholder="0" style="font-size:24px;text-align:center;font-weight:700"
+             oninput="updateReturnCalc()">
+    </div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Sabab *</label>
+      <select id="ret-reason-type">
+        <option value="Yetkazuvchiga qaytarildi">↩ Yetkazuvchiga qaytarildi</option>
+        <option value="Yaroqsiz / eskirgan">🗑 Yaroqsiz / eskirgan</option>
+        <option value="Sinib ketdi / zararlandi">💔 Sinib ketdi / zararlandi</option>
+        <option value="Inventarizatsiya tuzatish">📋 Inventarizatsiya tuzatish</option>
+        <option value="Boshqa">📝 Boshqa</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Qo'shimcha izoh (ixtiyoriy)</label>
+      <input id="ret-note" placeholder="Batafsil...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-return-stock')">Bekor qilish</button>
+      <button class="btn red" onclick="doReturnStock()">↩ Chiqim qilish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-cart">
+  <div class="modal" style="max-width:560px">
+    <h3>🛒 Savat</h3>
+    <div id="cart-items" style="margin-bottom:1rem"></div>
+    <div style="border-top:1.5px solid var(--border);padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <span style="font-size:14px;color:var(--text2)">Jami summa:</span>
+      <span style="font-size:22px;font-weight:700;color:var(--green)" id="cart-grand-total">0 so'm</span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-cart')">Yopish</button>
+      <button class="btn red sm" onclick="clearCart()">🗑 Savatni tozalash</button>
+      <button class="btn green" onclick="doCartSell()">✓ Hammasini sotish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-confirm">
+  <div class="modal" style="max-width:380px">
+    <h3 id="confirm-title">Tasdiqlash</h3>
+    <p id="confirm-msg" style="color:var(--text2);margin-bottom:1.5rem;font-size:14px;line-height:1.6"></p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-confirm')">Yo'q</button>
+      <button class="btn red" id="confirm-ok">Ha, davom etish</button>
+    </div>
+  </div>
+</div>
+
+<div id="sticky-cart">
+  <div class="cart-info">🛒 Savat: <span id="cart-count">0</span> ta tovar · <span id="cart-total-nav">0</span> so'm</div>
+  <div style="display:flex;gap:.75rem">
+    <button class="btn sm red" onclick="clearCart()">🗑 Tozalash</button>
+    <button class="btn sm green" onclick="openCartModal()">Ko'rish va sotish →</button>
+  </div>
+</div>
+
+<!-- MOBIL PASTKI TAB-BAR -->
+<div id="mobile-tabbar">
+  <!-- Admin tabs -->
+  <button id="mtab-dashboard" onclick="showPage('dashboard','admin')" style="display:none">
+    <span class="tab-icon">📊</span>Bosh
+  </button>
+  <button id="mtab-products" onclick="showPage('products','admin')" style="display:none">
+    <span class="tab-icon">📦</span>Tovarlar
+  </button>
+  <button id="mtab-history" onclick="showPage('history','admin')" style="display:none">
+    <span class="tab-icon">📋</span>Tarix
+  </button>
+  <button id="mtab-stock-history" onclick="showPage('stock-history','admin')" style="display:none">
+    <span class="tab-icon">🚚</span>Kirim
+  </button>
+  <button id="mtab-settings" onclick="showPage('settings','admin')" style="display:none">
+    <span class="tab-icon">⚙️</span>Sozlama
+  </button>
+  <!-- Seller tabs -->
+  <button id="mtab-sell" onclick="showPage('sell','seller')" style="display:none">
+    <span class="tab-icon">🛒</span>Sotish
+  </button>
+  <button id="mtab-my-sales" onclick="showPage('my-sales','seller')" style="display:none">
+    <span class="tab-icon">📋</span>Mening
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
+  authDomain: "dokon-ce38b.firebaseapp.com",
+  projectId: "dokon-ce38b",
+  storageBucket: "dokon-ce38b.firebasestorage.app",
+  messagingSenderId: "1024226826394",
+  appId: "1:1024226826394:web:3a052adf83b46202c96723",
+  measurementId: "G-75RXS3WVWC"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.DB = { products: [], sales: [], restocks: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
+window.currentRole = null;
+window.editingProductId = null;
+window.restockId = null;
+window.cart = {};
+let knownSaleIds = null;
+
+function setSyncing(on){ const d=document.getElementById('sync-dot'); if(d) d.className = on?'syncing':''; }
+function setSyncError(){ const d=document.getElementById('sync-dot'); if(d) d.className='error'; }
+
+// ===== OPTIMISTIC LOCAL UPDATES (tezkor real-vaqt UI) =====
+// Yozish amalini Firebase'ga yuborish bilan bir vaqtda, mahalliy DB massivini ham
+// darhol yangilab, ekranni qayta chizamiz. Bu tarmoq sekin bo'lganda ham interfeysni
+// bir zumda javob beradigan qiladi. onSnapshot keyinroq kelib, ma'lumotni serverdagi
+// haqiqiy holat bilan moslashtiradi (boshqa qurilmalardagi o'zgarishlar uchun ham).
+function localUpsertProduct(p){
+  const i = DB.products.findIndex(x=>x.id===p.id);
+  if(i>=0) DB.products[i]=p; else DB.products.push(p);
+}
+function localRemoveProduct(id){ DB.products = DB.products.filter(x=>x.id!==id); }
+function localUpsertSale(s){
+  const i = DB.sales.findIndex(x=>x.id===s.id);
+  if(i>=0) DB.sales[i]=s; else DB.sales.push(s);
+}
+function localPatchSale(id, patch){
+  const s = DB.sales.find(x=>x.id===id);
+  if(s) Object.assign(s, patch);
+}
+function refreshProductViews(){
+  renderProducts();
+  renderSellGrid();
+  if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+}
+function refreshSaleViews(){
+  if(document.getElementById('page-history')?.classList.contains('active')) renderHistory();
+  if(document.getElementById('page-my-sales')?.classList.contains('active')) renderMySales();
+  if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+}
+
+// ===== ONLINE/OFFLINE DETECTION =====
+function updateOfflineBanner(){
+  const b = document.getElementById('offline-banner');
+  if(b) b.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online', ()=>{ toast('✓ Internet qayta ulandi','green'); updateOfflineBanner(); });
+window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi! Ma\'lumotlar saqlanmasligi mumkin.','red'); updateOfflineBanner(); });
+
+const settingsRef = doc(db,'dokon','settings');
+
+async function fbSaveSettings(){
+  setSyncing(true);
+  try{ await setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes}); }
+  catch(e){ setSyncError(); console.error(e); }
+  setSyncing(false);
+}
+async function fbSaveProduct(p){
+  localUpsertProduct(p);
+  refreshProductViews();
+  setSyncing(true);
+  try{ await setDoc(doc(db,'products',p.id),p); }
+  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik: internetni tekshiring",'red'); }
+  setSyncing(false);
+}
+async function fbDeleteProduct(id){
+  localRemoveProduct(id);
+  refreshProductViews();
+  setSyncing(true);
+  try{ await deleteDoc(doc(db,'products',id)); }
+  catch(e){ setSyncError(); console.error(e); toast("O'chirishda xatolik: internetni tekshiring",'red'); }
+  setSyncing(false);
+}
+async function fbSaveSale(s){
+  localUpsertSale(s);
+  refreshSaleViews();
+  setSyncing(true);
+  try{ await setDoc(doc(db,'sales',s.id),s); }
+  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik: internetni tekshiring",'red'); }
+  setSyncing(false);
+}
+async function fbUpdateSale(id,data){
+  localPatchSale(id, data);
+  refreshSaleViews();
+  setSyncing(true);
+  try{ await updateDoc(doc(db,'sales',id),data); }
+  catch(e){ setSyncError(); console.error(e); toast("Yangilashda xatolik: internetni tekshiring",'red'); }
+  setSyncing(false);
+}
+function localUpsertRestock(r){
+  const i=DB.restocks.findIndex(x=>x.id===r.id);
+  if(i>=0) DB.restocks[i]=r; else DB.restocks.push(r);
+}
+async function fbSaveRestock(r){
+  localUpsertRestock(r);
+  if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
+  setSyncing(true);
+  try{ await setDoc(doc(db,'restocks',r.id),r); }
+  catch(e){ setSyncError(); console.error(e); toast("Kirim tarixini saqlashda xatolik",'red'); }
+  setSyncing(false);
+}
+
+function startListeners(){
+  onSnapshot(settingsRef, snap=>{
+    if(snap.exists()){
+      const d=snap.data();
+      DB.pins=d.pins||DB.pins;
+      DB.revertMinutes=d.revertMinutes||30;
+    }
+  });
+  let prodDebounce=null;
+  onSnapshot(collection(db,'products'), snap=>{
+    DB.products = snap.docs.map(d=>d.data());
+    DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+    clearTimeout(prodDebounce);
+    prodDebounce=setTimeout(()=>{
+      renderProducts();
+      renderSellGrid();
+      initHistory();
+      if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+    },20);
+  });
+  let salesDebounce=null;
+  onSnapshot(collection(db,'sales'), snap=>{
+    const incoming = snap.docs.map(d=>d.data());
+    if(knownSaleIds !== null && currentRole==='admin'){
+      incoming.forEach(s=>{
+        if(!knownSaleIds.has(s.id) && !s.reverted){
+          toast(`🛒 ${s.seller}: ${s.productName} — ${fmt(s.total)} so'm`,'green');
+        }
+      });
+    }
+    knownSaleIds = new Set(incoming.map(s=>s.id));
+    DB.sales = incoming;
+    DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    clearTimeout(salesDebounce);
+    salesDebounce=setTimeout(()=>{
+      if(document.getElementById('page-history')?.classList.contains('active')) renderHistory();
+      if(document.getElementById('page-my-sales')?.classList.contains('active')) renderMySales();
+      if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+    },20);
+  });
+  let shDebounce=null;
+  onSnapshot(collection(db,'restocks'), snap=>{
+    DB.restocks = snap.docs.map(d=>d.data());
+    DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    clearTimeout(shDebounce);
+    shDebounce=setTimeout(()=>{
+      if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
+    },20);
+  });
+}
+
+async function init(){
+  try{
+    const [settingsSnap, prodsSnap, salesSnap, restocksSnap] = await Promise.all([
+      getDoc(settingsRef),
+      getDocs(collection(db,'products')),
+      getDocs(collection(db,'sales')),
+      getDocs(collection(db,'restocks'))
+    ]);
+
+    if(settingsSnap.exists()){
+      const d=settingsSnap.data();
+      DB.pins=d.pins||DB.pins;
+      DB.revertMinutes=d.revertMinutes||30;
+    } else {
+      setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes});
+    }
+
+    DB.products = prodsSnap.docs.map(d=>d.data());
+    DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+
+    DB.sales = salesSnap.docs.map(d=>d.data());
+    DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+    DB.restocks = restocksSnap.docs.map(d=>d.data());
+    DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('login-page').style.display='flex';
+    startListeners();
+    updateOfflineBanner();
+
+    document.getElementById('today-date').textContent = new Date().toLocaleDateString('uz-UZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    document.querySelectorAll('.role-btn').forEach(b=>b.addEventListener('click',()=>{
+      document.querySelectorAll('.role-btn').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      document.getElementById('pin-input').placeholder = b.dataset.role==='admin'?'Admin PIN':'Sotuvchi PIN';
+    }));
+    document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
+  }catch(e){
+    document.getElementById('loading-screen').querySelector('p').textContent = "❌ Firebase bilan ulanib bo'lmadi. Internetni va Firestore qoidalarini tekshiring.";
+    console.error(e);
+  }
+}
+
+window.doLogin = function(){
+  const role = document.querySelector('.role-btn.selected')?.dataset.role;
+  const pin = document.getElementById('pin-input').value;
+  const err = document.getElementById('err-msg');
+  if(!role){ err.textContent='Rolni tanlang'; return; }
+  if(!pin){ err.textContent='PIN kiriting'; return; }
+  if(role==='admin' && pin!==DB.pins.admin){ err.textContent="Admin PIN noto'g'ri"; return; }
+  if(role==='seller' && pin!==DB.pins.seller){ err.textContent="Sotuvchi PIN noto'g'ri"; return; }
+  currentRole = role;
+  err.textContent='';
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 Sotuvchi');
+  if(role==='admin'){
+    document.getElementById('nav-admin').style.display='flex';
+    document.getElementById('nav-seller').style.display='none';
+    // Mobil: admin tablarini ko'rsat
+    ['dashboard','products','history','stock-history','settings'].forEach(t=>{
+      const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
+    });
+    ['sell','my-sales'].forEach(t=>{
+      const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
+    });
+    showPage('dashboard','admin');
+    renderDashboard();
+  } else {
+    document.getElementById('nav-seller').style.display='flex';
+    document.getElementById('nav-admin').style.display='none';
+    // Mobil: seller tablarini ko'rsat
+    ['sell','my-sales'].forEach(t=>{
+      const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
+    });
+    ['dashboard','products','history','stock-history','settings'].forEach(t=>{
+      const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
+    });
+    showPage('sell','seller');
+    renderSellGrid();
+  }
+}
+
+window.logout = function(){
+  currentRole=null; cart={};
+  document.getElementById('login-page').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('pin-input').value='';
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+}
+
+window.showPage = function(page, role){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const navId = role==='admin'?'nav-admin':'nav-seller';
+  document.querySelectorAll('#'+navId+' .tab').forEach(t=>t.classList.remove('active'));
+  window.event?.target?.classList.add('active');
+  // Sync mobile tab bar
+  document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.remove('active'));
+  const mtab = document.getElementById('mtab-'+page);
+  if(mtab) mtab.classList.add('active');
+  if(page==='history'){ initHistory(); renderHistory(); }
+  if(page==='my-sales'){ setMySalesFilter('today'); }
+  if(page==='sell') renderSellGrid();
+  if(page==='settings') document.getElementById('revert-minutes').value=DB.revertMinutes;
+  if(page==='dashboard') renderDashboard();
+  if(page==='stock-history'){ setStockHistFilter('today'); }
+}
+
+window.renderDashboard = function(){
+  const period = document.getElementById('stat-period')?.value||'today';
+  const now = new Date();
+  const filtered = DB.sales.filter(s=>{
+    if(s.reverted) return false;
+    const d=new Date(s.date);
+    if(period==='today') return isSameDay(d,now);
+    if(period==='week') return isThisWeek(d,now);
+    if(period==='month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    return true;
+  });
+  const totalRev = filtered.reduce((a,s)=>a+s.total,0);
+  const totalQty = filtered.reduce((a,s)=>a+s.qty,0);
+  const outStock = DB.products.filter(p=>p.stock===0).length;
+  const invValue = DB.products.reduce((a,p)=>a+p.price*p.stock,0);
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat green"><div class="val">${fmt(totalRev)}</div><div class="lbl">💰 Savdo hajmi (so'm)</div></div>
+    <div class="stat blue"><div class="val">${filtered.length}</div><div class="lbl">🧾 Savdo soni</div></div>
+    <div class="stat amber"><div class="val">${totalQty}</div><div class="lbl">📦 Sotilgan miqdor</div></div>
+    <div class="stat red"><div class="val">${outStock}</div><div class="lbl">⚠️ Tugagan tovarlar</div></div>
+    <div class="stat blue"><div class="val">${fmt(invValue)}</div><div class="lbl">🏬 Ombordagi tovar qiymati</div></div>`;
+  const recent = DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), now)).slice().reverse();
+  document.getElementById('recent-sales').innerHTML = recent.length ? `
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Jami</th><th>Sotuvchi</th></tr></thead>
+      <tbody>${recent.map(s=>`<tr><td style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td><strong>${s.productName}</strong></td><td>${s.qty} ta</td><td style="color:var(--green);font-weight:700">${fmt(s.total)} so'm</td><td>${s.seller}</td></tr>`).join('')}</tbody>
+    </table></div>` : '<p style="color:var(--text3);text-align:center;padding:2rem">Bugun savdo bo\'lmagan.</p>';
+
+  // Top products (within selected period)
+  const prodMap = {};
+  filtered.forEach(s=>{
+    const key = s.productName+'|'+(s.volume||'');
+    if(!prodMap[key]) prodMap[key] = {name:s.productName, volume:s.volume||'', qty:0, total:0};
+    prodMap[key].qty += s.qty;
+    prodMap[key].total += s.total;
+  });
+  const top = Object.values(prodMap).sort((a,b)=>b.qty-a.qty).slice(0,5);
+  document.getElementById('top-products').innerHTML = top.length ? top.map((t,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;${i<top.length-1?'border-bottom:1px solid var(--border)':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#fbbf24':i===1?'#cbd5e1':i===2?'#d97706':'var(--surface2)'};color:${i<3?'#fff':'var(--text3)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}${t.volume?' · '+t.volume+'L':''}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">${t.qty} ta</div>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Bu davrda savdo yo\'q.</p>';
+
+  // Low stock list (always current, not period-filtered)
+  const low = DB.products.filter(p=>p.stock<=5).sort((a,b)=>a.stock-b.stock).slice(0,8);
+  document.getElementById('low-stock-list').innerHTML = low.length ? low.map(p=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
+      <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
+}
+
+window.renderProducts = function(){
+  const grid=document.getElementById('product-grid');
+  const none=document.getElementById('no-products');
+  if(!grid) return;
+  const q=(document.getElementById('prod-search')?.value||'').toLowerCase().trim();
+  const list = q ? DB.products.filter(p=>p.name.toLowerCase().includes(q)) : DB.products;
+  if(!list.length){ grid.innerHTML=''; none.style.display='block'; none.textContent = q ? "Hech narsa topilmadi." : "Hali tovar yo'q."; return; }
+  none.style.display='none';
+  grid.innerHTML = list.map(p=>{
+    const stockColor=p.stock===0?'red':p.stock<=5?'amber':'green';
+    const volLabel = p.volume?`<span class="badge blue" style="margin-top:.3rem">${p.volume} L</span>`:'';
+    return `<div class="prod-card" draggable="true" data-id="${p.id}">
+      <div class="img-wrap">
+        ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
+        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+        <div class="stock-badge"><span class="badge ${stockColor}">${p.stock} ta</span></div>
+        <div style="position:absolute;top:8px;left:8px"><span class="drag-handle">⠿</span></div>
+      </div>
+      <div class="body">
+        <div class="prod-name">${p.name}</div>
+        ${volLabel}
+        <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
+        <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
+        <div class="prod-actions">
+          <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
+          <button class="btn sm amber" onclick="openReturnStock('${p.id}')">↩ Chiqim</button>
+          <button class="btn sm" onclick="openEditProduct('${p.id}')">✏️</button>
+          <button class="btn sm red" onclick="deleteProduct('${p.id}')">🗑</button>
+        </div>
+      </div></div>`;
+  }).join('');
+  initDrag();
+}
+
+window.openAddProduct=function(){
+  editingProductId=null;
+  document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
+  ['p-name','p-price','p-qty','p-img','p-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-volume').value='';
+  document.getElementById('p-img-file').value='';
+  document.getElementById('img-preview-wrap').style.display='none';
+  document.getElementById('p-qty-row').style.display=''; // Yangi tovar uchun miqdor ko'rsatiladi
+  openModal('modal-product');
+}
+window.openEditProduct=function(id){
+  const p=DB.products.find(x=>x.id===id); if(!p) return;
+  editingProductId=id;
+  document.getElementById('modal-product-title').textContent='Tovarni tahrirlash (nomi, narx, rasm)';
+  document.getElementById('p-name').value=p.name;
+  document.getElementById('p-price').value=p.price;
+  document.getElementById('p-img').value=p.img||'';
+  document.getElementById('p-note').value=p.note||'';
+  document.getElementById('p-volume').value=p.volume||'';
+  document.getElementById('p-img-file').value='';
+  document.getElementById('p-qty-row').style.display='none'; // Tahrirlashda miqdor ko'rsatilmaydi
+  if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
+  else document.getElementById('img-preview-wrap').style.display='none';
+  openModal('modal-product');
+}
+window.previewImg=function(){
+  const url=document.getElementById('p-img').value.trim();
+  const wrap=document.getElementById('img-preview-wrap'); const prev=document.getElementById('img-preview');
+  if(url){ prev.src=url; wrap.style.display='block'; } else wrap.style.display='none';
+}
+window.loadImgFile=function(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('p-img').value=e.target.result;
+    document.getElementById('img-preview').src=e.target.result;
+    document.getElementById('img-preview-wrap').style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+window.saveProduct=async function(){
+  const name=document.getElementById('p-name').value.trim();
+  const price=parseFloat(document.getElementById('p-price').value);
+  const img=document.getElementById('p-img').value.trim();
+  const note=document.getElementById('p-note').value.trim();
+  const volume=document.getElementById('p-volume').value;
+  if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
+  if(editingProductId){
+    // Tahrirlashda faqat nom, narx, rasm, izoh o'zgaradi. Stock O'ZGARMAYDI.
+    const p=DB.products.find(x=>x.id===editingProductId);
+    await fbSaveProduct({...p, name, price, img, note, volume});
+    toast('Tovar yangilandi','green');
+  } else {
+    const qty=parseInt(document.getElementById('p-qty').value);
+    if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
+    const newProd = {id:uid(),name,price,stock:qty,img,note,volume,createdAt:new Date().toISOString()};
+    await fbSaveProduct(newProd);
+    // Boshlang'ich kirimni ham tarixga yozamiz
+    if(qty>0){
+      await fbSaveRestock({
+        id:uid(), productId:newProd.id, productName:name, volume,
+        type:'in', qty, stockBefore:0, stockAfter:qty,
+        reason:'Boshlang\'ich zaxira (tovar qo\'shildi)', date:new Date().toISOString()
+      });
+    }
+    toast("Tovar qo'shildi",'green');
+  }
+  closeModal('modal-product');
+}
+window.deleteProduct=function(id){
+  const p=DB.products.find(x=>x.id===id);
+  confirm2('Tovarni o\'chirish', `"${p?.name}" ni o'chirishni tasdiqlaysizmi?`, async ()=>{
+    await fbDeleteProduct(id); toast("Tovar o'chirildi");
+  });
+}
+window.openRestock=function(id){
+  const p=DB.products.find(x=>x.id===id); if(!p) return;
+  restockId=id;
+  document.getElementById('rs-name').textContent=p.name+(p.volume?' · '+p.volume+'L':'');
+  document.getElementById('rs-current-val').textContent=p.stock+' ta';
+  document.getElementById('rs-adding-val').textContent='0 ta';
+  document.getElementById('rs-result-val').textContent=p.stock+' ta';
+  document.getElementById('rs-qty').value='';
+  document.getElementById('rs-reason').value='';
+  openModal('modal-restock');
+  setTimeout(()=>document.getElementById('rs-qty').focus(),100);
+}
+window.updateRestockCalc=function(){
+  const p=DB.products.find(x=>x.id===restockId); if(!p) return;
+  const n=parseInt(document.getElementById('rs-qty').value)||0;
+  document.getElementById('rs-adding-val').textContent=n+' ta';
+  document.getElementById('rs-result-val').textContent=(p.stock+n)+' ta';
+}
+window.doRestock=async function(){
+  const p=DB.products.find(x=>x.id===restockId); if(!p) return;
+  const n=parseInt(document.getElementById('rs-qty').value);
+  if(!n||n<1){ toast('Miqdorni kiriting','red'); return; }
+  const reason=document.getElementById('rs-reason').value.trim()||'Kirim';
+  const stockBefore=p.stock;
+  const stockAfter=p.stock+n;
+  await fbSaveProduct({...p, stock:stockAfter});
+  await fbSaveRestock({
+    id:uid(), productId:p.id, productName:p.name, volume:p.volume||'',
+    type:'in', qty:n, stockBefore, stockAfter, reason, date:new Date().toISOString()
+  });
+  closeModal('modal-restock');
+  toast(`✓ ${p.name}: +${n} ta qo'shildi (${stockBefore} → ${stockAfter})`, 'green');
+}
+
+window.openReturnStock=function(id){
+  const p=DB.products.find(x=>x.id===id); if(!p) return;
+  restockId=id;
+  document.getElementById('ret-name').textContent=p.name+(p.volume?' · '+p.volume+'L':'');
+  document.getElementById('ret-current-val').textContent=p.stock+' ta';
+  document.getElementById('ret-removing-val').textContent='0 ta';
+  document.getElementById('ret-result-val').textContent=p.stock+' ta';
+  document.getElementById('ret-qty').value='';
+  document.getElementById('ret-note').value='';
+  openModal('modal-return-stock');
+  setTimeout(()=>document.getElementById('ret-qty').focus(),100);
+}
+window.updateReturnCalc=function(){
+  const p=DB.products.find(x=>x.id===restockId); if(!p) return;
+  const n=parseInt(document.getElementById('ret-qty').value)||0;
+  document.getElementById('ret-removing-val').textContent=n+' ta';
+  const result=Math.max(0, p.stock-n);
+  document.getElementById('ret-result-val').textContent=result+' ta';
+}
+window.doReturnStock=async function(){
+  const p=DB.products.find(x=>x.id===restockId); if(!p) return;
+  const n=parseInt(document.getElementById('ret-qty').value);
+  if(!n||n<1){ toast('Miqdorni kiriting','red'); return; }
+  if(n>p.stock){ toast(`Ombordan ko'p! Maksimal: ${p.stock} ta`,'red'); return; }
+  const reasonType=document.getElementById('ret-reason-type').value;
+  const noteExtra=document.getElementById('ret-note').value.trim();
+  const reason=noteExtra?`${reasonType}: ${noteExtra}`:reasonType;
+  const stockBefore=p.stock;
+  const stockAfter=p.stock-n;
+  await fbSaveProduct({...p, stock:stockAfter});
+  await fbSaveRestock({
+    id:uid(), productId:p.id, productName:p.name, volume:p.volume||'',
+    type:'out', qty:n, stockBefore, stockAfter, reason, date:new Date().toISOString()
+  });
+  closeModal('modal-return-stock');
+  toast(`↩ ${p.name}: −${n} ta chiqim (${stockBefore} → ${stockAfter})`, 'amber');
+}
+
+window.sortProducts=async function(by){
+  let sorted=[...DB.products];
+  if(by==='az') sorted.sort((a,b)=>a.name.localeCompare(b.name,'uz'));
+  else if(by==='za') sorted.sort((a,b)=>b.name.localeCompare(a.name,'uz'));
+  else if(by==='vol') sorted.sort((a,b)=>parseFloat(a.volume||99)-parseFloat(b.volume||99));
+  else if(by==='stock_asc') sorted.sort((a,b)=>a.stock-b.stock);
+  else if(by==='added') sorted.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+  const now=Date.now();
+  for(let i=0;i<sorted.length;i++){
+    await fbSaveProduct({...sorted[i], createdAt:new Date(now+i*1000).toISOString()});
+  }
+  toast('Tovarlar tartiblandi','green');
+}
+
+let dragSrcId=null;
+window.initDrag=function(){
+  document.querySelectorAll('#product-grid .prod-card[data-id]').forEach(card=>{
+    card.addEventListener('dragstart',e=>{ dragSrcId=card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+    card.addEventListener('dragend',()=>{ card.classList.remove('dragging'); document.querySelectorAll('.prod-card').forEach(c=>c.classList.remove('drag-over')); });
+    card.addEventListener('dragover',e=>{ e.preventDefault(); document.querySelectorAll('.prod-card').forEach(c=>c.classList.remove('drag-over')); card.classList.add('drag-over'); });
+    card.addEventListener('drop', async e=>{
+      e.preventDefault(); card.classList.remove('drag-over');
+      if(!dragSrcId||dragSrcId===card.dataset.id) return;
+      const fromIdx=DB.products.findIndex(x=>x.id===dragSrcId);
+      const toIdx=DB.products.findIndex(x=>x.id===card.dataset.id);
+      if(fromIdx<0||toIdx<0) return;
+      const reordered=[...DB.products];
+      const [moved]=reordered.splice(fromIdx,1);
+      reordered.splice(toIdx,0,moved);
+      const now=Date.now();
+      for(let i=0;i<reordered.length;i++){
+        await fbSaveProduct({...reordered[i], createdAt:new Date(now+i*1000).toISOString()});
+      }
+    });
+  });
+}
+
+window.cartTotal=function(){ return Object.entries(cart).reduce((sum,[id,qty])=>{ const p=DB.products.find(x=>x.id===id); return sum+(p?p.price*qty:0); },0); }
+window.cartCount=function(){ return Object.values(cart).reduce((a,v)=>a+v,0); }
+window.updateCartBtn=function(){
+  const cnt=cartCount(); const bar=document.getElementById('sticky-cart');
+  cnt>0 ? bar.classList.add('show') : bar.classList.remove('show');
+  document.getElementById('cart-count').textContent=cnt;
+  document.getElementById('cart-total-nav').textContent=fmt(cartTotal());
+}
+window.addToCart=function(id){
+  const p=DB.products.find(x=>x.id===id);
+  if(!p||p.stock===0){ toast("Omborda yo'q",'red'); return; }
+  const inCart=cart[id]||0;
+  if(inCart>=p.stock){ toast("Ombordan ko'p bo'ladi!",'red'); return; }
+  cart[id]=(cart[id]||0)+1;
+  updateCartBtn(); renderSellGrid();
+  toast(`+1 ta ${p.name} savatga qo'shildi`,'green');
+}
+window.removeFromCart=function(id){
+  if(!cart[id]) return; cart[id]--; if(cart[id]<=0) delete cart[id];
+  updateCartBtn(); renderSellGrid(); renderCartModal();
+}
+window.clearCart=function(){ cart={}; updateCartBtn(); renderSellGrid(); closeModal('modal-cart'); }
+window.openCartModal=function(){ renderCartModal(); openModal('modal-cart'); }
+window.renderCartModal=function(){
+  const items=Object.entries(cart); const el=document.getElementById('cart-items');
+  if(!items.length){ el.innerHTML='<p style="color:var(--text3);text-align:center;padding:1.5rem">Savat bo\'sh</p>'; document.getElementById('cart-grand-total').textContent="0 so'm"; return; }
+  el.innerHTML=items.map(([id,qty])=>{
+    const p=DB.products.find(x=>x.id===id); if(!p) return '';
+    const vol=p.volume?` · ${p.volume}L`:'';
+    return `<div style="display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">${p.name}${vol}</div>
+      <div style="font-size:12px;color:var(--text3)">${fmt(p.price)} so'm × ${qty} = <strong style="color:var(--green)">${fmt(p.price*qty)} so'm</strong></div></div>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <button class="qty-btn" style="width:30px;height:30px;font-size:16px" onclick="removeFromCart('${id}')">−</button>
+        <input type="number" min="1" max="${p.stock}" value="${qty}" onchange="setCartQty('${id}',this.value)" style="width:48px;height:30px;text-align:center;font-size:14px;font-weight:700;border:1.5px solid var(--border2);border-radius:6px;outline:none">
+        <button class="qty-btn" style="width:30px;height:30px;font-size:16px" onclick="addToCart('${id}')">+</button>
+      </div></div>`;
+  }).join('');
+  document.getElementById('cart-grand-total').textContent=fmt(cartTotal())+" so'm";
+}
+window.setCartQty=function(id,val){
+  const p=DB.products.find(x=>x.id===id); if(!p) return;
+  let n=parseInt(val);
+  if(isNaN(n)||n<1) n=1;
+  if(n>p.stock){ n=p.stock; toast(`Maksimal: ${p.stock} ta`,'amber'); }
+  cart[id]=n;
+  updateCartBtn(); renderSellGrid(); renderCartModal();
+}
+window.doCartSell=async function(){
+  const items=Object.entries(cart);
+  if(!items.length){ toast('Savat bo\'sh','red'); return; }
+  const now=new Date().toISOString();
+  let ok=true;
+  items.forEach(([id,qty])=>{ const p=DB.products.find(x=>x.id===id); if(!p||p.stock<qty){ toast(`${p?p.name:'Tovar'} yetarli emas!`,'red'); ok=false; } });
+  if(!ok) return;
+  const total=cartTotal();
+  const writes=[];
+  items.forEach(([id,qty])=>{
+    const p=DB.products.find(x=>x.id===id);
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
+    writes.push(fbSaveSale(sale));
+    writes.push(fbSaveProduct({...p, stock:p.stock-qty}));
+  });
+  cart={}; closeModal('modal-cart'); updateCartBtn(); renderSellGrid();
+  if(currentRole==='seller') renderMySales();
+  toast(`✓ Savdo yakunlandi — ${fmt(total)} so'm`,'green');
+  Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+}
+
+window.handleSellSearchKey=function(e){
+  if(e.key==='Enter'){
+    const q=(document.getElementById('sell-search').value||'').toLowerCase().trim();
+    if(!q) return;
+    const match = DB.products.find(p=>p.name.toLowerCase().includes(q) && p.stock>0);
+    if(match){
+      addToCart(match.id);
+      document.getElementById('sell-search').value='';
+      renderSellGrid();
+    } else {
+      toast('Mos tovar topilmadi','red');
+    }
+    return;
+  }
+  renderSellGrid();
+}
+window.renderSellGrid=function(){
+  const q=(document.getElementById('sell-search')?.value||'').toLowerCase();
+  const grid=document.getElementById('sell-grid'); const none=document.getElementById('no-sell');
+  if(!grid) return;
+  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(q));
+  if(!prods.length){ grid.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+  grid.innerHTML=prods.map(p=>{
+    const out=p.stock===0; const inCart=cart[p.id]||0;
+    const volLabel=p.volume?`<span class="badge blue" style="margin-bottom:.3rem">${p.volume} L</span><br>`:'';
+    return `<div class="prod-card">
+      <div class="img-wrap" style="${out?'opacity:.5':''}">
+        ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
+        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+        <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=5?'amber':'green'}">${p.stock} ta</span></div>
+        ${inCart>0?`<div style="position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${inCart}</div>`:''}
+      </div>
+      <div class="body">
+        <div class="prod-name">${p.name}</div>${volLabel}
+        <div class="prod-price">${fmt(p.price)} so'm</div>
+        <div class="prod-stock" style="color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`Savatda: ${inCart} ta · Qoldi: ${p.stock-inCart} ta`:'Mavjud: '+p.stock+' ta'}</div>
+        ${!out?`<button class="btn sm green" style="width:100%;margin-top:.75rem;justify-content:center" onclick="addToCart('${p.id}')">+ Savatga qo'shish</button>`:'<div style="height:2.1rem"></div>'}
+      </div></div>`;
+  }).join('');
+}
+
+window.mySalesFilter = 'today';
+window.setMySalesFilter = function(type){
+  mySalesFilter = type;
+  if(type!=='custom') document.getElementById('ms-date').value='';
+  document.querySelectorAll('#ms-btn-today,#ms-btn-yesterday,#ms-btn-all').forEach(b=>b.classList.remove('blue'));
+  if(type==='today') document.getElementById('ms-btn-today').classList.add('blue');
+  if(type==='yesterday') document.getElementById('ms-btn-yesterday').classList.add('blue');
+  if(type==='all') document.getElementById('ms-btn-all').classList.add('blue');
+  renderMySales();
+}
+window.renderMySales=function(){
+  const revertMins=DB.revertMinutes;
+  const info=document.getElementById('my-revert-info');
+  info.style.display='block';
+  info.textContent=`⏱ Siz ${revertMins} daqiqa ichida sotuvni qaytara olasiz.`;
+  const now=new Date();
+
+  // Determine target date range based on filter
+  let rangeStart=null, rangeEnd=null, label='Bugungi savdo';
+  if(mySalesFilter==='today'){
+    rangeStart=new Date(now); rangeStart.setHours(0,0,0,0);
+    rangeEnd=new Date(now); rangeEnd.setHours(23,59,59,999);
+    label='Bugungi savdo';
+  } else if(mySalesFilter==='yesterday'){
+    const y=new Date(now); y.setDate(now.getDate()-1);
+    rangeStart=new Date(y); rangeStart.setHours(0,0,0,0);
+    rangeEnd=new Date(y); rangeEnd.setHours(23,59,59,999);
+    label="Kechagi savdo";
+  } else if(mySalesFilter==='custom'){
+    const dv=document.getElementById('ms-date').value;
+    if(dv){
+      rangeStart=new Date(dv+'T00:00:00');
+      rangeEnd=new Date(dv+'T23:59:59');
+      label=new Date(dv).toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' savdo';
+    }
+  } else {
+    label='Jami savdo';
+  }
+
+  const allMySales = DB.sales.filter(s=>s.seller==='Sotuvchi');
+  const periodSales = (rangeStart && rangeEnd)
+    ? allMySales.filter(s=>!s.reverted && new Date(s.date)>=rangeStart && new Date(s.date)<=rangeEnd)
+    : allMySales.filter(s=>!s.reverted);
+  const periodTotal=periodSales.reduce((a,s)=>a+s.total,0);
+  const periodQty=periodSales.reduce((a,s)=>a+s.qty,0);
+  document.getElementById('seller-daily-summary').innerHTML=`
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:160px"><div class="val" style="font-size:20px">${fmt(periodTotal)} so'm</div><div class="lbl">💰 ${label}</div></div>
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${periodSales.length}</div><div class="lbl">🧾 Savdo soni</div></div>
+    <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${periodQty}</div><div class="lbl">📦 Sotilgan dona</div></div>`;
+
+  let sales = (rangeStart && rangeEnd)
+    ? allMySales.filter(s=>new Date(s.date)>=rangeStart && new Date(s.date)<=rangeEnd)
+    : allMySales;
+  sales = sales.slice().reverse();
+
+  const tbody=document.getElementById('my-sales-body'); const none=document.getElementById('no-my-sales');
+  if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+  tbody.innerHTML=sales.map(s=>{
+    const canRevert=!s.reverted&&(now-new Date(s.date))/60000<=revertMins;
+    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
+  }).join('');
+}
+window.revertSale=async function(id){
+  const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
+  const p=DB.products.find(x=>x.id===s.productId);
+  await fbUpdateSale(id,{reverted:true});
+  if(p) await fbSaveProduct({...p, stock:p.stock+s.qty});
+  renderMySales(); renderSellGrid();
+  toast('Savdo qaytarildi','amber');
+}
+
+window.initHistory=function(){
+  const sel=document.getElementById('f-product'); if(!sel) return;
+  const cur=sel.value;
+  // Yig'amiz: hozirgi tovarlar nomlari + tarixdagi barcha noyob nomlar (o'chirilgan/o'zgartirilgan tovarlar uchun ham)
+  const namesSet = new Set();
+  DB.products.forEach(p=>namesSet.add(p.name));
+  DB.sales.forEach(s=>namesSet.add(s.productName));
+  const names = [...namesSet].sort((a,b)=>a.localeCompare(b,'uz'));
+  sel.innerHTML='<option value="">Barcha tovarlar</option>';
+  names.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
+  // Agar oldingi tanlangan qiymat ro'yxatda hali bor bo'lsa, saqlab qolamiz; aks holda tozalaymiz
+  if(cur && names.includes(cur)) sel.value=cur; else sel.value='';
+  const yrSel=document.getElementById('f-year'); const curYr=yrSel.value;
+  const years=[...new Set(DB.sales.map(s=>new Date(s.date).getFullYear()))].sort((a,b)=>b-a);
+  yrSel.innerHTML='<option value="">Barcha yillar</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(curYr) yrSel.value=curYr;
+}
+window.renderHistory=function(){
+  const from=document.getElementById('f-from').value, to=document.getElementById('f-to').value;
+  const seller=document.getElementById('f-seller').value, product=document.getElementById('f-product').value;
+  const month=document.getElementById('f-month').value, year=document.getElementById('f-year').value;
+  let sales=DB.sales.slice().reverse();
+  if(from) sales=sales.filter(s=>new Date(s.date)>=new Date(from));
+  if(to) sales=sales.filter(s=>new Date(s.date)<=new Date(to+'T23:59:59'));
+  if(month!=='') sales=sales.filter(s=>new Date(s.date).getMonth()===parseInt(month));
+  if(year) sales=sales.filter(s=>new Date(s.date).getFullYear()===parseInt(year));
+  if(seller) sales=sales.filter(s=>s.seller===seller);
+  if(product) sales=sales.filter(s=>s.productName===product);
+  const tbody=document.getElementById('history-body'), none=document.getElementById('no-history'), sumEl=document.getElementById('history-summary');
+  if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; sumEl.innerHTML=''; return; }
+  none.style.display='none';
+  const totalRev=sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
+  const cnt=sales.filter(s=>!s.reverted).length;
+  sumEl.innerHTML=`<div style="display:flex;gap:.75rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
+  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
+}
+window.adminRevert=function(id){
+  const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
+  confirm2('Savdoni qaytarish', `"${s.productName}" ni ${s.qty} ta qaytarilsin?`, async ()=>{
+    const p=DB.products.find(x=>x.id===s.productId);
+    await fbUpdateSale(id,{reverted:true});
+    if(p) await fbSaveProduct({...p, stock:p.stock+s.qty});
+    renderHistory();
+    toast('Savdo qaytarildi','amber');
+  });
+}
+window.clearFilters=function(){
+  ['f-from','f-to','f-seller','f-product','f-month','f-year'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  renderHistory();
+}
+window.quickHistoryFilter=function(type){
+  const d=new Date();
+  if(type==='yesterday') d.setDate(d.getDate()-1);
+  const iso = d.toISOString().slice(0,10);
+  document.getElementById('f-from').value = iso;
+  document.getElementById('f-to').value = iso;
+  document.getElementById('f-month').value='';
+  document.getElementById('f-year').value='';
+  renderHistory();
+}
+window.exportCSV=function(){
+  let csv='Sana,Tovar,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
+  DB.sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
+  download('savdo_tarixi.csv','text/csv',csv);
+}
+
+let shFilter='today';
+window.setStockHistFilter=function(type){
+  shFilter=type;
+  ['today','yesterday','week','all'].forEach(t=>{
+    const b=document.getElementById('sh-btn-'+t);
+    if(b) b.classList[t===type?'add':'remove']('blue');
+  });
+  renderStockHistory();
+}
+window.renderStockHistory=function(){
+  const typeF=document.getElementById('sh-type')?.value||'';
+  const now=new Date();
+  let start=null,end=null;
+  if(shFilter==='today'){ start=new Date(now); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
+  else if(shFilter==='yesterday'){ const y=new Date(now); y.setDate(now.getDate()-1); start=new Date(y); start.setHours(0,0,0,0); end=new Date(y); end.setHours(23,59,59,999); }
+  else if(shFilter==='week'){ start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
+  let rows=[...DB.restocks].reverse();
+  if(start) rows=rows.filter(r=>new Date(r.date)>=start && new Date(r.date)<=end);
+  if(typeF) rows=rows.filter(r=>r.type===typeF);
+  const totalIn=rows.filter(r=>r.type==='in').reduce((a,r)=>a+r.qty,0);
+  const totalOut=rows.filter(r=>r.type==='out').reduce((a,r)=>a+r.qty,0);
+  document.getElementById('sh-stats').innerHTML=`
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">+${totalIn} ta</div><div class="lbl">📦 Jami kirim</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">−${totalOut} ta</div><div class="lbl">↩ Jami chiqim</div></div>
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">${rows.length}</div><div class="lbl">📋 Amалlar soni</div></div>`;
+  const tbody=document.getElementById('sh-body'), none=document.getElementById('no-sh');
+  if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+  tbody.innerHTML=rows.map(r=>{
+    const isIn=r.type==='in';
+    return `<tr>
+      <td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(r.date)}</td>
+      <td data-label="Tovar"><strong>${r.productName}</strong></td>
+      <td>${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td>
+      <td><span class="badge ${isIn?'green':'red'}">${isIn?'📦 Kirim':'↩ Chiqim'}</span></td>
+      <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${r.qty} ta</td>
+      <td style="font-size:13px;color:var(--text2)">${r.reason||'—'}</td>
+      <td style="font-size:13px">${r.stockBefore??'?'} → <strong>${r.stockAfter??'?'}</strong></td>
+    </tr>`;
+  }).join('');
+}
+window.exportStockCSV=function(){
+  let csv='Sana,Tovar,Hajm,Turi,Miqdor,Sabab,Oldingi,Keyin\n';
+  DB.restocks.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(r=>{
+    csv+=`"${timeStr(r.date)}","${r.productName}","${r.volume||''}","${r.type==='in'?'Kirim':'Chiqim'}",${r.qty},"${r.reason||''}",${r.stockBefore??''},${r.stockAfter??''}\n`;
+  });
+  download('kirim_chiqim.csv','text/csv',csv);
+}
+
+window.savePins=async function(){
+  const ap=document.getElementById('new-admin-pin').value, sp=document.getElementById('new-seller-pin').value;
+  if(ap&&ap.length!==4){ toast("Admin PIN 4 raqam bo'lishi kerak",'red'); return; }
+  if(sp&&sp.length!==4){ toast("Sotuvchi PIN 4 raqam bo'lishi kerak",'red'); return; }
+  if(ap) DB.pins.admin=ap;
+  if(sp) DB.pins.seller=sp;
+  await fbSaveSettings();
+  toast('PIN kodlar saqlandi','green');
+  document.getElementById('new-admin-pin').value=''; document.getElementById('new-seller-pin').value='';
+}
+window.saveRevertTime=async function(){
+  const v=parseInt(document.getElementById('revert-minutes').value);
+  if(!v||v<1){ toast("Noto'g'ri qiymat",'red'); return; }
+  DB.revertMinutes=v; await fbSaveSettings(); toast('Vaqt saqlandi','green');
+}
+window.clearAll=function(){
+  confirm2('Hammasini o\'chirish','Barcha tovarlar va savdolar o\'chiriladi!', async ()=>{
+    for(const p of DB.products) await fbDeleteProduct(p.id);
+    for(const s of DB.sales) await deleteDoc(doc(db,'sales',s.id));
+    toast('Barcha ma\'lumotlar tozalandi');
+  });
+}
+
+window.openModal=function(id){ document.getElementById(id).classList.remove('hidden'); }
+window.closeModal=function(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>{ m.addEventListener('click',e=>{ if(e.target===m) m.classList.add('hidden'); }); });
+let _confirmCb=null;
+window.confirm2=function(title,msg,cb){
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-msg').textContent=msg;
+  _confirmCb=cb;
+  document.getElementById('confirm-ok').onclick=()=>{ closeModal('modal-confirm'); _confirmCb&&_confirmCb(); };
+  openModal('modal-confirm');
+}
+
+let _toastTimer;
+window.toast=function(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+(type||'');
+  requestAnimationFrame(()=>el.classList.add('show'));
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),900);
+}
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
+function timeStr(iso){
+  const d=new Date(iso);
+  return d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
+}
+function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
+function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
+function download(name,type,content){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', e=>{
+  // ESC closes any open modal
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m=>m.classList.add('hidden'));
+    return;
+  }
+  // Don't trigger shortcuts while typing in inputs (except our specific cases)
+  const tag = document.activeElement.tagName;
+  const isTyping = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT';
+
+  // "/" focuses search on sell or products page
+  if(e.key==='/' && !isTyping){
+    e.preventDefault();
+    const sellSearch = document.getElementById('sell-search');
+    const prodSearch = document.getElementById('prod-search');
+    if(document.getElementById('page-sell')?.classList.contains('active') && sellSearch){ sellSearch.focus(); }
+    else if(document.getElementById('page-products')?.classList.contains('active') && prodSearch){ prodSearch.focus(); }
+  }
+  // Ctrl/Cmd+Enter opens cart on sell page
+  if((e.ctrlKey||e.metaKey) && e.key==='Enter'){
+    if(document.getElementById('page-sell')?.classList.contains('active') && cartCount()>0){
+      e.preventDefault();
+      openCartModal();
+    }
+  }
+});
+
+init();
+</script>
+</body>
+</html>
