@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do'kon Hisobotlari</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f5f5f0;--surface:#fff;--surface2:#fafaf8;
+    --border:#e0ddd6;--border2:#ccc;
+    --text:#1a1a17;--text2:#555;--text3:#888;
+    --accent:#2563eb;--accent-bg:#eff6ff;--accent-border:#bfdbfe;
+    --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+    --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
+    --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
+    --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+
+  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
+  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite}
+  #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
+  #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading-screen.hidden{display:none}
+
+  #sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:5px;transition:.3s}
+  #sync-dot.syncing{background:#60a5fa;animation:pulse-dot .6s ease}
+  @keyframes pulse-dot{0%{transform:scale(1.6);opacity:.5}100%{transform:scale(1);opacity:1}}
+
+  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
+  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
+  nav .logo span{color:#60a5fa}
+  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8}
+
+  .page{padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
+
+  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
+  .login-card{background:#fff;border-radius:16px;padding:2.5rem;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b}
+  .login-card p{color:#64748b;font-size:14px;margin-bottom:1.5rem}
+  .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.15s}
+  .pin-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.15s}
+  .btn-primary:hover{background:#1d4ed8}
+  .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+  .stat .val{font-size:26px;font-weight:700;margin-bottom:.15rem}
+  .stat .lbl{font-size:13px;color:var(--text3);font-weight:500}
+  .stat.green .val{color:var(--green)}
+  .stat.blue .val{color:var(--accent)}
+  .stat.amber .val{color:var(--amber)}
+
+  .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;background:var(--surface)}
+  th{background:var(--surface2);padding:.75rem 1rem;text-align:left;font-size:13px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+  th:hover{background:#f0efe9}
+  th .arrow{font-size:10px;color:var(--text3);margin-left:3px}
+  td{padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafaf8}
+  tr.group-row{cursor:pointer}
+  tr.group-row td:first-child{position:relative;padding-left:1.9rem}
+  tr.group-row td:first-child::before{content:'▸';position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text3);font-size:11px;transition:.15s}
+  tr.group-row.open td:first-child::before{content:'▾'}
+  tr.group-row.open td{background:var(--accent-bg)}
+  tr.detail-row td{background:var(--surface2);padding:.5rem .75rem .75rem 2.4rem;border-bottom:1px solid var(--border)}
+  table.detail-tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  table.detail-tbl th{background:#f0efe9;padding:.45rem .75rem;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--text3);font-weight:700;border-bottom:1px solid var(--border);cursor:default}
+  table.detail-tbl th:hover{background:#f0efe9}
+  table.detail-tbl td{padding:.45rem .75rem;font-size:13px;border-bottom:1px solid var(--border)}
+  table.detail-tbl tr:last-child td{border-bottom:none}
+  table.detail-tbl tr.detail-line:hover td{background:var(--surface2)}
+
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  tfoot td{font-weight:700;background:var(--surface2);border-top:2px solid var(--border)}
+
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+  .badge.blue{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+  .section-header h2{font-size:20px;font-weight:700}
+  .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
+
+  .filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
+  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
+
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .btn:hover{background:var(--surface2);border-color:#bbb}
+  .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.blue:hover{background:#1d4ed8}
+  .btn.sm{padding:.4rem .75rem;font-size:12px}
+
+  nav button.nav-tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s;white-space:nowrap}
+  nav button.nav-tab.active,nav button.nav-tab:hover{background:#334155;color:#fff}
+
+  .stock-bar-wrap{background:var(--border);border-radius:4px;height:8px;width:100%;min-width:80px;overflow:hidden}
+  .stock-bar{height:100%;border-radius:4px;transition:.3s}
+
+  @media(max-width:768px){
+    nav{height:auto;min-height:52px;padding:.5rem .75rem;flex-wrap:wrap;gap:.4rem}
+    nav .logo{font-size:15px}
+    nav button.nav-tab{padding:6px 10px;font-size:12px}
+    .stat-grid{grid-template-columns:1fr 1fr;gap:.6rem}
+    .stat{padding:.85rem 1rem}
+    .stat .val{font-size:20px}
+    .page{padding:.65rem}
+    .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.6rem .75rem;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.35rem}
+    .filter-bar::-webkit-scrollbar{display:none}
+    .filter-bar input[type="date"]{min-width:130px;font-size:12px}
+    .filter-bar select{min-width:120px;font-size:12px}
+    .tbl-wrap{border-radius:8px}
+    table thead{display:none}
+    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:#fff;box-shadow:var(--shadow)}
+    table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border:none;font-size:13px}
+    table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:12px;flex-shrink:0;margin-right:.5rem}
+    table tbody tr:hover td{background:transparent}
+    table tfoot{display:none}
+    tr.detail-row td{padding:.5rem}
+    table.detail-tbl{display:block;overflow-x:auto}
+    table.detail-tbl thead{display:table-header-group}
+    table.detail-tbl tbody tr{display:table-row;border:none;border-radius:0;margin:0;padding:0;box-shadow:none}
+    table.detail-tbl tbody td{display:table-cell;padding:.45rem .75rem;border-bottom:1px solid var(--border)}
+    table.detail-tbl tbody td:before{display:none}
+    .login-card{width:calc(100% - 2rem);max-width:340px;padding:2rem 1.5rem}
+    .section-header h2{font-size:18px}
+  }
+  @media(max-width:400px){
+    .stat-grid{grid-template-columns:1fr}
+    nav button.nav-tab{padding:5px 7px;font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <h2>📊 Do'kon Hisobotlari</h2>
+  <p>Firebase bilan ulanmoqda...</p>
+</div>
+
+<div id="login-page" style="display:none">
+  <div class="login-card">
+    <h1>📊 Hisobotlar</h1>
+    <p>Davom etish uchun PIN kiriting</p>
+    <input class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="····" id="pin-input">
+    <div class="err-msg" id="err-msg"></div>
+    <button class="btn-primary" onclick="doLogin()">Kirish →</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<nav>
+  <div class="logo">📊 <span>Do'kon Hisobotlari</span></div>
+  <button class="nav-tab active" id="navtab-report" onclick="switchMain('report')">📊 Hisobot</button>
+  <button class="nav-tab" id="navtab-stock" onclick="switchMain('stock')">📦 Zaxira</button>
+  <div class="user-badge"><span id="sync-dot"></span>👨‍💼 Admin</div>
+</nav>
+
+<!-- HISOBOT SAHIFASI -->
+<div id="main-report">
+<div class="page">
+  <div class="section-header">
+    <div><h2>Tovarlar bo'yicha hisobot</h2><p id="period-label">Bugungi savdolar</p></div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="btn sm" id="btn-today" onclick="setPeriod('today')">Bugun</button>
+    <button class="btn sm" id="btn-yesterday" onclick="setPeriod('yesterday')">Kecha</button>
+    <button class="btn sm" id="btn-week" onclick="setPeriod('week')">Bu hafta</button>
+    <button class="btn sm" id="btn-month" onclick="setPeriod('month')">Bu oy</button>
+    <button class="btn sm" id="btn-all" onclick="setPeriod('all')">Hammasi</button>
+    <input type="date" id="custom-from" onchange="setPeriod('custom')">
+    <span style="font-size:12px;color:var(--text3)">—</span>
+    <input type="date" id="custom-to" onchange="setPeriod('custom')">
+    <button class="btn sm" style="margin-left:auto" onclick="exportCSV()">⬇ CSV yuklab olish</button>
+  </div>
+
+  <div class="stat-grid" id="stat-grid"></div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="setSort('name')">Tovar <span class="arrow" id="arr-name"></span></th>
+        <th onclick="setSort('volume')">Hajm <span class="arrow" id="arr-volume"></span></th>
+        <th onclick="setSort('qty')">Sotilgan dona <span class="arrow" id="arr-qty"></span></th>
+        <th onclick="setSort('orders')">Savdo soni <span class="arrow" id="arr-orders"></span></th>
+        <th onclick="setSort('total')">Jami summa <span class="arrow" id="arr-total"></span></th>
+      </tr></thead>
+      <tbody id="report-body"></tbody>
+      <tfoot id="report-foot"></tfoot>
+    </table>
+  </div>
+  <p id="no-data" style="color:var(--text3);text-align:center;padding:3rem;display:none">Bu davrda savdo bo'lmagan.</p>
+</div>
+</div>
+
+<!-- ZAXIRA SAHIFASI -->
+<div id="main-stock" style="display:none">
+<div class="page">
+  <div class="section-header">
+    <div><h2>📦 Tovar zaxiralari</h2><p id="stock-updated">Real vaqtda yangilanadi</p></div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid" id="stock-stat-grid"></div>
+
+  <!-- FILTER + SEARCH -->
+  <div class="filter-bar">
+    <button class="btn sm" id="sf-all" onclick="setStockFilter('all')">Barchasi</button>
+    <button class="btn sm" id="sf-low" onclick="setStockFilter('low')">⚠️ Kam qolgan (≤10)</button>
+    <button class="btn sm" id="sf-out" onclick="setStockFilter('out')">🔴 Tugagan</button>
+    <button class="btn sm" id="sf-ok" onclick="setStockFilter('ok')">✅ Yetarli</button>
+    <select id="stock-vol-filter" onchange="renderStock()" style="margin-left:.5rem">
+      <option value="">Barcha hajmlar</option>
+      <option value="0.25">0.25 L</option>
+      <option value="0.5">0.5 L</option>
+      <option value="1.0">1.0 L</option>
+      <option value="1.5">1.5 L</option>
+      <option value="2.0">2.0 L</option>
+    </select>
+    <input type="text" id="stock-search" placeholder="🔍 Tovar qidirish..." oninput="renderStock()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
+    <button class="btn sm" onclick="exportStockCSV()">⬇ CSV</button>
+  </div>
+
+  <!-- STOCK TABLE -->
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="setStockSort('name')">Tovar <span class="arrow" id="sarr-name"></span></th>
+        <th onclick="setStockSort('volume')">Hajm <span class="arrow" id="sarr-volume"></span></th>
+        <th onclick="setStockSort('stock')">Zaxira <span class="arrow" id="sarr-stock"></span></th>
+        <th onclick="setStockSort('price')">Narx <span class="arrow" id="sarr-price"></span></th>
+        <th onclick="setStockSort('value')">Ombor qiymati <span class="arrow" id="sarr-value"></span></th>
+        <th>Holat</th>
+      </tr></thead>
+      <tbody id="stock-body"></tbody>
+    </table>
+  </div>
+  <p id="no-stock" style="color:var(--text3);text-align:center;padding:3rem;display:none">Tovar topilmadi.</p>
+</div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
+  authDomain: "dokon-ce38b.firebaseapp.com",
+  projectId: "dokon-ce38b",
+  storageBucket: "dokon-ce38b.firebasestorage.app",
+  messagingSenderId: "1024226826394",
+  appId: "1:1024226826394:web:3a052adf83b46202c96723",
+  measurementId: "G-75RXS3WVWC"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let SALES = [];
+let ADMIN_PIN = '1234';
+let period = 'today';
+let sortKey = 'total';
+let sortDir = -1;
+let loggedIn = false;
+let expandedKeys = new Set();
+let renderDebounce = null;
+let knownSaleIds = null;
+let PRODUCTS = [];
+let stockFilter = 'all';
+let stockSortKey = 'name';
+let stockSortDir = 1;
+let activeMain = 'report';
+
+async function init(){
+  try{
+    const settingsSnap = await getDoc(doc(db,'dokon','settings'));
+    if(settingsSnap.exists()){
+      const d = settingsSnap.data();
+      if(d.pins && d.pins.admin) ADMIN_PIN = d.pins.admin;
+    }
+    onSnapshot(doc(db,'dokon','settings'), snap=>{
+      if(snap.exists()){
+        const d = snap.data();
+        if(d.pins && d.pins.admin) ADMIN_PIN = d.pins.admin;
+      }
+    });
+
+    // Real-vaqt tinglovchi — yangi savdo qo'shilishi yoki qaytarilishi bilanoq
+    // hisobot avtomatik yangilanadi, sahifani qayta yuklash shart emas.
+    onSnapshot(collection(db,'sales'), snap=>{
+      const newSales = snap.docs.map(d=>d.data());
+      // Boshqa qurilmada qilingan yangi savdo haqida bildirishnoma ko'rsatamiz
+      if(knownSaleIds !== null){
+        newSales.forEach(s=>{
+          if(!knownSaleIds.has(s.id) && !s.reverted){
+            notify(`🛒 Yangi savdo: ${s.productName} — ${fmt(s.total)} so'm`);
+          }
+        });
+      }
+      knownSaleIds = new Set(newSales.map(s=>s.id));
+      SALES = newSales;
+      clearTimeout(renderDebounce);
+      renderDebounce = setTimeout(()=>{ if(loggedIn) render(); }, 20);
+      pulseSyncDot();
+    });
+
+    // Real-vaqt zaxira tinglovchi
+    onSnapshot(collection(db,'products'), snap=>{
+      PRODUCTS = snap.docs.map(d=>d.data());
+      PRODUCTS.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+      if(loggedIn && activeMain==='stock') renderStock();
+      pulseSyncDot();
+    });
+
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('login-page').style.display='flex';
+    document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
+  }catch(e){
+    document.getElementById('loading-screen').querySelector('p').textContent = "❌ Firebase bilan ulanib bo'lmadi. Internetni tekshiring.";
+    console.error(e);
+  }
+}
+
+function pulseSyncDot(){
+  const d = document.getElementById('sync-dot');
+  if(!d) return;
+  d.classList.add('syncing');
+  setTimeout(()=>d.classList.remove('syncing'), 350);
+}
+
+let _toastTimer;
+function notify(msg){
+  if(!loggedIn) return;
+  const el = document.getElementById('toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'toast show';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+window.exportCSV = function(){
+  const {start,end} = getRange();
+  let filtered = SALES.filter(s=>!s.reverted);
+  if(start) filtered = filtered.filter(s=>new Date(s.date)>=start);
+  if(end) filtered = filtered.filter(s=>new Date(s.date)<=end);
+  let csv = 'Vaqti,Tovar,Hajm,Dona,Summa\n';
+  filtered.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(s=>{
+    csv += `"${timeStr(s.date)}","${s.productName}","${s.volume||''}",${s.qty},${s.total}\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'hisobot.csv';
+  a.click();
+}
+
+window.doLogin = function(){
+  const pin = document.getElementById('pin-input').value;
+  const err = document.getElementById('err-msg');
+  if(pin !== ADMIN_PIN){ err.textContent = "PIN noto'g'ri"; return; }
+  err.textContent = '';
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app').style.display='block';
+  loggedIn = true;
+  setPeriod('today');
+}
+
+window.setPeriod = function(p){
+  period = p;
+  document.querySelectorAll('.filter-bar .btn').forEach(b=>b.classList.remove('blue'));
+  const btn = document.getElementById('btn-'+p);
+  if(btn) btn.classList.add('blue');
+  render();
+}
+
+window.setSort = function(key){
+  if(sortKey===key){ sortDir = -sortDir; } else { sortKey = key; sortDir = -1; }
+  render();
+}
+
+function getRange(){
+  const now = new Date();
+  let start=null, end=null, label='';
+  if(period==='today'){
+    start=new Date(now); start.setHours(0,0,0,0);
+    end=new Date(now); end.setHours(23,59,59,999);
+    label='Bugungi savdolar — '+now.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+  } else if(period==='yesterday'){
+    const y=new Date(now); y.setDate(now.getDate()-1);
+    start=new Date(y); start.setHours(0,0,0,0);
+    end=new Date(y); end.setHours(23,59,59,999);
+    label='Kechagi savdolar — '+y.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+  } else if(period==='week'){
+    start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0);
+    end=new Date(now); end.setHours(23,59,59,999);
+    label='Shu haftalik savdolar';
+  } else if(period==='month'){
+    start=new Date(now.getFullYear(), now.getMonth(), 1, 0,0,0,0);
+    end=new Date(now); end.setHours(23,59,59,999);
+    label='Shu oylik savdolar';
+  } else if(period==='custom'){
+    const fromV = document.getElementById('custom-from').value;
+    const toV = document.getElementById('custom-to').value;
+    if(fromV) start = new Date(fromV+'T00:00:00');
+    if(toV) end = new Date(toV+'T23:59:59');
+    else if(fromV) end = new Date(fromV+'T23:59:59');
+    label = (fromV?fromV:'...') + ' — ' + (toV?toV:fromV||'...') + ' oralig\'idagi savdolar';
+  } else {
+    label = 'Barcha vaqt davomidagi savdolar';
+  }
+  return {start,end,label};
+}
+
+// ===== FAST DATE + TIME CACHE =====
+let _dateCache = new Map();
+function getDate(iso){
+  let d = _dateCache.get(iso);
+  if(!d){ d = new Date(iso); _dateCache.set(iso, d); }
+  return d;
+}
+let _timeCache = new Map();
+function timeStr(iso){
+  let s = _timeCache.get(iso);
+  if(!s){
+    const d = getDate(iso);
+    s = d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
+    _timeCache.set(iso, s);
+  }
+  return s;
+}
+function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
+function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+function render(){
+  const {start,end,label} = getRange();
+  document.getElementById('period-label').textContent = label;
+
+  // Fast filter using cached date timestamps
+  const startT = start ? start.getTime() : 0;
+  const endT = end ? end.getTime() : Infinity;
+  const filtered = [];
+  for(let i=0; i<SALES.length; i++){
+    const s = SALES[i];
+    if(s.reverted) continue;
+    const t = getDate(s.date).getTime();
+    if(t >= startT && t <= endT) filtered.push(s);
+  }
+
+  // Stats (single pass, no reduce)
+  let totalRev=0, totalQty=0;
+  for(let i=0; i<filtered.length; i++){ totalRev+=filtered[i].total; totalQty+=filtered[i].qty; }
+
+  // Only update stats DOM if changed
+  const statEl = document.getElementById('stat-grid');
+  const statHTML = `<div class="stat green"><div class="val">${fmt(totalRev)}</div><div class="lbl">💰 Jami summa (so'm)</div></div><div class="stat blue"><div class="val">${filtered.length}</div><div class="lbl">🧾 Savdolar soni</div></div><div class="stat amber"><div class="val">${totalQty}</div><div class="lbl">📦 Sotilgan dona</div></div>`;
+  if(statEl._last !== statHTML){ statEl.innerHTML = statHTML; statEl._last = statHTML; }
+
+  // Group (single pass)
+  const groups = Object.create(null);
+  for(let i=0; i<filtered.length; i++){
+    const s = filtered[i];
+    const key = s.productName+'|'+(s.volume||'');
+    let g = groups[key];
+    if(!g){ g={key,name:s.productName,volume:s.volume||'',qty:0,orders:0,total:0,sales:[]}; groups[key]=g; }
+    g.qty+=s.qty; g.orders++; g.total+=s.total; g.sales.push(s);
+  }
+  const rows = Object.values(groups);
+
+  // Sort
+  if(sortKey==='name') rows.sort((a,b)=>sortDir*a.name.localeCompare(b.name,'uz'));
+  else if(sortKey==='volume') rows.sort((a,b)=>sortDir*((parseFloat(a.volume)||0)-(parseFloat(b.volume)||0)));
+  else rows.sort((a,b)=>sortDir*(a[sortKey]-b[sortKey]));
+
+  // Update only active sort arrow (no querySelectorAll)
+  ['arr-name','arr-volume','arr-qty','arr-orders','arr-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  const arrEl = document.getElementById('arr-'+sortKey);
+  if(arrEl) arrEl.textContent = sortDir===1?'▲':'▼';
+
+  const tbody = document.getElementById('report-body');
+  const tfoot = document.getElementById('report-foot');
+  const none = document.getElementById('no-data');
+  if(!rows.length){ tbody.innerHTML=''; tfoot.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+
+  // Build HTML string (fast, single string concat)
+  const parts = [];
+  for(let i=0; i<rows.length; i++){
+    const r = rows[i];
+    const isOpen = expandedKeys.has(r.key);
+    parts.push(`<tr class="group-row${isOpen?' open':''}" data-key="${escAttr(r.key)}"><td data-label="Tovar"><strong>${r.name}</strong></td><td data-label="Hajm">${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td><td data-label="Sotilgan">${r.qty} ta</td><td data-label="Savdo">${r.orders} ta</td><td data-label="Jami" style="font-weight:700;color:var(--green)">${fmt(r.total)} so'm</td></tr>`);
+    if(isOpen){
+      const sales = r.sales.slice().sort((a,b)=>getDate(b.date).getTime()-getDate(a.date).getTime());
+      let dRows='';
+      for(const s of sales) dRows+=`<tr class="detail-line"><td style="white-space:nowrap;color:var(--text2)">🕐 ${timeStr(s.date)}</td><td>${s.productName}</td><td>${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:600;color:var(--green)">${fmt(s.total)} so'm</td></tr>`;
+      parts.push(`<tr class="detail-row"><td colspan="5"><table class="detail-tbl"><thead><tr><th>Vaqti</th><th>Nomi</th><th>Hajmi</th><th>Donasi</th><th>Summasi</th></tr></thead><tbody>${dRows}</tbody></table></td></tr>`);
+    }
+  }
+  tbody.innerHTML = parts.join('');
+  tfoot.innerHTML = `<tr><td>Jami (${rows.length} xil tovar)</td><td>—</td><td>${totalQty} ta</td><td>${filtered.length} ta</td><td style="color:var(--green)">${fmt(totalRev)} so'm</td></tr>`;
+}
+
+
+// ===== MAIN TAB SWITCH =====
+window.switchMain = function(tab){
+  activeMain = tab;
+  document.getElementById('main-report').style.display = tab==='report' ? '' : 'none';
+  document.getElementById('main-stock').style.display = tab==='stock' ? '' : 'none';
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('navtab-'+tab).classList.add('active');
+  if(tab==='stock') renderStock();
+}
+
+// ===== STOCK =====
+window.setStockFilter = function(f){
+  stockFilter = f;
+  document.querySelectorAll('[id^="sf-"]').forEach(b=>b.classList.remove('blue'));
+  document.getElementById('sf-'+f).classList.add('blue');
+  renderStock();
+}
+
+window.setStockSort = function(key){
+  if(stockSortKey===key){ stockSortDir=-stockSortDir; } else { stockSortKey=key; stockSortDir=key==='name'?1:-1; }
+  renderStock();
+}
+
+window.renderStock = function(){
+  const subEl = document.getElementById('stock-updated');
+  if(subEl) subEl.textContent = 'Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})+' · Real vaqtda';
+
+  const q = (document.getElementById('stock-search')?.value||'').toLowerCase().trim();
+  const vol = document.getElementById('stock-vol-filter')?.value||'';
+
+  // Single pass: filter + compute stats simultaneously
+  let totalValue=0, outCount=0, lowCount=0, maxStock=1;
+  for(let i=0; i<PRODUCTS.length; i++){
+    const p=PRODUCTS[i];
+    totalValue+=p.price*p.stock;
+    if(p.stock===0) outCount++;
+    else if(p.stock<=10) lowCount++;
+    if(p.stock>maxStock) maxStock=p.stock;
+  }
+
+  // Update stats HTML (skip DOM if unchanged)
+  const sg = document.getElementById('stock-stat-grid');
+  const sgH = `<div class="stat blue"><div class="val">${PRODUCTS.length}</div><div class="lbl">📦 Jami tovar turi</div></div><div class="stat green"><div class="val">${fmt(totalValue)}</div><div class="lbl">🏬 Ombor umumiy qiymati</div></div><div class="stat amber"><div class="val">${lowCount}</div><div class="lbl">⚠️ Kam qolgan (≤10)</div></div><div class="stat red"><div class="val">${outCount}</div><div class="lbl">🔴 Tugagan tovarlar</div></div>`;
+  if(sg._last!==sgH){ sg.innerHTML=sgH; sg._last=sgH; }
+
+  // Filter list
+  const list = [];
+  for(let i=0; i<PRODUCTS.length; i++){
+    const p=PRODUCTS[i];
+    if(q && !p.name.toLowerCase().includes(q)) continue;
+    if(vol && p.volume!==vol) continue;
+    if(stockFilter==='out' && p.stock!==0) continue;
+    if(stockFilter==='low' && !(p.stock>0&&p.stock<=10)) continue;
+    if(stockFilter==='ok' && p.stock<=10) continue;
+    list.push(p);
+  }
+
+  // Sort
+  if(stockSortKey==='name') list.sort((a,b)=>stockSortDir*a.name.localeCompare(b.name,'uz'));
+  else if(stockSortKey==='volume') list.sort((a,b)=>stockSortDir*((parseFloat(a.volume)||0)-(parseFloat(b.volume)||0)));
+  else if(stockSortKey==='value') list.sort((a,b)=>stockSortDir*((a.price*a.stock)-(b.price*b.stock)));
+  else list.sort((a,b)=>stockSortDir*(a[stockSortKey]-b[stockSortKey]));
+
+  // Sort arrows (targeted, no querySelectorAll)
+  ['sarr-name','sarr-volume','sarr-stock','sarr-price','sarr-value'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  const arrEl=document.getElementById('sarr-'+stockSortKey);
+  if(arrEl) arrEl.textContent=stockSortDir===1?'▲':'▼';
+
+  const tbody=document.getElementById('stock-body');
+  const none=document.getElementById('no-stock');
+  if(!list.length){ tbody.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+
+  // Build HTML (fast string concat)
+  const parts=[];
+  for(let i=0; i<list.length; i++){
+    const p=list[i];
+    const pct=Math.min(100,p.stock/maxStock*100|0);
+    const bc=p.stock===0?'#dc2626':p.stock<=5?'#d97706':p.stock<=10?'#f59e0b':'#16a34a';
+    const badge=p.stock===0?'<span class="badge red">🔴 Tugagan</span>':p.stock<=5?'<span class="badge red">⚠️ Kritik kam</span>':p.stock<=10?'<span class="badge amber">⚠️ Kam qoldi</span>':'<span class="badge green">✅ Yetarli</span>';
+    parts.push(`<tr><td data-label="Tovar"><strong>${p.name}</strong></td><td data-label="Hajm">${p.volume?`<span class="badge blue">${p.volume} L</span>`:'—'}</td><td data-label="Zaxira"><div style="display:flex;align-items:center;gap:.6rem"><span style="font-weight:700;font-size:15px;color:${bc};min-width:36px">${p.stock}</span><div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${bc}"></div></div></div></td><td data-label="Narx">${fmt(p.price)} so'm</td><td data-label="Qiymati" style="font-weight:600;color:var(--accent)">${fmt(p.price*p.stock)} so'm</td><td data-label="Holat">${badge}</td></tr>`);
+  }
+  tbody.innerHTML=parts.join('');
+}
+
+window.exportStockCSV = function(){
+  let csv = 'Tovar,Hajm,Zaxira,Narx,Ombor qiymati,Holat\n';
+  PRODUCTS.forEach(p=>{
+    const holat = p.stock===0?'Tugagan':p.stock<=5?'Kritik kam':p.stock<=10?'Kam qoldi':'Yetarli';
+    csv += `"${p.name}","${p.volume||''}",${p.stock},${p.price},${p.price*p.stock},"${holat}"\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'zaxira_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+// Click to expand/collapse detail rows
+document.getElementById('report-body').addEventListener('click', e=>{
+  const tr = e.target.closest('tr.group-row');
+  if(!tr) return;
+  const key = tr.dataset.key;
+  if(expandedKeys.has(key)) expandedKeys.delete(key); else expandedKeys.add(key);
+  render();
+});
+
+init();
+</script>
+</body>
+</html>
