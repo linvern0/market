@@ -33,6 +33,8 @@
   nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
   nav .logo span{color:#60a5fa}
   nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8}
+  nav button.nav-tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s;white-space:nowrap}
+  nav button.nav-tab.active,nav button.nav-tab:hover{background:#334155;color:#fff}
 
   .page{padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
 
@@ -54,6 +56,7 @@
   .stat.green .val{color:var(--green)}
   .stat.blue .val{color:var(--accent)}
   .stat.amber .val{color:var(--amber)}
+  .stat.red .val{color:var(--red)}
 
   .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
   table{width:100%;border-collapse:collapse;background:var(--surface)}
@@ -84,6 +87,8 @@
   .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
   .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
   .badge.blue{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+  .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+  .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
 
   .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
   .section-header h2{font-size:20px;font-weight:700}
@@ -98,11 +103,21 @@
   .btn.blue:hover{background:#1d4ed8}
   .btn.sm{padding:.4rem .75rem;font-size:12px}
 
-  nav button.nav-tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s;white-space:nowrap}
-  nav button.nav-tab.active,nav button.nav-tab:hover{background:#334155;color:#fff}
-
   .stock-bar-wrap{background:var(--border);border-radius:4px;height:8px;width:100%;min-width:80px;overflow:hidden}
   .stock-bar{height:100%;border-radius:4px;transition:.3s}
+
+  /* DEBT CARD STYLES */
+  .debt-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:.85rem;box-shadow:var(--shadow);transition:.2s}
+  .debt-card.active{border-left:4px solid var(--amber)}
+  .debt-card.paid{border-left:4px solid var(--green);opacity:.85}
+  .debt-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.85rem}
+  .debt-amount{font-size:28px;font-weight:800;color:var(--amber)}
+  .debt-amount.paid{color:var(--green)}
+  .debt-date{font-size:13px;color:var(--text3)}
+  .debt-items{background:var(--surface2);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem}
+  .debt-items p{font-size:13px;color:var(--text2);margin-bottom:.35rem;font-weight:600}
+  .debt-item-row{display:flex;justify-content:space-between;font-size:13px;padding:.2rem 0;border-bottom:1px solid var(--border)}
+  .debt-item-row:last-child{border:none}
 
   @media(max-width:768px){
     nav{height:auto;min-height:52px;padding:.5rem .75rem;flex-wrap:wrap;gap:.4rem}
@@ -131,6 +146,8 @@
     table.detail-tbl tbody td:before{display:none}
     .login-card{width:calc(100% - 2rem);max-width:340px;padding:2rem 1.5rem}
     .section-header h2{font-size:18px}
+    .debt-amount{font-size:22px}
+    .debt-card{padding:1rem}
   }
   @media(max-width:400px){
     .stat-grid{grid-template-columns:1fr}
@@ -161,6 +178,7 @@
   <div class="logo">📊 <span>Do'kon Hisobotlari</span></div>
   <button class="nav-tab active" id="navtab-report" onclick="switchMain('report')">📊 Hisobot</button>
   <button class="nav-tab" id="navtab-stock" onclick="switchMain('stock')">📦 Zaxira</button>
+  <button class="nav-tab" id="navtab-debts" onclick="switchMain('debts')">💳 Qarzlar</button>
   <div class="user-badge"><span id="sync-dot"></span>👨‍💼 Admin</div>
 </nav>
 
@@ -209,10 +227,8 @@
     <div><h2>📦 Tovar zaxiralari</h2><p id="stock-updated">Real vaqtda yangilanadi</p></div>
   </div>
 
-  <!-- STAT CARDS -->
   <div class="stat-grid" id="stock-stat-grid"></div>
 
-  <!-- FILTER + SEARCH -->
   <div class="filter-bar">
     <button class="btn sm" id="sf-all" onclick="setStockFilter('all')">Barchasi</button>
     <button class="btn sm" id="sf-low" onclick="setStockFilter('low')">⚠️ Kam qolgan (≤10)</button>
@@ -230,7 +246,6 @@
     <button class="btn sm" onclick="exportStockCSV()">⬇ CSV</button>
   </div>
 
-  <!-- STOCK TABLE -->
   <div class="tbl-wrap">
     <table>
       <thead><tr>
@@ -247,6 +262,29 @@
   <p id="no-stock" style="color:var(--text3);text-align:center;padding:3rem;display:none">Tovar topilmadi.</p>
 </div>
 </div>
+
+<!-- QARZLAR BO'LIMI (yangilangan) -->
+<div id="main-debts" style="display:none">
+<div class="page">
+  <div class="section-header">
+    <div><h2>💳 Qarzlar hisoboti</h2><p id="debts-updated">Real vaqtda yangilanadi</p></div>
+    <input type="text" id="report-debt-search" oninput="renderReportDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px">
+  </div>
+
+  <div class="filter-bar">
+    <button class="btn sm" id="rdb-all" onclick="setReportDebtFilter('all')">Barchasi</button>
+    <button class="btn sm" id="rdb-active" onclick="setReportDebtFilter('active')">Faol qarzlar</button>
+    <button class="btn sm" id="rdb-paid" onclick="setReportDebtFilter('paid')">To'langan</button>
+    <button class="btn sm" style="margin-left:auto" onclick="exportDebtsCSV()">⬇ CSV</button>
+  </div>
+
+  <div id="report-debt-stats" class="stat-grid" style="margin-bottom:1.25rem"></div>
+
+  <div id="report-debts-list"></div>
+  <p id="no-report-debts" style="color:var(--text3);text-align:center;padding:3rem;display:none">Qarz topilmadi.</p>
+</div>
+</div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -282,6 +320,9 @@ let stockFilter = 'all';
 let stockSortKey = 'name';
 let stockSortDir = 1;
 let activeMain = 'report';
+let DEBTS = [];
+let DEBTORS = [];
+let reportDebtFilter = 'active';
 
 async function init(){
   try{
@@ -297,11 +338,9 @@ async function init(){
       }
     });
 
-    // Real-vaqt tinglovchi — yangi savdo qo'shilishi yoki qaytarilishi bilanoq
-    // hisobot avtomatik yangilanadi, sahifani qayta yuklash shart emas.
+    // Real-vaqt savdo tinglovchi
     onSnapshot(collection(db,'sales'), snap=>{
       const newSales = snap.docs.map(d=>d.data());
-      // Boshqa qurilmada qilingan yangi savdo haqida bildirishnoma ko'rsatamiz
       if(knownSaleIds !== null){
         newSales.forEach(s=>{
           if(!knownSaleIds.has(s.id) && !s.reverted){
@@ -322,6 +361,22 @@ async function init(){
       PRODUCTS.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
       if(loggedIn && activeMain==='stock') renderStock();
       pulseSyncDot();
+    });
+
+    // Real-vaqt qarzlar tinglovchi
+    let debtDebounce=null;
+    onSnapshot(collection(db,'debts'), snap=>{
+      DEBTS = snap.docs.map(d=>d.data());
+      DEBTS.sort((a,b)=>new Date(b.date)-new Date(a.date));
+      clearTimeout(debtDebounce);
+      debtDebounce=setTimeout(()=>{ if(loggedIn && activeMain==='debts') renderReportDebts(); },30);
+      pulseSyncDot();
+    });
+    
+    // Real-vaqt qarzdorlar tinglovchi
+    onSnapshot(collection(db,'debtors'), snap=>{
+      DEBTORS = snap.docs.map(d=>d.data());
+      if(loggedIn && activeMain==='debts') renderReportDebts();
     });
 
     document.getElementById('loading-screen').classList.add('hidden');
@@ -423,7 +478,6 @@ function getRange(){
   return {start,end,label};
 }
 
-// ===== FAST DATE + TIME CACHE =====
 let _dateCache = new Map();
 function getDate(iso){
   let d = _dateCache.get(iso);
@@ -447,7 +501,6 @@ function render(){
   const {start,end,label} = getRange();
   document.getElementById('period-label').textContent = label;
 
-  // Fast filter using cached date timestamps
   const startT = start ? start.getTime() : 0;
   const endT = end ? end.getTime() : Infinity;
   const filtered = [];
@@ -458,16 +511,13 @@ function render(){
     if(t >= startT && t <= endT) filtered.push(s);
   }
 
-  // Stats (single pass, no reduce)
   let totalRev=0, totalQty=0;
   for(let i=0; i<filtered.length; i++){ totalRev+=filtered[i].total; totalQty+=filtered[i].qty; }
 
-  // Only update stats DOM if changed
   const statEl = document.getElementById('stat-grid');
   const statHTML = `<div class="stat green"><div class="val">${fmt(totalRev)}</div><div class="lbl">💰 Jami summa (so'm)</div></div><div class="stat blue"><div class="val">${filtered.length}</div><div class="lbl">🧾 Savdolar soni</div></div><div class="stat amber"><div class="val">${totalQty}</div><div class="lbl">📦 Sotilgan dona</div></div>`;
   if(statEl._last !== statHTML){ statEl.innerHTML = statHTML; statEl._last = statHTML; }
 
-  // Group (single pass)
   const groups = Object.create(null);
   for(let i=0; i<filtered.length; i++){
     const s = filtered[i];
@@ -478,12 +528,10 @@ function render(){
   }
   const rows = Object.values(groups);
 
-  // Sort
   if(sortKey==='name') rows.sort((a,b)=>sortDir*a.name.localeCompare(b.name,'uz'));
   else if(sortKey==='volume') rows.sort((a,b)=>sortDir*((parseFloat(a.volume)||0)-(parseFloat(b.volume)||0)));
   else rows.sort((a,b)=>sortDir*(a[sortKey]-b[sortKey]));
 
-  // Update only active sort arrow (no querySelectorAll)
   ['arr-name','arr-volume','arr-qty','arr-orders','arr-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
   const arrEl = document.getElementById('arr-'+sortKey);
   if(arrEl) arrEl.textContent = sortDir===1?'▲':'▼';
@@ -494,7 +542,6 @@ function render(){
   if(!rows.length){ tbody.innerHTML=''; tfoot.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
-  // Build HTML string (fast, single string concat)
   const parts = [];
   for(let i=0; i<rows.length; i++){
     const r = rows[i];
@@ -511,15 +558,15 @@ function render(){
   tfoot.innerHTML = `<tr><td>Jami (${rows.length} xil tovar)</td><td>—</td><td>${totalQty} ta</td><td>${filtered.length} ta</td><td style="color:var(--green)">${fmt(totalRev)} so'm</td></tr>`;
 }
 
-
-// ===== MAIN TAB SWITCH =====
 window.switchMain = function(tab){
   activeMain = tab;
   document.getElementById('main-report').style.display = tab==='report' ? '' : 'none';
   document.getElementById('main-stock').style.display = tab==='stock' ? '' : 'none';
+  document.getElementById('main-debts').style.display = tab==='debts' ? '' : 'none';
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('navtab-'+tab).classList.add('active');
   if(tab==='stock') renderStock();
+  if(tab==='debts') setReportDebtFilter('active');
 }
 
 // ===== STOCK =====
@@ -542,7 +589,6 @@ window.renderStock = function(){
   const q = (document.getElementById('stock-search')?.value||'').toLowerCase().trim();
   const vol = document.getElementById('stock-vol-filter')?.value||'';
 
-  // Single pass: filter + compute stats simultaneously
   let totalValue=0, outCount=0, lowCount=0, maxStock=1;
   for(let i=0; i<PRODUCTS.length; i++){
     const p=PRODUCTS[i];
@@ -552,12 +598,10 @@ window.renderStock = function(){
     if(p.stock>maxStock) maxStock=p.stock;
   }
 
-  // Update stats HTML (skip DOM if unchanged)
   const sg = document.getElementById('stock-stat-grid');
   const sgH = `<div class="stat blue"><div class="val">${PRODUCTS.length}</div><div class="lbl">📦 Jami tovar turi</div></div><div class="stat green"><div class="val">${fmt(totalValue)}</div><div class="lbl">🏬 Ombor umumiy qiymati</div></div><div class="stat amber"><div class="val">${lowCount}</div><div class="lbl">⚠️ Kam qolgan (≤10)</div></div><div class="stat red"><div class="val">${outCount}</div><div class="lbl">🔴 Tugagan tovarlar</div></div>`;
   if(sg._last!==sgH){ sg.innerHTML=sgH; sg._last=sgH; }
 
-  // Filter list
   const list = [];
   for(let i=0; i<PRODUCTS.length; i++){
     const p=PRODUCTS[i];
@@ -569,13 +613,11 @@ window.renderStock = function(){
     list.push(p);
   }
 
-  // Sort
   if(stockSortKey==='name') list.sort((a,b)=>stockSortDir*a.name.localeCompare(b.name,'uz'));
   else if(stockSortKey==='volume') list.sort((a,b)=>stockSortDir*((parseFloat(a.volume)||0)-(parseFloat(b.volume)||0)));
   else if(stockSortKey==='value') list.sort((a,b)=>stockSortDir*((a.price*a.stock)-(b.price*b.stock)));
   else list.sort((a,b)=>stockSortDir*(a[stockSortKey]-b[stockSortKey]));
 
-  // Sort arrows (targeted, no querySelectorAll)
   ['sarr-name','sarr-volume','sarr-stock','sarr-price','sarr-value'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
   const arrEl=document.getElementById('sarr-'+stockSortKey);
   if(arrEl) arrEl.textContent=stockSortDir===1?'▲':'▼';
@@ -585,7 +627,6 @@ window.renderStock = function(){
   if(!list.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
-  // Build HTML (fast string concat)
   const parts=[];
   for(let i=0; i<list.length; i++){
     const p=list[i];
@@ -606,6 +647,106 @@ window.exportStockCSV = function(){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download = 'zaxira_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+// ===== QARZLAR BO'LIMI (YANGILANGAN - LOGIN/PAROL BILAN) =====
+window.setReportDebtFilter = function(f){
+  reportDebtFilter = f;
+  ['all','active','paid'].forEach(k=>{
+    const b=document.getElementById('rdb-'+k); if(b) b.classList[k===f?'add':'remove']('blue');
+  });
+  renderReportDebts();
+}
+
+window.renderReportDebts = function(){
+  const subEl = document.getElementById('debts-updated');
+  if(subEl) subEl.textContent = 'Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})+' · Real vaqtda';
+
+  const q = (document.getElementById('report-debt-search')?.value||'').toLowerCase();
+  let list = DEBTS.slice();
+  if(reportDebtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(reportDebtFilter==='paid') list = list.filter(d=>d.paid);
+  if(q) list = list.filter(d=>(d.debtorName||'').toLowerCase().includes(q)||(d.org||'').toLowerCase().includes(q));
+
+  // Statistika
+  const totalActive = DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaid   = DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = DEBTS.filter(d=>!d.paid).length;
+  const totalDebtors= new Set(DEBTS.filter(d=>!d.paid).map(d=>d.debtorId||d.debtorName)).size;
+
+  const sg = document.getElementById('report-debt-stats');
+  sg.innerHTML = `
+    <div class="stat amber"><div class="val">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz (so'm)</div></div>
+    <div class="stat red"><div class="val">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
+    <div class="stat blue"><div class="val">${totalDebtors}</div><div class="lbl">👤 Qarzdorlar soni</div></div>
+    <div class="stat green"><div class="val">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan (so'm)</div></div>`;
+
+  const container = document.getElementById('report-debts-list');
+  const none = document.getElementById('no-report-debts');
+  if(!list.length){ container.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+
+  // Qarzdor bo'yicha guruhlash
+  const grouped = Object.create(null);
+  for(const d of list){
+    const key = d.debtorId || d.debtorName;
+    if(!grouped[key]) grouped[key]={debtorName:d.debtorName,org:d.org,phone:d.phone,debts:[]};
+    grouped[key].debts.push(d);
+  }
+
+  const parts = [];
+  for(const g of Object.values(grouped)){
+    const owed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+    const debtor = DEBTORS.find(dd=>dd.name===g.debtorName);
+    
+    // 🔐 LOGIN/PAROL MA'LUMOTI
+    const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+    
+    parts.push(`<div class="card" style="margin-bottom:.85rem">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
+        <div>
+          <div style="font-weight:700;font-size:16px">${g.debtorName}${g.org?` <span style="font-size:13px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
+          ${g.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${g.phone}</div>`:''}
+          ${loginInfo}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:700;color:${owed>0?'var(--amber)':'var(--green)'}">${fmt(owed)} so'm</div>
+          <div style="font-size:12px;color:var(--text3)">${owed>0?'Faol qarz':'To\'liq to\'langan'}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        ${g.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <div>
+              <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
+              <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+            </div>
+            <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:.35rem">${(d.items||[]).map(i=>`${i.productName} ×${i.qty}`).join(', ')}</div>
+          ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+          ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`);
+  }
+  container.innerHTML = parts.join('');
+}
+
+window.exportDebtsCSV = function(){
+  let list = DEBTS;
+  if(reportDebtFilter==='active') list=list.filter(d=>!d.paid);
+  else if(reportDebtFilter==='paid') list=list.filter(d=>d.paid);
+  let csv = 'Sana,Ism,Tashkilot,Telefon,Tovarlar,Summa,Holat,To\'langan sana,Login,Parol\n';
+  list.forEach(d=>{
+    const items=(d.items||[]).map(i=>`${i.productName}x${i.qty}`).join(';');
+    const debtor = DEBTORS.find(dd=>dd.name===d.debtorName);
+    csv+=`"${timeStr(d.date)}","${d.debtorName||''}","${d.org||''}","${d.phone||''}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}","${debtor?.login||''}","${debtor?.password||''}"\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='qarzlar_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
 }
 
