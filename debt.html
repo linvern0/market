@@ -2,7 +2,7 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
 <title>Qarz Ko'rish Portali</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -47,11 +47,11 @@
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
 
   #app{display:none}
-  .page{padding:1.25rem;max-width:900px;margin:0 auto}
+  .page{padding:1.25rem;max-width:1000px;margin:0 auto}
 
-  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
   .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem}
-  .stat .val{font-size:26px;font-weight:700;margin-bottom:.2rem}
+  .stat .val{font-size:24px;font-weight:700;margin-bottom:.2rem}
   .stat .lbl{font-size:13px;color:var(--text3);font-weight:500}
   .stat.amber .val{color:var(--amber)}
   .stat.green .val{color:var(--green)}
@@ -63,12 +63,12 @@
 
   .filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
 
-  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
   .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn.green{background:var(--green);color:#fff;border-color:var(--green)}
   .btn.amber{background:var(--amber);color:#fff;border-color:var(--amber)}
-  .btn.sm{padding:.38rem .75rem;font-size:12px}
+  .btn.sm{padding:.35rem .7rem;font-size:12px}
 
   .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
   .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -79,7 +79,7 @@
   .debt-card.active{border-left:4px solid var(--amber)}
   .debt-card.paid{border-left:4px solid var(--green);opacity:.85}
   .debt-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.85rem}
-  .debt-amount{font-size:28px;font-weight:800;color:var(--amber)}
+  .debt-amount{font-size:26px;font-weight:800;color:var(--amber)}
   .debt-amount.paid{color:var(--green)}
   .debt-date{font-size:13px;color:var(--text3)}
   .debt-items{background:var(--surface2);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem}
@@ -89,7 +89,8 @@
 
   .total-bar{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid var(--amber-border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
   .total-bar .label{font-size:14px;font-weight:600;color:#92400e}
-  .total-bar .amount{font-size:32px;font-weight:800;color:#b45309}
+  .total-bar .amount{font-size:30px;font-weight:800;color:#b45309}
+  .total-bar .amount.paid{color:var(--green)}
 
   .empty-state{text-align:center;padding:4rem 1rem;color:var(--text3)}
   .empty-state .icon{font-size:56px;margin-bottom:1rem}
@@ -98,18 +99,27 @@
   .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
 
+  /* ORGANIZATION HEADER */
+  .org-header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+  .org-header .org-name{font-size:22px;font-weight:700}
+  .org-header .org-meta{font-size:14px;color:#94a3b8}
+
+  .person-filter{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}
+  .person-filter .btn{font-size:12px;padding:.3rem .8rem}
+
   @media(max-width:600px){
     nav{height:52px;padding:0 1rem}
     nav .logo{font-size:15px}
     .page{padding:.85rem}
     .stat-grid{grid-template-columns:1fr 1fr}
-    .stat .val{font-size:22px}
+    .stat .val{font-size:20px}
     .login-card{padding:2rem 1.25rem}
     .debt-amount{font-size:22px}
     .total-bar .amount{font-size:24px}
     .filter-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .filter-bar::-webkit-scrollbar{display:none}
     .toast{bottom:1rem;right:.75rem;left:.75rem;max-width:none}
+    .org-header .org-name{font-size:18px}
   }
 </style>
 </head>
@@ -154,8 +164,26 @@
       </div>
     </div>
 
+    <!-- Tashkilot haqida ma'lumot (agar tashkilot bo'lsa) -->
+    <div id="org-header" class="org-header" style="display:none">
+      <div>
+        <div class="org-name" id="org-name-display"></div>
+        <div class="org-meta" id="org-meta-display"></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;color:#94a3b8">Jami qarz</div>
+        <div style="font-size:24px;font-weight:700;color:#fbbf24" id="org-total-display">0 so'm</div>
+      </div>
+    </div>
+
     <div class="total-bar" id="total-bar"></div>
     <div class="stat-grid" id="stat-grid"></div>
+
+    <!-- Shaxslar bo'yicha filter (faqat tashkilot uchun) -->
+    <div id="person-filter" class="person-filter" style="display:none">
+      <span style="font-size:13px;font-weight:600;color:var(--text2);margin-right:.3rem">👤 Shaxslar:</span>
+      <button class="btn sm blue" id="pf-all" onclick="setPersonFilter('all')">Barchasi</button>
+    </div>
 
     <div class="filter-bar">
       <button class="btn sm amber" id="f-active" onclick="setFilter('active')">⏳ Faol qarzlar</button>
@@ -189,7 +217,9 @@ const db = getFirestore(app);
 let MY_DEBTS = [];
 let currentDebtor = null;
 let filterMode = 'active';
+let personFilter = 'all'; // all yoki specific person
 let debtsListener = null;
+let personButtons = [];
 
 async function init(){
   try{
@@ -254,10 +284,17 @@ function startDebtListener(){
   let debounce = null;
   debtsListener = onSnapshot(collection(db,'debts'), snap=>{
     const all = snap.docs.map(d=>d.data());
-    MY_DEBTS = all.filter(d=>
-      d.debtorId === currentDebtor.id ||
-      d.debtorName === currentDebtor.name
-    );
+    
+    // Agar tashkilot bo'lsa - tashkilotga tegishli barcha qarzlarni olamiz
+    if(currentDebtor.org){
+      MY_DEBTS = all.filter(d=> d.org === currentDebtor.org);
+    } else {
+      // Shaxs bo'lsa - faqat o'ziga tegishli qarzlarni olamiz
+      MY_DEBTS = all.filter(d=>
+        d.debtorId === currentDebtor.id ||
+        (d.debtorName === currentDebtor.name && !d.org)
+      );
+    }
     MY_DEBTS.sort((a,b)=>new Date(b.date)-new Date(a.date));
 
     clearTimeout(debounce);
@@ -275,11 +312,63 @@ function showApp(){
   document.querySelector('.btn-primary').disabled = false;
 
   const nameLabel = currentDebtor.org
-    ? `${currentDebtor.name} · ${currentDebtor.org}`
+    ? `${currentDebtor.org} (${currentDebtor.name})`
     : currentDebtor.name;
   document.getElementById('user-info').textContent = '👤 ' + nameLabel;
-  document.getElementById('page-title').textContent = 'Mening qarzlarim';
+  document.getElementById('page-title').textContent = currentDebtor.org ? `🏢 ${currentDebtor.org} qarzlari` : 'Mening qarzlarim';
   document.getElementById('page-sub').textContent = 'Real vaqtda yangilanadi · ' + new Date().toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+  // Tashkilot uchun maxsus header
+  if(currentDebtor.org){
+    document.getElementById('org-header').style.display = 'flex';
+    document.getElementById('org-name-display').textContent = currentDebtor.org;
+    document.getElementById('org-meta-display').textContent = `Rahbar: ${currentDebtor.name} · Login: ${currentDebtor.login}`;
+    
+    // Person filter ni ko'rsatish
+    document.getElementById('person-filter').style.display = 'flex';
+    buildPersonFilter();
+  } else {
+    document.getElementById('org-header').style.display = 'none';
+    document.getElementById('person-filter').style.display = 'none';
+  }
+}
+
+function buildPersonFilter(){
+  const container = document.getElementById('person-filter');
+  // Tozalash (faqat btnlarni saqlab qolish)
+  const existing = container.querySelectorAll('.btn');
+  existing.forEach(b => b.remove());
+  
+  // "Barchasi" tugmasi
+  const allBtn = document.createElement('button');
+  allBtn.className = 'btn sm blue';
+  allBtn.textContent = 'Barchasi';
+  allBtn.onclick = () => setPersonFilter('all');
+  container.prepend(allBtn);
+  
+  // Tashkilotdagi shaxslar ro'yxati
+  const persons = [...new Set(MY_DEBTS.map(d=>d.debtorName).filter(Boolean))];
+  persons.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'btn sm';
+    btn.textContent = name;
+    btn.dataset.person = name;
+    btn.onclick = () => setPersonFilter(name);
+    container.appendChild(btn);
+  });
+  personButtons = container.querySelectorAll('.btn');
+  setPersonFilter('all');
+}
+
+window.setPersonFilter = function(name){
+  personFilter = name;
+  personButtons.forEach(b => {
+    b.classList.remove('blue');
+    if(b.textContent === name || (name === 'all' && b.textContent === 'Barchasi')){
+      b.classList.add('blue');
+    }
+  });
+  render();
 }
 
 window.setFilter = function(f){
@@ -294,44 +383,58 @@ window.setFilter = function(f){
 }
 
 function render(){
-  const totalOwed   = MY_DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-  const totalPaid   = MY_DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
-  const activeCount = MY_DEBTS.filter(d=>!d.paid).length;
-  const paidCount   = MY_DEBTS.filter(d=>d.paid).length;
-
-  document.getElementById('total-bar').innerHTML = totalOwed > 0
-    ? `<div><div class="label">Umumiy qarzingiz</div></div><div class="amount">${fmt(totalOwed)} so'm</div>`
-    : `<div><div class="label" style="color:#166534">✅ Barcha qarzlaringiz to'langan!</div></div><div class="amount" style="color:var(--green);font-size:24px">0 so'm</div>`;
-
-  document.getElementById('stat-grid').innerHTML = `
-    <div class="stat amber"><div class="val">${fmt(totalOwed)}</div><div class="lbl">💳 Faol qarz</div></div>
-    <div class="stat blue"><div class="val">${activeCount}</div><div class="lbl">📋 Faol qarzlar soni</div></div>
-    <div class="stat green"><div class="val">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>
-    <div class="stat green"><div class="val">${paidCount}</div><div class="lbl">✅ To'langan savdolar</div></div>`;
-
+  // Filter: person
   let list = MY_DEBTS;
+  if(personFilter !== 'all'){
+    list = list.filter(d => d.debtorName === personFilter);
+  }
+
+  // Filter: active/paid/all
   if(filterMode==='active') list = list.filter(d=>!d.paid);
   else if(filterMode==='paid') list = list.filter(d=>d.paid);
 
+  // Statistika (faqat ko'rsatilayotgan ro'yxat bo'yicha emas, balki barcha qarzlar bo'yicha)
+  const totalOwedAll = MY_DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaidAll = MY_DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCountAll = MY_DEBTS.filter(d=>!d.paid).length;
+  const paidCountAll = MY_DEBTS.filter(d=>d.paid).length;
+
+  // Tashkilot jami
+  if(currentDebtor.org){
+    document.getElementById('org-total-display').textContent = fmt(totalOwedAll) + ' so\'m';
+  }
+
+  document.getElementById('total-bar').innerHTML = totalOwedAll > 0
+    ? `<div><div class="label">Umumiy qarzingiz</div></div><div class="amount">${fmt(totalOwedAll)} so'm</div>`
+    : `<div><div class="label" style="color:#166534">✅ Barcha qarzlaringiz to'langan!</div></div><div class="amount paid">0 so'm</div>`;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat amber"><div class="val">${fmt(totalOwedAll)}</div><div class="lbl">💳 Faol qarz</div></div>
+    <div class="stat blue"><div class="val">${activeCountAll}</div><div class="lbl">📋 Faol qarzlar soni</div></div>
+    <div class="stat green"><div class="val">${fmt(totalPaidAll)}</div><div class="lbl">✅ To'langan</div></div>
+    <div class="stat green"><div class="val">${paidCountAll}</div><div class="lbl">✅ To'langan savdolar</div></div>`;
+
+  // Ro'yxat
   const container = document.getElementById('debts-container');
   if(!list.length){
     container.innerHTML = `<div class="empty-state"><div class="icon">${filterMode==='paid'?'🎉':'✨'}</div><p>${filterMode==='active'?'Hozirda faol qarzingiz yo\'q!':filterMode==='paid'?'Hali to\'langan qarz yo\'q.':'Qarz tarixi mavjud emas.'}</p></div>`;
     return;
   }
 
-  container.innerHTML = list.map(d=>`
-    <div class="debt-card ${d.paid?'paid':'active'}">
+  container.innerHTML = list.map(d=>{
+    const isOrg = !!d.org;
+    return `<div class="debt-card ${d.paid?'paid':'active'}">
       <div class="debt-header">
         <div>
           <div class="debt-date">📅 ${timeStr(d.date)}</div>
+          ${isOrg ? `<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:.2rem">👤 ${d.debtorName}</div>` : ''}
           ${d.seller?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">Sotuvchi: ${d.seller}</div>`:''}
           ${d.note?`<div style="font-size:13px;color:var(--text2);margin-top:.3rem;font-style:italic">📝 ${d.note}</div>`:''}
-          <div style="font-size:12px;color:var(--text3);margin-top:.25rem">🕒 Olingan: ${timeStr(d.date||d.createdAt)}</div>
         </div>
         <div style="text-align:right">
           <div class="debt-amount ${d.paid?'paid':''}">${fmt(d.total)} so'm</div>
           <span class="badge ${d.paid?'green':'amber'}">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
-          ${d.paid&&d.paidDate?`<div style="font-size:11px;color:var(--green);margin-top:.3rem">✅ To'langan: ${timeStr(d.paidDate)}${d.paidBy?' · '+d.paidBy:''}</div>`:''}
+          ${d.paid&&d.paidDate?`<div style="font-size:11px;color:var(--green);margin-top:.3rem">✅ ${timeStr(d.paidDate)}</div>`:''}
         </div>
       </div>
       <div class="debt-items">
@@ -345,15 +448,16 @@ function render(){
           <span style="color:${d.paid?'var(--green)':'var(--amber)'}">${fmt(d.total)} so'm</span>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 window.exportMyDebts = function(){
   if(!MY_DEBTS.length){ toast('Eksport qilish uchun qarz yo\'q'); return; }
-  let csv = 'Olingan sana,Tovarlar,Summa,Holat,To\'langan sana\n';
+  let csv = 'Sana,Ism,Tashkilot,Tovarlar,Summa,Holat,To\'langan sana\n';
   MY_DEBTS.forEach(d=>{
     const items=(d.items||[]).map(i=>`${i.productName}x${i.qty}`).join(';');
-    csv+=`"${timeStr(d.date)}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}"\n`;
+    csv+=`"${timeStr(d.date)}","${d.debtorName||''}","${d.org||''}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}"\n`;
   });
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
