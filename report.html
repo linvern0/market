@@ -276,6 +276,13 @@
     <button class="btn sm" id="rdb-all" onclick="setReportDebtFilter('all')">Barchasi</button>
     <button class="btn sm" id="rdb-active" onclick="setReportDebtFilter('active')">Faol qarzlar</button>
     <button class="btn sm" id="rdb-paid" onclick="setReportDebtFilter('paid')">To'langan</button>
+    <span style="width:1px;height:22px;background:var(--border);margin:0 .15rem"></span>
+    <button class="btn sm" id="rdd-today" onclick="setReportDebtDate('today')">Bugun</button>
+    <button class="btn sm" id="rdd-yesterday" onclick="setReportDebtDate('yesterday')">Kecha</button>
+    <button class="btn sm" id="rdd-all" onclick="setReportDebtDate('all')">Barcha sana</button>
+    <input type="date" id="rdd-from" onchange="setReportDebtDate('custom')">
+    <span style="font-size:12px;color:var(--text3)">—</span>
+    <input type="date" id="rdd-to" onchange="setReportDebtDate('custom')">
     <button class="btn sm" style="margin-left:auto" onclick="exportDebtsCSV()">⬇ CSV</button>
   </div>
 
@@ -324,6 +331,7 @@ let activeMain = 'report';
 let DEBTS = [];
 let DEBTORS = [];
 let reportDebtFilter = 'active';
+let reportDebtDateFilter = 'all';
 
 async function init(){
   try{
@@ -374,18 +382,16 @@ async function init(){
       pulseSyncDot();
     }, err=>{
       console.error("debts o'qishda xatolik:", err);
-      const subEl = document.getElementById('debts-updated');
-      if(subEl){ subEl.textContent = "❌ Qarzlarni yuklab bo'lmadi: "+err.message; subEl.style.color='var(--red)'; }
+      showDebtLoadError(err);
     });
-    
+
     // Real-vaqt qarzdorlar tinglovchi
     onSnapshot(collection(db,'debtors'), snap=>{
       DEBTORS = snap.docs.map(d=>d.data());
       if(loggedIn && activeMain==='debts') renderReportDebts();
     }, err=>{
       console.error("debtors o'qishda xatolik:", err);
-      const subEl = document.getElementById('debts-updated');
-      if(subEl){ subEl.textContent = "❌ Qarzdorlarni yuklab bo'lmadi: "+err.message; subEl.style.color='var(--red)'; }
+      showDebtLoadError(err);
     });
 
     document.getElementById('loading-screen').classList.add('hidden');
@@ -394,6 +400,29 @@ async function init(){
   }catch(e){
     document.getElementById('loading-screen').querySelector('p').textContent = "❌ Firebase bilan ulanib bo'lmadi. Internetni tekshiring.";
     console.error(e);
+  }
+}
+
+// Qarz/qarzdor kolleksiyalarini o'qishda xatolik chiqsa (odatda Firestore
+// xavfsizlik qoidalarida 'debts'/'debtors' kolleksiyalariga ruxsat yo'qligidan),
+// buni kichik matn emas, KATTA va aniq ko'rinadigan banner sifatida ko'rsatamiz —
+// aks holda ro'yxat shunchaki bo'sh ko'rinib, sabab noaniq qolardi.
+function showDebtLoadError(err){
+  const subEl = document.getElementById('debts-updated');
+  if(subEl){ subEl.textContent = "❌ Yuklab bo'lmadi: "+(err?.message||err); subEl.style.color='var(--red)'; }
+  const list = document.getElementById('report-debts-list');
+  const none = document.getElementById('no-report-debts');
+  if(none) none.style.display='none';
+  if(list){
+    list.innerHTML = `<div class="card" style="border:1.5px solid var(--red-border);background:var(--red-bg)">
+      <div style="font-weight:700;color:var(--red);font-size:15px;margin-bottom:.5rem">⚠️ Qarzlar ma'lumotini yuklab bo'lmadi</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.6">
+        Sabab: <code style="background:#fff;padding:2px 6px;border-radius:4px">${(err?.code||err?.message||'noma\'lum xato')}</code><br>
+        Ko'pincha bu Firestore xavfsizlik qoidalarida <strong>debts</strong> va <strong>debtors</strong> kolleksiyalariga o'qish ruxsati yo'qligidan bo'ladi.
+        Firebase konsolida <em>Firestore → Rules</em> bo'limiga kirib, shu ikki kolleksiya uchun ham boshqa kolleksiyalar
+        (masalan <code>products</code>, <code>sales</code>) bilan bir xil ruxsat qoidasi borligini tekshiring.
+      </div>
+    </div>`;
   }
 }
 
@@ -575,7 +604,7 @@ window.switchMain = function(tab){
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('navtab-'+tab).classList.add('active');
   if(tab==='stock') renderStock();
-  if(tab==='debts') setReportDebtFilter('active');
+  if(tab==='debts'){ setReportDebtDate('all'); setReportDebtFilter('active'); }
 }
 
 // ===== STOCK =====
@@ -659,7 +688,7 @@ window.exportStockCSV = function(){
   a.click();
 }
 
-// ===== QARZLAR BO'LIMI (YANGILANGAN - LOGIN/PAROL BILAN) =====
+// ===== QARZLAR BO'LIMI (YANGILANGAN - LOGIN/PAROL + SANA FILTRI BILAN) =====
 window.setReportDebtFilter = function(f){
   reportDebtFilter = f;
   ['all','active','paid'].forEach(k=>{
@@ -668,21 +697,57 @@ window.setReportDebtFilter = function(f){
   renderReportDebts();
 }
 
+window.setReportDebtDate = function(type){
+  reportDebtDateFilter = type;
+  if(type!=='custom'){
+    const f=document.getElementById('rdd-from'), t=document.getElementById('rdd-to');
+    if(f) f.value=''; if(t) t.value='';
+  }
+  ['today','yesterday','all'].forEach(k=>{
+    const b=document.getElementById('rdd-'+k); if(b) b.classList[k===type?'add':'remove']('blue');
+  });
+  renderReportDebts();
+}
+
+function getDebtDateRange(){
+  const now = new Date();
+  let start=null, end=null;
+  if(reportDebtDateFilter==='today'){
+    start=new Date(now); start.setHours(0,0,0,0);
+    end=new Date(now); end.setHours(23,59,59,999);
+  } else if(reportDebtDateFilter==='yesterday'){
+    const y=new Date(now); y.setDate(now.getDate()-1);
+    start=new Date(y); start.setHours(0,0,0,0);
+    end=new Date(y); end.setHours(23,59,59,999);
+  } else if(reportDebtDateFilter==='custom'){
+    const fromV=document.getElementById('rdd-from')?.value;
+    const toV=document.getElementById('rdd-to')?.value;
+    if(fromV) start=new Date(fromV+'T00:00:00');
+    if(toV) end=new Date(toV+'T23:59:59');
+    else if(fromV) end=new Date(fromV+'T23:59:59');
+  }
+  return {start,end};
+}
+
 window.renderReportDebts = function(){
   const subEl = document.getElementById('debts-updated');
-  if(subEl) subEl.textContent = 'Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})+' · Real vaqtda';
+  if(subEl){ subEl.textContent = 'Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})+' · Real vaqtda'; subEl.style.color=''; }
 
   const q = (document.getElementById('report-debt-search')?.value||'').toLowerCase();
+  const {start,end} = getDebtDateRange();
+
   let list = DEBTS.slice();
+  if(start) list = list.filter(d=>new Date(d.date)>=start);
+  if(end)   list = list.filter(d=>new Date(d.date)<=end);
   if(reportDebtFilter==='active') list = list.filter(d=>!d.paid);
   else if(reportDebtFilter==='paid') list = list.filter(d=>d.paid);
   if(q) list = list.filter(d=>(d.debtorName||'').toLowerCase().includes(q)||(d.org||'').toLowerCase().includes(q));
 
-  // Statistika
-  const totalActive = DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-  const totalPaid   = DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
-  const activeCount = DEBTS.filter(d=>!d.paid).length;
-  const totalDebtors= new Set(DEBTS.filter(d=>!d.paid).map(d=>d.debtorId||d.debtorName)).size;
+  // Statistika — joriy sana+holat filtriga mos ravishda
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0);
+  const totalPaid   = list.filter(d=>d.paid).reduce((a,d)=>a+(d.total||0),0);
+  const activeCount = list.filter(d=>!d.paid).length;
+  const totalDebtors= new Set(list.filter(d=>!d.paid).map(d=>d.debtorId||d.debtorName)).size;
 
   const sg = document.getElementById('report-debt-stats');
   sg.innerHTML = `
@@ -696,47 +761,69 @@ window.renderReportDebts = function(){
   if(!list.length){ container.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
-  // Qarzdor bo'yicha guruhlash
+  // Ikki qavatli guruhlash: 1) tashkilot (yoki shaxs), 2) tashkilot ICHIDAGI har bir odam.
+  // Eski kod faqat tashkilot bo'yicha guruhlab, faqat BITTA ismni ko'rsatardi — shu
+  // sabab bir nechta odam bir xil tashkilot ostida sotib olganda, faqat oxirgi/birinchi
+  // odamning ismigina chiqib, qolganlari "yashiringan" ko'rinar edi.
   const grouped = Object.create(null);
   for(const d of list){
-    const key = d.debtorId || d.debtorName;
-    if(!grouped[key]) grouped[key]={debtorName:d.debtorName,org:d.org,phone:d.phone,debts:[]};
-    grouped[key].debts.push(d);
+    const orgKey = d.org ? 'org:'+d.org : 'person:'+d.debtorName;
+    if(!grouped[orgKey]) grouped[orgKey] = { org:d.org||'', isOrg:!!d.org, people:Object.create(null) };
+    const personKey = d.debtorName;
+    if(!grouped[orgKey].people[personKey]) grouped[orgKey].people[personKey] = { debtorName:d.debtorName, phone:d.phone||'', debts:[] };
+    grouped[orgKey].people[personKey].debts.push(d);
   }
 
   const parts = [];
   for(const g of Object.values(grouped)){
-    const owed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-    const debtor = DEBTORS.find(dd=>dd.name===g.debtorName);
-    
-    // 🔐 LOGIN/PAROL MA'LUMOTI
-    const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
-    
+    const people = Object.values(g.people);
+    const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0),0);
+    const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
+    const headerTitle = g.isOrg ? `🏢 ${g.org}` : `👤 ${people[0].debtorName}`;
+    const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
+
     parts.push(`<div class="card" style="margin-bottom:.85rem">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
         <div>
-          <div style="font-weight:700;font-size:16px">${g.debtorName}${g.org?` <span style="font-size:13px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
-          ${g.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${g.phone}</div>`:''}
-          ${loginInfo}
+          <div style="font-weight:700;font-size:16px">${headerTitle}</div>
+          ${headerSub?`<div style="font-size:12px;color:var(--text3)">${headerSub}</div>`:''}
         </div>
         <div style="text-align:right">
-          <div style="font-size:22px;font-weight:700;color:${owed>0?'var(--amber)':'var(--green)'}">${fmt(owed)} so'm</div>
-          <div style="font-size:12px;color:var(--text3)">${owed>0?'Faol qarz':'To\'liq to\'langan'}</div>
+          <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
+          <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Faol qarz':'To\'liq to\'langan'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${totalCount} ta qarz</div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        ${g.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
-            <div>
-              <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
-              <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+      <div style="display:flex;flex-direction:column;gap:.85rem">
+        ${people.map(p=>{
+          const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0);
+          const debtor = DEBTORS.find(dd=>dd.name===p.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
+          const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+          return `<div style="${g.isOrg?'border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:var(--surface2)':''}">
+            ${g.isOrg?`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
+              <div>
+                <div style="font-weight:700;font-size:14px">👤 ${p.debtorName}</div>
+                ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${p.phone}</div>`:''}
+                ${loginInfo}
+              </div>
+              <div style="text-align:right;font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
+            </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}</div>`}
+            <div style="display:flex;flex-direction:column;gap:.5rem">
+              ${p.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+                  <div>
+                    <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
+                    <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+                  </div>
+                  <span style="font-weight:700;font-size:15px">${fmt(d.total||0)} so'm</span>
+                </div>
+                <div style="font-size:12px;color:var(--text2);margin-top:.35rem">${(d.items||[]).map(i=>`${i.productName} ×${i.qty}`).join(', ')}</div>
+                ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+                ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
+              </div>`).join('')}
             </div>
-            <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
-          </div>
-          <div style="font-size:12px;color:var(--text2);margin-top:.35rem">${(d.items||[]).map(i=>`${i.productName} ×${i.qty}`).join(', ')}</div>
-          ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
-          ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
-        </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>`);
   }
@@ -744,14 +831,17 @@ window.renderReportDebts = function(){
 }
 
 window.exportDebtsCSV = function(){
-  let list = DEBTS;
+  const {start,end} = getDebtDateRange();
+  let list = DEBTS.slice();
+  if(start) list = list.filter(d=>new Date(d.date)>=start);
+  if(end)   list = list.filter(d=>new Date(d.date)<=end);
   if(reportDebtFilter==='active') list=list.filter(d=>!d.paid);
   else if(reportDebtFilter==='paid') list=list.filter(d=>d.paid);
   let csv = 'Sana,Ism,Tashkilot,Telefon,Tovarlar,Summa,Holat,To\'langan sana,Login,Parol\n';
   list.forEach(d=>{
     const items=(d.items||[]).map(i=>`${i.productName}x${i.qty}`).join(';');
-    const debtor = DEBTORS.find(dd=>dd.name===d.debtorName);
-    csv+=`"${timeStr(d.date)}","${d.debtorName||''}","${d.org||''}","${d.phone||''}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}","${debtor?.login||''}","${debtor?.password||''}"\n`;
+    const debtor = DEBTORS.find(dd=>dd.name===d.debtorName && (dd.org===(d.org||'') || (!d.org && !dd.org)));
+    csv+=`"${timeStr(d.date)}","${d.debtorName||''}","${d.org||''}","${d.phone||''}","${items}",${d.total||0},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}","${debtor?.login||''}","${debtor?.password||''}"\n`;
   });
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
