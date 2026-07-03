@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qarz Ko'rish Portali</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f5f5f0;--surface:#fff;--surface2:#fafaf8;
+    --border:#e0ddd6;--border2:#ccc;
+    --text:#1a1a17;--text2:#555;--text3:#888;
+    --accent:#2563eb;--accent-bg:#eff6ff;--accent-border:#bfdbfe;
+    --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+    --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
+    --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
+    --radius:10px;--shadow:0 2px 8px rgba(0,0,0,.08);
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+
+  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
+  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite}
+  #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
+  #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading-screen.hidden{display:none}
+
+  nav{background:#1e293b;color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100}
+  nav .logo{font-weight:700;font-size:17px;color:#fff;flex:1}
+  nav .logo span{color:#f59e0b}
+  nav .user-info{background:#334155;border-radius:20px;padding:4px 14px;font-size:13px;color:#cbd5e1}
+  nav .btn-logout{background:none;border:1px solid #475569;color:#94a3b8;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;transition:.15s}
+  nav .btn-logout:hover{background:#334155;color:#fff}
+
+  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);padding:1rem}
+  .login-card{background:#fff;border-radius:18px;padding:2.5rem;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.3)}
+  .login-icon{font-size:48px;text-align:center;margin-bottom:1rem}
+  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b;text-align:center}
+  .login-card p{color:#64748b;font-size:14px;margin-bottom:2rem;text-align:center}
+  .field{display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem}
+  .field label{font-size:13px;font-weight:600;color:#475569}
+  .field input{border:1.5px solid #e2e8f0;border-radius:10px;padding:.8rem 1rem;font-size:15px;outline:none;transition:.15s;font-family:inherit}
+  .field input:focus{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.15)}
+  .btn-primary{width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:10px;padding:.9rem;font-size:15px;font-weight:700;cursor:pointer;margin-top:.5rem;transition:.2s;letter-spacing:.3px}
+  .btn-primary:hover{background:linear-gradient(135deg,#d97706,#b45309);transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(0)}
+  .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
+
+  #app{display:none}
+  .page{padding:1.25rem;max-width:900px;margin:0 auto}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem}
+  .stat .val{font-size:26px;font-weight:700;margin-bottom:.2rem}
+  .stat .lbl{font-size:13px;color:var(--text3);font-weight:500}
+  .stat.amber .val{color:var(--amber)}
+  .stat.green .val{color:var(--green)}
+  .stat.blue .val{color:var(--accent)}
+
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+  .section-header h2{font-size:20px;font-weight:700}
+  .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
+
+  .filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .btn:hover{background:var(--surface2);border-color:#bbb}
+  .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.green{background:var(--green);color:#fff;border-color:var(--green)}
+  .btn.amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+  .btn.sm{padding:.38rem .75rem;font-size:12px}
+
+  .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+  .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+  .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+
+  .debt-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:.85rem;box-shadow:var(--shadow);transition:.2s}
+  .debt-card.active{border-left:4px solid var(--amber)}
+  .debt-card.paid{border-left:4px solid var(--green);opacity:.85}
+  .debt-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.85rem}
+  .debt-amount{font-size:28px;font-weight:800;color:var(--amber)}
+  .debt-amount.paid{color:var(--green)}
+  .debt-date{font-size:13px;color:var(--text3)}
+  .debt-items{background:var(--surface2);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem}
+  .debt-items p{font-size:13px;color:var(--text2);margin-bottom:.35rem;font-weight:600}
+  .debt-item-row{display:flex;justify-content:space-between;font-size:13px;padding:.2rem 0;border-bottom:1px solid var(--border)}
+  .debt-item-row:last-child{border:none}
+
+  .total-bar{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid var(--amber-border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+  .total-bar .label{font-size:14px;font-weight:600;color:#92400e}
+  .total-bar .amount{font-size:32px;font-weight:800;color:#b45309}
+
+  .empty-state{text-align:center;padding:4rem 1rem;color:var(--text3)}
+  .empty-state .icon{font-size:56px;margin-bottom:1rem}
+  .empty-state p{font-size:15px}
+
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  @media(max-width:600px){
+    nav{height:52px;padding:0 1rem}
+    nav .logo{font-size:15px}
+    .page{padding:.85rem}
+    .stat-grid{grid-template-columns:1fr 1fr}
+    .stat .val{font-size:22px}
+    .login-card{padding:2rem 1.25rem}
+    .debt-amount{font-size:22px}
+    .total-bar .amount{font-size:24px}
+    .filter-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .filter-bar::-webkit-scrollbar{display:none}
+    .toast{bottom:1rem;right:.75rem;left:.75rem;max-width:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <h2>💳 Qarz Portali</h2>
+  <p>Ulanmoqda...</p>
+</div>
+
+<div id="login-page" style="display:none">
+  <div class="login-card">
+    <div class="login-icon">💳</div>
+    <h1>Qarz Ko'rish</h1>
+    <p>Login va parolingizni kiriting</p>
+    <div class="field">
+      <label>Login</label>
+      <input type="text" id="login-input" placeholder="loginингизни kiriting" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Parol</label>
+      <input type="password" id="password-input" placeholder="parolingizni kiriting" autocomplete="current-password">
+    </div>
+    <div class="err-msg" id="err-msg"></div>
+    <button class="btn-primary" onclick="doLogin()">Kirish →</button>
+  </div>
+</div>
+
+<div id="app">
+  <nav>
+    <div class="logo">💳 <span>Qarz Portali</span></div>
+    <div class="user-info" id="user-info">—</div>
+    <button class="btn-logout" onclick="doLogout()">Chiqish</button>
+  </nav>
+
+  <div class="page">
+    <div class="section-header">
+      <div><h2 id="page-title">Mening qarzlarim</h2><p id="page-sub"></p></div>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <button class="btn sm" onclick="exportMyDebts()">⬇ CSV</button>
+      </div>
+    </div>
+
+    <div class="total-bar" id="total-bar"></div>
+    <div class="stat-grid" id="stat-grid"></div>
+
+    <div class="filter-bar">
+      <button class="btn sm amber" id="f-active" onclick="setFilter('active')">⏳ Faol qarzlar</button>
+      <button class="btn sm" id="f-paid" onclick="setFilter('paid')">✅ To'langan</button>
+      <button class="btn sm" id="f-all" onclick="setFilter('all')">📋 Barchasi</button>
+    </div>
+
+    <div id="debts-container"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
+  authDomain: "dokon-ce38b.firebaseapp.com",
+  projectId: "dokon-ce38b",
+  storageBucket: "dokon-ce38b.firebasestorage.app",
+  messagingSenderId: "1024226826394",
+  appId: "1:1024226826394:web:3a052adf83b46202c96723",
+  measurementId: "G-75RXS3WVWC"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let MY_DEBTS = [];
+let currentDebtor = null;
+let filterMode = 'active';
+let debtsListener = null;
+
+async function init(){
+  try{
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('login-input').addEventListener('keyup', e=>{ if(e.key==='Enter') document.getElementById('password-input').focus(); });
+    document.getElementById('password-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
+  }catch(e){
+    document.getElementById('loading-screen').querySelector('p').textContent = "❌ Ulanib bo'lmadi.";
+    console.error(e);
+  }
+}
+
+window.doLogin = async function(){
+  const loginVal = document.getElementById('login-input').value.trim();
+  const passVal  = document.getElementById('password-input').value.trim();
+  const err = document.getElementById('err-msg');
+
+  if(!loginVal || !passVal){ err.textContent = "Login va parolni to'ldiring"; return; }
+  err.textContent = '';
+
+  const btn = document.querySelector('.btn-primary');
+  btn.textContent = 'Tekshirilmoqda...';
+  btn.disabled = true;
+
+  try{
+    let found = null;
+    await new Promise((resolve)=>{
+      const unsub = onSnapshot(collection(db,'debtors'), snap=>{
+        const debtors = snap.docs.map(d=>d.data());
+        found = debtors.find(d=>
+          d.login && d.password &&
+          d.login.trim()===loginVal &&
+          d.password.trim()===passVal
+        );
+        unsub();
+        resolve();
+      });
+    });
+
+    if(!found){
+      err.textContent = "Login yoki parol noto'g'ri";
+      btn.textContent = 'Kirish →';
+      btn.disabled = false;
+      return;
+    }
+
+    currentDebtor = found;
+    startDebtListener();
+
+  }catch(e){
+    err.textContent = "Xatolik yuz berdi.";
+    btn.textContent = 'Kirish →';
+    btn.disabled = false;
+    console.error(e);
+  }
+}
+
+function startDebtListener(){
+  if(debtsListener) debtsListener();
+
+  let debounce = null;
+  debtsListener = onSnapshot(collection(db,'debts'), snap=>{
+    const all = snap.docs.map(d=>d.data());
+    MY_DEBTS = all.filter(d=>
+      d.debtorId === currentDebtor.id ||
+      d.debtorName === currentDebtor.name
+    );
+    MY_DEBTS.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+    clearTimeout(debounce);
+    debounce = setTimeout(()=>{
+      showApp();
+      render();
+    }, 30);
+  });
+}
+
+function showApp(){
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.querySelector('.btn-primary').textContent = 'Kirish →';
+  document.querySelector('.btn-primary').disabled = false;
+
+  const nameLabel = currentDebtor.org
+    ? `${currentDebtor.name} · ${currentDebtor.org}`
+    : currentDebtor.name;
+  document.getElementById('user-info').textContent = '👤 ' + nameLabel;
+  document.getElementById('page-title').textContent = 'Mening qarzlarim';
+  document.getElementById('page-sub').textContent = 'Real vaqtda yangilanadi · ' + new Date().toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+window.setFilter = function(f){
+  filterMode = f;
+  ['active','paid','all'].forEach(k=>{
+    const b=document.getElementById('f-'+k);
+    if(!b) return;
+    if(k===f){ b.classList.add('amber'); b.classList.remove('btn'); }
+    else{ b.classList.remove('amber'); b.classList.add('btn'); }
+  });
+  render();
+}
+
+function render(){
+  const totalOwed   = MY_DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaid   = MY_DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = MY_DEBTS.filter(d=>!d.paid).length;
+  const paidCount   = MY_DEBTS.filter(d=>d.paid).length;
+
+  document.getElementById('total-bar').innerHTML = totalOwed > 0
+    ? `<div><div class="label">Umumiy qarzingiz</div></div><div class="amount">${fmt(totalOwed)} so'm</div>`
+    : `<div><div class="label" style="color:#166534">✅ Barcha qarzlaringiz to'langan!</div></div><div class="amount" style="color:var(--green);font-size:24px">0 so'm</div>`;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat amber"><div class="val">${fmt(totalOwed)}</div><div class="lbl">💳 Faol qarz</div></div>
+    <div class="stat blue"><div class="val">${activeCount}</div><div class="lbl">📋 Faol qarzlar soni</div></div>
+    <div class="stat green"><div class="val">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>
+    <div class="stat green"><div class="val">${paidCount}</div><div class="lbl">✅ To'langan savdolar</div></div>`;
+
+  let list = MY_DEBTS;
+  if(filterMode==='active') list = list.filter(d=>!d.paid);
+  else if(filterMode==='paid') list = list.filter(d=>d.paid);
+
+  const container = document.getElementById('debts-container');
+  if(!list.length){
+    container.innerHTML = `<div class="empty-state"><div class="icon">${filterMode==='paid'?'🎉':'✨'}</div><p>${filterMode==='active'?'Hozirda faol qarzingiz yo\'q!':filterMode==='paid'?'Hali to\'langan qarz yo\'q.':'Qarz tarixi mavjud emas.'}</p></div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(d=>`
+    <div class="debt-card ${d.paid?'paid':'active'}">
+      <div class="debt-header">
+        <div>
+          <div class="debt-date">📅 ${timeStr(d.date)}</div>
+          ${d.seller?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">Sotuvchi: ${d.seller}</div>`:''}
+          ${d.note?`<div style="font-size:13px;color:var(--text2);margin-top:.3rem;font-style:italic">📝 ${d.note}</div>`:''}
+          <div style="font-size:12px;color:var(--text3);margin-top:.25rem">🕒 Olingan: ${timeStr(d.date||d.createdAt)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="debt-amount ${d.paid?'paid':''}">${fmt(d.total)} so'm</div>
+          <span class="badge ${d.paid?'green':'amber'}">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+          ${d.paid&&d.paidDate?`<div style="font-size:11px;color:var(--green);margin-top:.3rem">✅ To'langan: ${timeStr(d.paidDate)}${d.paidBy?' · '+d.paidBy:''}</div>`:''}
+        </div>
+      </div>
+      <div class="debt-items">
+        <p>Sotilgan tovarlar:</p>
+        ${(d.items||[]).map(i=>`<div class="debt-item-row">
+          <span>${i.productName}${i.volume?' ('+i.volume+'L)':''} × ${i.qty} ta</span>
+          <span style="font-weight:600">${fmt(i.subtotal||i.total||0)} so'm</span>
+        </div>`).join('')}
+        <div class="debt-item-row" style="font-weight:700;border-top:2px solid var(--border);margin-top:.3rem;padding-top:.4rem">
+          <span>Jami</span>
+          <span style="color:${d.paid?'var(--green)':'var(--amber)'}">${fmt(d.total)} so'm</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+window.exportMyDebts = function(){
+  if(!MY_DEBTS.length){ toast('Eksport qilish uchun qarz yo\'q'); return; }
+  let csv = 'Olingan sana,Tovarlar,Summa,Holat,To\'langan sana\n';
+  MY_DEBTS.forEach(d=>{
+    const items=(d.items||[]).map(i=>`${i.productName}x${i.qty}`).join(';');
+    csv+=`"${timeStr(d.date)}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}"\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='mening_qarzlarim.csv';
+  a.click();
+}
+
+window.doLogout = function(){
+  if(debtsListener){ debtsListener(); debtsListener=null; }
+  currentDebtor = null;
+  MY_DEBTS = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('login-input').value = '';
+  document.getElementById('password-input').value = '';
+  document.getElementById('err-msg').textContent = '';
+}
+
+function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
+
+let _tCache=new Map();
+function timeStr(iso){
+  let s=_tCache.get(iso);
+  if(!s){
+    const d=new Date(iso);
+    s=d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
+    _tCache.set(iso,s);
+  }
+  return s;
+}
+
+let _tt;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast';
+  requestAnimationFrame(()=>el.classList.add('show'));
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+init();
+</script>
+</body>
+</html>
