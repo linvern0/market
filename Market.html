@@ -17,29 +17,24 @@
     --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
   }
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
-
   #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
   #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite}
   #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
   #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
   @keyframes spin{to{transform:rotate(360deg)}}
   #loading-screen.hidden{display:none}
-
   #sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:4px;transition:.3s}
   #sync-dot.syncing{background:#f59e0b;animation:pulse-dot 1s ease infinite}
   #sync-dot.error{background:#ef4444}
   @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
-
   nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
   nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
   nav .logo span{color:#60a5fa}
   nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s}
   nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
   nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center}
-
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
   .page.active{display:block}
-
   #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
   .login-card{background:#fff;border-radius:16px;padding:2.5rem;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
   .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b}
@@ -58,7 +53,6 @@
   .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.15s}
   .btn-primary:hover{background:#1d4ed8}
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
-
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
   .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
@@ -68,14 +62,12 @@
   .stat.blue .val{color:var(--accent)}
   .stat.amber .val{color:var(--amber)}
   .stat.red .val{color:var(--red)}
-
   .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
   table{width:100%;border-collapse:collapse;background:var(--surface)}
   th{background:var(--surface2);padding:.75rem 1rem;text-align:left;font-size:13px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
   td{padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
   tr:last-child td{border-bottom:none}
   tr:hover td{background:#fafaf8}
-
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
   .form-row.full{grid-template-columns:1fr}
   .field{display:flex;flex-direction:column;gap:.35rem}
@@ -83,7 +75,6 @@
   .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;width:100%}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
   .field textarea{resize:vertical;min-height:70px}
-
   .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
   .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -95,23 +86,19 @@
   .btn.amber{background:var(--amber);color:#fff;border-color:var(--amber)}
   .btn.amber:hover{background:#b45309}
   .btn.sm{padding:.25rem .45rem;font-size:11px}
-
   .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
   .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
   .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
   .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
   .badge.blue{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
-
   .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
   .section-header h2{font-size:20px;font-weight:700}
   .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
-
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
   .modal-overlay.hidden{display:none}
   .modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
   .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
   .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
-
   .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.6rem}
   .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.15s;cursor:pointer}
   .prod-card:hover{border-color:#aaa;box-shadow:0 4px 16px rgba(0,0,0,.1)}
@@ -124,64 +111,43 @@
   .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:15px}
   .prod-card .prod-stock{font-size:13px;color:var(--text3);margin-top:.25rem}
   .prod-card .prod-actions{display:flex;gap:.35rem;margin-top:.45rem}
-
   .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.15s}
   .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-
   .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
   .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
-
   .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.15s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
   .toast.green{background:#166534}
   .toast.red{background:#991b1b}
   .toast.amber{background:#92400e}
-
   .revert-info{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius);padding:.75rem 1rem;font-size:13px;color:#92400e;margin-bottom:1rem}
-
   #sticky-cart{position:fixed;bottom:0;left:0;right:0;z-index:150;background:#1e293b;color:#fff;padding:.85rem 1.25rem;display:none;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,.25);flex-wrap:wrap}
   #sticky-cart.show{display:flex}
   #sticky-cart .cart-info{font-size:15px;font-weight:600}
   #sticky-cart .cart-info span{color:#60a5fa}
-
   .prod-card.dragging{opacity:.4;border:2px dashed var(--accent)}
   .prod-card.drag-over{border:2px solid var(--accent);background:var(--accent-bg)}
   .drag-handle{cursor:grab;color:#bbb;font-size:18px;padding:2px 6px;border-radius:4px;user-select:none}
   .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
   .sort-bar span{font-size:13px;color:var(--text2);font-weight:600;margin-right:.25rem}
-
-  /* ===== MOBILE NAV ===== */
-  /* Mobilda nav tugmalari o'rniga pastki tab-bar */
   #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:58px}
   #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.15s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
   #mobile-tabbar button .tab-icon{font-size:20px;line-height:1}
   #mobile-tabbar button.active{color:#60a5fa}
   #mobile-tabbar button.active .tab-icon{transform:translateY(-1px)}
-
-  /* Mobil sticky-cart pastki tab-bar dan yuqorida bo'lsin */
   @media(max-width:768px){
     #sticky-cart{bottom:58px}
     .page{padding-bottom:70px}
-  }
-
-  /* Mobil tovar kartasi — kattaroq tap target */
-  @media(max-width:768px){
     nav{height:52px;padding:0 .75rem}
     nav .logo{font-size:15px}
-    /* Desktop navni yashiramiz, mobile tabbar ko'rsatamiz */
     #nav-admin,#nav-seller{display:none!important}
     nav .user-badge{font-size:12px;padding:3px 10px}
     #mobile-tabbar{display:flex}
-
     .page{padding:.65rem .65rem 70px}
     .page.active{display:block}
-
-    /* Stat grid: 2 ustun */
     .stat-grid{grid-template-columns:1fr 1fr;gap:.65rem}
     .stat{padding:1rem}
     .stat .val{font-size:22px}
-
-    /* Tovar grid: 2 ustun kichik, lekin katta tap area */
     .product-grid{grid-template-columns:1fr 1fr;gap:.5rem}
     .prod-card .img-wrap{height:100px}
     .prod-card .body{padding:.5rem .6rem}
@@ -189,11 +155,7 @@
     .prod-card .prod-price{font-size:14px}
     .prod-card .prod-actions{flex-wrap:wrap;gap:.25rem}
     .prod-card .prod-actions .btn{flex:1;justify-content:center;min-width:0;font-size:11px;padding:.3rem .25rem}
-
-    /* Login card */
     .login-card{width:calc(100% - 2rem);max-width:380px;padding:2rem 1.5rem}
-
-    /* Jadval — mobilda card-style */
     .tbl-wrap{border-radius:8px}
     table thead{display:none}
     table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:#fff;box-shadow:var(--shadow)}
@@ -201,55 +163,30 @@
     table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:12px;flex-shrink:0;margin-right:.5rem}
     table tbody tr:hover td{background:transparent}
     table tfoot{display:none}
-
-    /* Filter bar mobilda scroll */
     .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.6rem .75rem;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .filter-bar::-webkit-scrollbar{display:none}
     .filter-bar input[type="date"],.filter-bar select{min-width:120px;font-size:12px}
-
-    /* Sort-bar mobilda scroll */
     .sort-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.35rem}
     .sort-bar::-webkit-scrollbar{display:none}
-
-    /* Modal mobilda to'liq kenglik */
     .modal-overlay{padding:.5rem .5rem 0}
     .modal{border-radius:14px 14px 0 0;max-height:92vh;padding:1.25rem 1rem}
     .modal h3{font-size:16px}
-
-    /* Section header */
     .section-header h2{font-size:18px}
     .section-header .btn{padding:.45rem .85rem;font-size:12px}
-
-    /* Dashboard grid */
     #dash-grid{grid-template-columns:1fr!important}
-
-    /* Form inputs kattaroq (mobil uchun) */
-    .field input,.field select,.field textarea{padding:.8rem .9rem;font-size:16px} /* 16px = iOS zoom yo'q */
-
-    /* Sticky cart mobilda kichikroq */
+    .field input,.field select,.field textarea{padding:.8rem .9rem;font-size:16px}
     #sticky-cart{padding:.65rem 1rem}
     #sticky-cart .cart-info{font-size:14px}
-
-    /* Sell page search */
     #sell-search{font-size:16px!important;padding:.75rem 1rem!important}
-
-    /* Revert info */
     .revert-info{font-size:12px}
-
-    /* Toast pastroq */
     .toast{bottom:72px;right:.75rem;left:.75rem;max-width:none;font-size:13px}
-
-    /* My-sales filter butunlay scroll */
     #page-my-sales .filter-bar{overflow-x:auto;flex-wrap:nowrap}
   }
-
   @media(max-width:400px){
     .product-grid{grid-template-columns:1fr 1fr}
     .stat-grid{grid-template-columns:1fr 1fr}
     .prod-card .img-wrap{height:85px}
   }
-
-  /* Desktop uchun (o'zgartirmaydi, faqat tovar grid ni biroz yaxshilaymiz) */
   @media(min-width:769px){
     .product-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
   }
@@ -297,6 +234,7 @@
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
     <button class="tab" onclick="showPage('history','admin')">📋 Savdo tarixi</button>
     <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
+    <button class="tab" onclick="showPage('debts','admin')">💳 Qarzlar</button>
     <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
   </div>
   <div id="nav-seller" style="display:none;gap:.25rem">
@@ -450,6 +388,24 @@
   </div>
 </div>
 
+<!-- QARZLAR ADMIN SAHIFASI -->
+<div class="page" id="page-debts">
+  <div class="section-header">
+    <div><h2>💳 Qarzlar boshqaruvi</h2><p>Tashkilot va shaxslar bo'yicha</p></div>
+  </div>
+  <div class="filter-bar">
+    <button class="btn sm" id="db-btn-all" onclick="setDebtFilter('all')">Barchasi</button>
+    <button class="btn sm" id="db-btn-active" onclick="setDebtFilter('active')">Faol qarzlar</button>
+    <button class="btn sm" id="db-btn-paid" onclick="setDebtFilter('paid')">To'langan</button>
+    <button class="btn sm" id="db-btn-org" onclick="setDebtFilter('org')">🏢 Tashkilotlar</button>
+    <button class="btn sm" id="db-btn-person" onclick="setDebtFilter('person')">👤 Shaxslar</button>
+    <input type="text" id="debt-search" oninput="renderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
+  </div>
+  <div id="debt-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+  <div id="debts-list"></div>
+  <p id="no-debts" style="color:var(--text3);text-align:center;padding:3rem;display:none">Qarz topilmadi.</p>
+</div>
+
 <div class="page" id="page-sell">
   <div class="section-header">
     <div><h2>Sotish</h2><p>Tovarlarni tanlang va savat orqali soting</p></div>
@@ -499,8 +455,6 @@
       </div>
       <div class="field"><label>Narx (so'm) *</label><input id="p-price" type="number" min="0" placeholder="5000"></div>
     </div>
-    <!-- Yangi tovar qo'shganda BOSHLANG'ICH miqdor kiritiladi.
-         Mavjud tovar tahrirlanganda bu maydon ko'rsatilmaydi (stock faqat Kirim/Chiqim orqali boshqariladi). -->
     <div class="form-row" id="p-qty-row">
       <div class="field"><label>Boshlang'ich miqdor *</label><input id="p-qty" type="number" min="0" placeholder="50"></div>
       <div class="field" style="justify-content:flex-end;padding-bottom:.25rem">
@@ -617,7 +571,71 @@
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-cart')">Yopish</button>
       <button class="btn red sm" onclick="clearCart()">🗑 Savatni tozalash</button>
-      <button class="btn green" onclick="doCartSell()">✓ Hammasini sotish</button>
+      <button class="btn amber" onclick="openDebtModal()">💳 Qarzga sotish</button>
+      <button class="btn green" onclick="doCartSell()">✓ Naqd sotish</button>
+    </div>
+  </div>
+</div>
+
+<!-- QARZ MODAL -->
+<div class="modal-overlay hidden" id="modal-debt">
+  <div class="modal" style="max-width:500px">
+    <h3>💳 Qarzga sotish</h3>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Tashkilot nomi <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <input id="debt-org" placeholder="Masalan: Anvar Market" autocomplete="off" oninput="debtOrgInput(this)">
+      <div id="debt-org-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+      <p style="font-size:11px;color:var(--text3);margin-top:.25rem">⚠️ Tashkilot uchun bitta login beriladi, barcha ishchilar shu org ga bog'lanadi</p>
+    </div>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Qarz oluvchi ismi *</label>
+      <input id="debt-name" placeholder="Ism va familiya" autocomplete="off" oninput="debtNameInput(this)">
+      <div id="debt-name-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Telefon <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <input id="debt-phone" type="tel" placeholder="+998 90 000 00 00">
+    </div>
+
+    <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;color:#92400e;font-weight:600">Qarz summasi:</span>
+        <span style="font-size:22px;font-weight:700;color:var(--amber)" id="debt-total-show">0 so'm</span>
+      </div>
+      <div style="font-size:12px;color:#92400e;margin-top:.35rem" id="debt-items-preview"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Izoh <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <input id="debt-note" placeholder="Qo'shimcha ma'lumot">
+    </div>
+
+    <!-- LOGIN/PAROL YARATISH -->
+    <div id="debt-login-section" style="margin-top:1rem;border-top:1px dashed var(--border);padding-top:1rem">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem;font-weight:600">🔐 Qarzdor uchun login va parol</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:.75rem">
+        <span id="debt-login-type">👤 Shaxs</span> uchun login/parol yaratiladi
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div class="field">
+          <label>Login</label>
+          <input id="debt-login" placeholder="login123" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Parol</label>
+          <input id="debt-password" placeholder="parol123" autocomplete="off">
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">Bo'sh qoldirsangiz, avvalgi login/parol saqlanadi.<br>
+      <span id="debt-login-note">Tashkilot uchun bitta login: barcha ishchilar shu org ga bog'lanadi</span></p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-debt')">Bekor qilish</button>
+      <button class="btn amber" onclick="doDebtSell()">💳 Qarzga sotish</button>
     </div>
   </div>
 </div>
@@ -633,6 +651,33 @@
   </div>
 </div>
 
+<!-- Qarzdor login/parol tahrirlash modal -->
+<div class="modal-overlay hidden" id="modal-debtor-login">
+  <div class="modal" style="max-width:400px">
+    <h3>🔐 Login/Parol tahrirlash</h3>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Qarzdor</label>
+      <input id="dl-name" readonly style="background:var(--surface2);font-weight:600">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Tur</label>
+      <input id="dl-type" readonly style="background:var(--surface2)">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Login</label>
+      <input id="dl-login" placeholder="Yangi login">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Parol</label>
+      <input id="dl-password" placeholder="Yangi parol">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-debtor-login')">Bekor qilish</button>
+      <button class="btn blue" onclick="saveDebtorLogin()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
 <div id="sticky-cart">
   <div class="cart-info">🛒 Savat: <span id="cart-count">0</span> ta tovar · <span id="cart-total-nav">0</span> so'm</div>
   <div style="display:flex;gap:.75rem">
@@ -643,7 +688,6 @@
 
 <!-- MOBIL PASTKI TAB-BAR -->
 <div id="mobile-tabbar">
-  <!-- Admin tabs -->
   <button id="mtab-dashboard" onclick="showPage('dashboard','admin')" style="display:none">
     <span class="tab-icon">📊</span>Bosh
   </button>
@@ -656,10 +700,12 @@
   <button id="mtab-stock-history" onclick="showPage('stock-history','admin')" style="display:none">
     <span class="tab-icon">🚚</span>Kirim
   </button>
+  <button id="mtab-debts" onclick="showPage('debts','admin')" style="display:none">
+    <span class="tab-icon">💳</span>Qarzlar
+  </button>
   <button id="mtab-settings" onclick="showPage('settings','admin')" style="display:none">
     <span class="tab-icon">⚙️</span>Sozlama
   </button>
-  <!-- Seller tabs -->
   <button id="mtab-sell" onclick="showPage('sell','seller')" style="display:none">
     <span class="tab-icon">🛒</span>Sotish
   </button>
@@ -687,21 +733,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-window.DB = { products: [], sales: [], restocks: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
 window.currentRole = null;
 window.editingProductId = null;
 window.restockId = null;
 window.cart = {};
 let knownSaleIds = null;
+let debtFilter = 'active';
+let editingDebtorId = null;
 
 function setSyncing(on){ const d=document.getElementById('sync-dot'); if(d) d.className = on?'syncing':''; }
 function setSyncError(){ const d=document.getElementById('sync-dot'); if(d) d.className='error'; }
 
-// ===== OPTIMISTIC LOCAL UPDATES (tezkor real-vaqt UI) =====
-// Yozish amalini Firebase'ga yuborish bilan bir vaqtda, mahalliy DB massivini ham
-// darhol yangilab, ekranni qayta chizamiz. Bu tarmoq sekin bo'lganda ham interfeysni
-// bir zumda javob beradigan qiladi. onSnapshot keyinroq kelib, ma'lumotni serverdagi
-// haqiqiy holat bilan moslashtiradi (boshqa qurilmalardagi o'zgarishlar uchun ham).
 function localUpsertProduct(p){
   const i = DB.products.findIndex(x=>x.id===p.id);
   if(i>=0) DB.products[i]=p; else DB.products.push(p);
@@ -726,13 +769,12 @@ function refreshSaleViews(){
   if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
 }
 
-// ===== ONLINE/OFFLINE DETECTION =====
 function updateOfflineBanner(){
   const b = document.getElementById('offline-banner');
   if(b) b.style.display = navigator.onLine ? 'none' : 'block';
 }
 window.addEventListener('online', ()=>{ toast('✓ Internet qayta ulandi','green'); updateOfflineBanner(); });
-window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi! Ma\'lumotlar saqlanmasligi mumkin.','red'); updateOfflineBanner(); });
+window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!','red'); updateOfflineBanner(); });
 
 const settingsRef = doc(db,'dokon','settings');
 
@@ -747,7 +789,7 @@ async function fbSaveProduct(p){
   refreshProductViews();
   setSyncing(true);
   try{ await setDoc(doc(db,'products',p.id),p); }
-  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik: internetni tekshiring",'red'); }
+  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); }
   setSyncing(false);
 }
 async function fbDeleteProduct(id){
@@ -755,7 +797,7 @@ async function fbDeleteProduct(id){
   refreshProductViews();
   setSyncing(true);
   try{ await deleteDoc(doc(db,'products',id)); }
-  catch(e){ setSyncError(); console.error(e); toast("O'chirishda xatolik: internetni tekshiring",'red'); }
+  catch(e){ setSyncError(); console.error(e); toast("O'chirishda xatolik",'red'); }
   setSyncing(false);
 }
 async function fbSaveSale(s){
@@ -763,7 +805,7 @@ async function fbSaveSale(s){
   refreshSaleViews();
   setSyncing(true);
   try{ await setDoc(doc(db,'sales',s.id),s); }
-  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik: internetni tekshiring",'red'); }
+  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); }
   setSyncing(false);
 }
 async function fbUpdateSale(id,data){
@@ -771,7 +813,7 @@ async function fbUpdateSale(id,data){
   refreshSaleViews();
   setSyncing(true);
   try{ await updateDoc(doc(db,'sales',id),data); }
-  catch(e){ setSyncError(); console.error(e); toast("Yangilashda xatolik: internetni tekshiring",'red'); }
+  catch(e){ setSyncError(); console.error(e); toast("Yangilashda xatolik",'red'); }
   setSyncing(false);
 }
 function localUpsertRestock(r){
@@ -784,6 +826,32 @@ async function fbSaveRestock(r){
   setSyncing(true);
   try{ await setDoc(doc(db,'restocks',r.id),r); }
   catch(e){ setSyncError(); console.error(e); toast("Kirim tarixini saqlashda xatolik",'red'); }
+  setSyncing(false);
+}
+async function fbSaveDebt(d){
+  const i=DB.debts.findIndex(x=>x.id===d.id);
+  if(i>=0) DB.debts[i]=d; else DB.debts.push(d);
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+  setSyncing(true);
+  try{ await setDoc(doc(db,'debts',d.id),d); }
+  catch(e){ setSyncError(); console.error(e); toast("Qarz saqlashda xatolik",'red'); }
+  setSyncing(false);
+}
+async function fbSaveDebtor(d){
+  const i=DB.debtors.findIndex(x=>x.id===d.id);
+  if(i>=0) DB.debtors[i]=d; else DB.debtors.push(d);
+  setSyncing(true);
+  try{ await setDoc(doc(db,'debtors',d.id),d); }
+  catch(e){ setSyncError(); console.error(e); toast("Qarzdor ma'lumotini saqlashda xatolik",'red'); }
+  setSyncing(false);
+}
+async function fbUpdateDebt(id, patch){
+  const d=DB.debts.find(x=>x.id===id);
+  if(d) Object.assign(d, patch);
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+  setSyncing(true);
+  try{ await updateDoc(doc(db,'debts',id), patch); }
+  catch(e){ setSyncError(); console.error(e); }
   setSyncing(false);
 }
 
@@ -836,15 +904,29 @@ function startListeners(){
       if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
     },20);
   });
+  let debtDebounce=null;
+  onSnapshot(collection(db,'debts'), snap=>{
+    DB.debts = snap.docs.map(d=>d.data());
+    DB.debts.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    clearTimeout(debtDebounce);
+    debtDebounce=setTimeout(()=>{
+      if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+    },20);
+  });
+  onSnapshot(collection(db,'debtors'), snap=>{
+    DB.debtors = snap.docs.map(d=>d.data());
+  });
 }
 
 async function init(){
   try{
-    const [settingsSnap, prodsSnap, salesSnap, restocksSnap] = await Promise.all([
+    const [settingsSnap, prodsSnap, salesSnap, restocksSnap, debtsSnap, debtorsSnap] = await Promise.all([
       getDoc(settingsRef),
       getDocs(collection(db,'products')),
       getDocs(collection(db,'sales')),
-      getDocs(collection(db,'restocks'))
+      getDocs(collection(db,'restocks')),
+      getDocs(collection(db,'debts')),
+      getDocs(collection(db,'debtors'))
     ]);
 
     if(settingsSnap.exists()){
@@ -857,12 +939,13 @@ async function init(){
 
     DB.products = prodsSnap.docs.map(d=>d.data());
     DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
-
     DB.sales = salesSnap.docs.map(d=>d.data());
     DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
-
     DB.restocks = restocksSnap.docs.map(d=>d.data());
     DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    DB.debts = debtsSnap.docs.map(d=>d.data());
+    DB.debts.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    DB.debtors = debtorsSnap.docs.map(d=>d.data());
 
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('login-page').style.display='flex';
@@ -877,7 +960,7 @@ async function init(){
     }));
     document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
   }catch(e){
-    document.getElementById('loading-screen').querySelector('p').textContent = "❌ Firebase bilan ulanib bo'lmadi. Internetni va Firestore qoidalarini tekshiring.";
+    document.getElementById('loading-screen').querySelector('p').textContent = "❌ Firebase bilan ulanib bo'lmadi.";
     console.error(e);
   }
 }
@@ -898,8 +981,7 @@ window.doLogin = function(){
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
-    // Mobil: admin tablarini ko'rsat
-    ['dashboard','products','history','stock-history','settings'].forEach(t=>{
+    ['dashboard','products','history','stock-history','debts','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
     ['sell','my-sales'].forEach(t=>{
@@ -910,7 +992,6 @@ window.doLogin = function(){
   } else {
     document.getElementById('nav-seller').style.display='flex';
     document.getElementById('nav-admin').style.display='none';
-    // Mobil: seller tablarini ko'rsat
     ['sell','my-sales'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
@@ -936,7 +1017,6 @@ window.showPage = function(page, role){
   const navId = role==='admin'?'nav-admin':'nav-seller';
   document.querySelectorAll('#'+navId+' .tab').forEach(t=>t.classList.remove('active'));
   window.event?.target?.classList.add('active');
-  // Sync mobile tab bar
   document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.remove('active'));
   const mtab = document.getElementById('mtab-'+page);
   if(mtab) mtab.classList.add('active');
@@ -946,8 +1026,10 @@ window.showPage = function(page, role){
   if(page==='settings') document.getElementById('revert-minutes').value=DB.revertMinutes;
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
+  if(page==='debts'){ setDebtFilter('active'); }
 }
 
+// ===== DASHBOARD =====
 window.renderDashboard = function(){
   const period = document.getElementById('stat-period')?.value||'today';
   const now = new Date();
@@ -976,7 +1058,6 @@ window.renderDashboard = function(){
       <tbody>${recent.map(s=>`<tr><td style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td><strong>${s.productName}</strong></td><td>${s.qty} ta</td><td style="color:var(--green);font-weight:700">${fmt(s.total)} so'm</td><td>${s.seller}</td></tr>`).join('')}</tbody>
     </table></div>` : '<p style="color:var(--text3);text-align:center;padding:2rem">Bugun savdo bo\'lmagan.</p>';
 
-  // Top products (within selected period)
   const prodMap = {};
   filtered.forEach(s=>{
     const key = s.productName+'|'+(s.volume||'');
@@ -994,7 +1075,6 @@ window.renderDashboard = function(){
       <div style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">${t.qty} ta</div>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Bu davrda savdo yo\'q.</p>';
 
-  // Low stock list (always current, not period-filtered)
   const low = DB.products.filter(p=>p.stock<=5).sort((a,b)=>a.stock-b.stock).slice(0,8);
   document.getElementById('low-stock-list').innerHTML = low.length ? low.map(p=>`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
@@ -1003,6 +1083,7 @@ window.renderDashboard = function(){
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
 }
 
+// ===== PRODUCTS =====
 window.renderProducts = function(){
   const grid=document.getElementById('product-grid');
   const none=document.getElementById('no-products');
@@ -1029,8 +1110,8 @@ window.renderProducts = function(){
         <div class="prod-actions">
           <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
           <button class="btn sm amber" onclick="openReturnStock('${p.id}')">↩ Chiqim</button>
-          <button class="btn sm" onclick="openEditProduct('${p.id}')">✏️</button>
-          <button class="btn sm red" onclick="deleteProduct('${p.id}')">🗑</button>
+          <button class="btn sm" onclick="openEditProduct('${p.id}')">✏️ Tahrirlash</button>
+          <button class="btn sm red" onclick="deleteProduct('${p.id}')">🗑 O'chirish</button>
         </div>
       </div></div>`;
   }).join('');
@@ -1044,20 +1125,20 @@ window.openAddProduct=function(){
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
-  document.getElementById('p-qty-row').style.display=''; // Yangi tovar uchun miqdor ko'rsatiladi
+  document.getElementById('p-qty-row').style.display='';
   openModal('modal-product');
 }
 window.openEditProduct=function(id){
   const p=DB.products.find(x=>x.id===id); if(!p) return;
   editingProductId=id;
-  document.getElementById('modal-product-title').textContent='Tovarni tahrirlash (nomi, narx, rasm)';
+  document.getElementById('modal-product-title').textContent='Tovarni tahrirlash';
   document.getElementById('p-name').value=p.name;
   document.getElementById('p-price').value=p.price;
   document.getElementById('p-img').value=p.img||'';
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
   document.getElementById('p-img-file').value='';
-  document.getElementById('p-qty-row').style.display='none'; // Tahrirlashda miqdor ko'rsatilmaydi
+  document.getElementById('p-qty-row').style.display='none';
   if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
   else document.getElementById('img-preview-wrap').style.display='none';
   openModal('modal-product');
@@ -1085,7 +1166,6 @@ window.saveProduct=async function(){
   const volume=document.getElementById('p-volume').value;
   if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
   if(editingProductId){
-    // Tahrirlashda faqat nom, narx, rasm, izoh o'zgaradi. Stock O'ZGARMAYDI.
     const p=DB.products.find(x=>x.id===editingProductId);
     await fbSaveProduct({...p, name, price, img, note, volume});
     toast('Tovar yangilandi','green');
@@ -1094,7 +1174,6 @@ window.saveProduct=async function(){
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
     const newProd = {id:uid(),name,price,stock:qty,img,note,volume,createdAt:new Date().toISOString()};
     await fbSaveProduct(newProd);
-    // Boshlang'ich kirimni ham tarixga yozamiz
     if(qty>0){
       await fbSaveRestock({
         id:uid(), productId:newProd.id, productName:name, volume,
@@ -1108,8 +1187,10 @@ window.saveProduct=async function(){
 }
 window.deleteProduct=function(id){
   const p=DB.products.find(x=>x.id===id);
-  confirm2('Tovarni o\'chirish', `"${p?.name}" ni o'chirishni tasdiqlaysizmi?`, async ()=>{
-    await fbDeleteProduct(id); toast("Tovar o'chirildi");
+  if(!p){ toast("Tovar topilmadi",'red'); return; }
+  confirm2('Tovarni o\'chirish', `"${p.name}" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi!`, async ()=>{
+    await fbDeleteProduct(id);
+    toast(`"${p.name}" o'chirildi`,'green');
   });
 }
 window.openRestock=function(id){
@@ -1221,6 +1302,7 @@ window.initDrag=function(){
   });
 }
 
+// ===== CART =====
 window.cartTotal=function(){ return Object.entries(cart).reduce((sum,[id,qty])=>{ const p=DB.products.find(x=>x.id===id); return sum+(p?p.price*qty:0); },0); }
 window.cartCount=function(){ return Object.values(cart).reduce((a,v)=>a+v,0); }
 window.updateCartBtn=function(){
@@ -1269,6 +1351,313 @@ window.setCartQty=function(id,val){
   cart[id]=n;
   updateCartBtn(); renderSellGrid(); renderCartModal();
 }
+
+// ===== DEBT FUNCTIONS =====
+window.openDebtModal = function(){
+  if(!Object.keys(cart).length){ toast('Savat bo\'sh','red'); return; }
+  const total = cartTotal();
+  document.getElementById('debt-total-show').textContent = fmt(total)+' so\'m';
+  const items = Object.entries(cart).map(([id,qty])=>{
+    const p=DB.products.find(x=>x.id===id);
+    return p ? `${p.name} x${qty}` : '';
+  }).filter(Boolean).join(', ');
+  document.getElementById('debt-items-preview').textContent = items;
+  
+  document.getElementById('debt-login-section').style.display = 'block';
+  
+  const orgVal = document.getElementById('debt-org').value.trim();
+  updateDebtLoginType(orgVal);
+  
+  ['debt-org','debt-name','debt-phone','debt-note','debt-login','debt-password'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  closeModal('modal-cart');
+  openModal('modal-debt');
+  setTimeout(()=>document.getElementById('debt-org').focus(), 100);
+}
+
+function updateDebtLoginType(org){
+  const typeEl = document.getElementById('debt-login-type');
+  const noteEl = document.getElementById('debt-login-note');
+  if(org){
+    typeEl.textContent = '🏢 Tashkilot ('+org+')';
+    noteEl.textContent = 'Tashkilot uchun bitta login: barcha ishchilar shu org ga bog\'lanadi';
+  } else {
+    typeEl.textContent = '👤 Shaxs';
+    noteEl.textContent = 'Shaxs uchun shaxsiy login/parol yaratiladi';
+  }
+}
+
+window.debtOrgInput = function(input){
+  const q = input.value.toLowerCase().trim();
+  const sug = document.getElementById('debt-org-suggestions');
+  updateDebtLoginType(q);
+  if(!q){ sug.style.display='none'; return; }
+  const orgs = [...new Set(DB.debtors.filter(d=>d.org).map(d=>d.org))].filter(o=>o.toLowerCase().includes(q));
+  if(!orgs.length){ sug.style.display='none'; return; }
+  sug.innerHTML = orgs.map(o=>`<div onclick="selectDebtOrg('${o.replace(/'/g,"\\'")}')" style="padding:.55rem 1rem;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)">${o}</div>`).join('');
+  sug.style.display='block';
+}
+window.selectDebtOrg = function(org){
+  document.getElementById('debt-org').value = org;
+  document.getElementById('debt-org-suggestions').style.display='none';
+  updateDebtLoginType(org);
+  const debtor = DB.debtors.find(d=>d.org===org);
+  if(debtor){
+    document.getElementById('debt-name').value = debtor.name||'';
+    document.getElementById('debt-phone').value = debtor.phone||'';
+    document.getElementById('debt-login').value = debtor.login||'';
+    document.getElementById('debt-password').value = debtor.password||'';
+  }
+}
+window.debtNameInput = function(input){
+  const q = input.value.toLowerCase().trim();
+  const sug = document.getElementById('debt-name-suggestions');
+  if(!q){ sug.style.display='none'; return; }
+  const org = document.getElementById('debt-org').value.trim();
+  let names = [];
+  if(org){
+    names = [...new Set(DB.debtors.filter(d=>d.org===org).map(d=>d.name))].filter(n=>n.toLowerCase().includes(q));
+  } else {
+    names = [...new Set(DB.debtors.filter(d=>d.name).map(d=>d.name))].filter(n=>n.toLowerCase().includes(q));
+  }
+  if(!names.length){ sug.style.display='none'; return; }
+  sug.innerHTML = names.map(n=>`<div onclick="selectDebtName('${n.replace(/'/g,"\\'")}')" style="padding:.55rem 1rem;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)">${n}</div>`).join('');
+  sug.style.display='block';
+}
+window.selectDebtName = function(name){
+  document.getElementById('debt-name').value = name;
+  document.getElementById('debt-name-suggestions').style.display='none';
+  const org = document.getElementById('debt-org').value.trim();
+  let debtor;
+  if(org){
+    debtor = DB.debtors.find(d=>d.org===org && d.name===name);
+  } else {
+    debtor = DB.debtors.find(d=>d.name===name && !d.org);
+  }
+  if(debtor){
+    if(debtor.phone) document.getElementById('debt-phone').value = debtor.phone||'';
+    if(debtor.login) document.getElementById('debt-login').value = debtor.login||'';
+    if(debtor.password) document.getElementById('debt-password').value = debtor.password||'';
+  }
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#debt-org') && !e.target.closest('#debt-org-suggestions'))
+    document.getElementById('debt-org-suggestions').style.display='none';
+  if(!e.target.closest('#debt-name') && !e.target.closest('#debt-name-suggestions'))
+    document.getElementById('debt-name-suggestions').style.display='none';
+});
+
+window.doDebtSell = async function(){
+  const name = document.getElementById('debt-name').value.trim();
+  const org = document.getElementById('debt-org').value.trim();
+  const phone = document.getElementById('debt-phone').value.trim();
+  const note = document.getElementById('debt-note').value.trim();
+  const loginVal = document.getElementById('debt-login').value.trim();
+  const passVal = document.getElementById('debt-password').value.trim();
+
+  if(!name){ toast('Qarz oluvchi ismini kiriting','red'); document.getElementById('debt-name').focus(); return; }
+
+  const items = Object.entries(cart);
+  if(!items.length){ toast('Savat bo\'sh','red'); return; }
+  let ok=true;
+  items.forEach(([id,qty])=>{ const p=DB.products.find(x=>x.id===id); if(!p||p.stock<qty){ toast(`${p?p.name:'Tovar'} yetarli emas!`,'red'); ok=false; } });
+  if(!ok) return;
+
+  const total = cartTotal();
+  const now = new Date().toISOString();
+
+  let debtor;
+  if(org){
+    debtor = DB.debtors.find(d=>d.org===org);
+  } else {
+    debtor = DB.debtors.find(d=>d.name===name && !d.org);
+  }
+
+  const debtorId = debtor ? debtor.id : uid();
+  
+  const finalLogin = loginVal || debtor?.login || (org ? 'org_'+org.replace(/\s/g,'_') : 'user_'+name.replace(/\s/g,'_'));
+  const finalPass = passVal || debtor?.password || '1234';
+  
+  const newDebtor = {
+    id: debtorId,
+    name: name,
+    org: org || '',
+    phone: phone || '',
+    login: finalLogin,
+    password: finalPass,
+    createdAt: debtor?.createdAt || now
+  };
+  await fbSaveDebtor(newDebtor);
+
+  const debtItems = items.map(([id,qty])=>{ const p=DB.products.find(x=>x.id===id); return {productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,subtotal:p.price*qty}; });
+  const debt = {
+    id: uid(),
+    debtorId: debtorId,
+    debtorName: name,
+    org: org || '',
+    phone: phone || '',
+    items: debtItems,
+    total: total,
+    paid: false,
+    paidDate: null,
+    date: now,
+    note: note,
+    seller: currentRole==='admin'?'Admin':'Sotuvchi',
+    type: org ? 'organization' : 'person'
+  };
+  await fbSaveDebt(debt);
+
+  const writes = [];
+  items.forEach(([id,qty])=>{
+    const p=DB.products.find(x=>x.id===id);
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,
+      seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
+    writes.push(fbSaveSale(sale));
+    writes.push(fbSaveProduct({...p, stock:p.stock-qty}));
+  });
+
+  cart={}; closeModal('modal-debt'); updateCartBtn(); renderSellGrid();
+  if(currentRole==='seller') renderMySales();
+  toast(`✓ Qarzga sotildi — ${fmt(total)} so'm · ${name}${org?' ('+org+')':''}`,'amber');
+  Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+
+// ===== DEBTS ADMIN =====
+window.setDebtFilter = function(f){
+  debtFilter = f;
+  ['all','active','paid','org','person'].forEach(t=>{
+    const b=document.getElementById('db-btn-'+t);
+    if(b) b.classList[t===f?'add':'remove']('blue');
+  });
+  renderDebts();
+}
+
+window.renderDebts = function(){
+  const q = (document.getElementById('debt-search')?.value||'').toLowerCase();
+  let list = [...DB.debts];
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
+  else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
+  if(q) list = list.filter(d=>
+    (d.debtorName||'').toLowerCase().includes(q) ||
+    (d.org||'').toLowerCase().includes(q)
+  );
+
+  const totalActive = DB.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaid = DB.debts.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = DB.debts.filter(d=>!d.paid).length;
+  const orgCount = new Set(DB.debts.filter(d=>d.org).map(d=>d.org)).size;
+  const personCount = new Set(DB.debts.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
+  
+  document.getElementById('debt-stats').innerHTML=`
+    <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
+
+  const container = document.getElementById('debts-list');
+  const none = document.getElementById('no-debts');
+  if(!list.length){ container.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+
+  const grouped = {};
+  list.forEach(d=>{
+    const key = d.org || d.debtorId || d.debtorName;
+    if(!grouped[key]) {
+      grouped[key] = {
+        debtorName: d.debtorName,
+        org: d.org || '',
+        phone: d.phone || '',
+        debts: [],
+        isOrg: !!d.org
+      };
+    }
+    grouped[key].debts.push(d);
+  });
+
+  container.innerHTML = Object.values(grouped).map(g=>{
+    const totalOwed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+    const debtor = DB.debtors.find(dd=>dd.name===g.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
+    const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+    const typeBadge = g.isOrg ? '<span class="badge blue">🏢 Tashkilot</span>' : '<span class="badge amber">👤 Shaxs</span>';
+    
+    return `<div class="card" style="margin-bottom:.85rem">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
+        <div>
+          <div style="font-weight:700;font-size:16px">${g.debtorName}${g.org?` <span style="font-size:13px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
+          ${g.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${g.phone}</div>`:''}
+          ${loginInfo}
+          ${typeBadge}
+          ${debtor?`<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
+          <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${g.debts.length} ta qarz</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        ${g.debts.map(d=>`
+          <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+              <div>
+                <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
+                <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
+                ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-top:.35rem">
+              ${d.items.map(i=>`${i.productName} ${i.volume?'('+i.volume+'L)':''} ×${i.qty} ta`).join(', ')}
+            </div>
+            ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+            <div style="font-size:12px;color:var(--text3);margin-top:.2rem">🕒 Olingan: ${timeStr(d.date||d.createdAt)}</div>
+            ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ To'langan: ${timeStr(d.paidDate)}${d.paidBy?' · '+d.paidBy:''}</div>`:''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.markDebtPaid = function(id){
+  const d = DB.debts.find(x=>x.id===id);
+  confirm2('Qarzni to\'langan deb belgilash', `${d?.debtorName} — ${fmt(d?.total)} so'm qarz to'landimi?`, async ()=>{
+    await fbUpdateDebt(id, {paid:true, paidDate:new Date().toISOString(), paidBy:(currentRole==='seller'?'Sotuvchi':'Admin')});
+    toast('Qarz to\'langan deb belgilandi','green');
+  });
+}
+
+// ===== DEBTOR LOGIN EDIT =====
+window.openDebtorLogin = function(id){
+  const debtor = DB.debtors.find(d=>d.id===id);
+  if(!debtor) return;
+  editingDebtorId = id;
+  document.getElementById('dl-name').value = debtor.name + (debtor.org ? ' · '+debtor.org : '');
+  document.getElementById('dl-type').value = debtor.org ? '🏢 Tashkilot' : '👤 Shaxs';
+  document.getElementById('dl-login').value = debtor.login||'';
+  document.getElementById('dl-password').value = debtor.password||'';
+  openModal('modal-debtor-login');
+}
+
+window.saveDebtorLogin = async function(){
+  const login = document.getElementById('dl-login').value.trim();
+  const password = document.getElementById('dl-password').value.trim();
+  if(!login || !password){ toast('Login va parolni kiriting','red'); return; }
+  const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
+  if(!debtor) return;
+  await fbSaveDebtor({...debtor, login, password});
+  closeModal('modal-debtor-login');
+  renderDebts();
+  toast('Login/Parol yangilandi','green');
+}
+
+// ===== SELL =====
 window.doCartSell=async function(){
   const items=Object.entries(cart);
   if(!items.length){ toast('Savat bo\'sh','red'); return; }
@@ -1332,6 +1721,7 @@ window.renderSellGrid=function(){
   }).join('');
 }
 
+// ===== MY SALES =====
 window.mySalesFilter = 'today';
 window.setMySalesFilter = function(type){
   mySalesFilter = type;
@@ -1349,7 +1739,6 @@ window.renderMySales=function(){
   info.textContent=`⏱ Siz ${revertMins} daqiqa ichida sotuvni qaytara olasiz.`;
   const now=new Date();
 
-  // Determine target date range based on filter
   let rangeStart=null, rangeEnd=null, label='Bugungi savdo';
   if(mySalesFilter==='today'){
     rangeStart=new Date(now); rangeStart.setHours(0,0,0,0);
@@ -1404,17 +1793,16 @@ window.revertSale=async function(id){
   toast('Savdo qaytarildi','amber');
 }
 
+// ===== HISTORY =====
 window.initHistory=function(){
   const sel=document.getElementById('f-product'); if(!sel) return;
   const cur=sel.value;
-  // Yig'amiz: hozirgi tovarlar nomlari + tarixdagi barcha noyob nomlar (o'chirilgan/o'zgartirilgan tovarlar uchun ham)
   const namesSet = new Set();
   DB.products.forEach(p=>namesSet.add(p.name));
   DB.sales.forEach(s=>namesSet.add(s.productName));
   const names = [...namesSet].sort((a,b)=>a.localeCompare(b,'uz'));
   sel.innerHTML='<option value="">Barcha tovarlar</option>';
   names.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
-  // Agar oldingi tanlangan qiymat ro'yxatda hali bor bo'lsa, saqlab qolamiz; aks holda tozalaymiz
   if(cur && names.includes(cur)) sel.value=cur; else sel.value='';
   const yrSel=document.getElementById('f-year'); const curYr=yrSel.value;
   const years=[...new Set(DB.sales.map(s=>new Date(s.date).getFullYear()))].sort((a,b)=>b-a);
@@ -1470,6 +1858,7 @@ window.exportCSV=function(){
   download('savdo_tarixi.csv','text/csv',csv);
 }
 
+// ===== STOCK HISTORY =====
 let shFilter='today';
 window.setStockHistFilter=function(type){
   shFilter=type;
@@ -1519,6 +1908,7 @@ window.exportStockCSV=function(){
   download('kirim_chiqim.csv','text/csv',csv);
 }
 
+// ===== SETTINGS =====
 window.savePins=async function(){
   const ap=document.getElementById('new-admin-pin').value, sp=document.getElementById('new-seller-pin').value;
   if(ap&&ap.length!==4){ toast("Admin PIN 4 raqam bo'lishi kerak",'red'); return; }
@@ -1542,6 +1932,7 @@ window.clearAll=function(){
   });
 }
 
+// ===== UTILITY =====
 window.openModal=function(id){ document.getElementById(id).classList.remove('hidden'); }
 window.closeModal=function(id){ document.getElementById(id).classList.add('hidden'); }
 document.querySelectorAll('.modal-overlay').forEach(m=>{ m.addEventListener('click',e=>{ if(e.target===m) m.classList.add('hidden'); }); });
@@ -1573,18 +1964,13 @@ function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
 function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
 function download(name,type,content){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
 
-// ===== KEYBOARD SHORTCUTS =====
 document.addEventListener('keydown', e=>{
-  // ESC closes any open modal
   if(e.key==='Escape'){
     document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m=>m.classList.add('hidden'));
     return;
   }
-  // Don't trigger shortcuts while typing in inputs (except our specific cases)
   const tag = document.activeElement.tagName;
   const isTyping = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT';
-
-  // "/" focuses search on sell or products page
   if(e.key==='/' && !isTyping){
     e.preventDefault();
     const sellSearch = document.getElementById('sell-search');
@@ -1592,7 +1978,6 @@ document.addEventListener('keydown', e=>{
     if(document.getElementById('page-sell')?.classList.contains('active') && sellSearch){ sellSearch.focus(); }
     else if(document.getElementById('page-products')?.classList.contains('active') && prodSearch){ prodSearch.focus(); }
   }
-  // Ctrl/Cmd+Enter opens cart on sell page
   if((e.ctrlKey||e.metaKey) && e.key==='Enter'){
     if(document.getElementById('page-sell')?.classList.contains('active') && cartCount()>0){
       e.preventDefault();
