@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Do'kon Hisobotlari</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -29,12 +30,12 @@
   #sync-dot.syncing{background:#60a5fa;animation:pulse-dot .6s ease}
   @keyframes pulse-dot{0%{transform:scale(1.6);opacity:.5}100%{transform:scale(1);opacity:1}}
 
-  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:0.5rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
-  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1;min-width:100px}
+  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
+  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
   nav .logo span{color:#60a5fa}
-  nav button.nav-tab{background:none;border:none;color:#94a3b8;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:.15s;white-space:nowrap}
+  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8}
+  nav button.nav-tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s;white-space:nowrap}
   nav button.nav-tab.active,nav button.nav-tab:hover{background:#334155;color:#fff}
-  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px}
 
   .page{padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
 
@@ -49,9 +50,9 @@
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
 
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
-  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
   .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
-  .stat .val{font-size:24px;font-weight:700;margin-bottom:.15rem}
+  .stat .val{font-size:26px;font-weight:700;margin-bottom:.15rem}
   .stat .lbl{font-size:13px;color:var(--text3);font-weight:500}
   .stat.green .val{color:var(--green)}
   .stat.blue .val{color:var(--accent)}
@@ -60,34 +61,50 @@
 
   .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
   table{width:100%;border-collapse:collapse;background:var(--surface)}
-  th{background:var(--surface2);padding:.6rem .8rem;text-align:left;font-size:12px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+  th{background:var(--surface2);padding:.75rem 1rem;text-align:left;font-size:13px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
   th:hover{background:#f0efe9}
   th .arrow{font-size:10px;color:var(--text3);margin-left:3px}
-  td{padding:.6rem .8rem;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+  td{padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
   tr:last-child td{border-bottom:none}
   tr:hover td{background:#fafaf8}
+  tr.group-row{cursor:pointer}
+  tr.group-row td:first-child{position:relative;padding-left:1.9rem}
+  tr.group-row td:first-child::before{content:'▸';position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text3);font-size:11px;transition:.15s}
+  tr.group-row.open td:first-child::before{content:'▾'}
+  tr.group-row.open td{background:var(--accent-bg)}
+  tr.detail-row td{background:var(--surface2);padding:.5rem .75rem .75rem 2.4rem;border-bottom:1px solid var(--border)}
+  table.detail-tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  table.detail-tbl th{background:#f0efe9;padding:.45rem .75rem;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--text3);font-weight:700;border-bottom:1px solid var(--border);cursor:default}
+  table.detail-tbl th:hover{background:#f0efe9}
+  table.detail-tbl td{padding:.45rem .75rem;font-size:13px;border-bottom:1px solid var(--border)}
+  table.detail-tbl tr:last-child td{border-bottom:none}
+  table.detail-tbl tr.detail-line:hover td{background:var(--surface2)}
+
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
+  .toast.show{opacity:1;transform:translateY(0)}
+
   tfoot td{font-weight:700;background:var(--surface2);border-top:2px solid var(--border)}
 
-  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
   .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
   .badge.blue{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
   .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
   .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
 
-  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
-  .section-header h2{font-size:18px;font-weight:700}
-  .section-header p{font-size:12px;color:var(--text3);margin-top:.1rem}
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+  .section-header h2{font-size:20px;font-weight:700}
+  .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
 
-  .filter-bar{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem}
-  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:12px;outline:none;background:#fff}
+  .filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
+  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
 
-  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .8rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
   .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn.blue:hover{background:#1d4ed8}
-  .btn.sm{padding:.3rem .6rem;font-size:11px}
+  .btn.sm{padding:.4rem .75rem;font-size:12px}
 
-  .stock-bar-wrap{background:var(--border);border-radius:4px;height:8px;width:100%;min-width:60px;overflow:hidden}
+  .stock-bar-wrap{background:var(--border);border-radius:4px;height:8px;width:100%;min-width:80px;overflow:hidden}
   .stock-bar{height:100%;border-radius:4px;transition:.3s}
 
   /* DEBT CARD STYLES */
@@ -95,7 +112,7 @@
   .debt-card.active{border-left:4px solid var(--amber)}
   .debt-card.paid{border-left:4px solid var(--green);opacity:.85}
   .debt-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.85rem}
-  .debt-amount{font-size:26px;font-weight:800;color:var(--amber)}
+  .debt-amount{font-size:28px;font-weight:800;color:var(--amber)}
   .debt-amount.paid{color:var(--green)}
   .debt-date{font-size:13px;color:var(--text3)}
   .debt-items{background:var(--surface2);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem}
@@ -103,46 +120,39 @@
   .debt-item-row{display:flex;justify-content:space-between;font-size:13px;padding:.2rem 0;border-bottom:1px solid var(--border)}
   .debt-item-row:last-child{border:none}
 
-  /* Organization header in debts */
-  .org-header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border-radius:14px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
-  .org-header .org-name{font-size:20px;font-weight:700}
-  .org-header .org-meta{font-size:13px;color:#94a3b8}
-
-  .person-filter{display:flex;gap:.4rem;flex-wrap:wrap;margin:0.5rem 0 1rem 0}
-  .person-filter .btn{font-size:11px;padding:.25rem .7rem}
-
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.8rem 1.2rem;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
-  .toast.show{opacity:1;transform:translateY(0)}
-
   @media(max-width:768px){
-    nav{height:auto;min-height:50px;padding:.4rem .6rem;gap:.3rem}
-    nav .logo{font-size:14px;min-width:80px}
-    nav button.nav-tab{font-size:11px;padding:4px 7px}
-    .stat-grid{grid-template-columns:1fr 1fr;gap:.5rem}
-    .stat{padding:.8rem}
+    nav{height:auto;min-height:52px;padding:.5rem .75rem;flex-wrap:wrap;gap:.4rem}
+    nav .logo{font-size:15px}
+    nav button.nav-tab{padding:6px 10px;font-size:12px}
+    .stat-grid{grid-template-columns:1fr 1fr;gap:.6rem}
+    .stat{padding:.85rem 1rem}
     .stat .val{font-size:20px}
-    .page{padding:.5rem}
-    .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.4rem .6rem;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.3rem}
+    .page{padding:.65rem}
+    .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.6rem .75rem;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.35rem}
     .filter-bar::-webkit-scrollbar{display:none}
-    .filter-bar input[type="date"]{min-width:110px;font-size:11px}
-    .filter-bar select{min-width:100px;font-size:11px}
+    .filter-bar input[type="date"]{min-width:130px;font-size:12px}
+    .filter-bar select{min-width:120px;font-size:12px}
     .tbl-wrap{border-radius:8px}
     table thead{display:none}
-    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.5rem;padding:.6rem;background:#fff;box-shadow:var(--shadow)}
-    table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.25rem 0;border:none;font-size:12px}
-    table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:11px;flex-shrink:0;margin-right:.5rem}
+    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:#fff;box-shadow:var(--shadow)}
+    table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border:none;font-size:13px}
+    table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:12px;flex-shrink:0;margin-right:.5rem}
     table tbody tr:hover td{background:transparent}
     table tfoot{display:none}
-    .login-card{width:calc(100% - 2rem);max-width:340px;padding:2rem 1.2rem}
-    .section-header h2{font-size:17px}
+    tr.detail-row td{padding:.5rem}
+    table.detail-tbl{display:block;overflow-x:auto}
+    table.detail-tbl thead{display:table-header-group}
+    table.detail-tbl tbody tr{display:table-row;border:none;border-radius:0;margin:0;padding:0;box-shadow:none}
+    table.detail-tbl tbody td{display:table-cell;padding:.45rem .75rem;border-bottom:1px solid var(--border)}
+    table.detail-tbl tbody td:before{display:none}
+    .login-card{width:calc(100% - 2rem);max-width:340px;padding:2rem 1.5rem}
+    .section-header h2{font-size:18px}
     .debt-amount{font-size:22px}
     .debt-card{padding:1rem}
-    .org-header .org-name{font-size:17px}
-    .org-header{padding:.8rem 1rem}
   }
   @media(max-width:400px){
     .stat-grid{grid-template-columns:1fr}
-    nav button.nav-tab{font-size:10px;padding:3px 5px}
+    nav button.nav-tab{padding:5px 7px;font-size:11px}
   }
 </style>
 </head>
@@ -187,9 +197,9 @@
     <button class="btn sm" id="btn-month" onclick="setPeriod('month')">Bu oy</button>
     <button class="btn sm" id="btn-all" onclick="setPeriod('all')">Hammasi</button>
     <input type="date" id="custom-from" onchange="setPeriod('custom')">
-    <span style="font-size:11px;color:var(--text3)">—</span>
+    <span style="font-size:12px;color:var(--text3)">—</span>
     <input type="date" id="custom-to" onchange="setPeriod('custom')">
-    <button class="btn sm" style="margin-left:auto" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn sm" style="margin-left:auto" onclick="exportCSV()">⬇ CSV yuklab olish</button>
   </div>
 
   <div class="stat-grid" id="stat-grid"></div>
@@ -225,7 +235,7 @@
     <button class="btn sm" id="sf-low" onclick="setStockFilter('low')">⚠️ Kam qolgan (≤10)</button>
     <button class="btn sm" id="sf-out" onclick="setStockFilter('out')">🔴 Tugagan</button>
     <button class="btn sm" id="sf-ok" onclick="setStockFilter('ok')">✅ Yetarli</button>
-    <select id="stock-vol-filter" onchange="renderStock()" style="margin-left:.3rem">
+    <select id="stock-vol-filter" onchange="renderStock()" style="margin-left:.5rem">
       <option value="">Barcha hajmlar</option>
       <option value="0.25">0.25 L</option>
       <option value="0.5">0.5 L</option>
@@ -233,7 +243,7 @@
       <option value="1.5">1.5 L</option>
       <option value="2.0">2.0 L</option>
     </select>
-    <input type="text" id="stock-search" placeholder="🔍 Tovar qidirish..." oninput="renderStock()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:12px;outline:none;background:#fff;min-width:140px;margin-left:auto">
+    <input type="text" id="stock-search" placeholder="🔍 Tovar qidirish..." oninput="renderStock()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
     <button class="btn sm" onclick="exportStockCSV()">⬇ CSV</button>
   </div>
 
@@ -254,30 +264,22 @@
 </div>
 </div>
 
-<!-- QARZLAR BO'LIMI (YANGILANGAN - TASHKILOT VA SHAXSLAR BO'YICHA) -->
+<!-- QARZLAR BO'LIMI (yangilangan) -->
 <div id="main-debts" style="display:none">
 <div class="page">
   <div class="section-header">
     <div><h2>💳 Qarzlar hisoboti</h2><p id="debts-updated">Real vaqtda yangilanadi</p></div>
-    <input type="text" id="report-debt-search" oninput="renderReportDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:12px;outline:none;background:#fff;min-width:160px">
+    <input type="text" id="report-debt-search" oninput="renderReportDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px">
   </div>
 
   <div class="filter-bar">
     <button class="btn sm" id="rdb-all" onclick="setReportDebtFilter('all')">Barchasi</button>
-    <button class="btn sm blue" id="rdb-active" onclick="setReportDebtFilter('active')">Faol qarzlar</button>
+    <button class="btn sm" id="rdb-active" onclick="setReportDebtFilter('active')">Faol qarzlar</button>
     <button class="btn sm" id="rdb-paid" onclick="setReportDebtFilter('paid')">To'langan</button>
-    <button class="btn sm" id="rdb-org" onclick="setReportDebtFilter('org')">🏢 Tashkilotlar</button>
-    <button class="btn sm" id="rdb-person" onclick="setReportDebtFilter('person')">👤 Shaxslar</button>
     <button class="btn sm" style="margin-left:auto" onclick="exportDebtsCSV()">⬇ CSV</button>
   </div>
 
   <div id="report-debt-stats" class="stat-grid" style="margin-bottom:1.25rem"></div>
-
-  <!-- Tashkilot bo'yicha saralash uchun filter -->
-  <div id="report-org-filter" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem">
-    <span style="font-size:12px;font-weight:600;color:var(--text2);margin-right:.3rem">🏢 Tashkilot:</span>
-    <button class="btn sm blue" id="rof-all" onclick="setReportOrgFilter('all')">Barchasi</button>
-  </div>
 
   <div id="report-debts-list"></div>
   <p id="no-report-debts" style="color:var(--text3);text-align:center;padding:3rem;display:none">Qarz topilmadi.</p>
@@ -311,6 +313,7 @@ let period = 'today';
 let sortKey = 'total';
 let sortDir = -1;
 let loggedIn = false;
+let expandedKeys = new Set();
 let renderDebounce = null;
 let knownSaleIds = null;
 let PRODUCTS = [];
@@ -321,8 +324,6 @@ let activeMain = 'report';
 let DEBTS = [];
 let DEBTORS = [];
 let reportDebtFilter = 'active';
-let reportOrgFilter = 'all';
-let reportOrgButtons = [];
 
 async function init(){
   try{
@@ -338,6 +339,7 @@ async function init(){
       }
     });
 
+    // Real-vaqt savdo tinglovchi
     onSnapshot(collection(db,'sales'), snap=>{
       const newSales = snap.docs.map(d=>d.data());
       if(knownSaleIds !== null){
@@ -354,6 +356,7 @@ async function init(){
       pulseSyncDot();
     });
 
+    // Real-vaqt zaxira tinglovchi
     onSnapshot(collection(db,'products'), snap=>{
       PRODUCTS = snap.docs.map(d=>d.data());
       PRODUCTS.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
@@ -361,6 +364,7 @@ async function init(){
       pulseSyncDot();
     });
 
+    // Real-vaqt qarzlar tinglovchi
     let debtDebounce=null;
     onSnapshot(collection(db,'debts'), snap=>{
       DEBTS = snap.docs.map(d=>d.data());
@@ -368,11 +372,20 @@ async function init(){
       clearTimeout(debtDebounce);
       debtDebounce=setTimeout(()=>{ if(loggedIn && activeMain==='debts') renderReportDebts(); },30);
       pulseSyncDot();
+    }, err=>{
+      console.error("debts o'qishda xatolik:", err);
+      const subEl = document.getElementById('debts-updated');
+      if(subEl){ subEl.textContent = "❌ Qarzlarni yuklab bo'lmadi: "+err.message; subEl.style.color='var(--red)'; }
     });
     
+    // Real-vaqt qarzdorlar tinglovchi
     onSnapshot(collection(db,'debtors'), snap=>{
       DEBTORS = snap.docs.map(d=>d.data());
       if(loggedIn && activeMain==='debts') renderReportDebts();
+    }, err=>{
+      console.error("debtors o'qishda xatolik:", err);
+      const subEl = document.getElementById('debts-updated');
+      if(subEl){ subEl.textContent = "❌ Qarzdorlarni yuklab bo'lmadi: "+err.message; subEl.style.color='var(--red)'; }
     });
 
     document.getElementById('loading-screen').classList.add('hidden');
@@ -474,17 +487,24 @@ function getRange(){
   return {start,end,label};
 }
 
+let _dateCache = new Map();
+function getDate(iso){
+  let d = _dateCache.get(iso);
+  if(!d){ d = new Date(iso); _dateCache.set(iso, d); }
+  return d;
+}
 let _timeCache = new Map();
 function timeStr(iso){
   let s = _timeCache.get(iso);
   if(!s){
-    const d = new Date(iso);
+    const d = getDate(iso);
     s = d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
     _timeCache.set(iso, s);
   }
   return s;
 }
 function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
+function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
 
 function render(){
   const {start,end,label} = getRange();
@@ -496,7 +516,7 @@ function render(){
   for(let i=0; i<SALES.length; i++){
     const s = SALES[i];
     if(s.reverted) continue;
-    const t = new Date(s.date).getTime();
+    const t = getDate(s.date).getTime();
     if(t >= startT && t <= endT) filtered.push(s);
   }
 
@@ -512,8 +532,8 @@ function render(){
     const s = filtered[i];
     const key = s.productName+'|'+(s.volume||'');
     let g = groups[key];
-    if(!g){ g={key,name:s.productName,volume:s.volume||'',qty:0,orders:0,total:0}; groups[key]=g; }
-    g.qty+=s.qty; g.orders++; g.total+=s.total;
+    if(!g){ g={key,name:s.productName,volume:s.volume||'',qty:0,orders:0,total:0,sales:[]}; groups[key]=g; }
+    g.qty+=s.qty; g.orders++; g.total+=s.total; g.sales.push(s);
   }
   const rows = Object.values(groups);
 
@@ -531,9 +551,19 @@ function render(){
   if(!rows.length){ tbody.innerHTML=''; tfoot.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
-  tbody.innerHTML = rows.map(r=>`
-    <tr><td data-label="Tovar"><strong>${r.name}</strong></td><td data-label="Hajm">${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td><td data-label="Sotilgan">${r.qty} ta</td><td data-label="Savdo">${r.orders} ta</td><td data-label="Jami" style="font-weight:700;color:var(--green)">${fmt(r.total)} so'm</td></tr>
-  `).join('');
+  const parts = [];
+  for(let i=0; i<rows.length; i++){
+    const r = rows[i];
+    const isOpen = expandedKeys.has(r.key);
+    parts.push(`<tr class="group-row${isOpen?' open':''}" data-key="${escAttr(r.key)}"><td data-label="Tovar"><strong>${r.name}</strong></td><td data-label="Hajm">${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td><td data-label="Sotilgan">${r.qty} ta</td><td data-label="Savdo">${r.orders} ta</td><td data-label="Jami" style="font-weight:700;color:var(--green)">${fmt(r.total)} so'm</td></tr>`);
+    if(isOpen){
+      const sales = r.sales.slice().sort((a,b)=>getDate(b.date).getTime()-getDate(a.date).getTime());
+      let dRows='';
+      for(const s of sales) dRows+=`<tr class="detail-line"><td style="white-space:nowrap;color:var(--text2)">🕐 ${timeStr(s.date)}</td><td>${s.productName}</td><td>${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:600;color:var(--green)">${fmt(s.total)} so'm</td></tr>`;
+      parts.push(`<tr class="detail-row"><td colspan="5"><table class="detail-tbl"><thead><tr><th>Vaqti</th><th>Nomi</th><th>Hajmi</th><th>Donasi</th><th>Summasi</th></tr></thead><tbody>${dRows}</tbody></table></td></tr>`);
+    }
+  }
+  tbody.innerHTML = parts.join('');
   tfoot.innerHTML = `<tr><td>Jami (${rows.length} xil tovar)</td><td>—</td><td>${totalQty} ta</td><td>${filtered.length} ta</td><td style="color:var(--green)">${fmt(totalRev)} so'm</td></tr>`;
 }
 
@@ -545,7 +575,7 @@ window.switchMain = function(tab){
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('navtab-'+tab).classList.add('active');
   if(tab==='stock') renderStock();
-  if(tab==='debts'){ setReportDebtFilter('active'); }
+  if(tab==='debts') setReportDebtFilter('active');
 }
 
 // ===== STOCK =====
@@ -612,7 +642,7 @@ window.renderStock = function(){
     const pct=Math.min(100,p.stock/maxStock*100|0);
     const bc=p.stock===0?'#dc2626':p.stock<=5?'#d97706':p.stock<=10?'#f59e0b':'#16a34a';
     const badge=p.stock===0?'<span class="badge red">🔴 Tugagan</span>':p.stock<=5?'<span class="badge red">⚠️ Kritik kam</span>':p.stock<=10?'<span class="badge amber">⚠️ Kam qoldi</span>':'<span class="badge green">✅ Yetarli</span>';
-    parts.push(`<tr><td data-label="Tovar"><strong>${p.name}</strong></td><td data-label="Hajm">${p.volume?`<span class="badge blue">${p.volume} L</span>`:'—'}</td><td data-label="Zaxira"><div style="display:flex;align-items:center;gap:.5rem"><span style="font-weight:700;font-size:14px;color:${bc};min-width:30px">${p.stock}</span><div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${bc}"></div></div></div></td><td data-label="Narx">${fmt(p.price)} so'm</td><td data-label="Qiymati" style="font-weight:600;color:var(--accent)">${fmt(p.price*p.stock)} so'm</td><td data-label="Holat">${badge}</td></tr>`);
+    parts.push(`<tr><td data-label="Tovar"><strong>${p.name}</strong></td><td data-label="Hajm">${p.volume?`<span class="badge blue">${p.volume} L</span>`:'—'}</td><td data-label="Zaxira"><div style="display:flex;align-items:center;gap:.6rem"><span style="font-weight:700;font-size:15px;color:${bc};min-width:36px">${p.stock}</span><div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${bc}"></div></div></div></td><td data-label="Narx">${fmt(p.price)} so'm</td><td data-label="Qiymati" style="font-weight:600;color:var(--accent)">${fmt(p.price*p.stock)} so'm</td><td data-label="Holat">${badge}</td></tr>`);
   }
   tbody.innerHTML=parts.join('');
 }
@@ -629,56 +659,13 @@ window.exportStockCSV = function(){
   a.click();
 }
 
-// ===== QARZLAR BO'LIMI (YANGILANGAN - TASHKILOT VA SHAXSLAR BO'YICHA) =====
+// ===== QARZLAR BO'LIMI (YANGILANGAN - LOGIN/PAROL BILAN) =====
 window.setReportDebtFilter = function(f){
   reportDebtFilter = f;
-  ['all','active','paid','org','person'].forEach(k=>{
-    const b=document.getElementById('rdb-'+k);
-    if(b) b.classList[k===f?'add':'remove']('blue');
-  });
-  // Agar org yoki person tanlansa, org filterini "all" ga qaytaramiz
-  if(f==='org' || f==='person'){
-    setReportOrgFilter('all');
-  }
-  renderReportDebts();
-}
-
-window.setReportOrgFilter = function(org){
-  reportOrgFilter = org;
-  reportOrgButtons.forEach(b => {
-    b.classList.remove('blue');
-    if(b.textContent === org || (org === 'all' && b.textContent === 'Barchasi')){
-      b.classList.add('blue');
-    }
+  ['all','active','paid'].forEach(k=>{
+    const b=document.getElementById('rdb-'+k); if(b) b.classList[k===f?'add':'remove']('blue');
   });
   renderReportDebts();
-}
-
-function buildOrgFilter(){
-  const container = document.getElementById('report-org-filter');
-  // Tozalash
-  const existing = container.querySelectorAll('.btn');
-  existing.forEach(b => b.remove());
-  
-  // "Barchasi" tugmasi
-  const allBtn = document.createElement('button');
-  allBtn.className = 'btn sm blue';
-  allBtn.textContent = 'Barchasi';
-  allBtn.onclick = () => setReportOrgFilter('all');
-  container.prepend(allBtn);
-  
-  // Tashkilotlar ro'yxati (faqat qarzlari bor tashkilotlar)
-  const orgs = [...new Set(DEBTS.filter(d=>d.org).map(d=>d.org))].filter(Boolean);
-  orgs.forEach(org => {
-    const btn = document.createElement('button');
-    btn.className = 'btn sm';
-    btn.textContent = org;
-    btn.dataset.org = org;
-    btn.onclick = () => setReportOrgFilter(org);
-    container.appendChild(btn);
-  });
-  reportOrgButtons = container.querySelectorAll('.btn');
-  setReportOrgFilter('all');
 }
 
 window.renderReportDebts = function(){
@@ -686,71 +673,44 @@ window.renderReportDebts = function(){
   if(subEl) subEl.textContent = 'Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})+' · Real vaqtda';
 
   const q = (document.getElementById('report-debt-search')?.value||'').toLowerCase();
-  
-  // Org filterlarini qurish
-  buildOrgFilter();
-  
   let list = DEBTS.slice();
-  
-  // Asosiy filter
   if(reportDebtFilter==='active') list = list.filter(d=>!d.paid);
   else if(reportDebtFilter==='paid') list = list.filter(d=>d.paid);
-  else if(reportDebtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
-  else if(reportDebtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
-  
-  // Tashkilot bo'yicha filter
-  if(reportOrgFilter !== 'all'){
-    list = list.filter(d => d.org === reportOrgFilter);
-  }
-  
-  // Qidiruv
-  if(q) list = list.filter(d=>
-    (d.debtorName||'').toLowerCase().includes(q) ||
-    (d.org||'').toLowerCase().includes(q)
-  );
+  if(q) list = list.filter(d=>(d.debtorName||'').toLowerCase().includes(q)||(d.org||'').toLowerCase().includes(q));
 
   // Statistika
   const totalActive = DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaid   = DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = DEBTS.filter(d=>!d.paid).length;
   const totalDebtors= new Set(DEBTS.filter(d=>!d.paid).map(d=>d.debtorId||d.debtorName)).size;
-  const orgCount = new Set(DEBTS.filter(d=>d.org).map(d=>d.org)).size;
 
   const sg = document.getElementById('report-debt-stats');
   sg.innerHTML = `
     <div class="stat amber"><div class="val">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz (so'm)</div></div>
     <div class="stat red"><div class="val">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
     <div class="stat blue"><div class="val">${totalDebtors}</div><div class="lbl">👤 Qarzdorlar soni</div></div>
-    <div class="stat green"><div class="val">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan (so'm)</div></div>
-    <div class="stat blue"><div class="val">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>`;
+    <div class="stat green"><div class="val">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan (so'm)</div></div>`;
 
   const container = document.getElementById('report-debts-list');
   const none = document.getElementById('no-report-debts');
   if(!list.length){ container.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
-  // Qarzdor bo'yicha guruhlash (tashkilot + shaxs)
+  // Qarzdor bo'yicha guruhlash
   const grouped = Object.create(null);
   for(const d of list){
-    const key = d.org || d.debtorId || d.debtorName;
-    if(!grouped[key]) {
-      grouped[key] = {
-        debtorName: d.debtorName,
-        org: d.org || '',
-        phone: d.phone || '',
-        debts: [],
-        isOrg: !!d.org
-      };
-    }
+    const key = d.debtorId || d.debtorName;
+    if(!grouped[key]) grouped[key]={debtorName:d.debtorName,org:d.org,phone:d.phone,debts:[]};
     grouped[key].debts.push(d);
   }
 
   const parts = [];
   for(const g of Object.values(grouped)){
     const owed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-    const debtor = DEBTORS.find(dd=>dd.name===g.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
+    const debtor = DEBTORS.find(dd=>dd.name===g.debtorName);
+    
+    // 🔐 LOGIN/PAROL MA'LUMOTI
     const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
-    const typeBadge = g.isOrg ? '<span class="badge blue">🏢 Tashkilot</span>' : '<span class="badge amber">👤 Shaxs</span>';
     
     parts.push(`<div class="card" style="margin-bottom:.85rem">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
@@ -758,7 +718,6 @@ window.renderReportDebts = function(){
           <div style="font-weight:700;font-size:16px">${g.debtorName}${g.org?` <span style="font-size:13px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
           ${g.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${g.phone}</div>`:''}
           ${loginInfo}
-          ${typeBadge}
         </div>
         <div style="text-align:right">
           <div style="font-size:22px;font-weight:700;color:${owed>0?'var(--amber)':'var(--green)'}">${fmt(owed)} so'm</div>
@@ -766,18 +725,17 @@ window.renderReportDebts = function(){
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:.5rem">
-        ${g.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.6rem .8rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem">
+        ${g.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
             <div>
-              <span style="font-size:12px;color:var(--text2)">${timeStr(d.date)}</span>
-              <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.3rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
-              ${d.org ? `<span style="font-size:11px;color:var(--text3);margin-left:.3rem">👤 ${d.debtorName}</span>` : ''}
+              <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
+              <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
             </div>
-            <span style="font-weight:700;font-size:14px">${fmt(d.total)} so'm</span>
+            <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
           </div>
-          <div style="font-size:12px;color:var(--text2);margin-top:.3rem">${(d.items||[]).map(i=>`${i.productName} ×${i.qty}`).join(', ')}</div>
-          ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.15rem">📝 ${d.note}</div>`:''}
-          ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.15rem">✅ ${timeStr(d.paidDate)}</div>`:''}
+          <div style="font-size:12px;color:var(--text2);margin-top:.35rem">${(d.items||[]).map(i=>`${i.productName} ×${i.qty}`).join(', ')}</div>
+          ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+          ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
         </div>`).join('')}
       </div>
     </div>`);
@@ -789,15 +747,10 @@ window.exportDebtsCSV = function(){
   let list = DEBTS;
   if(reportDebtFilter==='active') list=list.filter(d=>!d.paid);
   else if(reportDebtFilter==='paid') list=list.filter(d=>d.paid);
-  else if(reportDebtFilter==='org') list=list.filter(d=>d.org);
-  else if(reportDebtFilter==='person') list=list.filter(d=>!d.org);
-  
-  if(reportOrgFilter !== 'all') list=list.filter(d=>d.org===reportOrgFilter);
-  
   let csv = 'Sana,Ism,Tashkilot,Telefon,Tovarlar,Summa,Holat,To\'langan sana,Login,Parol\n';
   list.forEach(d=>{
     const items=(d.items||[]).map(i=>`${i.productName}x${i.qty}`).join(';');
-    const debtor = DEBTORS.find(dd=>dd.name===d.debtorName && (dd.org===d.org || (!d.org && !dd.org)));
+    const debtor = DEBTORS.find(dd=>dd.name===d.debtorName);
     csv+=`"${timeStr(d.date)}","${d.debtorName||''}","${d.org||''}","${d.phone||''}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}","${debtor?.login||''}","${debtor?.password||''}"\n`;
   });
   const a=document.createElement('a');
@@ -805,6 +758,15 @@ window.exportDebtsCSV = function(){
   a.download='qarzlar_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
 }
+
+// Click to expand/collapse detail rows
+document.getElementById('report-body').addEventListener('click', e=>{
+  const tr = e.target.closest('tr.group-row');
+  if(!tr) return;
+  const key = tr.dataset.key;
+  if(expandedKeys.has(key)) expandedKeys.delete(key); else expandedKeys.add(key);
+  render();
+});
 
 init();
 </script>
