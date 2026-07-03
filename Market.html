@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Do'kon Boshqaruvi</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -28,12 +27,12 @@
   #sync-dot.syncing{background:#f59e0b;animation:pulse-dot 1s ease infinite}
   #sync-dot.error{background:#ef4444}
   @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
-  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:0.5rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
-  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1;min-width:120px}
+  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
+  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
   nav .logo span{color:#60a5fa}
-  nav button.tab{background:none;border:none;color:#94a3b8;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:.15s;white-space:nowrap}
+  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s}
   nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
-  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px}
+  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center}
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
   .page.active{display:block}
   #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
@@ -55,9 +54,9 @@
   .btn-primary:hover{background:#1d4ed8}
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
-  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
   .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
-  .stat .val{font-size:24px;font-weight:700;margin-bottom:.15rem}
+  .stat .val{font-size:26px;font-weight:700;margin-bottom:.15rem}
   .stat .lbl{font-size:13px;color:var(--text3);font-weight:500}
   .stat.green .val{color:var(--green)}
   .stat.blue .val{color:var(--accent)}
@@ -65,18 +64,18 @@
   .stat.red .val{color:var(--red)}
   .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
   table{width:100%;border-collapse:collapse;background:var(--surface)}
-  th{background:var(--surface2);padding:.6rem .8rem;text-align:left;font-size:12px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
-  td{padding:.6rem .8rem;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+  th{background:var(--surface2);padding:.75rem 1rem;text-align:left;font-size:13px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
+  td{padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
   tr:last-child td{border-bottom:none}
   tr:hover td{background:#fafaf8}
-  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.8rem}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
   .form-row.full{grid-template-columns:1fr}
-  .field{display:flex;flex-direction:column;gap:.3rem}
-  .field label{font-size:12px;font-weight:600;color:var(--text2)}
-  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .8rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;width:100%}
+  .field{display:flex;flex-direction:column;gap:.35rem}
+  .field label{font-size:13px;font-weight:600;color:var(--text2)}
+  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;width:100%}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
-  .field textarea{resize:vertical;min-height:60px}
-  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .9rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .field textarea{resize:vertical;min-height:70px}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
   .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn.blue:hover{background:#1d4ed8;border-color:#1d4ed8}
@@ -86,128 +85,111 @@
   .btn.red:hover{background:#b91c1c}
   .btn.amber{background:var(--amber);color:#fff;border-color:var(--amber)}
   .btn.amber:hover{background:#b45309}
-  .btn.sm{padding:.2rem .4rem;font-size:11px}
-  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .btn.sm{padding:.25rem .45rem;font-size:11px}
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
   .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
   .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
   .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
   .badge.blue{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
-  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
-  .section-header h2{font-size:18px;font-weight:700}
-  .section-header p{font-size:12px;color:var(--text3);margin-top:.1rem}
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+  .section-header h2{font-size:20px;font-weight:700}
+  .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
   .modal-overlay.hidden{display:none}
-  .modal{background:#fff;border-radius:14px;padding:1.5rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
-  .modal h3{font-size:17px;font-weight:700;margin-bottom:1rem}
-  .modal-footer{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.2rem;flex-wrap:wrap}
-  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
+  .modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+  .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
+  .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.6rem}
   .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.15s;cursor:pointer}
   .prod-card:hover{border-color:#aaa;box-shadow:0 4px 16px rgba(0,0,0,.1)}
-  .prod-card .img-wrap{height:100px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .prod-card .img-wrap{height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
   .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
-  .prod-card .img-wrap .no-img{font-size:32px;color:#ccc}
-  .prod-card .stock-badge{position:absolute;top:6px;right:6px}
-  .prod-card .body{padding:.5rem}
-  .prod-card .prod-name{font-weight:700;font-size:13px;margin-bottom:.2rem}
-  .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:14px}
-  .prod-card .prod-stock{font-size:12px;color:var(--text3);margin-top:.2rem}
-  .prod-card .prod-actions{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem}
-  .prod-card .prod-actions .btn{font-size:10px;padding:.15rem .4rem}
-  .qty-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.15s}
+  .prod-card .img-wrap .no-img{font-size:40px;color:#ccc}
+  .prod-card .stock-badge{position:absolute;top:8px;right:8px}
+  .prod-card .body{padding:.65rem}
+  .prod-card .prod-name{font-weight:700;font-size:14px;margin-bottom:.25rem}
+  .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:15px}
+  .prod-card .prod-stock{font-size:13px;color:var(--text3);margin-top:.25rem}
+  .prod-card .prod-actions{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.45rem}
+  .prod-card .prod-actions .btn{flex:1 1 calc(50% - .35rem);justify-content:center;min-width:0}
+  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.15s}
   .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem}
-  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:12px;outline:none;background:#fff}
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.8rem 1.2rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.15s;pointer-events:none;max-width:320px}
+  .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.15s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
   .toast.green{background:#166534}
   .toast.red{background:#991b1b}
   .toast.amber{background:#92400e}
-  .revert-info{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius);padding:.6rem .8rem;font-size:12px;color:#92400e;margin-bottom:1rem}
-  #sticky-cart{position:fixed;bottom:0;left:0;right:0;z-index:150;background:#1e293b;color:#fff;padding:.7rem 1rem;display:none;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,.25);flex-wrap:wrap}
+  .revert-info{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius);padding:.75rem 1rem;font-size:13px;color:#92400e;margin-bottom:1rem}
+  #sticky-cart{position:fixed;bottom:0;left:0;right:0;z-index:150;background:#1e293b;color:#fff;padding:.85rem 1.25rem;display:none;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,.25);flex-wrap:wrap}
   #sticky-cart.show{display:flex}
-  #sticky-cart .cart-info{font-size:14px;font-weight:600}
+  #sticky-cart .cart-info{font-size:15px;font-weight:600}
   #sticky-cart .cart-info span{color:#60a5fa}
   .prod-card.dragging{opacity:.4;border:2px dashed var(--accent)}
   .prod-card.drag-over{border:2px solid var(--accent);background:var(--accent-bg)}
-  .drag-handle{cursor:grab;color:#bbb;font-size:16px;padding:2px 6px;border-radius:4px;user-select:none}
-  .sort-bar{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem}
-  .sort-bar span{font-size:12px;color:var(--text2);font-weight:600;margin-right:.2rem}
-  #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:54px}
-  #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:9px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:.15s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
-  #mobile-tabbar button .tab-icon{font-size:18px;line-height:1}
+  .drag-handle{cursor:grab;color:#bbb;font-size:18px;padding:2px 6px;border-radius:4px;user-select:none}
+  .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
+  .sort-bar span{font-size:13px;color:var(--text2);font-weight:600;margin-right:.25rem}
+  #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:58px}
+  #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.15s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
+  #mobile-tabbar button .tab-icon{font-size:20px;line-height:1}
   #mobile-tabbar button.active{color:#60a5fa}
   #mobile-tabbar button.active .tab-icon{transform:translateY(-1px)}
-  .debt-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.7rem;box-shadow:var(--shadow)}
-  .debt-card.active{border-left:4px solid var(--amber)}
-  .debt-card.paid{border-left:4px solid var(--green);opacity:.85}
-  .debt-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem}
-  .debt-amount{font-size:22px;font-weight:800;color:var(--amber)}
-  .debt-amount.paid{color:var(--green)}
-  .debt-date{font-size:12px;color:var(--text3)}
-  .debt-items{background:var(--surface2);border-radius:8px;padding:.6rem .8rem;margin-top:.6rem}
-  .debt-items p{font-size:12px;color:var(--text2);margin-bottom:.25rem;font-weight:600}
-  .debt-item-row{display:flex;justify-content:space-between;font-size:12px;padding:.15rem 0;border-bottom:1px solid var(--border)}
-  .debt-item-row:last-child{border:none}
-  .suggestions{display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px;position:relative;z-index:10}
-  .suggestions div{padding:.5rem .8rem;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)}
-  .suggestions div:hover{background:var(--accent-bg)}
   @media(max-width:768px){
-    #sticky-cart{bottom:54px}
+    #sticky-cart{bottom:58px}
     .page{padding-bottom:70px}
-    nav{height:auto;min-height:50px;padding:0 .6rem;gap:.3rem}
-    nav .logo{font-size:14px;min-width:80px}
-    nav button.tab{font-size:11px;padding:4px 7px}
+    nav{height:52px;padding:0 .75rem}
+    nav .logo{font-size:15px}
     #nav-admin,#nav-seller{display:none!important}
-    nav .user-badge{font-size:11px;padding:2px 8px}
+    nav .user-badge{font-size:12px;padding:3px 10px}
     #mobile-tabbar{display:flex}
-    .page{padding:.5rem .5rem 65px}
+    .page{padding:.65rem .65rem 70px}
     .page.active{display:block}
-    .stat-grid{grid-template-columns:1fr 1fr;gap:.5rem}
-    .stat{padding:.8rem}
-    .stat .val{font-size:20px}
-    .product-grid{grid-template-columns:1fr 1fr;gap:.4rem}
-    .prod-card .img-wrap{height:80px}
-    .prod-card .body{padding:.4rem .5rem}
-    .prod-card .prod-name{font-size:12px}
-    .prod-card .prod-price{font-size:13px}
-    .prod-card .prod-actions .btn{font-size:9px;padding:.1rem .3rem}
-    .login-card{width:calc(100% - 2rem);max-width:380px;padding:1.8rem 1.2rem}
+    .stat-grid{grid-template-columns:1fr 1fr;gap:.65rem}
+    .stat{padding:1rem}
+    .stat .val{font-size:22px}
+    .product-grid{grid-template-columns:1fr 1fr;gap:.5rem}
+    .prod-card .img-wrap{height:100px}
+    .prod-card .body{padding:.5rem .6rem}
+    .prod-card .prod-name{font-size:13px}
+    .prod-card .prod-price{font-size:14px}
+    .prod-card .prod-actions{flex-wrap:wrap;gap:.25rem}
+    .prod-card .prod-actions .btn{flex:1;justify-content:center;min-width:0;font-size:11px;padding:.3rem .25rem}
+    .login-card{width:calc(100% - 2rem);max-width:380px;padding:2rem 1.5rem}
     .tbl-wrap{border-radius:8px}
     table thead{display:none}
-    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.5rem;padding:.6rem;background:#fff;box-shadow:var(--shadow)}
-    table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.25rem 0;border:none;font-size:12px}
-    table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:11px;flex-shrink:0;margin-right:.5rem}
+    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:#fff;box-shadow:var(--shadow)}
+    table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border:none;font-size:13px}
+    table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:12px;flex-shrink:0;margin-right:.5rem}
     table tbody tr:hover td{background:transparent}
     table tfoot{display:none}
-    .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.4rem .6rem;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding:.6rem .75rem;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .filter-bar::-webkit-scrollbar{display:none}
-    .filter-bar input[type="date"],.filter-bar select{min-width:100px;font-size:11px}
-    .sort-bar{overflow-x:auto;flex-wrap:nowrap;gap:.3rem;padding:.4rem .6rem}
+    .filter-bar input[type="date"],.filter-bar select{min-width:120px;font-size:12px}
+    .sort-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:.35rem}
     .sort-bar::-webkit-scrollbar{display:none}
     .modal-overlay{padding:.5rem .5rem 0}
-    .modal{border-radius:14px 14px 0 0;max-height:92vh;padding:1rem .8rem}
-    .modal h3{font-size:15px}
-    .section-header h2{font-size:17px}
-    .section-header .btn{padding:.3rem .6rem;font-size:11px}
-    .field input,.field select,.field textarea{padding:.6rem .7rem;font-size:15px}
-    #sticky-cart{padding:.5rem .8rem}
-    #sticky-cart .cart-info{font-size:13px}
-    #sell-search{font-size:15px!important;padding:.6rem .8rem!important}
-    .revert-info{font-size:11px}
-    .toast{bottom:70px;right:.5rem;left:.5rem;max-width:none;font-size:13px}
-    .debt-amount{font-size:20px}
-    .debt-card{padding:.8rem}
-    .form-row{grid-template-columns:1fr;gap:.5rem}
+    .modal{border-radius:14px 14px 0 0;max-height:92vh;padding:1.25rem 1rem}
+    .modal h3{font-size:16px}
+    .section-header h2{font-size:18px}
+    .section-header .btn{padding:.45rem .85rem;font-size:12px}
+    #dash-grid{grid-template-columns:1fr!important}
+    .field input,.field select,.field textarea{padding:.8rem .9rem;font-size:16px}
+    #sticky-cart{padding:.65rem 1rem}
+    #sticky-cart .cart-info{font-size:14px}
+    #sell-search{font-size:16px!important;padding:.75rem 1rem!important}
+    .revert-info{font-size:12px}
+    .toast{bottom:72px;right:.75rem;left:.75rem;max-width:none;font-size:13px}
+    #page-my-sales .filter-bar{overflow-x:auto;flex-wrap:nowrap}
   }
   @media(max-width:400px){
     .product-grid{grid-template-columns:1fr 1fr}
     .stat-grid{grid-template-columns:1fr 1fr}
-    .prod-card .img-wrap{height:70px}
+    .prod-card .img-wrap{height:85px}
   }
   @media(min-width:769px){
-    .product-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-    #nav-admin,#nav-seller{display:flex!important}
-    #mobile-tabbar{display:none!important}
+    .product-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
   }
 </style>
 </head>
@@ -248,28 +230,28 @@
 <div id="app" style="display:none">
 <nav>
   <div class="logo">🏪 <span>Do'kon</span></div>
-  <div id="nav-admin" style="display:none;gap:.2rem;flex-wrap:wrap">
-    <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh</button>
+  <div id="nav-admin" style="display:none;gap:.25rem">
+    <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa</button>
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
     <button class="tab" onclick="showPage('history','admin')">📋 Savdo tarixi</button>
     <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
     <button class="tab" onclick="showPage('debts','admin')">💳 Qarzlar</button>
     <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
   </div>
-  <div id="nav-seller" style="display:none;gap:.2rem;flex-wrap:wrap">
+  <div id="nav-seller" style="display:none;gap:.25rem">
     <button class="tab active" onclick="showPage('sell','seller')">🛒 Sotish</button>
-    <button class="tab" onclick="showPage('my-sales','seller')">📋 Mening sotuvlar</button>
-    <button class="tab" onclick="showPage('seller-debts','seller')">💳 Qarzlar</button>
+    <button class="tab" onclick="showPage('my-sales','seller')">📋 Mening sotuvlarim</button>
+    <button class="tab" onclick="showPage('debts','seller')">💳 Qarzlar</button>
   </div>
-  <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">🔴 Offline</div>
-  <div class="user-badge"><span id="sync-dot"></span><span id="user-badge-text">—</span></div>
-  <button class="btn sm" onclick="logout()" style="background:#334155;border-color:#475569;color:#94a3b8;font-size:11px">Chiqish</button>
+  <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
+  <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
+  <button class="btn sm" onclick="logout()" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
 </nav>
 
 <div class="page active" id="page-dashboard">
   <div class="section-header">
     <div><h2>Bosh sahifa</h2><p id="today-date"></p></div>
-    <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.3rem .7rem;font-size:12px;background:#fff;outline:none">
+    <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
       <option value="today">Bugun</option>
       <option value="week">Bu hafta</option>
       <option value="month">Bu oy</option>
@@ -279,16 +261,16 @@
   <div class="stat-grid" id="stat-grid"></div>
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;margin-bottom:1rem" id="dash-grid">
     <div class="card">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:.8rem">Bugungi savdolar</h3>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">Bugungi savdolar</h3>
       <div id="recent-sales"></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:1rem">
       <div class="card">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:.6rem">🏆 Top sotilganlar</h3>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🏆 Top sotilganlar</h3>
         <div id="top-products"></div>
       </div>
       <div class="card">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:.6rem">⚠️ Kam qolgan tovarlar</h3>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
         <div id="low-stock-list"></div>
       </div>
     </div>
@@ -305,12 +287,12 @@
   </div>
   <div class="sort-bar">
     <span>Tartib:</span>
-    <button class="btn sm" onclick="sortProducts('az')">A→Z</button>
-    <button class="btn sm" onclick="sortProducts('za')">Z→A</button>
-    <button class="btn sm" onclick="sortProducts('vol')">Hajm</button>
+    <button class="btn sm" onclick="sortProducts('az')">A → Z</button>
+    <button class="btn sm" onclick="sortProducts('za')">Z → A</button>
+    <button class="btn sm" onclick="sortProducts('vol')">Hajm bo'yicha</button>
     <button class="btn sm" onclick="sortProducts('stock_asc')">Kam zaxira</button>
-    <button class="btn sm" onclick="sortProducts('added')">Qo'shilgan</button>
-    <input type="text" id="prod-search" onkeyup="renderProducts()" placeholder="🔍 Qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:12px;outline:none;min-width:130px">
+    <button class="btn sm" onclick="sortProducts('added')">Qo'shilgan tartib</button>
+    <input type="text" id="prod-search" onkeyup="renderProducts()" placeholder="🔍 Qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;outline:none;min-width:160px">
   </div>
   <div class="product-grid" id="product-grid"></div>
   <p id="no-products" style="color:var(--text3);text-align:center;padding:3rem;display:none">Hali tovar yo'q.</p>
@@ -338,7 +320,7 @@
     <button class="btn sm" onclick="clearFilters()">✕ Tozalash</button>
     <button class="btn sm green" onclick="exportCSV()">⬇ CSV</button>
   </div>
-  <div id="history-summary" style="margin-bottom:.8rem"></div>
+  <div id="history-summary" style="margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
       <thead><tr><th>Sana/Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Narx</th><th>Jami</th><th>Sotuvchi</th><th>Holat</th><th>Amal</th></tr></thead>
@@ -352,7 +334,7 @@
   <div class="section-header">
     <div><h2>📦 Kirim / Chiqim tarixi</h2><p>Barcha zaxira o'zgarishlari</p></div>
   </div>
-  <div class="filter-bar" style="margin-bottom:.8rem">
+  <div class="filter-bar" style="margin-bottom:1rem">
     <button class="btn sm" id="sh-btn-today" onclick="setStockHistFilter('today')">Bugun</button>
     <button class="btn sm" id="sh-btn-yesterday" onclick="setStockHistFilter('yesterday')">Kecha</button>
     <button class="btn sm" id="sh-btn-week" onclick="setStockHistFilter('week')">Bu hafta</button>
@@ -364,7 +346,7 @@
     </select>
     <button class="btn sm green" onclick="exportStockCSV()">⬇ CSV</button>
   </div>
-  <div id="sh-stats" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
+  <div id="sh-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
       <thead><tr>
@@ -379,29 +361,29 @@
 <div class="page" id="page-settings">
   <div class="section-header"><h2>Sozlamalar</h2></div>
   <div class="card" style="max-width:420px">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:1rem">PIN kodlarni o'zgartirish</h3>
-    <div class="field" style="margin-bottom:.8rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1.25rem">PIN kodlarni o'zgartirish</h3>
+    <div class="field" style="margin-bottom:1rem">
       <label>Admin PIN</label>
       <input type="password" id="new-admin-pin" maxlength="4" placeholder="Yangi 4 raqamli PIN" inputmode="numeric">
     </div>
-    <div class="field" style="margin-bottom:.8rem">
+    <div class="field" style="margin-bottom:1.25rem">
       <label>Sotuvchi PIN</label>
       <input type="password" id="new-seller-pin" maxlength="4" placeholder="Yangi 4 raqamli PIN" inputmode="numeric">
     </div>
     <button class="btn blue" onclick="savePins()">Saqlash</button>
   </div>
-  <div class="card" style="max-width:420px;margin-top:.8rem">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:.6rem">Sotuvchi orqaga qaytarish muddati</h3>
-    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-      <input type="number" id="revert-minutes" min="1" max="1440" style="width:80px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .6rem;font-size:13px;outline:none" placeholder="30">
-      <span style="font-size:13px;color:var(--text2)">daqiqa</span>
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Sotuvchi orqaga qaytarish muddati</h3>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="revert-minutes" min="1" max="1440" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="30">
+      <span style="font-size:14px;color:var(--text2)">daqiqa</span>
       <button class="btn sm blue" onclick="saveRevertTime()">Saqlash</button>
     </div>
   </div>
-  <div class="card" style="max-width:420px;margin-top:.8rem">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:.6rem">Ma'lumotlar</h3>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:.8rem">Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.</p>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Ma'lumotlar</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.</p>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
       <button class="btn green" onclick="exportCSV()">⬇ CSV yuklab olish</button>
       <button class="btn red" onclick="clearAll()">🗑 Hammasini o'chirish</button>
     </div>
@@ -415,38 +397,23 @@
   </div>
   <div class="filter-bar">
     <button class="btn sm" id="db-btn-all" onclick="setDebtFilter('all')">Barchasi</button>
-    <button class="btn sm blue" id="db-btn-active" onclick="setDebtFilter('active')">Faol qarzlar</button>
+    <button class="btn sm" id="db-btn-active" onclick="setDebtFilter('active')">Faol qarzlar</button>
     <button class="btn sm" id="db-btn-paid" onclick="setDebtFilter('paid')">To'langan</button>
     <button class="btn sm" id="db-btn-org" onclick="setDebtFilter('org')">🏢 Tashkilotlar</button>
     <button class="btn sm" id="db-btn-person" onclick="setDebtFilter('person')">👤 Shaxslar</button>
-    <input type="text" id="debt-search" oninput="renderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:12px;outline:none;background:#fff;min-width:160px;margin-left:auto">
+    <input type="text" id="debt-search" oninput="renderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
   </div>
-  <div id="debt-stats" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
+  <div id="debt-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div id="debts-list"></div>
   <p id="no-debts" style="color:var(--text3);text-align:center;padding:3rem;display:none">Qarz topilmadi.</p>
-</div>
-
-<!-- SOTUVCHI QARZLAR SAHIFASI -->
-<div class="page" id="page-seller-debts">
-  <div class="section-header">
-    <div><h2>💳 Mening qarzlarim</h2><p>Siz tomoningizdan qarzga berilgan tovarlar</p></div>
-  </div>
-  <div class="filter-bar">
-    <button class="btn sm blue" id="sdb-btn-active" onclick="setSellerDebtFilter('active')">Faol qarzlar</button>
-    <button class="btn sm" id="sdb-btn-paid" onclick="setSellerDebtFilter('paid')">To'langan</button>
-    <button class="btn sm" id="sdb-btn-all" onclick="setSellerDebtFilter('all')">Barchasi</button>
-  </div>
-  <div id="seller-debt-stats" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
-  <div id="seller-debts-list"></div>
-  <p id="no-seller-debts" style="color:var(--text3);text-align:center;padding:3rem;display:none">Qarz topilmadi.</p>
 </div>
 
 <div class="page" id="page-sell">
   <div class="section-header">
     <div><h2>Sotish</h2><p>Tovarlarni tanlang va savat orqali soting</p></div>
   </div>
-  <div style="margin-bottom:.8rem">
-    <input type="text" id="sell-search" onkeyup="handleSellSearchKey(event)" placeholder="🔍 Tovar nomi bo'yicha qidirish... (Enter — birinchisini savatga qo'shadi)" style="width:100%;max-width:400px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .8rem;font-size:13px;outline:none">
+  <div style="margin-bottom:1rem">
+    <input type="text" id="sell-search" onkeyup="handleSellSearchKey(event)" placeholder="🔍 Tovar nomi bo'yicha qidirish... (Enter — birinchisini savatga qo'shadi)" style="width:100%;max-width:400px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem 1rem;font-size:14px;outline:none">
   </div>
   <div class="product-grid" id="sell-grid"></div>
   <p id="no-sell" style="color:var(--text3);text-align:center;padding:3rem;display:none">Tovar topilmadi yoki ombor bo'sh.</p>
@@ -456,13 +423,13 @@
 <div class="page" id="page-my-sales">
   <div class="section-header"><h2>Mening sotuvlarim</h2></div>
   <div id="my-revert-info" class="revert-info" style="display:none"></div>
-  <div class="filter-bar" style="margin-bottom:.6rem">
+  <div class="filter-bar" style="margin-bottom:.75rem">
     <button class="btn sm" id="ms-btn-today" onclick="setMySalesFilter('today')">Bugun</button>
     <button class="btn sm" id="ms-btn-yesterday" onclick="setMySalesFilter('yesterday')">Kecha</button>
     <button class="btn sm" id="ms-btn-all" onclick="setMySalesFilter('all')">Barchasi</button>
     <input type="date" id="ms-date" onchange="setMySalesFilter('custom')">
   </div>
-  <div id="seller-daily-summary" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
+  <div id="seller-daily-summary" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
       <thead><tr><th>Vaqt</th><th>Tovar</th><th>Hajm</th><th>Miqdor</th><th>Jami</th><th>Holat</th><th>Qaytarish</th></tr></thead>
@@ -494,18 +461,18 @@
       <div class="field"><label>Boshlang'ich miqdor *</label><input id="p-qty" type="number" min="0" placeholder="50"></div>
       <div class="field" style="justify-content:flex-end;padding-bottom:.25rem">
         <label style="opacity:0">_</label>
-        <p style="font-size:11px;color:var(--text3);line-height:1.4">Keyingi kirim/chiqimlar<br>alohida ro'yxatda saqlanadi.</p>
+        <p style="font-size:12px;color:var(--text3);line-height:1.5">Keyingi kirim/chiqimlar<br>alohida ro'yxatda saqlanadi.</p>
       </div>
     </div>
     <div class="form-row">
       <div class="field"><label>Rasm URL (ixtiyoriy)</label><input id="p-img" placeholder="https://...jpg" oninput="previewImg()"></div>
       <div class="field">
         <label>Yoki rasm yuklash</label>
-        <input type="file" id="p-img-file" accept="image/*" onchange="loadImgFile(this)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem;font-size:12px;background:#fff;cursor:pointer">
+        <input type="file" id="p-img-file" accept="image/*" onchange="loadImgFile(this)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem;font-size:13px;background:#fff;cursor:pointer">
       </div>
     </div>
-    <div id="img-preview-wrap" style="display:none;margin-bottom:.6rem">
-      <img id="img-preview" style="max-height:100px;border-radius:8px;border:1px solid var(--border)">
+    <div id="img-preview-wrap" style="display:none;margin-bottom:.75rem">
+      <img id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
     </div>
     <div class="form-row full">
       <div class="field"><label>Izoh</label><textarea id="p-note" placeholder="Qo'shimcha ma'lumot..."></textarea></div>
@@ -520,26 +487,27 @@
 <div class="modal-overlay hidden" id="modal-restock">
   <div class="modal" style="max-width:420px">
     <h3>📦 Kirim: <span id="rs-name"></span></h3>
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-bottom:.8rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
         <span style="color:var(--text2)">Hozirgi zaxira:</span>
-        <span style="font-weight:700;font-size:17px" id="rs-current-val">0</span>
+        <span style="font-weight:700;font-size:18px" id="rs-current-val">0</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:.4rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-top:.5rem">
         <span style="color:var(--green);font-weight:600">+ Qo'shilayotgan:</span>
-        <span style="font-weight:700;font-size:17px;color:var(--green)" id="rs-adding-val">0</span>
+        <span style="font-weight:700;font-size:18px;color:var(--green)" id="rs-adding-val">0</span>
       </div>
-      <div style="border-top:2px dashed var(--border);margin:.6rem 0"></div>
+      <div style="border-top:2px dashed var(--border);margin:.75rem 0"></div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-weight:700;font-size:13px">Natija:</span>
-        <span style="font-weight:700;font-size:20px;color:var(--accent)" id="rs-result-val">0</span>
+        <span style="font-weight:700;font-size:14px">Natija:</span>
+        <span style="font-weight:700;font-size:22px;color:var(--accent)" id="rs-result-val">0</span>
       </div>
     </div>
-    <div class="field" style="margin-bottom:.8rem">
+    <div class="field" style="margin-bottom:1rem">
       <label>Qo'shiladigan miqdor *</label>
-      <input id="rs-qty" type="number" min="1" placeholder="0" style="font-size:20px;text-align:center;font-weight:700" oninput="updateRestockCalc()">
+      <input id="rs-qty" type="number" min="1" placeholder="0" style="font-size:24px;text-align:center;font-weight:700"
+             oninput="updateRestockCalc()">
     </div>
-    <div class="field" style="margin-bottom:.8rem">
+    <div class="field" style="margin-bottom:1rem">
       <label>Sabab / Izoh (ixtiyoriy)</label>
       <input id="rs-reason" placeholder="Masalan: Yetkazuvchi №3 dan keldi">
     </div>
@@ -553,26 +521,27 @@
 <div class="modal-overlay hidden" id="modal-return-stock">
   <div class="modal" style="max-width:420px">
     <h3>↩ Chiqim: <span id="ret-name"></span></h3>
-    <div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:.8rem;margin-bottom:.8rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+    <div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
         <span style="color:var(--text2)">Hozirgi zaxira:</span>
-        <span style="font-weight:700;font-size:17px" id="ret-current-val">0</span>
+        <span style="font-weight:700;font-size:18px" id="ret-current-val">0</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:.4rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-top:.5rem">
         <span style="color:var(--red);font-weight:600">− Kamaytirilayotgan:</span>
-        <span style="font-weight:700;font-size:17px;color:var(--red)" id="ret-removing-val">0</span>
+        <span style="font-weight:700;font-size:18px;color:var(--red)" id="ret-removing-val">0</span>
       </div>
-      <div style="border-top:2px dashed var(--red-border);margin:.6rem 0"></div>
+      <div style="border-top:2px dashed var(--red-border);margin:.75rem 0"></div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-weight:700;font-size:13px">Natija:</span>
-        <span style="font-weight:700;font-size:20px;color:var(--red)" id="ret-result-val">0</span>
+        <span style="font-weight:700;font-size:14px">Natija:</span>
+        <span style="font-weight:700;font-size:22px;color:var(--red)" id="ret-result-val">0</span>
       </div>
     </div>
-    <div class="field" style="margin-bottom:.8rem">
+    <div class="field" style="margin-bottom:1rem">
       <label>Chiqim miqdori *</label>
-      <input id="ret-qty" type="number" min="1" placeholder="0" style="font-size:20px;text-align:center;font-weight:700" oninput="updateReturnCalc()">
+      <input id="ret-qty" type="number" min="1" placeholder="0" style="font-size:24px;text-align:center;font-weight:700"
+             oninput="updateReturnCalc()">
     </div>
-    <div class="field" style="margin-bottom:.6rem">
+    <div class="field" style="margin-bottom:.75rem">
       <label>Sabab *</label>
       <select id="ret-reason-type">
         <option value="Yetkazuvchiga qaytarildi">↩ Yetkazuvchiga qaytarildi</option>
@@ -582,7 +551,7 @@
         <option value="Boshqa">📝 Boshqa</option>
       </select>
     </div>
-    <div class="field" style="margin-bottom:.8rem">
+    <div class="field" style="margin-bottom:1rem">
       <label>Qo'shimcha izoh (ixtiyoriy)</label>
       <input id="ret-note" placeholder="Batafsil...">
     </div>
@@ -596,10 +565,10 @@
 <div class="modal-overlay hidden" id="modal-cart">
   <div class="modal" style="max-width:560px">
     <h3>🛒 Savat</h3>
-    <div id="cart-items" style="margin-bottom:.8rem"></div>
-    <div style="border-top:1.5px solid var(--border);padding-top:.8rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem">
-      <span style="font-size:13px;color:var(--text2)">Jami summa:</span>
-      <span style="font-size:20px;font-weight:700;color:var(--green)" id="cart-grand-total">0 so'm</span>
+    <div id="cart-items" style="margin-bottom:1rem"></div>
+    <div style="border-top:1.5px solid var(--border);padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <span style="font-size:14px;color:var(--text2)">Jami summa:</span>
+      <span style="font-size:22px;font-weight:700;color:var(--green)" id="cart-grand-total">0 so'm</span>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-cart')">Yopish</button>
@@ -615,30 +584,30 @@
   <div class="modal" style="max-width:500px">
     <h3>💳 Qarzga sotish</h3>
 
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Tashkilot nomi <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
       <input id="debt-org" placeholder="Masalan: Anvar Market" autocomplete="off" oninput="debtOrgInput(this)">
-      <div id="debt-org-suggestions" class="suggestions"></div>
-      <p style="font-size:10px;color:var(--text3);margin-top:.2rem">⚠️ Tashkilot uchun bitta login beriladi, barcha ishchilar shu org ga bog'lanadi</p>
+      <div id="debt-org-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+      <p style="font-size:11px;color:var(--text3);margin-top:.25rem">⚠️ Tashkilot uchun bitta login beriladi, barcha ishchilar shu org ga bog'lanadi</p>
     </div>
 
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Qarz oluvchi ismi *</label>
       <input id="debt-name" placeholder="Ism va familiya" autocomplete="off" oninput="debtNameInput(this)">
-      <div id="debt-name-suggestions" class="suggestions"></div>
+      <div id="debt-name-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
     </div>
 
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Telefon <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
       <input id="debt-phone" type="tel" placeholder="+998 90 000 00 00">
     </div>
 
-    <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:.7rem .8rem;margin-bottom:.8rem">
+    <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;color:#92400e;font-weight:600">Qarz summasi:</span>
-        <span style="font-size:20px;font-weight:700;color:var(--amber)" id="debt-total-show">0 so'm</span>
+        <span style="font-size:14px;color:#92400e;font-weight:600">Qarz summasi:</span>
+        <span style="font-size:22px;font-weight:700;color:var(--amber)" id="debt-total-show">0 so'm</span>
       </div>
-      <div style="font-size:11px;color:#92400e;margin-top:.25rem" id="debt-items-preview"></div>
+      <div style="font-size:12px;color:#92400e;margin-top:.35rem" id="debt-items-preview"></div>
     </div>
 
     <div class="field" style="margin-bottom:.5rem">
@@ -647,12 +616,12 @@
     </div>
 
     <!-- LOGIN/PAROL YARATISH -->
-    <div id="debt-login-section" style="margin-top:.8rem;border-top:1px dashed var(--border);padding-top:.8rem">
-      <p style="font-size:12px;color:var(--text2);margin-bottom:.5rem;font-weight:600">🔐 Qarzdor uchun login va parol</p>
-      <p style="font-size:11px;color:var(--text3);margin-bottom:.5rem">
+    <div id="debt-login-section" style="margin-top:1rem;border-top:1px dashed var(--border);padding-top:1rem">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem;font-weight:600">🔐 Qarzdor uchun login va parol</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:.75rem">
         <span id="debt-login-type">👤 Shaxs</span> uchun login/parol yaratiladi
       </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
         <div class="field">
           <label>Login</label>
           <input id="debt-login" placeholder="login123" autocomplete="off">
@@ -662,7 +631,7 @@
           <input id="debt-password" placeholder="parol123" autocomplete="off">
         </div>
       </div>
-      <p style="font-size:10px;color:var(--text3);margin-top:.3rem">Bo'sh qoldirsangiz, avvalgi login/parol saqlanadi.<br>
+      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">Bo'sh qoldirsangiz, avvalgi login/parol saqlanadi.<br>
       <span id="debt-login-note">Tashkilot uchun bitta login: barcha ishchilar shu org ga bog'lanadi</span></p>
     </div>
 
@@ -676,7 +645,7 @@
 <div class="modal-overlay hidden" id="modal-confirm">
   <div class="modal" style="max-width:380px">
     <h3 id="confirm-title">Tasdiqlash</h3>
-    <p id="confirm-msg" style="color:var(--text2);margin-bottom:1.2rem;font-size:13px;line-height:1.5"></p>
+    <p id="confirm-msg" style="color:var(--text2);margin-bottom:1.5rem;font-size:14px;line-height:1.6"></p>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-confirm')">Yo'q</button>
       <button class="btn red" id="confirm-ok">Ha, davom etish</button>
@@ -688,19 +657,19 @@
 <div class="modal-overlay hidden" id="modal-debtor-login">
   <div class="modal" style="max-width:400px">
     <h3>🔐 Login/Parol tahrirlash</h3>
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Qarzdor</label>
       <input id="dl-name" readonly style="background:var(--surface2);font-weight:600">
     </div>
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Tur</label>
       <input id="dl-type" readonly style="background:var(--surface2)">
     </div>
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Login</label>
       <input id="dl-login" placeholder="Yangi login">
     </div>
-    <div class="field" style="margin-bottom:.7rem">
+    <div class="field" style="margin-bottom:.85rem">
       <label>Parol</label>
       <input id="dl-password" placeholder="Yangi parol">
     </div>
@@ -713,7 +682,7 @@
 
 <div id="sticky-cart">
   <div class="cart-info">🛒 Savat: <span id="cart-count">0</span> ta tovar · <span id="cart-total-nav">0</span> so'm</div>
-  <div style="display:flex;gap:.5rem">
+  <div style="display:flex;gap:.75rem">
     <button class="btn sm red" onclick="clearCart()">🗑 Tozalash</button>
     <button class="btn sm green" onclick="openCartModal()">Ko'rish va sotish →</button>
   </div>
@@ -733,7 +702,7 @@
   <button id="mtab-stock-history" onclick="showPage('stock-history','admin')" style="display:none">
     <span class="tab-icon">🚚</span>Kirim
   </button>
-  <button id="mtab-debts" onclick="showPage('debts','admin')" style="display:none">
+  <button id="mtab-debts" onclick="showPage('debts', currentRole)" style="display:none">
     <span class="tab-icon">💳</span>Qarzlar
   </button>
   <button id="mtab-settings" onclick="showPage('settings','admin')" style="display:none">
@@ -744,9 +713,6 @@
   </button>
   <button id="mtab-my-sales" onclick="showPage('my-sales','seller')" style="display:none">
     <span class="tab-icon">📋</span>Mening
-  </button>
-  <button id="mtab-seller-debts" onclick="showPage('seller-debts','seller')" style="display:none">
-    <span class="tab-icon">💳</span>Qarzlar
   </button>
 </div>
 
@@ -776,7 +742,6 @@ window.restockId = null;
 window.cart = {};
 let knownSaleIds = null;
 let debtFilter = 'active';
-let sellerDebtFilter = 'active';
 let editingDebtorId = null;
 
 function setSyncing(on){ const d=document.getElementById('sync-dot'); if(d) d.className = on?'syncing':''; }
@@ -869,7 +834,6 @@ async function fbSaveDebt(d){
   const i=DB.debts.findIndex(x=>x.id===d.id);
   if(i>=0) DB.debts[i]=d; else DB.debts.push(d);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
-  if(document.getElementById('page-seller-debts')?.classList.contains('active')) renderSellerDebts();
   setSyncing(true);
   try{ await setDoc(doc(db,'debts',d.id),d); }
   catch(e){ setSyncError(); console.error(e); toast("Qarz saqlashda xatolik",'red'); }
@@ -887,7 +851,6 @@ async function fbUpdateDebt(id, patch){
   const d=DB.debts.find(x=>x.id===id);
   if(d) Object.assign(d, patch);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
-  if(document.getElementById('page-seller-debts')?.classList.contains('active')) renderSellerDebts();
   setSyncing(true);
   try{ await updateDoc(doc(db,'debts',id), patch); }
   catch(e){ setSyncError(); console.error(e); }
@@ -950,7 +913,6 @@ function startListeners(){
     clearTimeout(debtDebounce);
     debtDebounce=setTimeout(()=>{
       if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
-      if(document.getElementById('page-seller-debts')?.classList.contains('active')) renderSellerDebts();
     },20);
   });
   onSnapshot(collection(db,'debtors'), snap=>{
@@ -1017,14 +979,14 @@ window.doLogin = function(){
   err.textContent='';
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
-  document.getElementById('user-badge-text').textContent = role==='admin'?'👨‍💼 Admin':'🛒 Sotuvchi';
+  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 Sotuvchi');
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
     ['dashboard','products','history','stock-history','debts','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
-    ['sell','my-sales','seller-debts'].forEach(t=>{
+    ['sell','my-sales'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
     });
     showPage('dashboard','admin');
@@ -1032,7 +994,7 @@ window.doLogin = function(){
   } else {
     document.getElementById('nav-seller').style.display='flex';
     document.getElementById('nav-admin').style.display='none';
-    ['sell','my-sales','seller-debts'].forEach(t=>{
+    ['sell','my-sales','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
     ['dashboard','products','history','stock-history','settings'].forEach(t=>{
@@ -1056,7 +1018,7 @@ window.showPage = function(page, role){
   document.getElementById('page-'+page).classList.add('active');
   const navId = role==='admin'?'nav-admin':'nav-seller';
   document.querySelectorAll('#'+navId+' .tab').forEach(t=>t.classList.remove('active'));
-  if(window.event?.target) window.event.target.classList.add('active');
+  window.event?.target?.classList.add('active');
   document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.remove('active'));
   const mtab = document.getElementById('mtab-'+page);
   if(mtab) mtab.classList.add('active');
@@ -1067,7 +1029,6 @@ window.showPage = function(page, role){
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
-  if(page==='seller-debts'){ setSellerDebtFilter('active'); }
 }
 
 // ===== DASHBOARD =====
@@ -1096,7 +1057,7 @@ window.renderDashboard = function(){
   document.getElementById('recent-sales').innerHTML = recent.length ? `
     <div class="tbl-wrap"><table>
       <thead><tr><th>Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Jami</th><th>Sotuvchi</th></tr></thead>
-      <tbody>${recent.map(s=>`<tr><td style="font-size:12px;color:var(--text3)">${timeStr(s.date)}</td><td><strong>${s.productName}</strong></td><td>${s.qty} ta</td><td style="color:var(--green);font-weight:700">${fmt(s.total)} so'm</td><td>${s.seller}</td></tr>`).join('')}</tbody>
+      <tbody>${recent.map(s=>`<tr><td style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td><strong>${s.productName}</strong></td><td>${s.qty} ta</td><td style="color:var(--green);font-weight:700">${fmt(s.total)} so'm</td><td>${s.seller}</td></tr>`).join('')}</tbody>
     </table></div>` : '<p style="color:var(--text3);text-align:center;padding:2rem">Bugun savdo bo\'lmagan.</p>';
 
   const prodMap = {};
@@ -1108,20 +1069,20 @@ window.renderDashboard = function(){
   });
   const top = Object.values(prodMap).sort((a,b)=>b.qty-a.qty).slice(0,5);
   document.getElementById('top-products').innerHTML = top.length ? top.map((t,i)=>`
-    <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;${i<top.length-1?'border-bottom:1px solid var(--border)':''}">
-      <div style="width:20px;height:20px;border-radius:50%;background:${i===0?'#fbbf24':i===1?'#cbd5e1':i===2?'#d97706':'var(--surface2)'};color:${i<3?'#fff':'var(--text3)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i+1}</div>
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;${i<top.length-1?'border-bottom:1px solid var(--border)':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#fbbf24':i===1?'#cbd5e1':i===2?'#d97706':'var(--surface2)'};color:${i<3?'#fff':'var(--text3)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}${t.volume?' · '+t.volume+'L':''}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}${t.volume?' · '+t.volume+'L':''}</div>
       </div>
-      <div style="font-size:12px;font-weight:700;color:var(--green);white-space:nowrap">${t.qty} ta</div>
-    </div>`).join('') : '<p style="color:var(--text3);font-size:12px;padding:.5rem 0">Bu davrda savdo yo\'q.</p>';
+      <div style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">${t.qty} ta</div>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Bu davrda savdo yo\'q.</p>';
 
   const low = DB.products.filter(p=>p.stock<=5).sort((a,b)=>a.stock-b.stock).slice(0,8);
   document.getElementById('low-stock-list').innerHTML = low.length ? low.map(p=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
       <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
-    </div>`).join('') : '<p style="color:var(--text3);font-size:12px;padding:.5rem 0">Hammasi yetarli ✓</p>';
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
 }
 
 // ===== PRODUCTS =====
@@ -1135,18 +1096,18 @@ window.renderProducts = function(){
   none.style.display='none';
   grid.innerHTML = list.map(p=>{
     const stockColor=p.stock===0?'red':p.stock<=5?'amber':'green';
-    const volLabel = p.volume?`<span class="badge blue" style="margin-top:.2rem">${p.volume} L</span>`:'';
+    const volLabel = p.volume?`<span class="badge blue" style="margin-top:.3rem">${p.volume} L</span>`:'';
     return `<div class="prod-card" draggable="true" data-id="${p.id}">
       <div class="img-wrap">
         ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="badge ${stockColor}">${p.stock} ta</span></div>
-        <div style="position:absolute;top:6px;left:6px"><span class="drag-handle">⠿</span></div>
+        <div style="position:absolute;top:8px;left:8px"><span class="drag-handle">⠿</span></div>
       </div>
       <div class="body">
         <div class="prod-name">${p.name}</div>
         ${volLabel}
-        <div class="prod-price" style="margin-top:.2rem">${fmt(p.price)} so'm</div>
+        <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
         <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
         <div class="prod-actions">
           <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
@@ -1369,17 +1330,17 @@ window.clearCart=function(){ cart={}; updateCartBtn(); renderSellGrid(); closeMo
 window.openCartModal=function(){ renderCartModal(); openModal('modal-cart'); }
 window.renderCartModal=function(){
   const items=Object.entries(cart); const el=document.getElementById('cart-items');
-  if(!items.length){ el.innerHTML='<p style="color:var(--text3);text-align:center;padding:1.2rem">Savat bo\'sh</p>'; document.getElementById('cart-grand-total').textContent="0 so'm"; return; }
+  if(!items.length){ el.innerHTML='<p style="color:var(--text3);text-align:center;padding:1.5rem">Savat bo\'sh</p>'; document.getElementById('cart-grand-total').textContent="0 so'm"; return; }
   el.innerHTML=items.map(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id); if(!p) return '';
     const vol=p.volume?` · ${p.volume}L`:'';
-    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.name}${vol}</div>
-      <div style="font-size:11px;color:var(--text3)">${fmt(p.price)} so'm × ${qty} = <strong style="color:var(--green)">${fmt(p.price*qty)} so'm</strong></div></div>
-      <div style="display:flex;align-items:center;gap:.3rem">
-        <button class="qty-btn" style="width:28px;height:28px;font-size:14px" onclick="removeFromCart('${id}')">−</button>
-        <input type="number" min="1" max="${p.stock}" value="${qty}" onchange="setCartQty('${id}',this.value)" style="width:40px;height:28px;text-align:center;font-size:13px;font-weight:700;border:1.5px solid var(--border2);border-radius:6px;outline:none">
-        <button class="qty-btn" style="width:28px;height:28px;font-size:14px" onclick="addToCart('${id}')">+</button>
+    return `<div style="display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">${p.name}${vol}</div>
+      <div style="font-size:12px;color:var(--text3)">${fmt(p.price)} so'm × ${qty} = <strong style="color:var(--green)">${fmt(p.price*qty)} so'm</strong></div></div>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <button class="qty-btn" style="width:30px;height:30px;font-size:16px" onclick="removeFromCart('${id}')">−</button>
+        <input type="number" min="1" max="${p.stock}" value="${qty}" onchange="setCartQty('${id}',this.value)" style="width:48px;height:30px;text-align:center;font-size:14px;font-weight:700;border:1.5px solid var(--border2);border-radius:6px;outline:none">
+        <button class="qty-btn" style="width:30px;height:30px;font-size:16px" onclick="addToCart('${id}')">+</button>
       </div></div>`;
   }).join('');
   document.getElementById('cart-grand-total').textContent=fmt(cartTotal())+" so'm";
@@ -1436,7 +1397,7 @@ window.debtOrgInput = function(input){
   if(!q){ sug.style.display='none'; return; }
   const orgs = [...new Set(DB.debtors.filter(d=>d.org).map(d=>d.org))].filter(o=>o.toLowerCase().includes(q));
   if(!orgs.length){ sug.style.display='none'; return; }
-  sug.innerHTML = orgs.map(o=>`<div onclick="selectDebtOrg('${o.replace(/'/g,"\\'")}')">${o}</div>`).join('');
+  sug.innerHTML = orgs.map(o=>`<div onclick="selectDebtOrg('${o.replace(/'/g,"\\'")}')" style="padding:.55rem 1rem;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)">${o}</div>`).join('');
   sug.style.display='block';
 }
 window.selectDebtOrg = function(org){
@@ -1463,7 +1424,7 @@ window.debtNameInput = function(input){
     names = [...new Set(DB.debtors.filter(d=>d.name).map(d=>d.name))].filter(n=>n.toLowerCase().includes(q));
   }
   if(!names.length){ sug.style.display='none'; return; }
-  sug.innerHTML = names.map(n=>`<div onclick="selectDebtName('${n.replace(/'/g,"\\'")}')">${n}</div>`).join('');
+  sug.innerHTML = names.map(n=>`<div onclick="selectDebtName('${n.replace(/'/g,"\\'")}')" style="padding:.55rem 1rem;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)">${n}</div>`).join('');
   sug.style.display='block';
 }
 window.selectDebtName = function(name){
@@ -1594,11 +1555,11 @@ window.renderDebts = function(){
   const personCount = new Set(DB.debts.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
   
   document.getElementById('debt-stats').innerHTML=`
-    <div class="stat amber" style="padding:.7rem 1rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:18px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
-    <div class="stat red" style="padding:.7rem 1rem;border-radius:10px;min-width:100px"><div class="val" style="font-size:18px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
-    <div class="stat blue" style="padding:.7rem 1rem;border-radius:10px;min-width:100px"><div class="val" style="font-size:18px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
-    <div class="stat green" style="padding:.7rem 1rem;border-radius:10px;min-width:100px"><div class="val" style="font-size:18px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
-    <div class="stat green" style="padding:.7rem 1rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:18px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
+    <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
 
   const container = document.getElementById('debts-list');
   const none = document.getElementById('no-debts');
@@ -1623,42 +1584,42 @@ window.renderDebts = function(){
   container.innerHTML = Object.values(grouped).map(g=>{
     const totalOwed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
     const debtor = DB.debtors.find(dd=>dd.name===g.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
-    const loginInfo = debtor?.login ? `<div style="font-size:11px;color:var(--text3);margin-top:.15rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+    const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
     const typeBadge = g.isOrg ? '<span class="badge blue">🏢 Tashkilot</span>' : '<span class="badge amber">👤 Shaxs</span>';
     
-    return `<div class="card" style="margin-bottom:.7rem">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-bottom:.6rem">
+    return `<div class="card" style="margin-bottom:.85rem">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
         <div>
-          <div style="font-weight:700;font-size:15px">${g.debtorName}${g.org?` <span style="font-size:12px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
-          ${g.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${g.phone}</div>`:''}
+          <div style="font-weight:700;font-size:16px">${g.debtorName}${g.org?` <span style="font-size:13px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
+          ${g.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${g.phone}</div>`:''}
           ${loginInfo}
           ${typeBadge}
-          ${debtor?`<button class="btn sm" style="margin-top:.3rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`:''}
+          ${debtor?`<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`:''}
         </div>
         <div style="text-align:right">
-          <div style="font-size:20px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
-          <div style="font-size:11px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:.15rem">${g.debts.length} ta qarz</div>
+          <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
+          <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${g.debts.length} ta qarz</div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:.4rem">
+      <div style="display:flex;flex-direction:column;gap:.5rem">
         ${g.debts.map(d=>`
-          <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.5rem .7rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem">
+          <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
               <div>
-                <span style="font-size:12px;color:var(--text2)">${timeStr(d.date)}</span>
-                <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.3rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+                <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
+                <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
               </div>
-              <div style="display:flex;align-items:center;gap:.4rem">
-                <span style="font-weight:700;font-size:14px">${fmt(d.total)} so'm</span>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
                 ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
               </div>
             </div>
-            <div style="font-size:11px;color:var(--text2);margin-top:.25rem">
+            <div style="font-size:12px;color:var(--text2);margin-top:.35rem">
               ${d.items.map(i=>`${i.productName} ${i.volume?'('+i.volume+'L)':''} ×${i.qty} ta`).join(', ')}
             </div>
-            ${d.note?`<div style="font-size:11px;color:var(--text3);margin-top:.15rem">📝 ${d.note}</div>`:''}
-            ${d.paid&&d.paidDate?`<div style="font-size:11px;color:var(--green);margin-top:.15rem">✅ ${timeStr(d.paidDate)}</div>`:''}
+            ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+            ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
           </div>`).join('')}
       </div>
     </div>`;
@@ -1671,94 +1632,6 @@ window.markDebtPaid = function(id){
     await fbUpdateDebt(id, {paid:true, paidDate:new Date().toISOString()});
     toast('Qarz to\'langan deb belgilandi','green');
   });
-}
-
-// ===== SOTUVCHI QARZLAR =====
-window.setSellerDebtFilter = function(f){
-  sellerDebtFilter = f;
-  ['active','paid','all'].forEach(t=>{
-    const b=document.getElementById('sdb-btn-'+t);
-    if(b) b.classList[t===f?'add':'remove']('blue');
-  });
-  renderSellerDebts();
-}
-
-window.renderSellerDebts = function(){
-  let list = DB.debts.filter(d=>d.seller==='Sotuvchi' || d.seller===currentRole);
-  if(sellerDebtFilter==='active') list = list.filter(d=>!d.paid);
-  else if(sellerDebtFilter==='paid') list = list.filter(d=>d.paid);
-  
-  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-  const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
-  const activeCount = list.filter(d=>!d.paid).length;
-  
-  document.getElementById('seller-debt-stats').innerHTML=`
-    <div class="stat amber" style="padding:.7rem 1rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:18px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz (so'm)</div></div>
-    <div class="stat red" style="padding:.7rem 1rem;border-radius:10px;min-width:100px"><div class="val" style="font-size:18px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
-    <div class="stat green" style="padding:.7rem 1rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:18px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan (so'm)</div></div>`;
-
-  const container = document.getElementById('seller-debts-list');
-  const none = document.getElementById('no-seller-debts');
-  if(!list.length){ container.innerHTML=''; none.style.display='block'; return; }
-  none.style.display='none';
-
-  const grouped = {};
-  list.forEach(d=>{
-    const key = d.org || d.debtorId || d.debtorName;
-    if(!grouped[key]) {
-      grouped[key] = {
-        debtorName: d.debtorName,
-        org: d.org || '',
-        phone: d.phone || '',
-        debts: [],
-        isOrg: !!d.org
-      };
-    }
-    grouped[key].debts.push(d);
-  });
-
-  container.innerHTML = Object.values(grouped).map(g=>{
-    const totalOwed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-    const debtor = DB.debtors.find(dd=>dd.name===g.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
-    const loginInfo = debtor?.login ? `<div style="font-size:11px;color:var(--text3);margin-top:.15rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
-    const typeBadge = g.isOrg ? '<span class="badge blue">🏢 Tashkilot</span>' : '<span class="badge amber">👤 Shaxs</span>';
-    
-    return `<div class="card" style="margin-bottom:.7rem">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-bottom:.6rem">
-        <div>
-          <div style="font-weight:700;font-size:15px">${g.debtorName}${g.org?` <span style="font-size:12px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
-          ${g.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${g.phone}</div>`:''}
-          ${loginInfo}
-          ${typeBadge}
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:20px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
-          <div style="font-size:11px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:.15rem">${g.debts.length} ta qarz</div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:.4rem">
-        ${g.debts.map(d=>`
-          <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.5rem .7rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem">
-              <div>
-                <span style="font-size:12px;color:var(--text2)">${timeStr(d.date)}</span>
-                <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.3rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:.4rem">
-                <span style="font-weight:700;font-size:14px">${fmt(d.total)} so'm</span>
-                ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
-              </div>
-            </div>
-            <div style="font-size:11px;color:var(--text2);margin-top:.25rem">
-              ${d.items.map(i=>`${i.productName} ${i.volume?'('+i.volume+'L)':''} ×${i.qty} ta`).join(', ')}
-            </div>
-            ${d.note?`<div style="font-size:11px;color:var(--text3);margin-top:.15rem">📝 ${d.note}</div>`:''}
-            ${d.paid&&d.paidDate?`<div style="font-size:11px;color:var(--green);margin-top:.15rem">✅ ${timeStr(d.paidDate)}</div>`:''}
-          </div>`).join('')}
-      </div>
-    </div>`;
-  }).join('');
 }
 
 // ===== DEBTOR LOGIN EDIT =====
@@ -1782,7 +1655,6 @@ window.saveDebtorLogin = async function(){
   await fbSaveDebtor({...debtor, login, password});
   closeModal('modal-debtor-login');
   renderDebts();
-  renderSellerDebts();
   toast('Login/Parol yangilandi','green');
 }
 
@@ -1833,19 +1705,19 @@ window.renderSellGrid=function(){
   none.style.display='none';
   grid.innerHTML=prods.map(p=>{
     const out=p.stock===0; const inCart=cart[p.id]||0;
-    const volLabel=p.volume?`<span class="badge blue" style="margin-bottom:.2rem">${p.volume} L</span><br>`:'';
+    const volLabel=p.volume?`<span class="badge blue" style="margin-bottom:.3rem">${p.volume} L</span><br>`:'';
     return `<div class="prod-card">
       <div class="img-wrap" style="${out?'opacity:.5':''}">
         ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=5?'amber':'green'}">${p.stock} ta</span></div>
-        ${inCart>0?`<div style="position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${inCart}</div>`:''}
+        ${inCart>0?`<div style="position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${inCart}</div>`:''}
       </div>
       <div class="body">
         <div class="prod-name">${p.name}</div>${volLabel}
         <div class="prod-price">${fmt(p.price)} so'm</div>
         <div class="prod-stock" style="color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`Savatda: ${inCart} ta · Qoldi: ${p.stock-inCart} ta`:'Mavjud: '+p.stock+' ta'}</div>
-        ${!out?`<button class="btn sm green" style="width:100%;margin-top:.5rem;justify-content:center" onclick="addToCart('${p.id}')">+ Savatga qo'shish</button>`:'<div style="height:1.8rem"></div>'}
+        ${!out?`<button class="btn sm green" style="width:100%;margin-top:.75rem;justify-content:center" onclick="addToCart('${p.id}')">+ Savatga qo'shish</button>`:'<div style="height:2.1rem"></div>'}
       </div></div>`;
   }).join('');
 }
@@ -1896,9 +1768,9 @@ window.renderMySales=function(){
   const periodTotal=periodSales.reduce((a,s)=>a+s.total,0);
   const periodQty=periodSales.reduce((a,s)=>a+s.qty,0);
   document.getElementById('seller-daily-summary').innerHTML=`
-    <div class="stat green" style="padding:.7rem 1rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:18px">${fmt(periodTotal)} so'm</div><div class="lbl">💰 ${label}</div></div>
-    <div class="stat blue" style="padding:.7rem 1rem;border-radius:10px;min-width:100px"><div class="val" style="font-size:18px">${periodSales.length}</div><div class="lbl">🧾 Savdo soni</div></div>
-    <div class="stat amber" style="padding:.7rem 1rem;border-radius:10px;min-width:100px"><div class="val" style="font-size:18px">${periodQty}</div><div class="lbl">📦 Sotilgan dona</div></div>`;
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:160px"><div class="val" style="font-size:20px">${fmt(periodTotal)} so'm</div><div class="lbl">💰 ${label}</div></div>
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${periodSales.length}</div><div class="lbl">🧾 Savdo soni</div></div>
+    <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${periodQty}</div><div class="lbl">📦 Sotilgan dona</div></div>`;
 
   let sales = (rangeStart && rangeEnd)
     ? allMySales.filter(s=>new Date(s.date)>=rangeStart && new Date(s.date)<=rangeEnd)
@@ -1910,7 +1782,7 @@ window.renderMySales=function(){
   none.style.display='none';
   tbody.innerHTML=sales.map(s=>{
     const canRevert=!s.reverted&&(now-new Date(s.date))/60000<=revertMins;
-    return `<tr><td data-label="Vaqt" style="font-size:12px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
+    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
   }).join('');
 }
 window.revertSale=async function(id){
@@ -1954,8 +1826,8 @@ window.renderHistory=function(){
   none.style.display='none';
   const totalRev=sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
   const cnt=sales.filter(s=>!s.reverted).length;
-  sumEl.innerHTML=`<div style="display:flex;gap:.5rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
-  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:12px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
+  sumEl.innerHTML=`<div style="display:flex;gap:.75rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
+  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
 }
 window.adminRevert=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
@@ -2010,22 +1882,22 @@ window.renderStockHistory=function(){
   const totalIn=rows.filter(r=>r.type==='in').reduce((a,r)=>a+r.qty,0);
   const totalOut=rows.filter(r=>r.type==='out').reduce((a,r)=>a+r.qty,0);
   document.getElementById('sh-stats').innerHTML=`
-    <div class="stat green" style="padding:.6rem .8rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:17px">+${totalIn} ta</div><div class="lbl">📦 Jami kirim</div></div>
-    <div class="stat red" style="padding:.6rem .8rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:17px">−${totalOut} ta</div><div class="lbl">↩ Jami chiqim</div></div>
-    <div class="stat blue" style="padding:.6rem .8rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:17px">${rows.length}</div><div class="lbl">📋 Amалlar soni</div></div>`;
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">+${totalIn} ta</div><div class="lbl">📦 Jami kirim</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">−${totalOut} ta</div><div class="lbl">↩ Jami chiqim</div></div>
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">${rows.length}</div><div class="lbl">📋 Amалlar soni</div></div>`;
   const tbody=document.getElementById('sh-body'), none=document.getElementById('no-sh');
   if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
   tbody.innerHTML=rows.map(r=>{
     const isIn=r.type==='in';
     return `<tr>
-      <td data-label="Sana" style="font-size:12px;color:var(--text3);white-space:nowrap">${timeStr(r.date)}</td>
+      <td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(r.date)}</td>
       <td data-label="Tovar"><strong>${r.productName}</strong></td>
       <td>${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td>
       <td><span class="badge ${isIn?'green':'red'}">${isIn?'📦 Kirim':'↩ Chiqim'}</span></td>
       <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${r.qty} ta</td>
-      <td style="font-size:12px;color:var(--text2)">${r.reason||'—'}</td>
-      <td style="font-size:12px">${r.stockBefore??'?'} → <strong>${r.stockAfter??'?'}</strong></td>
+      <td style="font-size:13px;color:var(--text2)">${r.reason||'—'}</td>
+      <td style="font-size:13px">${r.stockBefore??'?'} → <strong>${r.stockAfter??'?'}</strong></td>
     </tr>`;
   }).join('');
 }
@@ -2085,15 +1957,9 @@ window.toast=function(msg,type=''){
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
-let _timeCache = new Map();
 function timeStr(iso){
-  let s=_timeCache.get(iso);
-  if(!s){
-    const d=new Date(iso);
-    s=d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
-    _timeCache.set(iso,s);
-  }
-  return s;
+  const d=new Date(iso);
+  return d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
 }
 function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
 function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
@@ -2125,4 +1991,3 @@ init();
 </script>
 </body>
 </html>
-```
