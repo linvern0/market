@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -1404,13 +1405,16 @@ window.selectDebtOrg = function(org){
   document.getElementById('debt-org').value = org;
   document.getElementById('debt-org-suggestions').style.display='none';
   updateDebtLoginType(org);
-  const debtor = DB.debtors.find(d=>d.org===org);
-  if(debtor){
-    document.getElementById('debt-name').value = debtor.name||'';
-    document.getElementById('debt-phone').value = debtor.phone||'';
-    document.getElementById('debt-login').value = debtor.login||'';
-    document.getElementById('debt-password').value = debtor.password||'';
-  }
+  // MUHIM: bu yerda ismni/login/parolni AVTOMATIK to'ldirmaymiz — chunki bitta
+  // tashkilot ichida bir nechta odam bo'lishi mumkin, va tashkilotni tanlash
+  // bilanoq tasodifiy topilgan birinchi odamning login/parolini yangi odamga
+  // yozib yuborish xavfi bor edi. Ism (va u orqali login/parol) faqat
+  // selectDebtName orqali — ORG+ISM juftligi mos kelganda — to'ldiriladi.
+  document.getElementById('debt-name').value = '';
+  document.getElementById('debt-phone').value = '';
+  document.getElementById('debt-login').value = '';
+  document.getElementById('debt-password').value = '';
+  document.getElementById('debt-name').focus();
 }
 window.debtNameInput = function(input){
   const q = input.value.toLowerCase().trim();
@@ -1472,7 +1476,10 @@ window.doDebtSell = async function(){
 
   let debtor;
   if(org){
-    debtor = DB.debtors.find(d=>d.org===org);
+    // MUHIM: tashkilot ICHIDA har bir odam alohida debitor hisoblanadi.
+    // Faqat org bo'yicha qidirish xato edi — bu turli odamlarning yozuvini
+    // bir-birining ustidan yozib yuborardi. Endi org+ism juftligi bo'yicha qidiramiz.
+    debtor = DB.debtors.find(d=>d.org===org && d.name===name);
   } else {
     debtor = DB.debtors.find(d=>d.name===name && !d.org);
   }
@@ -1566,61 +1573,82 @@ window.renderDebts = function(){
   if(!list.length){ container.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
+  // Ikki qavatli guruhlash: 1) tashkilot (yoki shaxs), 2) tashkilot ICHIDAGI har bir odam.
+  // Eski kod faqat tashkilot bo'yicha guruhlab, faqat BITTA ismni ko'rsatardi —
+  // shu sabab "Axror * Moyka" kabi noto'g'ri sarlavha chiqib, Abduqodirning
+  // qarzi "yashiringan" edi. Endi tashkilot ichida HAR BIR odam alohida ko'rinadi.
   const grouped = {};
   list.forEach(d=>{
-    const key = d.org || d.debtorId || d.debtorName;
-    if(!grouped[key]) {
-      grouped[key] = {
-        debtorName: d.debtorName,
-        org: d.org || '',
-        phone: d.phone || '',
-        debts: [],
-        isOrg: !!d.org
-      };
+    const orgKey = d.org ? 'org:'+d.org : 'person:'+d.debtorName;
+    if(!grouped[orgKey]){
+      grouped[orgKey] = { org:d.org||'', isOrg:!!d.org, people:{} };
     }
-    grouped[key].debts.push(d);
+    const personKey = d.debtorName;
+    if(!grouped[orgKey].people[personKey]){
+      grouped[orgKey].people[personKey] = { debtorName:d.debtorName, phone:d.phone||'', debts:[] };
+    }
+    grouped[orgKey].people[personKey].debts.push(d);
   });
 
   container.innerHTML = Object.values(grouped).map(g=>{
-    const totalOwed = g.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-    const debtor = DB.debtors.find(dd=>dd.name===g.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
-    const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
-    const typeBadge = g.isOrg ? '<span class="badge blue">🏢 Tashkilot</span>' : '<span class="badge amber">👤 Shaxs</span>';
-    
+    const people = Object.values(g.people);
+    const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0),0);
+    const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
+    const headerTitle = g.isOrg ? `🏢 ${g.org}` : `👤 ${people[0].debtorName}`;
+    const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
+
     return `<div class="card" style="margin-bottom:.85rem">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
         <div>
-          <div style="font-weight:700;font-size:16px">${g.debtorName}${g.org?` <span style="font-size:13px;color:var(--text3);font-weight:400">· ${g.org}</span>`:''}</div>
-          ${g.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${g.phone}</div>`:''}
-          ${loginInfo}
-          ${typeBadge}
-          ${debtor?`<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`:''}
+          <div style="font-weight:700;font-size:16px">${headerTitle}</div>
+          ${headerSub?`<div style="font-size:12px;color:var(--text3)">${headerSub}</div>`:''}
         </div>
         <div style="text-align:right">
           <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
           <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${g.debts.length} ta qarz</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${totalCount} ta qarz</div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        ${g.debts.map(d=>`
-          <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div style="display:flex;flex-direction:column;gap:.85rem">
+        ${people.map(p=>{
+          const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+          const debtor = DB.debtors.find(dd=>dd.name===p.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
+          const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+          const loginBtn = debtor
+            ? `<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`
+            : `<button class="btn sm" style="margin-top:.4rem" onclick="createDebtorLogin('${p.debtorName.replace(/'/g,"\\'")}','${(g.org||'').replace(/'/g,"\\'")}','${(p.phone||'').replace(/'/g,"\\'")}')">🔐 Login yaratish</button>`;
+          return `<div style="${g.isOrg?'border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:var(--surface2)':''}">
+            ${g.isOrg?`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
               <div>
-                <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
-                <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+                <div style="font-weight:700;font-size:14px">👤 ${p.debtorName}</div>
+                ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${p.phone}</div>`:''}
+                ${loginInfo}
+                ${loginBtn}
               </div>
-              <div style="display:flex;align-items:center;gap:.5rem">
-                <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
-                ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
-              </div>
+              <div style="text-align:right;font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
+            </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>`}
+            <div style="display:flex;flex-direction:column;gap:.5rem">
+              ${p.debts.map(d=>`
+                <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+                    <div>
+                      <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
+                      <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                      <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
+                      ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
+                    </div>
+                  </div>
+                  <div style="font-size:12px;color:var(--text2);margin-top:.35rem">
+                    ${d.items.map(i=>`${i.productName} ${i.volume?'('+i.volume+'L)':''} ×${i.qty} ta`).join(', ')}
+                  </div>
+                  ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+                  ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
+                </div>`).join('')}
             </div>
-            <div style="font-size:12px;color:var(--text2);margin-top:.35rem">
-              ${d.items.map(i=>`${i.productName} ${i.volume?'('+i.volume+'L)':''} ×${i.qty} ta`).join(', ')}
-            </div>
-            ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
-            ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   }).join('');
@@ -1656,6 +1684,27 @@ window.saveDebtorLogin = async function(){
   closeModal('modal-debtor-login');
   renderDebts();
   toast('Login/Parol yangilandi','green');
+}
+
+// Ba'zi odamlarning debitor yozuvi topilmasligi mumkin (masalan, eski xato
+// tufayli tashkilot ichidagi ismlar bir-birining ustidan yozilib qolgan hollarda).
+// Bu funksiya shunday odamlar uchun YANGI debitor yozuvini yaratib, so'ng
+// login/parol tahrirlash oynasini ochadi.
+window.createDebtorLogin = async function(name, org, phone){
+  let debtor = DB.debtors.find(d=>d.name===name && ((org && d.org===org) || (!org && !d.org)));
+  if(!debtor){
+    debtor = {
+      id: uid(),
+      name: name,
+      org: org || '',
+      phone: phone || '',
+      login: '',
+      password: '',
+      createdAt: new Date().toISOString()
+    };
+    await fbSaveDebtor(debtor);
+  }
+  openDebtorLogin(debtor.id);
 }
 
 // ===== SELL =====
