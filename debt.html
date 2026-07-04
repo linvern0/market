@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -423,6 +425,7 @@ function render(){
 
   container.innerHTML = list.map(d=>{
     const isOrg = !!d.org;
+    const dItems = getDebtItems(d);
     return `<div class="debt-card ${d.paid?'paid':'active'}">
       <div class="debt-header">
         <div>
@@ -439,10 +442,10 @@ function render(){
       </div>
       <div class="debt-items">
         <p>Sotilgan tovarlar:</p>
-        ${(d.items||[]).map(i=>`<div class="debt-item-row">
+        ${dItems.length ? dItems.map(i=>`<div class="debt-item-row">
           <span>${i.productName}${i.volume?' ('+i.volume+'L)':''} × ${i.qty} ta</span>
           <span style="font-weight:600">${fmt(i.subtotal||i.total||0)} so'm</span>
-        </div>`).join('')}
+        </div>`).join('') : `<div class="debt-item-row" style="color:var(--text3);font-style:italic">Mahsulot tafsiloti saqlanmagan (eski yozuv)</div>`}
         <div class="debt-item-row" style="font-weight:700;border-top:2px solid var(--border);margin-top:.3rem;padding-top:.4rem">
           <span>Jami</span>
           <span style="color:${d.paid?'var(--green)':'var(--amber)'}">${fmt(d.total)} so'm</span>
@@ -456,7 +459,7 @@ window.exportMyDebts = function(){
   if(!MY_DEBTS.length){ toast('Eksport qilish uchun qarz yo\'q'); return; }
   let csv = 'Sana,Ism,Tashkilot,Tovarlar,Summa,Holat,To\'langan sana\n';
   MY_DEBTS.forEach(d=>{
-    const items=(d.items||[]).map(i=>`${i.productName}x${i.qty}`).join(';');
+    const items=getDebtItems(d).map(i=>`${i.productName}x${i.qty}`).join(';');
     csv+=`"${timeStr(d.date)}","${d.debtorName||''}","${d.org||''}","${items}",${d.total},"${d.paid?'Tolangan':'Faol'}","${d.paidDate?timeStr(d.paidDate):''}"\n`;
   });
   const a=document.createElement('a');
@@ -476,7 +479,21 @@ window.doLogout = function(){
   document.getElementById('err-msg').textContent = '';
 }
 
-function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
+// Har bir qarz yozuvidan "nima sotilgani" ro'yxatini xavfsiz olib beradi.
+// Yangi yozuvlarda mahsulotlar d.items massivida saqlanadi. Agar biror sabab
+// bilan (masalan eski/versiyasi farqli yozuv) items bo'sh bo'lsa, hujjatning
+// o'zida to'g'ridan-to'g'ri saqlangan mahsulot ma'lumotidan (agar bor bo'lsa)
+// zaxira variant tuzamiz — shunda "nima uchun qarz bo'lgani" hech qachon
+// butunlay yo'qolib qolmaydi.
+function getDebtItems(d){
+  if(Array.isArray(d.items) && d.items.length) return d.items;
+  if(d.productName){
+    return [{productName:d.productName, volume:d.volume||'', qty:d.qty||1, subtotal:d.total||d.price||0}];
+  }
+  return [];
+}
+
+function fmt(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }
 
 let _tCache=new Map();
 function timeStr(iso){
