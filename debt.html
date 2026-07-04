@@ -202,7 +202,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
@@ -249,19 +249,11 @@ window.doLogin = async function(){
   btn.disabled = true;
 
   try{
-    let found = null;
-    await new Promise((resolve)=>{
-      const unsub = onSnapshot(collection(db,'debtors'), snap=>{
-        const debtors = snap.docs.map(d=>d.data());
-        found = debtors.find(d=>
-          d.login && d.password &&
-          d.login.trim()===loginVal &&
-          d.password.trim()===passVal
-        );
-        unsub();
-        resolve();
-      });
-    });
+    // Tezkor va aniq qidiruv: butun to'plamni tinglash o'rniga faqat mos
+    // login bo'yicha bitta so'rov yuboramiz.
+    const q = query(collection(db,'debtors'), where('login','==',loginVal));
+    const snap = await getDocs(q);
+    const found = snap.docs.map(d=>d.data()).find(d => d.password && d.password.trim()===passVal);
 
     if(!found){
       err.textContent = "Login yoki parol noto'g'ri";
@@ -271,6 +263,9 @@ window.doLogin = async function(){
     }
 
     currentDebtor = found;
+    // Ilovani DARHOL ochamiz — qarzlar ro'yxati fonda yuklanib, tayyor
+    // bo'lgach o'zi chizib chiqadi (login ekranida kutib turishga hojat yo'q).
+    showApp();
     startDebtListener();
 
   }catch(e){
@@ -284,7 +279,6 @@ window.doLogin = async function(){
 function startDebtListener(){
   if(debtsListener) debtsListener();
 
-  let debounce = null;
   debtsListener = onSnapshot(collection(db,'debts'), snap=>{
     const all = snap.docs.map(d=>d.data());
     
@@ -299,12 +293,7 @@ function startDebtListener(){
       );
     }
     MY_DEBTS.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-    clearTimeout(debounce);
-    debounce = setTimeout(()=>{
-      showApp();
-      render();
-    }, 30);
+    render();
   });
 }
 
