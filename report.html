@@ -17,8 +17,7 @@
     --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
     --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
   }
-  html{overflow-x:hidden}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
 
   #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
   #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite}
@@ -122,7 +121,6 @@
   .debt-item-row:last-child{border:none}
 
   @media(max-width:768px){
-    input:not(.pin-input),select,textarea{font-size:16px!important}
     nav{height:auto;min-height:52px;padding:.5rem .75rem;flex-wrap:wrap;gap:.4rem}
     nav .logo{font-size:15px}
     nav button.nav-tab{padding:6px 10px;font-size:12px}
@@ -181,7 +179,6 @@
   <div class="logo">📊 <span>Do'kon Hisobotlari</span></div>
   <button class="nav-tab active" id="navtab-report" onclick="switchMain('report')">📊 Hisobot</button>
   <button class="nav-tab" id="navtab-stock" onclick="switchMain('stock')">📦 Zaxira</button>
-  <button class="nav-tab" id="navtab-stockhistory" onclick="switchMain('stockhistory')">🚚 Kirim/Chiqim</button>
   <button class="nav-tab" id="navtab-debts" onclick="switchMain('debts')">💳 Qarzlar</button>
   <div class="user-badge"><span id="sync-dot"></span>👨‍💼 Admin</div>
 </nav>
@@ -267,40 +264,6 @@
 </div>
 </div>
 
-<!-- KIRIM/CHIQIM BO'LIMI (market.html bilan bir xil) -->
-<div id="main-stockhistory" style="display:none">
-<div class="page">
-  <div class="section-header">
-    <div><h2>🚚 Kirim / Chiqim tarixi</h2><p id="sh-updated">Real vaqtda yangilanadi</p></div>
-  </div>
-  <div class="filter-bar" style="margin-bottom:1rem">
-    <button class="btn sm" id="sh-btn-today" onclick="setStockHistFilter('today')">Bugun</button>
-    <button class="btn sm" id="sh-btn-yesterday" onclick="setStockHistFilter('yesterday')">Kecha</button>
-    <button class="btn sm" id="sh-btn-week" onclick="setStockHistFilter('week')">Bu hafta</button>
-    <button class="btn sm" id="sh-btn-all" onclick="setStockHistFilter('all')">Barchasi</button>
-    <input type="date" id="sh-from" onchange="setStockHistFilter('custom')">
-    <input type="date" id="sh-to" onchange="setStockHistFilter('custom')">
-    <select id="sh-type" onchange="renderStockHistory()">
-      <option value="">Kirim + Chiqim</option>
-      <option value="in">Faqat Kirim</option>
-      <option value="out">Faqat Chiqim</option>
-    </select>
-    <input type="text" id="sh-search" oninput="renderStockHistory()" placeholder="🔍 Tovar qidirish..." style="min-width:160px">
-    <button class="btn sm green" style="margin-left:auto" onclick="exportStockHistCSV()">⬇ CSV</button>
-  </div>
-  <div id="sh-stats" class="stat-grid" style="margin-bottom:1.25rem"></div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Sana/Vaqt</th><th>Tovar</th><th>Hajm</th><th>Turi</th><th>Miqdor</th><th>Sabab</th><th>Natija (zaxira)</th>
-      </tr></thead>
-      <tbody id="sh-body"></tbody>
-    </table>
-  </div>
-  <p id="no-sh" style="color:var(--text3);text-align:center;padding:3rem;display:none">Kirim/Chiqim tarixi topilmadi.</p>
-</div>
-</div>
-
 <!-- QARZLAR BO'LIMI (yangilangan) -->
 <div id="main-debts" style="display:none">
 <div class="page">
@@ -369,8 +332,6 @@ let DEBTS = [];
 let DEBTORS = [];
 let reportDebtFilter = 'active';
 let reportDebtDateFilter = 'all';
-let RESTOCKS = [];
-let shFilter = 'today';
 
 async function init(){
   try{
@@ -431,20 +392,6 @@ async function init(){
     }, err=>{
       console.error("debtors o'qishda xatolik:", err);
       showDebtLoadError(err);
-    });
-
-    // Real-vaqt Kirim/Chiqim (restocks) tinglovchi — market.html bilan bir xil
-    let shDebounce=null;
-    onSnapshot(collection(db,'restocks'), snap=>{
-      RESTOCKS = snap.docs.map(d=>d.data());
-      RESTOCKS.sort((a,b)=>new Date(a.date)-new Date(b.date));
-      clearTimeout(shDebounce);
-      shDebounce=setTimeout(()=>{ if(loggedIn && activeMain==='stockhistory') renderStockHistory(); },30);
-      pulseSyncDot();
-    }, err=>{
-      console.error("restocks o'qishda xatolik:", err);
-      const subEl = document.getElementById('sh-updated');
-      if(subEl){ subEl.textContent = "❌ Yuklab bo'lmadi: "+err.message; subEl.style.color='var(--red)'; }
     });
 
     document.getElementById('loading-screen').classList.add('hidden');
@@ -653,12 +600,10 @@ window.switchMain = function(tab){
   activeMain = tab;
   document.getElementById('main-report').style.display = tab==='report' ? '' : 'none';
   document.getElementById('main-stock').style.display = tab==='stock' ? '' : 'none';
-  document.getElementById('main-stockhistory').style.display = tab==='stockhistory' ? '' : 'none';
   document.getElementById('main-debts').style.display = tab==='debts' ? '' : 'none';
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('navtab-'+tab).classList.add('active');
   if(tab==='stock') renderStock();
-  if(tab==='stockhistory') setStockHistFilter('today');
   if(tab==='debts'){ setReportDebtDate('all'); setReportDebtFilter('active'); }
 }
 
@@ -832,14 +777,7 @@ window.renderReportDebts = function(){
   const parts = [];
   for(const g of Object.values(grouped)){
     const people = Object.values(g.people);
-    // MUHIM TUZATISH: avval bu yerda faqat "TO'LANMAGAN" summalar yig'ilardi
-    // (d=>!d.paid). Shu sabab "To'langan" filtri tanlanganda — bu yerdagi
-    // ro'yxat allaqachon FAQAT to'langan qarzlardan iborat bo'lgani uchun —
-    // "to'lanmagan qoldiq" har doim 0 chiqib, "Moyka" tashkiloti 26 000 so'm
-    // to'lagan bo'lsa ham ekranda 0 so'm ko'rinardi. Endi ko'rsatiladigan
-    // summa joriy filtrga (Faol/To'langan/Barchasi) mos ravishda to'g'ri
-    // hisoblanadi.
-    const groupAmt = debtDisplayAmount(people.flatMap(p=>p.debts));
+    const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0),0);
     const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
     const headerTitle = g.isOrg ? `🏢 ${g.org}` : `👤 ${people[0].debtorName}`;
     const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
@@ -851,14 +789,14 @@ window.renderReportDebts = function(){
           ${headerSub?`<div style="font-size:12px;color:var(--text3)">${headerSub}</div>`:''}
         </div>
         <div style="text-align:right">
-          <div style="font-size:22px;font-weight:700;color:${groupAmt.color}">${fmt(groupAmt.amt)} so'm</div>
-          <div style="font-size:12px;color:var(--text3)">${groupAmt.label}</div>
+          <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
+          <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Faol qarz':'To\'liq to\'langan'}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${totalCount} ta qarz</div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:.85rem">
         ${people.map(p=>{
-          const personAmt = debtDisplayAmount(p.debts);
+          const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0);
           const debtor = DEBTORS.find(dd=>dd.name===p.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
           const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
           return `<div style="${g.isOrg?'border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:var(--surface2)':''}">
@@ -868,7 +806,7 @@ window.renderReportDebts = function(){
                 ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${p.phone}</div>`:''}
                 ${loginInfo}
               </div>
-              <div style="text-align:right;font-size:13px;font-weight:700;color:${personAmt.color}">${fmt(personAmt.amt)} so'm</div>
+              <div style="text-align:right;font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
             </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}</div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
               ${p.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
@@ -890,91 +828,6 @@ window.renderReportDebts = function(){
     </div>`);
   }
   container.innerHTML = parts.join('');
-}
-
-// Berilgan qarzlar to'plami uchun ekranda ko'rsatiladigan summa/rang/yozuvni
-// hisoblaydi. Agar hali to'lanmagan qarz bo'lsa — shuni (amber) ko'rsatamiz.
-// Aks holda (hammasi to'langan) — to'langan summani (yashil) ko'rsatamiz.
-function debtDisplayAmount(arr){
-  const owed = arr.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0);
-  const paidSum = arr.filter(d=>d.paid).reduce((a,d)=>a+(d.total||0),0);
-  if(owed>0) return {amt:owed, label:'Faol qarz', color:'var(--amber)'};
-  return {amt:paidSum, label:paidSum>0?"To'liq to'langan":'Qarz yo\'q', color:'var(--green)'};
-}
-
-// ===== KIRIM/CHIQIM (market.html'dagi bilan bir xil, faqat o'qish uchun) =====
-window.setStockHistFilter = function(type){
-  shFilter = type;
-  if(type!=='custom'){
-    document.getElementById('sh-from').value='';
-    document.getElementById('sh-to').value='';
-  }
-  ['today','yesterday','week','all'].forEach(t=>{
-    const b=document.getElementById('sh-btn-'+t);
-    if(b) b.classList[t===type?'add':'remove']('blue');
-  });
-  renderStockHistory();
-}
-
-window.renderStockHistory = function(){
-  const subEl = document.getElementById('sh-updated');
-  if(subEl){ subEl.textContent = 'Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})+' · Real vaqtda'; subEl.style.color=''; }
-
-  const typeF = document.getElementById('sh-type')?.value||'';
-  const q = (document.getElementById('sh-search')?.value||'').toLowerCase();
-  const customFrom = document.getElementById('sh-from')?.value;
-  const customTo = document.getElementById('sh-to')?.value;
-  const now = new Date();
-  let start=null, end=null;
-  if(customFrom || customTo){
-    if(customFrom) start=new Date(customFrom+'T00:00:00');
-    if(customTo) end=new Date(customTo+'T23:59:59');
-    else if(customFrom) end=new Date(customFrom+'T23:59:59');
-  }
-  else if(shFilter==='today'){ start=new Date(now); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
-  else if(shFilter==='yesterday'){ const y=new Date(now); y.setDate(now.getDate()-1); start=new Date(y); start.setHours(0,0,0,0); end=new Date(y); end.setHours(23,59,59,999); }
-  else if(shFilter==='week'){ start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
-
-  let rows = [...RESTOCKS].reverse();
-  if(start) rows = rows.filter(r=>new Date(r.date)>=start);
-  if(end)   rows = rows.filter(r=>new Date(r.date)<=end);
-  if(typeF) rows = rows.filter(r=>r.type===typeF);
-  if(q) rows = rows.filter(r=>(r.productName||'').toLowerCase().includes(q));
-
-  const totalIn = rows.filter(r=>r.type==='in').reduce((a,r)=>a+(r.qty||0),0);
-  const totalOut = rows.filter(r=>r.type==='out').reduce((a,r)=>a+(r.qty||0),0);
-  document.getElementById('sh-stats').innerHTML = `
-    <div class="stat green"><div class="val">+${totalIn} ta</div><div class="lbl">📦 Jami kirim</div></div>
-    <div class="stat red"><div class="val">−${totalOut} ta</div><div class="lbl">↩ Jami chiqim</div></div>
-    <div class="stat blue"><div class="val">${rows.length}</div><div class="lbl">📋 Amallar soni</div></div>`;
-
-  const tbody = document.getElementById('sh-body');
-  const none = document.getElementById('no-sh');
-  if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
-  none.style.display='none';
-  tbody.innerHTML = rows.map(r=>{
-    const isIn = r.type==='in';
-    return `<tr>
-      <td style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(r.date)}</td>
-      <td><strong>${r.productName}</strong></td>
-      <td>${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td>
-      <td><span class="badge ${isIn?'green':'red'}">${isIn?'📦 Kirim':'↩ Chiqim'}</span></td>
-      <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${r.qty} ta</td>
-      <td style="font-size:13px;color:var(--text2)">${r.reason||'—'}</td>
-      <td style="font-size:13px">${r.stockBefore??'?'} → <strong>${r.stockAfter??'?'}</strong></td>
-    </tr>`;
-  }).join('');
-}
-
-window.exportStockHistCSV = function(){
-  let csv = 'Sana,Tovar,Hajm,Turi,Miqdor,Sabab,Oldingi,Keyin\n';
-  RESTOCKS.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(r=>{
-    csv += `"${timeStr(r.date)}","${r.productName}","${r.volume||''}","${r.type==='in'?'Kirim':'Chiqim'}",${r.qty},"${r.reason||''}",${r.stockBefore??''},${r.stockAfter??''}\n`;
-  });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  a.download = 'kirim_chiqim_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
 }
 
 window.exportDebtsCSV = function(){
