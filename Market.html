@@ -1683,24 +1683,34 @@ window.renderDebts = function(){
   const q = (document.getElementById('debt-search')?.value||'').toLowerCase();
   const from = document.getElementById('debt-from')?.value;
   const to = document.getElementById('debt-to')?.value;
-  let list = [...DB.debts];
-  // Savdo tarixidagi bilan bir xil sana filtri: bugun/kecha/oraliq
-  if(from) list = list.filter(d=>new Date(d.date)>=new Date(from));
-  if(to) list = list.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
-  if(debtFilter==='active') list = list.filter(d=>!d.paid);
-  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
-  else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
-  else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
-  if(q) list = list.filter(d=>
+
+  // 1-bosqich: sana va qidiruv filtri — bularga STATISTIKA ham, ro'yxat ham bo'ysunadi.
+  let dateFiltered = [...DB.debts];
+  if(from) dateFiltered = dateFiltered.filter(d=>new Date(d.date)>=new Date(from));
+  if(to)   dateFiltered = dateFiltered.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
+  if(q) dateFiltered = dateFiltered.filter(d=>
     (d.debtorName||'').toLowerCase().includes(q) ||
     (d.org||'').toLowerCase().includes(q)
   );
 
-  const totalActive = DB.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-  const totalPaid = DB.debts.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
-  const activeCount = DB.debts.filter(d=>!d.paid).length;
-  const orgCount = new Set(DB.debts.filter(d=>d.org).map(d=>d.org)).size;
-  const personCount = new Set(DB.debts.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
+  // 2-bosqich: holat filtri (Faol/To'langan/Tashkilot/Shaxs) — faqat PASTDAGI
+  // ro'yxatga ta'sir qiladi, statistika kartalariga tegmaydi. Shunda "Bugun"
+  // tugmasi bosilganda "Faol qarz" summasi ham albatta bugungi sana bo'yicha
+  // to'g'ri ko'rsatiladi (avval bu STATISTIKA doim BARCHA vaqt bo'yicha
+  // hisoblanardi — asosiy xato shu edi).
+  let list = [...dateFiltered];
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
+  else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
+
+  // Statistika — tanlangan SANA oralig'i bo'yicha (holat filtridan mustaqil,
+  // shunda "Faol" va "To'langan" summalari bir vaqtda solishtirib ko'rinadi).
+  const totalActive = dateFiltered.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaid = dateFiltered.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = dateFiltered.filter(d=>!d.paid).length;
+  const orgCount = new Set(dateFiltered.filter(d=>d.org).map(d=>d.org)).size;
+  const personCount = new Set(dateFiltered.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
   
   document.getElementById('debt-stats').innerHTML=`
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
