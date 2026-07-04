@@ -341,14 +341,14 @@ function buildPersonFilter(){
   // Tozalash (faqat btnlarni saqlab qolish)
   const existing = container.querySelectorAll('.btn');
   existing.forEach(b => b.remove());
-  
+
   // "Barchasi" tugmasi
   const allBtn = document.createElement('button');
-  allBtn.className = 'btn sm blue';
+  allBtn.className = 'btn sm';
   allBtn.textContent = 'Barchasi';
   allBtn.onclick = () => setPersonFilter('all');
   container.prepend(allBtn);
-  
+
   // Tashkilotdagi shaxslar ro'yxati
   const persons = [...new Set(MY_DEBTS.map(d=>d.debtorName).filter(Boolean))];
   persons.forEach(name => {
@@ -360,7 +360,13 @@ function buildPersonFilter(){
     container.appendChild(btn);
   });
   personButtons = container.querySelectorAll('.btn');
-  setPersonFilter('all');
+
+  // Real-vaqt yangilanishda tugmalar qayta yaratilganda ham HOZIRGI tanlangan
+  // filtr (masalan muayyan shaxs) ko'k bo'lib ko'rinishda qolishi kerak —
+  // avval bu yerda har doim "Barchasi" ga qaytib ketardi.
+  personButtons.forEach(b => {
+    b.classList.toggle('blue', personFilter==='all' ? b.textContent==='Barchasi' : b.textContent===personFilter);
+  });
 }
 
 window.setPersonFilter = function(name){
@@ -473,6 +479,8 @@ window.doLogout = function(){
   if(debtsListener){ debtsListener(); debtsListener=null; }
   currentDebtor = null;
   MY_DEBTS = [];
+  filterMode = 'active';
+  personFilter = 'all';
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('login-input').value = '';
