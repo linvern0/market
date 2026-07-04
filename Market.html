@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -19,19 +21,19 @@
   }
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
   #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
-  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite}
+  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .6s linear infinite}
   #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
   #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
   @keyframes spin{to{transform:rotate(360deg)}}
   #loading-screen.hidden{display:none}
-  #sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:4px;transition:.3s}
-  #sync-dot.syncing{background:#f59e0b;animation:pulse-dot 1s ease infinite}
+  #sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:4px;transition:.1s}
+  #sync-dot.syncing{background:#f59e0b;animation:pulse-dot .6s ease infinite}
   #sync-dot.error{background:#ef4444}
   @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
   nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
   nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
   nav .logo span{color:#60a5fa}
-  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s}
+  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.1s}
   nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
   nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center}
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
@@ -49,9 +51,9 @@
   .role-btn .desc{font-size:12px;color:#64748b;margin-top:2px}
   .pin-section{margin-top:1rem}
   .pin-section label{display:block;font-size:13px;color:#64748b;margin-bottom:.5rem;font-weight:500}
-  .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.15s}
+  .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.1s}
   .pin-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
-  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.15s}
+  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.1s}
   .btn-primary:hover{background:#1d4ed8}
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
@@ -101,8 +103,28 @@
   .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
   .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
   .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.6rem}
-  .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.15s;cursor:pointer}
+  .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.08s;cursor:pointer}
   .prod-card:hover{border-color:#aaa;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+  .prod-card:active{transform:scale(.97)}
+
+  /* Sotish gridi uchun maxsus */
+  .sell-card{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+  .sell-card:active{transform:scale(.96);opacity:.9}
+  .sell-card.cart-added{animation:cart-pulse .15s ease}
+  @keyframes cart-pulse{
+    0%{transform:scale(1)}
+    50%{transform:scale(.93);box-shadow:0 0 0 3px rgba(37,99,235,.4)}
+    100%{transform:scale(1)}
+  }
+
+  /* Savatdagi tovar ko'rsatgichi */
+  .cart-badge-overlay{position:absolute;top:7px;left:7px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+
+  /* Qo'shish tugmasi satri */
+  .add-btn-row{background:var(--green);color:#fff;text-align:center;padding:.45rem;border-radius:7px;font-size:12px;font-weight:700;margin-top:.6rem;letter-spacing:.2px}
+  .sell-card[style*="opacity:.7"] .add-btn-row{display:none}
+
+
   .prod-card .img-wrap{height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
   .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
   .prod-card .img-wrap .no-img{font-size:40px;color:#ccc}
@@ -113,11 +135,11 @@
   .prod-card .prod-stock{font-size:13px;color:var(--text3);margin-top:.25rem}
   .prod-card .prod-actions{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.45rem}
   .prod-card .prod-actions .btn{flex:1 1 calc(50% - .35rem);justify-content:center;min-width:0}
-  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.15s}
+  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.1s}
   .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
   .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.15s;pointer-events:none;max-width:320px}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:.06s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
   .toast.green{background:#166534}
   .toast.red{background:#991b1b}
@@ -340,6 +362,8 @@
     <button class="btn sm" id="sh-btn-yesterday" onclick="setStockHistFilter('yesterday')">Kecha</button>
     <button class="btn sm" id="sh-btn-week" onclick="setStockHistFilter('week')">Bu hafta</button>
     <button class="btn sm" id="sh-btn-all" onclick="setStockHistFilter('all')">Barchasi</button>
+    <input type="date" id="sh-from" onchange="setStockHistFilter('custom')">
+    <input type="date" id="sh-to" onchange="setStockHistFilter('custom')">
     <select id="sh-type" onchange="renderStockHistory()">
       <option value="">Kirim + Chiqim</option>
       <option value="in">Faqat Kirim</option>
@@ -402,6 +426,11 @@
     <button class="btn sm" id="db-btn-paid" onclick="setDebtFilter('paid')">To'langan</button>
     <button class="btn sm" id="db-btn-org" onclick="setDebtFilter('org')">🏢 Tashkilotlar</button>
     <button class="btn sm" id="db-btn-person" onclick="setDebtFilter('person')">👤 Shaxslar</button>
+    <button class="btn sm" onclick="quickDebtDateFilter('today')">Bugun</button>
+    <button class="btn sm" onclick="quickDebtDateFilter('yesterday')">Kecha</button>
+    <input type="date" id="debt-from" onchange="renderDebts()">
+    <input type="date" id="debt-to" onchange="renderDebts()">
+    <button class="btn sm" onclick="clearDebtDateFilter()">✕ Sana</button>
     <input type="text" id="debt-search" oninput="renderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
   </div>
   <div id="debt-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
@@ -1276,10 +1305,16 @@ window.sortProducts=async function(by){
   else if(by==='stock_asc') sorted.sort((a,b)=>a.stock-b.stock);
   else if(by==='added') sorted.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
   const now=Date.now();
-  for(let i=0;i<sorted.length;i++){
-    await fbSaveProduct({...sorted[i], createdAt:new Date(now+i*1000).toISOString()});
-  }
+  const updated = sorted.map((p,i)=>({...p, createdAt:new Date(now+i*1000).toISOString()}));
+  // Optimistik: ekranni DARHOL yangilaymiz, Firebase yozuvlarini fonda parallel yuboramiz.
+  DB.products = updated;
+  refreshProductViews();
   toast('Tovarlar tartiblandi','green');
+  setSyncing(true);
+  try{
+    await Promise.all(updated.map(p=>setDoc(doc(db,'products',p.id),p)));
+  }catch(e){ setSyncError(); console.error(e); toast('Saqlashda xatolik','red'); }
+  setSyncing(false);
 }
 
 let dragSrcId=null;
@@ -1291,18 +1326,60 @@ window.initDrag=function(){
     card.addEventListener('drop', async e=>{
       e.preventDefault(); card.classList.remove('drag-over');
       if(!dragSrcId||dragSrcId===card.dataset.id) return;
-      const fromIdx=DB.products.findIndex(x=>x.id===dragSrcId);
-      const toIdx=DB.products.findIndex(x=>x.id===card.dataset.id);
-      if(fromIdx<0||toIdx<0) return;
-      const reordered=[...DB.products];
-      const [moved]=reordered.splice(fromIdx,1);
-      reordered.splice(toIdx,0,moved);
-      const now=Date.now();
-      for(let i=0;i<reordered.length;i++){
-        await fbSaveProduct({...reordered[i], createdAt:new Date(now+i*1000).toISOString()});
-      }
+      moveProduct(dragSrcId, card.dataset.id);
     });
   });
+}
+
+// TEZKOR QAYTA TARTIBLASH: eski kod BARCHA tovarlarni birma-bir Firebase'ga
+// yozardi (N ta tovar = N marta internetga kutish — shu sabab ~1 daqiqa ketardi).
+// Endi faqat KO'CHIRILGAN tovarning o'zi — yangi qo'shnilari orasidagi
+// "createdAt" qiymatiga (tartib kaliti sifatida) o'rtacha vaqt beriladi va
+// FAQAT shu bitta yozuv Firebase'ga yuboriladi. Natija: deyarli bir zumda.
+async function moveProduct(fromId, toId){
+  const sorted = [...DB.products].sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+  const fromIdx = sorted.findIndex(x=>x.id===fromId);
+  if(fromIdx<0) return;
+  const [moved] = sorted.splice(fromIdx,1);
+  const toIdx = sorted.findIndex(x=>x.id===toId);
+  const insertAt = toIdx<0 ? sorted.length : toIdx;
+  sorted.splice(insertAt,0,moved);
+
+  const idx = sorted.findIndex(x=>x.id===fromId);
+  const prev = sorted[idx-1];
+  const next = sorted[idx+1];
+  const prevMs = prev ? new Date(prev.createdAt||0).getTime() : null;
+  const nextMs = next ? new Date(next.createdAt||0).getTime() : null;
+
+  let newMs;
+  if(prevMs!==null && nextMs!==null){
+    newMs = Math.floor((prevMs+nextMs)/2);
+    if(newMs<=prevMs || newMs>=nextMs){
+      // Vaqt farqi millisekund darajasida tugab qolgan (juda ko'p marta shu
+      // ikki tovar orasiga qo'yilgan) — bu HECH QACHON bo'lmaydi deyarli, lekin
+      // ehtiyot chorasi sifatida faqat shunda BUTUN ro'yxatni parallel (bir
+      // vaqtning o'zida, ketma-ket emas) qayta raqamlaymiz.
+      await renumberAllProducts(sorted);
+      return;
+    }
+  } else if(prevMs!==null){ newMs = prevMs+1000; }
+  else if(nextMs!==null){ newMs = nextMs-1000; }
+  else { newMs = Date.now(); }
+
+  await fbSaveProduct({...moved, createdAt:new Date(newMs).toISOString()});
+}
+
+async function renumberAllProducts(sortedList){
+  const now=Date.now();
+  // Barcha yozuvlarni BIR VAQTNING O'ZIDA (parallel) yuboramiz — ketma-ket
+  // await qilish o'rniga. Bu N marta kutish o'rniga FAQAT bitta round-trip vaqti.
+  DB.products = sortedList.map((p,i)=>({...p, createdAt:new Date(now+i*1000).toISOString()}));
+  refreshProductViews();
+  setSyncing(true);
+  try{
+    await Promise.all(DB.products.map(p=>setDoc(doc(db,'products',p.id),p)));
+  }catch(e){ setSyncError(); console.error(e); toast('Saqlashda xatolik','red'); }
+  setSyncing(false);
 }
 
 // ===== CART =====
@@ -1314,20 +1391,61 @@ window.updateCartBtn=function(){
   document.getElementById('cart-count').textContent=cnt;
   document.getElementById('cart-total-nav').textContent=fmt(cartTotal());
 }
-window.addToCart=function(id){
+window.addToCartWithFeedback = function(id, cardEl){
   const p=DB.products.find(x=>x.id===id);
   if(!p||p.stock===0){ toast("Omborda yo'q",'red'); return; }
   const inCart=cart[id]||0;
   if(inCart>=p.stock){ toast("Ombordan ko'p bo'ladi!",'red'); return; }
   cart[id]=(cart[id]||0)+1;
-  updateCartBtn(); renderSellGrid();
-  toast(`+1 ta ${p.name} savatga qo'shildi`,'green');
+  // Visual feedback on card
+  if(cardEl){
+    cardEl.classList.add('cart-added');
+    setTimeout(()=>cardEl.classList.remove('cart-added'),250);
+  }
+  updateCartBtn();
+  // Only update this specific card's data attributes (no full re-render)
+  updateSingleCard(id);
+  toast(`+1 ta ${p.name}`,'green');
+}
+window.addToCart=function(id){
+  addToCartWithFeedback(id, document.querySelector(`.sell-card[data-id="${id}"]`));
+}
+
+// Update only one card without re-rendering whole grid
+window.updateSingleCard = function(id){
+  const card = document.querySelector(`.sell-card[data-id="${id}"]`);
+  if(!card) return;
+  const p=DB.products.find(x=>x.id===id);
+  if(!p) return;
+  const inCart=cart[id]||0;
+  // Update cart badge
+  let badge = card.querySelector('.cart-badge-overlay');
+  if(inCart>0){
+    if(!badge){ badge=document.createElement('div'); badge.className='cart-badge-overlay'; card.querySelector('.img-wrap').appendChild(badge); }
+    badge.textContent=inCart;
+  } else if(badge){ badge.remove(); }
+  // Update stock text
+  const stockEl=card.querySelector('.prod-stock');
+  if(stockEl) stockEl.textContent=inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+p.stock+' ta';
+  if(stockEl) stockEl.style.color=inCart>0?'var(--accent)':'var(--text3)';
+  // Update card sig so next full render skips it
+  card.dataset.sig=`${p.stock}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
 }
 window.removeFromCart=function(id){
-  if(!cart[id]) return; cart[id]--; if(cart[id]<=0) delete cart[id];
-  updateCartBtn(); renderSellGrid(); renderCartModal();
+  if(!cart[id]) return;
+  cart[id]--;
+  if(cart[id]<=0) delete cart[id];
+  updateCartBtn();
+  updateSingleCard(id);
+  renderCartModal();
 }
-window.clearCart=function(){ cart={}; updateCartBtn(); renderSellGrid(); closeModal('modal-cart'); }
+window.clearCart=function(){
+  const ids = Object.keys(cart);
+  cart={};
+  updateCartBtn();
+  ids.forEach(id=>updateSingleCard(id));
+  closeModal('modal-cart');
+}
 window.openCartModal=function(){ renderCartModal(); openModal('modal-cart'); }
 window.renderCartModal=function(){
   const items=Object.entries(cart); const el=document.getElementById('cart-items');
@@ -1352,7 +1470,7 @@ window.setCartQty=function(id,val){
   if(isNaN(n)||n<1) n=1;
   if(n>p.stock){ n=p.stock; toast(`Maksimal: ${p.stock} ta`,'amber'); }
   cart[id]=n;
-  updateCartBtn(); renderSellGrid(); renderCartModal();
+  updateCartBtn(); updateSingleCard(id); renderCartModal();
 }
 
 // ===== DEBT FUNCTIONS =====
@@ -1474,63 +1592,67 @@ window.doDebtSell = async function(){
   const total = cartTotal();
   const now = new Date().toISOString();
 
-  let debtor;
-  if(org){
-    // MUHIM: tashkilot ICHIDA har bir odam alohida debitor hisoblanadi.
-    // Faqat org bo'yicha qidirish xato edi — bu turli odamlarning yozuvini
-    // bir-birining ustidan yozib yuborardi. Endi org+ism juftligi bo'yicha qidiramiz.
-    debtor = DB.debtors.find(d=>d.org===org && d.name===name);
-  } else {
-    debtor = DB.debtors.find(d=>d.name===name && !d.org);
-  }
+  // Debtor topish yoki yangi ID yaratish (local)
+  let debtor = org
+    ? DB.debtors.find(d=>d.org===org && d.name===name)
+    : DB.debtors.find(d=>d.name===name && !d.org);
+  if(!debtor) debtor = DB.debtors.find(d=>d.name===name);
 
   const debtorId = debtor ? debtor.id : uid();
-  
-  const finalLogin = loginVal || debtor?.login || (org ? 'org_'+org.replace(/\s/g,'_') : 'user_'+name.replace(/\s/g,'_'));
-  const finalPass = passVal || debtor?.password || '1234';
-  
+  const finalLogin = loginVal || debtor?.login || (org ? org.replace(/\s+/g,'_').toLowerCase() : name.replace(/\s+/g,'_').toLowerCase());
+  const finalPass  = passVal  || debtor?.password || '1234';
+
   const newDebtor = {
-    id: debtorId,
-    name: name,
-    org: org || '',
-    phone: phone || '',
-    login: finalLogin,
-    password: finalPass,
+    id: debtorId, name, org: org||'', phone: phone||'',
+    login: finalLogin, password: finalPass,
     createdAt: debtor?.createdAt || now
   };
-  await fbSaveDebtor(newDebtor);
+
+  // LOCAL ga darhol yoz — UI zudlik bilan yangilansin
+  const di = DB.debtors.findIndex(x=>x.id===debtorId);
+  if(di>=0) DB.debtors[di]=newDebtor; else DB.debtors.push(newDebtor);
 
   const debtItems = items.map(([id,qty])=>{ const p=DB.products.find(x=>x.id===id); return {productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,subtotal:p.price*qty}; });
   const debt = {
-    id: uid(),
-    debtorId: debtorId,
-    debtorName: name,
-    org: org || '',
-    phone: phone || '',
-    items: debtItems,
-    total: total,
-    paid: false,
-    paidDate: null,
-    date: now,
-    note: note,
-    seller: currentRole==='admin'?'Admin':'Sotuvchi',
+    id: uid(), debtorId, debtorName: name, org: org||'', phone: phone||'',
+    items: debtItems, total, paid: false, paidDate: null,
+    date: now, note, seller: currentRole==='admin'?'Admin':'Sotuvchi',
     type: org ? 'organization' : 'person'
   };
-  await fbSaveDebt(debt);
 
-  const writes = [];
+  // Local ga darhol qo'sh
+  DB.debts.unshift(debt);
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+
+  // Sales va product stock — local
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
     const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,
       seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
-    writes.push(fbSaveSale(sale));
-    writes.push(fbSaveProduct({...p, stock:p.stock-qty}));
+    localUpsertSale(sale);
+    localUpsertProduct({...p, stock:p.stock-qty});
   });
+  refreshSaleViews();
+  refreshProductViews();
 
+  // UI ni darhol yangilash
   cart={}; closeModal('modal-debt'); updateCartBtn(); renderSellGrid();
   if(currentRole==='seller') renderMySales();
   toast(`✓ Qarzga sotildi — ${fmt(total)} so'm · ${name}${org?' ('+org+')':''}`,'amber');
-  Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+
+  // Firebase ga fonda yoz (kutmasdan)
+  const writes = [
+    setDoc(doc(db,'debtors',debtorId), newDebtor),
+    setDoc(doc(db,'debts',debt.id), debt)
+  ];
+  items.forEach(([id,qty])=>{
+    const p=DB.products.find(x=>x.id===id) || DB.products.find(x=>x.id===id);
+    const saleObj = DB.sales.find(s=>s.productId===id && s.date===now && s.isDebt);
+    if(saleObj) writes.push(setDoc(doc(db,'sales',saleObj.id), saleObj));
+    const pUpdated = DB.products.find(x=>x.id===id);
+    if(pUpdated) writes.push(setDoc(doc(db,'products',id), pUpdated));
+  });
+  Promise.all(writes).catch(e=>{ console.error(e); setSyncError(); toast('Firebase saqlashda xatolik','red'); });
 }
 
 // ===== DEBTS ADMIN =====
@@ -1543,9 +1665,28 @@ window.setDebtFilter = function(f){
   renderDebts();
 }
 
+window.quickDebtDateFilter=function(type){
+  const d=new Date();
+  if(type==='yesterday') d.setDate(d.getDate()-1);
+  const iso = d.toISOString().slice(0,10);
+  document.getElementById('debt-from').value = iso;
+  document.getElementById('debt-to').value = iso;
+  renderDebts();
+}
+window.clearDebtDateFilter=function(){
+  document.getElementById('debt-from').value='';
+  document.getElementById('debt-to').value='';
+  renderDebts();
+}
+
 window.renderDebts = function(){
   const q = (document.getElementById('debt-search')?.value||'').toLowerCase();
+  const from = document.getElementById('debt-from')?.value;
+  const to = document.getElementById('debt-to')?.value;
   let list = [...DB.debts];
+  // Savdo tarixidagi bilan bir xil sana filtri: bugun/kecha/oraliq
+  if(from) list = list.filter(d=>new Date(d.date)>=new Date(from));
+  if(to) list = list.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
@@ -1752,23 +1893,59 @@ window.renderSellGrid=function(){
   const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(q));
   if(!prods.length){ grid.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
-  grid.innerHTML=prods.map(p=>{
+
+  // Faqat o'zgargan kartalarni yangilash (diff-based)
+  const existing = new Map();
+  for(const card of grid.children){
+    if(card.dataset.id) existing.set(card.dataset.id, card);
+  }
+
+  const newIds = new Set(prods.map(p=>p.id));
+  // O'chirilganlarni olib tashla
+  for(const [id, el] of existing){ if(!newIds.has(id)) el.remove(); }
+
+  let lastEl = null;
+  for(const p of prods){
     const out=p.stock===0; const inCart=cart[p.id]||0;
-    const volLabel=p.volume?`<span class="badge blue" style="margin-bottom:.3rem">${p.volume} L</span><br>`:'';
-    return `<div class="prod-card">
-      <div class="img-wrap" style="${out?'opacity:.5':''}">
+    const volLabel=p.volume?`<span class="badge blue" style="font-size:11px">${p.volume} L</span> `:'';
+    const cartBadge=inCart>0?`<div class="cart-badge-overlay">${inCart}</div>`:'';
+    const newHTML = `<div class="img-wrap" style="${out?'opacity:.5':''}">
         ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
-        <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=5?'amber':'green'}">${p.stock} ta</span></div>
-        ${inCart>0?`<div style="position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${inCart}</div>`:''}
+        <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=5?'amber':'green'}">${p.stock}</span></div>
+        ${cartBadge}
       </div>
       <div class="body">
-        <div class="prod-name">${p.name}</div>${volLabel}
-        <div class="prod-price">${fmt(p.price)} so'm</div>
-        <div class="prod-stock" style="color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`Savatda: ${inCart} ta · Qoldi: ${p.stock-inCart} ta`:'Mavjud: '+p.stock+' ta'}</div>
-        ${!out?`<button class="btn sm green" style="width:100%;margin-top:.75rem;justify-content:center" onclick="addToCart('${p.id}')">+ Savatga qo'shish</button>`:'<div style="height:2.1rem"></div>'}
-      </div></div>`;
-  }).join('');
+        <div class="prod-name">${p.name}</div>
+        <div style="margin:.2rem 0">${volLabel}<span class="prod-price">${fmt(p.price)} so'm</span></div>
+        <div class="prod-stock" style="font-size:12px;color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+p.stock+' ta'}</div>
+        ${!out?`<div class="add-btn-row">+ Qo'shish</div>`:''}
+      </div>`;
+
+    let card = existing.get(p.id);
+    if(!card){
+      card = document.createElement('div');
+      card.className = 'prod-card sell-card';
+      card.dataset.id = p.id;
+      card.addEventListener('click', function(e){
+        if(e.target.closest('.qty-btn')) return;
+        addToCartWithFeedback(p.id, this);
+      });
+    }
+    // Update only if content changed
+    const sig = `${p.stock}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
+    if(card.dataset.sig !== sig){
+      card.innerHTML = newHTML;
+      card.dataset.sig = sig;
+      if(out) card.style.opacity = '.7';
+      else card.style.opacity = '';
+    }
+
+    // Maintain order
+    if(lastEl) lastEl.after(card);
+    else grid.prepend(card);
+    lastEl = card;
+  }
 }
 
 // ===== MY SALES =====
@@ -1912,6 +2089,10 @@ window.exportCSV=function(){
 let shFilter='today';
 window.setStockHistFilter=function(type){
   shFilter=type;
+  if(type!=='custom'){
+    document.getElementById('sh-from').value='';
+    document.getElementById('sh-to').value='';
+  }
   ['today','yesterday','week','all'].forEach(t=>{
     const b=document.getElementById('sh-btn-'+t);
     if(b) b.classList[t===type?'add':'remove']('blue');
@@ -1920,13 +2101,22 @@ window.setStockHistFilter=function(type){
 }
 window.renderStockHistory=function(){
   const typeF=document.getElementById('sh-type')?.value||'';
+  const customFrom=document.getElementById('sh-from')?.value;
+  const customTo=document.getElementById('sh-to')?.value;
   const now=new Date();
   let start=null,end=null;
-  if(shFilter==='today'){ start=new Date(now); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
+  if(customFrom || customTo){
+    // Savdo tarixidagi bilan bir xil: erkin sana oralig'i
+    if(customFrom) start=new Date(customFrom+'T00:00:00');
+    if(customTo) end=new Date(customTo+'T23:59:59');
+    else if(customFrom) end=new Date(customFrom+'T23:59:59');
+  }
+  else if(shFilter==='today'){ start=new Date(now); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
   else if(shFilter==='yesterday'){ const y=new Date(now); y.setDate(now.getDate()-1); start=new Date(y); start.setHours(0,0,0,0); end=new Date(y); end.setHours(23,59,59,999); }
   else if(shFilter==='week'){ start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
   let rows=[...DB.restocks].reverse();
-  if(start) rows=rows.filter(r=>new Date(r.date)>=start && new Date(r.date)<=end);
+  if(start) rows=rows.filter(r=>new Date(r.date)>=start);
+  if(end) rows=rows.filter(r=>new Date(r.date)<=end);
   if(typeF) rows=rows.filter(r=>r.type===typeF);
   const totalIn=rows.filter(r=>r.type==='in').reduce((a,r)=>a+r.qty,0);
   const totalOut=rows.filter(r=>r.type==='out').reduce((a,r)=>a+r.qty,0);
@@ -2001,7 +2191,7 @@ window.toast=function(msg,type=''){
   el.textContent=msg; el.className='toast '+(type||'');
   requestAnimationFrame(()=>el.classList.add('show'));
   clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>el.classList.remove('show'),900);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),300);
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
