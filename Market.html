@@ -772,7 +772,12 @@ let knownSaleIds = null;
 let debtFilter = 'active';
 let editingDebtorId = null;
 
-function setSyncing(on){ const d=document.getElementById('sync-dot'); if(d) d.className = on?'syncing':''; }
+let _pendingWrites = 0;
+function setSyncing(on){
+  _pendingWrites += on ? 1 : -1;
+  if(_pendingWrites < 0) _pendingWrites = 0;
+  const d=document.getElementById('sync-dot'); if(d) d.className = _pendingWrites>0 ? 'syncing' : '';
+}
 function setSyncError(){ const d=document.getElementById('sync-dot'); if(d) d.className='error'; }
 
 function localUpsertProduct(p){
@@ -1197,30 +1202,32 @@ window.saveProduct=async function(){
   if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
   if(editingProductId){
     const p=DB.products.find(x=>x.id===editingProductId);
-    await fbSaveProduct({...p, name, price, img, note, volume});
+    closeModal('modal-product');
     toast('Tovar yangilandi','green');
+    fbSaveProduct({...p, name, price, img, note, volume}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   } else {
     const qty=parseInt(document.getElementById('p-qty').value);
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
     const newProd = {id:uid(),name,price,stock:qty,img,note,volume,createdAt:new Date().toISOString()};
-    await fbSaveProduct(newProd);
+    closeModal('modal-product');
+    toast("Tovar qo'shildi",'green');
+    const writes=[fbSaveProduct(newProd)];
     if(qty>0){
-      await fbSaveRestock({
+      writes.push(fbSaveRestock({
         id:uid(), productId:newProd.id, productName:name, volume,
         type:'in', qty, stockBefore:0, stockAfter:qty,
         reason:'Boshlang\'ich zaxira (tovar qo\'shildi)', date:new Date().toISOString()
-      });
+      }));
     }
-    toast("Tovar qo'shildi",'green');
+    Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   }
-  closeModal('modal-product');
 }
 window.deleteProduct=function(id){
   const p=DB.products.find(x=>x.id===id);
   if(!p){ toast("Tovar topilmadi",'red'); return; }
-  confirm2('Tovarni o\'chirish', `"${p.name}" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi!`, async ()=>{
-    await fbDeleteProduct(id);
+  confirm2('Tovarni o\'chirish', `"${p.name}" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi!`, ()=>{
     toast(`"${p.name}" o'chirildi`,'green');
+    fbDeleteProduct(id).catch(e=>{ console.error(e); toast("O'chirishda xatolik",'red'); });
   });
 }
 window.openRestock=function(id){
@@ -1248,13 +1255,17 @@ window.doRestock=async function(){
   const reason=document.getElementById('rs-reason').value.trim()||'Kirim';
   const stockBefore=p.stock;
   const stockAfter=p.stock+n;
-  await fbSaveProduct({...p, stock:stockAfter});
-  await fbSaveRestock({
+  const restock={
     id:uid(), productId:p.id, productName:p.name, volume:p.volume||'',
     type:'in', qty:n, stockBefore, stockAfter, reason, date:new Date().toISOString()
-  });
+  };
+  // UI ni darhol yangilash, Firebase'ga fonda yozish (kutmasdan)
   closeModal('modal-restock');
   toast(`✓ ${p.name}: +${n} ta qo'shildi (${stockBefore} → ${stockAfter})`, 'green');
+  Promise.all([
+    fbSaveProduct({...p, stock:stockAfter}),
+    fbSaveRestock(restock)
+  ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
 
 window.openReturnStock=function(id){
@@ -1286,13 +1297,17 @@ window.doReturnStock=async function(){
   const reason=noteExtra?`${reasonType}: ${noteExtra}`:reasonType;
   const stockBefore=p.stock;
   const stockAfter=p.stock-n;
-  await fbSaveProduct({...p, stock:stockAfter});
-  await fbSaveRestock({
+  const restock={
     id:uid(), productId:p.id, productName:p.name, volume:p.volume||'',
     type:'out', qty:n, stockBefore, stockAfter, reason, date:new Date().toISOString()
-  });
+  };
+  // UI ni darhol yangilash, Firebase'ga fonda yozish (kutmasdan)
   closeModal('modal-return-stock');
   toast(`↩ ${p.name}: −${n} ta chiqim (${stockBefore} → ${stockAfter})`, 'amber');
+  Promise.all([
+    fbSaveProduct({...p, stock:stockAfter}),
+    fbSaveRestock(restock)
+  ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
 
 window.sortProducts=async function(by){
@@ -1804,9 +1819,9 @@ window.renderDebts = function(){
 
 window.markDebtPaid = function(id){
   const d = DB.debts.find(x=>x.id===id);
-  confirm2('Qarzni to\'langan deb belgilash', `${d?.debtorName} — ${fmt(d?.total)} so'm qarz to'landimi?`, async ()=>{
-    await fbUpdateDebt(id, {paid:true, paidDate:new Date().toISOString()});
+  confirm2('Qarzni to\'langan deb belgilash', `${d?.debtorName} — ${fmt(d?.total)} so'm qarz to'landimi?`, ()=>{
     toast('Qarz to\'langan deb belgilandi','green');
+    fbUpdateDebt(id, {paid:true, paidDate:new Date().toISOString()}).catch(e=>{ console.error(e); toast('Yangilashda xatolik','red'); });
   });
 }
 
@@ -1822,23 +1837,24 @@ window.openDebtorLogin = function(id){
   openModal('modal-debtor-login');
 }
 
-window.saveDebtorLogin = async function(){
+window.saveDebtorLogin = function(){
   const login = document.getElementById('dl-login').value.trim();
   const password = document.getElementById('dl-password').value.trim();
   if(!login || !password){ toast('Login va parolni kiriting','red'); return; }
   const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
   if(!debtor) return;
-  await fbSaveDebtor({...debtor, login, password});
   closeModal('modal-debtor-login');
-  renderDebts();
   toast('Login/Parol yangilandi','green');
+  const p = fbSaveDebtor({...debtor, login, password});
+  renderDebts();
+  p.catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
 // Ba'zi odamlarning debitor yozuvi topilmasligi mumkin (masalan, eski xato
 // tufayli tashkilot ichidagi ismlar bir-birining ustidan yozilib qolgan hollarda).
 // Bu funksiya shunday odamlar uchun YANGI debitor yozuvini yaratib, so'ng
 // login/parol tahrirlash oynasini ochadi.
-window.createDebtorLogin = async function(name, org, phone){
+window.createDebtorLogin = function(name, org, phone){
   let debtor = DB.debtors.find(d=>d.name===name && ((org && d.org===org) || (!org && !d.org)));
   if(!debtor){
     debtor = {
@@ -1850,7 +1866,7 @@ window.createDebtorLogin = async function(name, org, phone){
       password: '',
       createdAt: new Date().toISOString()
     };
-    await fbSaveDebtor(debtor);
+    fbSaveDebtor(debtor).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   }
   openDebtorLogin(debtor.id);
 }
@@ -2017,13 +2033,13 @@ window.renderMySales=function(){
     return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
   }).join('');
 }
-window.revertSale=async function(id){
+window.revertSale=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
   const p=DB.products.find(x=>x.id===s.productId);
-  await fbUpdateSale(id,{reverted:true});
-  if(p) await fbSaveProduct({...p, stock:p.stock+s.qty});
-  renderMySales(); renderSellGrid();
   toast('Savdo qaytarildi','amber');
+  const writes=[fbUpdateSale(id,{reverted:true})];
+  if(p) writes.push(fbSaveProduct({...p, stock:p.stock+s.qty}));
+  Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
 // ===== HISTORY =====
@@ -2063,12 +2079,12 @@ window.renderHistory=function(){
 }
 window.adminRevert=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
-  confirm2('Savdoni qaytarish', `"${s.productName}" ni ${s.qty} ta qaytarilsin?`, async ()=>{
+  confirm2('Savdoni qaytarish', `"${s.productName}" ni ${s.qty} ta qaytarilsin?`, ()=>{
     const p=DB.products.find(x=>x.id===s.productId);
-    await fbUpdateSale(id,{reverted:true});
-    if(p) await fbSaveProduct({...p, stock:p.stock+s.qty});
-    renderHistory();
     toast('Savdo qaytarildi','amber');
+    const writes=[fbUpdateSale(id,{reverted:true})];
+    if(p) writes.push(fbSaveProduct({...p, stock:p.stock+s.qty}));
+    Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
 }
 window.clearFilters=function(){
@@ -2155,26 +2171,34 @@ window.exportStockCSV=function(){
 }
 
 // ===== SETTINGS =====
-window.savePins=async function(){
+window.savePins=function(){
   const ap=document.getElementById('new-admin-pin').value, sp=document.getElementById('new-seller-pin').value;
   if(ap&&ap.length!==4){ toast("Admin PIN 4 raqam bo'lishi kerak",'red'); return; }
   if(sp&&sp.length!==4){ toast("Sotuvchi PIN 4 raqam bo'lishi kerak",'red'); return; }
   if(ap) DB.pins.admin=ap;
   if(sp) DB.pins.seller=sp;
-  await fbSaveSettings();
   toast('PIN kodlar saqlandi','green');
   document.getElementById('new-admin-pin').value=''; document.getElementById('new-seller-pin').value='';
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
-window.saveRevertTime=async function(){
+window.saveRevertTime=function(){
   const v=parseInt(document.getElementById('revert-minutes').value);
   if(!v||v<1){ toast("Noto'g'ri qiymat",'red'); return; }
-  DB.revertMinutes=v; await fbSaveSettings(); toast('Vaqt saqlandi','green');
+  DB.revertMinutes=v;
+  toast('Vaqt saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 window.clearAll=function(){
-  confirm2('Hammasini o\'chirish','Barcha tovarlar va savdolar o\'chiriladi!', async ()=>{
-    for(const p of DB.products) await fbDeleteProduct(p.id);
-    for(const s of DB.sales) await deleteDoc(doc(db,'sales',s.id));
-    toast('Barcha ma\'lumotlar tozalandi');
+  confirm2('Hammasini o\'chirish','Barcha tovarlar va savdolar o\'chiriladi!', ()=>{
+    const productIds=DB.products.map(p=>p.id);
+    const saleIds=DB.sales.map(s=>s.id);
+    toast('Barcha ma\'lumotlar tozalanmoqda...','amber');
+    Promise.all([
+      ...productIds.map(id=>fbDeleteProduct(id)),
+      ...saleIds.map(id=>deleteDoc(doc(db,'sales',id)))
+    ]).then(()=>{
+      toast('Barcha ma\'lumotlar tozalandi','green');
+    }).catch(e=>{ console.error(e); toast('Tozalashda xatolik yuz berdi','red'); });
   });
 }
 
@@ -2197,7 +2221,7 @@ window.toast=function(msg,type=''){
   el.textContent=msg; el.className='toast '+(type||'');
   requestAnimationFrame(()=>el.classList.add('show'));
   clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>el.classList.remove('show'),300);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
