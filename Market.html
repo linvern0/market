@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -1690,24 +1691,23 @@ window.renderDebts = function(){
     (d.org||'').toLowerCase().includes(q)
   );
 
-  // 2-bosqich: holat filtri (Faol/To'langan/Tashkilot/Shaxs) — faqat PASTDAGI
-  // ro'yxatga ta'sir qiladi, statistika kartalariga tegmaydi. Shunda "Bugun"
-  // tugmasi bosilganda "Faol qarz" summasi ham albatta bugungi sana bo'yicha
-  // to'g'ri ko'rsatiladi (avval bu STATISTIKA doim BARCHA vaqt bo'yicha
-  // hisoblanardi — asosiy xato shu edi).
+  // 2-bosqich: holat filtri (Faol/To'langan/Tashkilot/Shaxs) — TANLANGAN
+  // filtrga statistika kartalari ham bo'ysunadi (report.html bilan bir xil
+  // mantiq). Shunda "To'langan" tugmasi bosilganda "Faol qarz" statistikasi
+  // ham to'g'ri 0 (yoki mos qiymat) bo'lib chiqadi.
   let list = [...dateFiltered];
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
   else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
 
-  // Statistika — tanlangan SANA oralig'i bo'yicha (holat filtridan mustaqil,
-  // shunda "Faol" va "To'langan" summalari bir vaqtda solishtirib ko'rinadi).
-  const totalActive = dateFiltered.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-  const totalPaid = dateFiltered.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
-  const activeCount = dateFiltered.filter(d=>!d.paid).length;
-  const orgCount = new Set(dateFiltered.filter(d=>d.org).map(d=>d.org)).size;
-  const personCount = new Set(dateFiltered.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
+  // Statistika — TANLANGAN filtr + sana oralig'i bo'yicha (report.html bilan
+  // bir xil mantiq: `list` allaqachon debtFilter'ga qarab filtrlangan).
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = list.filter(d=>!d.paid).length;
+  const orgCount = new Set(list.filter(d=>d.org).map(d=>d.org)).size;
+  const personCount = new Set(list.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
   
   document.getElementById('debt-stats').innerHTML=`
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
