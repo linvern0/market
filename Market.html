@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -1357,7 +1358,7 @@ window.saveProduct=async function(){
   const img=document.getElementById('p-img').value.trim();
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
-  const barcode=document.getElementById('p-barcode').value.trim();
+  const barcode=normalizeScanCode(document.getElementById('p-barcode').value.trim());
   if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
   if(editingProductId){
     const p=DB.products.find(x=>x.id===editingProductId);
@@ -2057,7 +2058,7 @@ window.handleSellSearchKey=function(e){
     const q=(document.getElementById('sell-search').value||'').trim();
     if(!q) return;
     // Avval barcode bo'yicha aniq qidirish (scanner inputi uchun)
-    let match = DB.products.find(p=>p.barcode && p.barcode===q && p.stock>0);
+    let match = DB.products.find(p=>p.barcode && codesMatch(p.barcode, q) && p.stock>0);
     // Topilmasa nom bo'yicha
     if(!match) match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0);
     if(match){
@@ -2595,14 +2596,51 @@ function startDecoding(video){
   });
 }
 
+// ===== GS1 DataMatrix PARSER =====
+// O'zbekistonning "Asl Belgisi" kabi milliy belgilash tizimlari GS1 DataMatrix
+// formatidan foydalanadi: (01)GTIN(21)SERIYA(93)KRIPTOKOD kabi.
+// MUHIM: (01) GTIN — mahsulot TURINI bildiradi va shu turdagi HAR BIR shishada
+// BIR XIL bo'ladi. Lekin (21) seriya raqami va (93) kriptokod — HAR BIR
+// individual shishada BOSHQACHA (noyob) bo'ladi! Shuning uchun to'liq
+// skanerlangan matnni solishtirish ASOSIY sabab — kod hech qachon ikkinchi
+// marta mos kelmaydi. Bu funksiya faqat barqaror GTIN qismini ajratib oladi.
+function extractGTIN(raw){
+  if(!raw) return null;
+  // 1) Odam o'qiy oladigan format: "(01)04780069000321(21)..."
+  let m = raw.match(/\(01\)(\d{14})/);
+  if(m) return m[1];
+  // 2) Xom GS1 format (qavssiz, FNC1/GS bilan ajratilgan): "01" + 14 raqam
+  m = raw.match(/(?:^|[^0-9])01(\d{14})/);
+  if(m) return m[1];
+  return null;
+}
+// Skanerlangan kodni "kalit" shaklga keltiradi — agar GS1 GTIN topilsa
+// FAQAT o'shani qaytaradi (seriya/kriptokodsiz), aks holda kodni
+// o'zgarishsiz qaytaradi (oddiy QR/barkod/qo'lda kiritilgan kod uchun).
+function normalizeScanCode(raw){
+  raw = (raw||'').trim();
+  const gtin = extractGTIN(raw);
+  return gtin || raw;
+}
+// Ikki kodni solishtiradi — ikkalasini ham normallashtirib solishtiradi,
+// shunda eski (xom holda saqlangan) va yangi (GTIN sifatida saqlangan)
+// kodlar ham to'g'ri mos keladi.
+function codesMatch(a, b){
+  if(!a || !b) return false;
+  if(a === b) return true;
+  return normalizeScanCode(a) === normalizeScanCode(b);
+}
+
 window.processCode = function(code){
   code = (code||'').trim();
   if(!code){ toast('Kod bo\'sh', 'red'); return; }
   _scannedCode = code;
   document.getElementById('manual-code-input').value = code;
 
-  // Tovar izlash (barcode maydoni bo'yicha, yoki nomi bo'yicha)
-  let prod = DB.products.find(p=>p.barcode===code);
+  // Tovar izlash (barcode maydoni bo'yicha — GS1 kodlarda faqat GTIN qismi
+  // solishtiriladi, chunki seriya raqami har bir shishada boshqacha bo'ladi;
+  // topilmasa, nomi bo'yicha ham urinib ko'ramiz)
+  let prod = DB.products.find(p=>p.barcode && codesMatch(p.barcode, code));
   if(!prod) prod = DB.products.find(p=>p.name.toLowerCase()===code.toLowerCase());
 
   if(prod){
@@ -2702,12 +2740,14 @@ function resetScanForNext(){
 
 // Admin: yangi tovar sifatida qo'shish (skanerlangan kod barcode sifatida kiritiladi)
 window.scanOpenNewProduct = function(){
+  const keyCode = normalizeScanCode(_scannedCode);
   closeScanner();
   openAddProduct();
-  // Barcode maydoniga kod kiritamiz
+  // Barcode maydoniga kod kiritamiz (GS1 bo'lsa — faqat GTIN qismi,
+  // seriya raqamisiz, shunda shu turdagi boshqa shishalar ham mos keladi)
   setTimeout(()=>{
     const bc = document.getElementById('p-barcode');
-    if(bc) bc.value = _scannedCode||'';
+    if(bc) bc.value = keyCode||'';
     toast('Yangi tovar — kodni barcode maydoniga avtomatik yozdik','amber');
   },200);
 }
@@ -2810,8 +2850,12 @@ window.doAssignBarcode = async function(code){
   const p = DB.products.find(x=>x.id===_assignProductId);
   if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
 
+  // GS1 kod bo'lsa, faqat GTIN qismini olamiz (seriya raqami emas) —
+  // shunda shu turdagi BOSHQA shishalarni skanerlaganda ham mos keladi.
+  const keyCode = normalizeScanCode(code);
+
   // Boshqa tovar shu kodni ishlatayotganini tekshir
-  const conflict = DB.products.find(x=>x.barcode===code && x.id!==_assignProductId);
+  const conflict = DB.products.find(x=>x.id!==_assignProductId && x.barcode && codesMatch(x.barcode, keyCode));
   if(conflict){
     toast(`⚠️ Bu kod allaqachon "${conflict.name}"ga biriktirilgan!`,'red');
     _assignDone = false;
@@ -2824,16 +2868,16 @@ window.doAssignBarcode = async function(code){
   if(navigator.vibrate) navigator.vibrate([100,50,100]);
 
   // Status yangilash
-  document.getElementById('assign-status').textContent = `✅ Biriktirildi: ${code}`;
+  document.getElementById('assign-status').textContent = `✅ Biriktirildi: ${keyCode}`;
   document.getElementById('assign-status').style.color = 'var(--green)';
 
   // Lokal yangilash
-  p.barcode = code;
+  p.barcode = keyCode;
 
   // Firebase ga yoz (fonda)
   fbSaveProduct(p).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 
-  toast(`✅ "${p.name}" → ${code}`,'green');
+  toast(`✅ "${p.name}" → ${keyCode}`,'green');
   renderProducts();
 
   // 800ms dan keyin yop — foydalanuvchi ko'rsin
