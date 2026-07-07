@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -536,8 +533,21 @@
     </div>
     <div class="form-row full">
       <div class="field">
-        <label>📦 Barcode / DataMatrix kodi <span style="color:var(--text3);font-weight:400">(ixtiyoriy — skanerdan o'qiladi)</span></label>
-        <input id="p-barcode" placeholder="Masalan: 4870003760012"></div>
+        <label>📦 Barcode (GTIN/EAN) <span style="color:var(--text3);font-weight:400">(ixtiyoriy — mahsulotning umumiy shtrix kodi)</span></label>
+        <div style="display:flex;gap:.5rem">
+          <input id="p-barcode" placeholder="Masalan: 4870003760012" style="flex:1">
+          <button type="button" class="btn sm" onclick="openFieldScanner('p-barcode')" title="Kamera bilan skanerlash">📷</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>📷 QR/DataMatrix kodi <span style="color:var(--text3);font-weight:400">(ixtiyoriy — qopqoq/idishdagi noyob kod)</span></label>
+        <div style="display:flex;gap:.5rem">
+          <input id="p-qrcode" placeholder="Masalan: 010487000376..." style="flex:1">
+          <button type="button" class="btn sm" onclick="openFieldScanner('p-qrcode')" title="Kamera bilan skanerlash">📷</button>
+        </div>
+      </div>
     </div>
     <div id="img-preview-wrap" style="display:none;margin-bottom:.75rem">
       <img id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
@@ -816,6 +826,19 @@
       </div>
     </div>
 
+    <!-- Kamera boshqaruv paneli: Torch / Zoom / Fokus / Enhanced Scan -->
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.6rem 0;justify-content:center">
+      <button class="btn sm" id="btn-torch" onclick="onToggleTorch()" title="Fonar (agar qurilma qo'llasa)">🔦 Torch</button>
+      <button class="btn sm" id="btn-focus-auto" onclick="setFocusMode('continuous')" title="Avtomatik fokus">🎯 Avto-fokus</button>
+      <button class="btn sm" id="btn-focus-manual" onclick="setFocusMode('manual', 0.15)" title="Qo'lda fokus (yaqin masofa)">🔍 Yaqin fokus</button>
+      <button class="btn sm" id="btn-enhanced-scan" onclick="onToggleEnhancedScan()" title="Real vaqtda qo'shimcha kuchli tekshiruv — sekinroq, lekin qiyin kodlarni ham topadi">✨ Enhanced Scan</button>
+    </div>
+    <div id="zoom-control-wrap" style="display:none;align-items:center;gap:.5rem;margin:0 0 .6rem;font-size:12px;color:var(--text3)">
+      <span>🔎</span>
+      <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" oninput="setZoom(this.value)" style="flex:1">
+      <span id="zoom-value">1.0x</span>
+    </div>
+
     <p id="scan-status">Kamerani DataMatrix kodga qarating...</p>
 
     <!-- Shu skanerlash sessiyasida qo'shilgan tovarlar ro'yxati (ketma-ket
@@ -827,7 +850,7 @@
       ⚡ Avtomatik rejim — har skanerlashda darhol 1 dona qo'shiladi (tugma bosmasdan, ko'p tovarni tez ketma-ket skanerlash uchun)
     </label>
 
-    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📸 Suratga olib skanerlash</button>
+    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📷 Scan HD (12 usul bilan chuqur tekshirish)</button>
     <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa shu tugmani bosing — bitta yoki bir nechta (6–12 dona) tovarni yon-yonma qo'yib suratga olsangiz ham, hammasini birdan aniqlab qo'shadi</p>
 
     <!-- Natija: tovar topildi -->
@@ -903,6 +926,12 @@
 
     <p id="assign-status" style="text-align:center;margin:.75rem 0;font-size:14px;font-weight:600;color:var(--text2)">Tovarning barkodini skanerga qarating...</p>
 
+    <!-- Kod skanerlangach, admin uni qaysi maydonga saqlashni o'zi tanlaydi -->
+    <div id="assign-choice-buttons" style="display:none;gap:.5rem;margin-bottom:.75rem">
+      <button class="btn sm" style="flex:1;justify-content:center;border-color:var(--accent);color:var(--accent)" onclick="commitAssignedCode('barcode')">📦 Barcode sifatida saqlash</button>
+      <button class="btn sm" style="flex:1;justify-content:center;border-color:var(--amber);color:var(--amber)" onclick="commitAssignedCode('qrCode')">📷 QR/DataMatrix sifatida saqlash</button>
+    </div>
+
     <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.25rem" onclick="captureAndScanAssign()">📸 Suratga olib skanerlash</button>
 
     <!-- Qo'lda kiritish -->
@@ -942,13 +971,38 @@ const app = initializeApp(firebaseConfig);
 // bir nechta brauzer/qurilma oynasi bir vaqtda ochiq bo'lsa ham ishlashini
 // ta'minlaydi. Agar (juda eski brauzerda) bu ishlamasa — oddiy rejimga
 // muammosiz qaytamiz.
-const db = getFirestore(app);
+// TUZATILDI: ilgari shu izohdan keyin baribir oddiy getFirestore(app)
+// chaqirilar edi — ya'ni persistentLocalCache/persistentMultipleTabManager
+// import qilingan bo'lsa-da, HECH QACHON ishlatilmagan. Aynan shu sabab
+// internet uzilganda (ayniqsa sahifa qayta ochilganda) yozuvlar UI'da
+// ko'rinmay qolardi. Endi haqiqatan ham yoqamiz:
+let db;
+try{
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+}catch(e){
+  console.error("persistentLocalCache yoqilmadi, oddiy (faqat xotira) keshga o'tildi:", e);
+  db = getFirestore(app);
+}
 
 window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
 window.currentRole = null;
 window.editingProductId = null;
 window.restockId = null;
 window.cart = {};
+// TUZATILDI: noyob (serial) kod skanerlanganda stock/soldCodes DARHOL
+// (savatga qo'shilgan payti) o'zgartiriladi — checkout (doCartSell) esa
+// BARCHA savat elementlari uchun stockni yana bir marta kamaytirar edi.
+// Natijada QR/seriya kodi bilan sotilgan tovarning zaxirasi IKKI MARTA
+// kamayardi, va agar foydalanuvchi tovarni checkout qilmasdan savatdan
+// olib tashlasa, kod "sotilgan" deb abadiy qolib ketardi (hech qachon
+// haqiqiy savdo bo'lmagan holda). Bu ro'yxat — har bir mahsulot uchun
+// savatda turgan (checkout qilinmagan) seriya kodlari — aynan shu ikkala
+// muammoni to'g'irlash uchun ishlatiladi (pastga qarang: scanAddToCart,
+// removeFromCart, clearCart, doCartSell).
+window.cartSerialCodes = {}; // { productId: [code, code, ...] }
+
 let knownSaleIds = null;
 let debtFilter = 'active';
 let editingDebtorId = null;
@@ -1111,6 +1165,38 @@ async function fbUpdateDebt(id, patch){
 }
 
 
+// ===== ESKI MA'LUMOTLARNI AVTOMATIK TUZATISH =====
+// Ba'zi eski yozuvlarda umumiy GTIN kodi noto'g'ri joyga (masalan qrCode
+// maydoniga, yoki barcode maydoniga 14 xonali "0..." holida) saqlangan.
+// Bunday kod topilsa: barcode = boshidagi 0'siz 13 xonali GTIN,
+// qrCode = asl 14 xonali kod (o'zgarishsiz) qilib to'g'irlanadi.
+function fixLegacyProductCode(p){
+  const asLegacyGtin = (val)=>{
+    if(!val) return null;
+    const s = String(val).trim();
+    return /^0\d{13}$/.test(s) ? s : null;
+  };
+  const legacy = asLegacyGtin(p.qrCode) || asLegacyGtin(p.barcode);
+  if(!legacy) return false;
+  const strippedBarcode = legacy.slice(1);
+  let changed = false;
+  if(p.barcode !== strippedBarcode){ p.barcode = strippedBarcode; changed = true; }
+  if(p.qrCode !== legacy){ p.qrCode = legacy; changed = true; }
+  return changed;
+}
+
+// Barcha tovarlarni ko'zdan kechirib, kerak bo'lganlarini Firestore'da ham
+// to'g'irlaydi. Idempotent — allaqachon to'g'ri yozuvlar qayta yozilmaydi,
+// shuning uchun har bir yuklanish/yangilanishda xavfsiz chaqirsa bo'ladi.
+function migrateLegacyProductCodes(){
+  DB.products.forEach(p=>{
+    if(fixLegacyProductCode(p)){
+      fbUpdateProductFields(p.id, {barcode:p.barcode, qrCode:p.qrCode})
+        .catch(e=>console.error('Eski kodni tuzatishda xatolik:', p.id, e));
+    }
+  });
+}
+
 function startListeners(){
   onSnapshot(settingsRef, snap=>{
     if(snap.exists()){
@@ -1123,6 +1209,7 @@ function startListeners(){
   onSnapshot(collection(db,'products'), snap=>{
     DB.products = snap.docs.map(d=>d.data());
     DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+    migrateLegacyProductCodes();
     clearTimeout(prodDebounce);
     prodDebounce=setTimeout(()=>{
       renderProducts();
@@ -1195,6 +1282,7 @@ async function init(){
 
     DB.products = prodsSnap.docs.map(d=>d.data());
     DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+    migrateLegacyProductCodes();
     DB.sales = salesSnap.docs.map(d=>d.data());
     DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
     DB.restocks = restocksSnap.docs.map(d=>d.data());
@@ -1260,6 +1348,7 @@ window.doLogin = function(){
 }
 
 window.logout = function(){
+  Object.keys(cartSerialCodes).forEach(id=>{ while(revertCartSerialCode(id)){} });
   currentRole=null; cart={};
   document.getElementById('login-page').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -1364,13 +1453,26 @@ window.renderProducts = function(){
         ${volLabel}
         <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
         <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
-        ${p.barcode
-          ? `<div style="font-size:11px;color:var(--text3);margin-top:.2rem;font-family:monospace;display:flex;align-items:center;gap:.3rem">
-               <span>📦 ${p.barcode}</span>
-               <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
-             </div>`
-          : `<button class="btn sm" onclick="openAssignBarcode('${p.id}')" style="margin-top:.35rem;width:100%;justify-content:center;border-color:var(--amber);color:var(--amber)">📷 Kod biriktirish</button>`
-        }
+        <div style="margin-top:.2rem;display:flex;flex-direction:column;gap:.15rem">
+          ${p.barcode
+            ? `<div style="font-size:11px;color:var(--text3);font-family:monospace;display:flex;align-items:center;gap:.3rem">
+                 <span>📦 ${p.barcode}</span>
+                 <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
+               </div>`
+            : ''
+          }
+          ${p.qrCode
+            ? `<div style="font-size:11px;color:var(--text3);font-family:monospace;display:flex;align-items:center;gap:.3rem">
+                 <span>📷 ${p.qrCode}</span>
+                 <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
+               </div>`
+            : ''
+          }
+          ${(!p.barcode || !p.qrCode)
+            ? `<button class="btn sm" onclick="openAssignBarcode('${p.id}')" style="margin-top:.15rem;width:100%;justify-content:center;border-color:var(--amber);color:var(--amber)">📷 Kod biriktirish</button>`
+            : ''
+          }
+        </div>
         <div class="prod-actions">
           <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
           <button class="btn sm amber" onclick="openReturnStock('${p.id}')">↩ Chiqim</button>
@@ -1401,7 +1503,7 @@ function updateAssignQueueBtn(){
 window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
-  ['p-name','p-price','p-qty','p-img','p-note','p-barcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['p-name','p-price','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
@@ -1419,6 +1521,7 @@ window.openEditProduct=function(id){
   document.getElementById('p-volume').value=p.volume||'';
   document.getElementById('p-img-file').value='';
   const bc=document.getElementById('p-barcode');if(bc)bc.value=p.barcode||'';
+  const qc=document.getElementById('p-qrcode');if(qc)qc.value=p.qrCode||'';
   const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='none';
   if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
   else document.getElementById('img-preview-wrap').style.display='none';
@@ -1446,6 +1549,7 @@ window.saveProduct=async function(){
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
   const barcode=normalizeScanCode(document.getElementById('p-barcode').value.trim());
+  const qrCode=(document.getElementById('p-qrcode').value||'').trim();
   if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
   if(editingProductId){
     const p=DB.products.find(x=>x.id===editingProductId);
@@ -1461,6 +1565,7 @@ window.saveProduct=async function(){
     volume,
 
     barcode,
+    qrCode,
 
     serialCodes:p.serialCodes || {},
 
@@ -1478,8 +1583,11 @@ window.saveProduct=async function(){
     note,
     volume,
 
-    // Zavod barcode
+    // Zavod barcode (umumiy GTIN/EAN)
     barcode,
+
+    // Qopqoq/idishdagi noyob QR/DataMatrix kodi
+    qrCode,
 
     // Har bir shishaning alohida kodi
     serialCodes:{},
@@ -1724,8 +1832,33 @@ window.updateSingleCard = function(id){
   // Update card sig so next full render skips it
   card.dataset.sig=`${p.stock}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
 }
+// Savatdagi (checkout qilinmagan) bitta noyob kodni bekor qiladi: uni
+// qaytadan omborga (serialCodes) qo'shadi, "sotilgan" (soldCodes)
+// belgisini olib tashlaydi va stockni +1 qaytaradi — bu scanAddToCart'da
+// qilingan "darhol kamaytirish"ni to'g'ri orqaga qaytaradi (aks holda
+// checkout qilinmagan kod abadiy "sotilgan" bo'lib qolib ketardi).
+function revertCartSerialCode(id){
+  const codes = cartSerialCodes[id];
+  if(!codes || !codes.length) return false;
+  const code = codes.pop();
+  if(!codes.length) delete cartSerialCodes[id];
+  const p = DB.products.find(x=>x.id===id);
+  if(p){
+    if(!p.serialCodes) p.serialCodes = {};
+    p.serialCodes[code] = true;
+    if(p.soldCodes) delete p.soldCodes[code];
+    p.stock = (p.stock||0) + 1;
+    fbUpdateProductFields(id, {
+      [`serialCodes.${code}`]: true,
+      [`soldCodes.${code}`]: deleteField(),
+      stock: increment(1)
+    }).catch(e=>{ console.error(e); toast('Bekor qilishda xatolik','red'); });
+  }
+  return true;
+}
 window.removeFromCart=function(id){
   if(!cart[id]) return;
+  revertCartSerialCode(id);
   cart[id]--;
   if(cart[id]<=0) delete cart[id];
   updateCartBtn();
@@ -1734,6 +1867,7 @@ window.removeFromCart=function(id){
 }
 window.clearCart=function(){
   const ids = Object.keys(cart);
+  ids.forEach(id=>{ while(revertCartSerialCode(id)){} });
   cart={};
   updateCartBtn();
   ids.forEach(id=>updateSingleCard(id));
@@ -2158,7 +2292,18 @@ window.doCartSell=async function(){
   if(!items.length){ toast('Savat bo\'sh','red'); return; }
   const now=new Date().toISOString();
   let ok=true;
-  items.forEach(([id,qty])=>{ const p=DB.products.find(x=>x.id===id); if(!p||p.stock<qty){ toast(`${p?p.name:'Tovar'} yetarli emas!`,'red'); ok=false; } });
+  // TUZATILDI — IKKI MARTA KAMAYTIRISH: noyob (serial) kod skanerlanib
+  // savatga qo'shilganda stock ALLAQACHON kamaytirilgan bo'ladi
+  // (scanAddToCart'ga qarang). Shuning uchun bu yerda ham, ham tekshiruv,
+  // ham yakuniy kamaytirish faqat savatdagi "oddiy" (hali kamaytirilmagan)
+  // qismga nisbatan qilinishi kerak — aks holda bitta QR kod bilan
+  // sotilgan tovar zaxirasi ikki marta kamayardi.
+  items.forEach(([id,qty])=>{
+    const p=DB.products.find(x=>x.id===id);
+    const serialQty = (cartSerialCodes[id]||[]).length;
+    const nonSerialQty = Math.max(0, qty - serialQty);
+    if(!p || (nonSerialQty>0 && p.stock<nonSerialQty)){ toast(`${p?p.name:'Tovar'} yetarli emas!`,'red'); ok=false; }
+  });
   if(!ok) return;
   const total=cartTotal();
   const writes=[];
@@ -2172,8 +2317,13 @@ window.doCartSell=async function(){
     // o'zgarish yo'qolib qolmaydi (avvalgi "butun obyektni qayta yozish"
     // usuli aynan shu sababli serialCodes/soldCodes'ni orqaga qaytarib,
     // "allaqachon sotilgan" kabi noto'g'ri holatlarga olib kelardi).
-    p.stock = p.stock - qty;
-    writes.push(fbUpdateProductFields(p.id, {stock: increment(-qty)}));
+    const serialQty = (cartSerialCodes[id]||[]).length;
+    const nonSerialQty = Math.max(0, qty - serialQty);
+    if(nonSerialQty > 0){
+      p.stock = p.stock - nonSerialQty;
+      writes.push(fbUpdateProductFields(p.id, {stock: increment(-nonSerialQty)}));
+    }
+    delete cartSerialCodes[id]; // endi haqiqatan ham sotildi — "checkout kutilmoqda" ro'yxatidan chiqaramiz
   });
   cart={}; closeModal('modal-cart'); updateCartBtn(); renderSellGrid();
   if(currentRole==='seller') renderMySales();
@@ -2187,6 +2337,8 @@ window.handleSellSearchKey=function(e){
     if(!q) return;
     // Avval barcode bo'yicha aniq qidirish (scanner inputi uchun)
     let match = DB.products.find(p=>p.barcode && codesMatch(p.barcode, q) && p.stock>0);
+    // Topilmasa QR/DataMatrix kodi bo'yicha
+    if(!match) match = DB.products.find(p=>p.qrCode && codesMatch(p.qrCode, q) && p.stock>0);
     // Topilmasa nom bo'yicha
     if(!match) match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0);
     if(match){
@@ -2205,7 +2357,7 @@ window.renderSellGrid=function(){
   const ql=q.toLowerCase();
   const grid=document.getElementById('sell-grid'); const none=document.getElementById('no-sell');
   if(!grid) return;
-  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.barcode&&p.barcode.includes(q)));
+  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.barcode&&p.barcode.includes(q))||(p.qrCode&&p.qrCode.includes(q)));
   if(!prods.length){ grid.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
@@ -2579,6 +2731,29 @@ let _sharedStream = null;
 let _sharedReader = null;
 let _activeVideoEl = null;
 
+// TUZATILDI — XOTIRA SIZISHI (MEMORY LEAK): ilgari kamera oqimi skaner
+// oynasi yopilgandan keyin ham ABADIY tirik qolardi (faqat sahifa butunlay
+// yopilganda/pagehide'da to'xtatilardi) — "tezroq qayta ochilish" uchun.
+// Amalda bu, foydalanuvchi bir marta skanerlagandan so'ng butun sessiya
+// davomida (hatto sahifani yopmasdan boshqa bo'limlarda ishlab yursa ham)
+// kamera doim yonib, kadr olib, xotira/batareyani sarflab turishini
+// anglatardi. Endi: modal yopilganda oqim DARHOL o'chirilmaydi (tez-tez
+// ketma-ket skanerlash hali ham tez ishlaydi), lekin bir muddat (45s)
+// ichida qayta ochilmasa — kamera avtomatik butunlay o'chiriladi.
+let _streamIdleTimer = null;
+const STREAM_IDLE_RELEASE_MS = 45000;
+function cancelStreamRelease(){
+  if(_streamIdleTimer){ clearTimeout(_streamIdleTimer); _streamIdleTimer = null; }
+}
+function scheduleStreamRelease(){
+  cancelStreamRelease();
+  _streamIdleTimer = setTimeout(()=>{
+    if(_sharedStream){ _sharedStream.getTracks().forEach(t=>t.stop()); _sharedStream = null; }
+    if(_sharedReader){ try{ _sharedReader.reset(); }catch(e){} }
+    _streamIdleTimer = null;
+  }, STREAM_IDLE_RELEASE_MS);
+}
+
 async function loadZXing(){
   if(_zxingReady) return true;
   if(_zxingLoading) return new Promise(r=>{
@@ -2610,7 +2785,156 @@ function getSharedReader(){
   return _sharedReader;
 }
 
-// ===== NATIV BARCODEDETECTOR API (Chrome/Android) =====
+// ============================================================
+// ===== PROFESSIONAL KO'P-DEKODERLI SKANERLASH DVIGATELI =====
+// ============================================================
+// Endi bitta kadr/rasm 4 xil mustaqil dekoder bilan ketma-ket sinaladi
+// (birinchisi topsa, qolganlari ishga tushmaydi — tezlik uchun):
+//   1) BarcodeDetector (nativ, qurilma darajasida — eng tez va aniq)
+//   2) zxing-wasm (haqiqiy zxing-cpp'ning WebAssembly porti — ZXing-JS'dan
+//      SEZILARLI aniqroq, ayniqsa kichik/lazer bilan tushirilgan, past
+//      kontrastli DataMatrix kodlar uchun)
+//   3) ZXing-JS (sof JavaScript, keng formatlarni qo'llab-quvvatlaydi)
+//   4) jsQR (yengil, tez, QR-kodlar uchun qo'shimcha zaxira)
+
+// ----- jsQR (yengil sof-JS QR dekoderi) -----
+let _jsQRReady = false, _jsQRLoading = false;
+async function ensureJsQR(){
+  if(_jsQRReady && window.jsQR) return true;
+  if(_jsQRLoading) return new Promise(r=>{
+    const check=setInterval(()=>{ if(!_jsQRLoading){ clearInterval(check); r(_jsQRReady); } },100);
+  });
+  _jsQRLoading = true;
+  return new Promise(resolve=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.onload=()=>{ _jsQRReady = typeof window.jsQR === 'function'; _jsQRLoading=false; resolve(_jsQRReady); };
+    s.onerror=()=>{ _jsQRLoading=false; resolve(false); };
+    document.head.appendChild(s);
+  });
+}
+
+// ----- zxing-wasm (zxing-cpp WebAssembly porti) -----
+// Bu — ZXing-JS emas, balki asl C++ zxing-cpp kutubxonasining o'zi
+// WebAssembly'ga kompilyatsiya qilingan versiyasi. Kichik, zich, egilgan
+// yuzadagi yoki lazer bilan tushirilgan DataMatrix kodlarni sof-JS
+// ZXing'ga qaraganda ANCHA yaxshi o'qiydi. Faqat kerak bo'lganda (birinchi
+// chaqiriqda) yuklanadi, keyin keshlanadi.
+let _zxingWasmFn = null, _zxingWasmLoading = false, _zxingWasmFailed = false;
+async function ensureZxingWasm(){
+  if(_zxingWasmFn) return _zxingWasmFn;
+  if(_zxingWasmFailed) return null;
+  if(_zxingWasmLoading) return new Promise(r=>{
+    const check=setInterval(()=>{ if(!_zxingWasmLoading){ clearInterval(check); r(_zxingWasmFn); } },100);
+  });
+  _zxingWasmLoading = true;
+  try{
+    const mod = await import('https://cdn.jsdelivr.net/npm/zxing-wasm@2.1.0/dist/es/reader/index.js');
+    // Modul birinchi chaqirilganda .wasm faylini jsDelivr'dan avtomatik yuklaydi.
+    _zxingWasmFn = mod.readBarcodesFromImageData;
+    _zxingWasmLoading = false;
+    return _zxingWasmFn;
+  }catch(e){
+    console.error('zxing-wasm yuklanmadi (ZXing-JS va nativ detektor bilan davom etamiz):', e);
+    _zxingWasmFailed = true;
+    _zxingWasmLoading = false;
+    return null;
+  }
+}
+const ZXING_WASM_FORMATS = ['DataMatrix','QRCode','EAN-13','EAN-8','Code128','Code39','ITF','Codabar','UPC-A','UPC-E','Aztec','PDF417'];
+
+// ----- Worker thread: jsQR'ni asosiy oqimdan (UI) ALOHIDA ipda ishga
+// tushiradi, shunda tez-tez dekodlash urinishlari UI'ni "muzlatib" qo'ymaydi.
+// Faqat nativ BarcodeDetector yo'q qurilmalarda (masalan iOS Safari) muhim,
+// chunki u yerlarda jonli tsikl JS-asosidagi dekoderlarga tayanadi.
+let _decodeWorker = null;
+function ensureDecodeWorker(){
+  if(_decodeWorker) return _decodeWorker;
+  try{
+    const workerSrc = `
+      importScripts('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');
+      onmessage = function(e){
+        const {id, data, width, height} = e.data;
+        let result = null;
+        try{
+          const r = jsQR(data, width, height, {inversionAttempts:'attemptBoth'});
+          if(r && r.data) result = {text:r.data, format:'qr_code'};
+        }catch(err){}
+        postMessage({id, result});
+      };
+    `;
+    const blob = new Blob([workerSrc], {type:'application/javascript'});
+    _decodeWorker = new Worker(URL.createObjectURL(blob));
+  }catch(e){ console.error('Decode worker yaratilmadi:', e); _decodeWorker=null; }
+  return _decodeWorker;
+}
+let _workerMsgId = 0;
+function decodeInWorker(imageData){
+  const worker = ensureDecodeWorker();
+  if(!worker) return Promise.resolve(null);
+  return new Promise(resolve=>{
+    const id = ++_workerMsgId;
+    const timeout = setTimeout(()=>{ worker.removeEventListener('message', onMsg); resolve(null); }, 800);
+    function onMsg(e){
+      if(e.data.id !== id) return;
+      clearTimeout(timeout);
+      worker.removeEventListener('message', onMsg);
+      resolve(e.data.result);
+    }
+    worker.addEventListener('message', onMsg);
+    try{
+      worker.postMessage({id, data:imageData.data, width:imageData.width, height:imageData.height}, [imageData.data.buffer.slice(0)]);
+    }catch(e){ clearTimeout(timeout); resolve(null); }
+  });
+}
+
+// ----- BIRLASHTIRILGAN DEKODLASH: bitta canvas'ni barcha dekoderlar bilan
+// ketma-ket sinaydi, birinchi muvaffaqiyatli natijani qaytaradi. -----
+// `fast=true` bo'lsa — faqat tez dekoderlar (nativ) ishlatiladi (real vaqt
+// tsikli uchun); `fast=false` — barcha 4 dekoder sinaladi ("Suratga olib
+// skanerlash" / HD rejim uchun, biroz sekinroq lekin ancha aniqroq).
+async function decodeCanvasMulti(canvas, fast){
+  if(!canvas) return null;
+  // 1) Nativ BarcodeDetector
+  if(_nativeDetector){
+    try{
+      const codes = await _nativeDetector.detect(canvas);
+      if(codes && codes.length) return {text:codes[0].rawValue, format:codes[0].format, engine:'native'};
+    }catch(e){}
+  }
+  if(fast) return null; // real-vaqt tsiklida shu yergacha, tezlik uchun
+
+  // 2) zxing-wasm (zxing-cpp WASM) — eng aniq, ayniqsa qiyin DataMatrix'lar uchun
+  const zw = await ensureZxingWasm();
+  if(zw){
+    try{
+      const ctx = canvas.getContext('2d', {willReadFrequently:true});
+      const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const results = await zw(imgData, {tryHarder:true, formats:ZXING_WASM_FORMATS, maxNumberOfSymbols:1});
+      if(results && results.length && results[0].text) return {text:results[0].text, format:results[0].format, engine:'zxing-wasm'};
+    }catch(e){}
+  }
+
+  // 3) ZXing-JS
+  if(_zxingReady && window.ZXing && readerHasCanvasDecode()){
+    const text = tryDecodeCanvas(canvas);
+    if(text) return {text, format:null, engine:'zxing-js'};
+  }
+
+  // 4) jsQR (asosiy oqimda — HD rejimida ishlatilgani uchun UI'ni muzlatmaydi)
+  const jq = await ensureJsQR();
+  if(jq && window.jsQR){
+    try{
+      const ctx = canvas.getContext('2d', {willReadFrequently:true});
+      const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const res = window.jsQR(imgData.data, imgData.width, imgData.height, {inversionAttempts:'attemptBoth'});
+      if(res && res.data) return {text:res.data, format:'qr_code', engine:'jsqr'};
+    }catch(e){}
+  }
+  return null;
+}
+
+
 // MUHIM: ZXing — sof JavaScript algoritmi bo'lib, kichik/zich DataMatrix
 // kodlarni (masalan shisha qopqog'idagi "Milliy belgilash" kodlari) ko'pincha
 // UMUMAN o'qiy olmaydi — bu ZXing kutubxonasining o'zida ma'lum cheklov.
@@ -2640,7 +2964,13 @@ async function ensureNativeDetector(){
 
 // Kamera oqimini oladi — agar avval ochilgan va hali tirik bo'lsa, DARHOL
 // o'shani qaytaradi (yangi ruxsat so'ramaydi, yangidan yoqmaydi).
+// MUHIM: endi maksimal sifat (Full HD) va uzluksiz avto-fokus/ekspozitsiya/
+// oq balans so'raladi — bu kichik/lazer bilan tushirilgan DataMatrix
+// kodlarni o'qish aniqligini sezilarli oshiradi. Ba'zi eski qurilmalar bu
+// "advanced" cheklovlarni qo'llamasligi mumkin — shu sabab avval TO'LIQ
+// so'rov bilan, muvaffaqiyatsiz bo'lsa oddiyroq so'rov bilan urinamiz.
 async function getSharedCameraStream(){
+  cancelStreamRelease();
   if(_sharedStream && _sharedStream.getVideoTracks().some(t=>t.readyState==='live')){
     return _sharedStream;
   }
@@ -2653,10 +2983,103 @@ async function getSharedCameraStream(){
     e.code = 'INSECURE_CONTEXT';
     throw e;
   }
-  _sharedStream = await navigator.mediaDevices.getUserMedia({
-    video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}
-  });
+  // TUZATILDI — KAMERA SIFATI PAST: faqat "ideal" so'ralganda ba'zi
+  // qurilmalar (ayniqsa iOS Safari) o'zboshimchalik bilan ancha past
+  // piksel/kadr tezligini tanlashi mumkin edi. Endi min qiymatlar ham
+  // qo'shildi — brauzer haqiqatan ham HD sifatga yaqin oqim berishga
+  // majbur bo'ladi, aks holda xato qaytarib, pastroq so'rov bilan qayta
+  // urinamiz.
+  const idealConstraints = {
+    video:{
+      facingMode:{ideal:'environment'},
+      width:{ideal:1920, min:1280}, height:{ideal:1080, min:720},
+      frameRate:{ideal:30},
+      advanced:[{focusMode:'continuous'},{exposureMode:'continuous'},{whiteBalanceMode:'continuous'}]
+    }
+  };
+  try{
+    _sharedStream = await navigator.mediaDevices.getUserMedia(idealConstraints);
+  }catch(e){
+    // Qurilma "advanced"/min cheklovlarni qo'llamasa — sodda so'rov bilan qayta urinamiz.
+    try{
+      _sharedStream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}}
+      });
+    }catch(e2){
+      // Eng oxirgi zaxira — hech qanday cheklovsiz, faqat orqa kamera.
+      _sharedStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    }
+  }
+  applyContinuousCapabilities(_sharedStream);
   return _sharedStream;
+}
+
+// Trek ochilgach ham, qo'llab-quvvatlanadigan qobiliyatlarni (fokus/
+// ekspozitsiya/oq balans) alohida-alohida yoqishga urinamiz — ba'zi
+// qurilmalarda bular faqat getUserMedia'dan KEYIN, applyConstraints orqali
+// ishlaydi (getUserMedia payti berilgan "advanced" e'tiborsiz qoldirilishi
+// mumkin edi).
+function applyContinuousCapabilities(stream){
+  const track = stream && stream.getVideoTracks()[0];
+  if(!track || typeof track.getCapabilities !== 'function') return;
+  try{
+    const caps = track.getCapabilities();
+    const advanced = [];
+    if(caps.focusMode && caps.focusMode.includes('continuous')) advanced.push({focusMode:'continuous'});
+    if(caps.exposureMode && caps.exposureMode.includes('continuous')) advanced.push({exposureMode:'continuous'});
+    if(caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) advanced.push({whiteBalanceMode:'continuous'});
+    if(advanced.length) track.applyConstraints({advanced}).catch(()=>{});
+  }catch(e){ /* getCapabilities ba'zi brauzerlarda yo'q — e'tibor bermaymiz */ }
+}
+
+// ----- TORCH (fonar) -----
+function getActiveTrack(){
+  return _sharedStream && _sharedStream.getVideoTracks()[0];
+}
+let _torchOn = false;
+async function toggleTorch(){
+  const track = getActiveTrack();
+  if(!track) return false;
+  try{
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if(!caps.torch){ toast("Bu qurilmada fonar (torch) qo'llab-quvvatlanmaydi",'amber'); return false; }
+    _torchOn = !_torchOn;
+    await track.applyConstraints({advanced:[{torch:_torchOn}]});
+    return _torchOn;
+  }catch(e){ console.error(e); toast('Fonarni yoqib bo\'lmadi','red'); return false; }
+}
+
+// ----- ZOOM -----
+function getZoomCapabilities(){
+  const track = getActiveTrack();
+  if(!track || !track.getCapabilities) return null;
+  try{
+    const caps = track.getCapabilities();
+    if(!caps.zoom) return null;
+    return caps.zoom; // {min, max, step}
+  }catch(e){ return null; }
+}
+async function setZoom_impl(value){
+  const track = getActiveTrack();
+  if(!track) return;
+  try{ await track.applyConstraints({advanced:[{zoom:Number(value)}]}); }catch(e){ console.error(e); }
+}
+
+// ----- FOKUS (qo'llab-quvvatlansa) -----
+window.setFocusMode = async function(mode, distance){
+  const track = getActiveTrack();
+  if(!track || !track.getCapabilities) { toast('Fokus boshqaruvi bu qurilmada mavjud emas','amber'); return; }
+  try{
+    const caps = track.getCapabilities();
+    if(!caps.focusMode || !caps.focusMode.includes(mode)){
+      toast(`Bu qurilmada "${mode==='manual'?'qo\'lda':'avto'}" fokus qo'llab-quvvatlanmaydi`,'amber');
+      return;
+    }
+    const constraint = {focusMode:mode};
+    if(mode==='manual' && distance!=null && caps.focusDistance) constraint.focusDistance = distance;
+    await track.applyConstraints({advanced:[constraint]});
+    toast(mode==='manual' ? '🎯 Qo\'lda fokus yoqildi' : '🎯 Avto-fokus yoqildi', 'green');
+  }catch(e){ console.error(e); toast('Fokusni o\'zgartirib bo\'lmadi','red'); }
 }
 
 // Xato turini odam tushunadigan, TO'G'RI xabarga aylantiradi (aks holda
@@ -2734,10 +3157,49 @@ window.openScanner = async function(mode){
     video.srcObject = stream;
     setScanStatus('Kamerani DataMatrix / QR kodga qarating...', '');
     startDecoding(video);
+    setupCameraControlsUI();
   }catch(e){
     console.error('Kamera xatosi:', e);
     setScanStatus(describeCameraError(e), 'err');
   }
+}
+
+// Torch/Zoom/Enhanced-Scan tugmalarini joriy qurilma imkoniyatlariga
+// moslab ko'rsatadi (qo'llamaydigan qurilmalarda tugma bosilganda ham
+// tushunarli xabar chiqadi — yashirmaymiz, chunki ba'zi qurilmalarda
+// getCapabilities() faqat kamera ISHGA TUSHGANDAN keyin to'g'ri natija
+// beradi).
+function setupCameraControlsUI(){
+  const zoomCaps = getZoomCapabilities();
+  const zoomWrap = document.getElementById('zoom-control-wrap');
+  const slider = document.getElementById('zoom-slider');
+  if(zoomCaps && zoomWrap && slider){
+    slider.min = zoomCaps.min; slider.max = zoomCaps.max; slider.step = zoomCaps.step || 0.1;
+    slider.value = zoomCaps.min;
+    zoomWrap.style.display = 'flex';
+  } else if(zoomWrap){
+    zoomWrap.style.display = 'none';
+  }
+  const torchBtn = document.getElementById('btn-torch');
+  if(torchBtn) torchBtn.classList.remove('blue');
+  const enhBtn = document.getElementById('btn-enhanced-scan');
+  if(enhBtn) enhBtn.classList.toggle('blue', _enhancedScanEnabled);
+}
+
+window.onToggleTorch = async function(){
+  const on = await toggleTorch();
+  const btn = document.getElementById('btn-torch');
+  if(btn) btn.classList.toggle('blue', on);
+}
+window.onToggleEnhancedScan = function(){
+  setEnhancedScan(!_enhancedScanEnabled);
+  const btn = document.getElementById('btn-enhanced-scan');
+  if(btn) btn.classList.toggle('blue', _enhancedScanEnabled);
+}
+window.setZoom = async function(value){
+  await setZoom_impl(value);
+  const lbl = document.getElementById('zoom-value');
+  if(lbl) lbl.textContent = Number(value).toFixed(1)+'x';
 }
 
 let _lastProcessedCode = null;
@@ -2822,6 +3284,171 @@ function grabCroppedCanvas(video, cropFrac, scale, enhance){
   return canvas;
 }
 
+// ============================================================
+// ===== TASVIRNI QAYTA ISHLASH USULLARI KUTUBXONASI =====
+// ============================================================
+// Har biri berilgan canvas'ning NUSXASINI qaytaradi (asl canvas
+// o'zgarmaydi), shunda bir xil bazaviy kesimga bir nechta turli usul
+// ketma-ket qo'llab, har birini alohida dekoderga sinab ko'rish mumkin.
+function cloneCanvas(src){
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.getContext('2d').drawImage(src,0,0);
+  return c;
+}
+function toGrayscaleCanvas(src){
+  const c = cloneCanvas(src);
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  const imgData = ctx.getImageData(0,0,c.width,c.height);
+  const d = imgData.data;
+  for(let i=0;i<d.length;i+=4){
+    const g = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;
+    d[i]=d[i+1]=d[i+2]=g;
+  }
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+function invertCanvas(src){
+  const c = cloneCanvas(src);
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  const imgData = ctx.getImageData(0,0,c.width,c.height);
+  const d = imgData.data;
+  for(let i=0;i<d.length;i+=4){ d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; }
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+function contrastCanvas(src, factor){
+  const c = cloneCanvas(src);
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  const imgData = ctx.getImageData(0,0,c.width,c.height);
+  const d = imgData.data;
+  const f = factor==null ? 1.6 : factor;
+  for(let i=0;i<d.length;i+=4){
+    for(let k=0;k<3;k++){
+      let v = (d[i+k]-128)*f+128;
+      d[i+k] = v<0?0:(v>255?255:v);
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+// Adaptiv chegaralash (soddalashtirilgan): mahalliy o'rtacha yorug'likka
+// nisbatan har bir piksel oq/qora qilinadi — teng bo'lmagan yorug'lik
+// (masalan metall yuzadagi aks) ostida ham kod chegaralarini ajratib beradi.
+function adaptiveThresholdCanvas(src, blockSize){
+  const gray = toGrayscaleCanvas(src);
+  const ctx = gray.getContext('2d', {willReadFrequently:true});
+  const w=gray.width, h=gray.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const bs = blockSize || 15;
+  const half = Math.floor(bs/2);
+  const gray1d = new Float32Array(w*h);
+  for(let i=0, p=0;i<d.length;i+=4,p++) gray1d[p]=d[i];
+  const out = new Uint8ClampedArray(w*h);
+  // Integral tasvir orqali tezkor mahalliy o'rtacha
+  const integral = new Float64Array((w+1)*(h+1));
+  for(let y=0;y<h;y++){
+    let rowSum=0;
+    for(let x=0;x<w;x++){
+      rowSum += gray1d[y*w+x];
+      integral[(y+1)*(w+1)+(x+1)] = integral[y*(w+1)+(x+1)] + rowSum;
+    }
+  }
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const x0=Math.max(0,x-half), x1=Math.min(w-1,x+half);
+      const y0=Math.max(0,y-half), y1=Math.min(h-1,y+half);
+      const area=(x1-x0+1)*(y1-y0+1);
+      const sum = integral[(y1+1)*(w+1)+(x1+1)] - integral[y0*(w+1)+(x1+1)] - integral[(y1+1)*(w+1)+x0] + integral[y0*(w+1)+x0];
+      const mean = sum/area;
+      out[y*w+x] = gray1d[y*w+x] < (mean-6) ? 0 : 255;
+    }
+  }
+  for(let i=0,p=0;i<d.length;i+=4,p++){ d[i]=d[i+1]=d[i+2]=out[p]; }
+  ctx.putImageData(imgData,0,0);
+  return gray;
+}
+// Keskinlashtirish (unsharp-mask uslubidagi 3x3 konvolyutsiya) — xira/
+// fokusdan chiqqan kadrlarda kod chekkalarini aniqroq qiladi.
+function sharpenCanvas(src){
+  const c = cloneCanvas(src);
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  const w=c.width, h=c.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const copy = new Uint8ClampedArray(d);
+  const kernel = [0,-1,0,-1,5,-1,0,-1,0];
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      for(let c3=0;c3<3;c3++){
+        let sum=0, ki=0;
+        for(let ky=-1;ky<=1;ky++) for(let kx=-1;kx<=1;kx++){
+          const idx=((y+ky)*w+(x+kx))*4+c3;
+          sum += copy[idx]*kernel[ki++];
+        }
+        const idx=(y*w+x)*4+c3;
+        d[idx] = sum<0?0:(sum>255?255:sum);
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+// Morfologik operatsiya (dilate/erode) — nuqta shovqinini tozalaydi va
+// uzilgan zich modul chekkalarini birlashtiradi (DataMatrix'ning kichik
+// kvadratchalari uchun foydali).
+function morphologyCanvas(src, op){
+  const c = toGrayscaleCanvas(src);
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  const w=c.width, h=c.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const copy = new Uint8ClampedArray(d);
+  const dilate = op !== 'erode';
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      let v = dilate ? 0 : 255;
+      for(let ky=-1;ky<=1;ky++) for(let kx=-1;kx<=1;kx++){
+        const val = copy[((y+ky)*w+(x+kx))*4];
+        v = dilate ? Math.max(v,val) : Math.min(v,val);
+      }
+      const idx=(y*w+x)*4;
+      d[idx]=d[idx+1]=d[idx+2]=v;
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+// CLAHE'ga yaqinlashtirish (soddalashtirilgan): tasvirni kataklarga bo'lib,
+// har birida gistogramma tekislashtirish qiladi — notekis yoritilgan
+// (masalan qisman soyada qolgan) kodlarni ochib beradi.
+function claheApproxCanvas(src, tiles){
+  const gray = toGrayscaleCanvas(src);
+  const ctx = gray.getContext('2d', {willReadFrequently:true});
+  const w=gray.width, h=gray.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const n = tiles || 4;
+  const tw = Math.ceil(w/n), th = Math.ceil(h/n);
+  for(let ty=0;ty<n;ty++){
+    for(let tx=0;tx<n;tx++){
+      const x0=tx*tw, y0=ty*th, x1=Math.min(w,x0+tw), y1=Math.min(h,y0+th);
+      let min=255,max=0;
+      for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){ const v=d[(y*w+x)*4]; if(v<min)min=v; if(v>max)max=v; }
+      const range=Math.max(1,max-min);
+      for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){
+        const idx=(y*w+x)*4;
+        const v=((d[idx]-min)/range)*255;
+        d[idx]=d[idx+1]=d[idx+2]=v<0?0:(v>255?255:v);
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  return gray;
+}
+
+
 // ZXing versiyasida decodeFromCanvas mavjudligini tekshiradi (0.19+ da bor).
 function readerHasCanvasDecode(){
   try{ return typeof getSharedReader().decodeFromCanvas === 'function'; }catch(e){ return false; }
@@ -2856,56 +3483,77 @@ async function tryDecodeCanvasAsync(canvas){
   }
 }
 
+// "Enhanced Scan" — real-vaqt tsiklida nativ detektor har kadrda
+// tekshirgani ustiga, har ~700ms'da bir marta QO'SHIMCHA og'ir
+// (kesilgan+ko'p-dekoderli) tekshiruv ham qo'shiladi — bu kichik/lazer
+// bilan tushirilgan DataMatrix kabi qiyin kodlarni nativ detektor
+// o'tkazib yuborganda ham tutib qoladi. TUZATILDI: ilgari standart holatda
+// O'CHIQ edi, shuning uchun ko'pchilik foydalanuvchi buni umuman
+// yoqmasdan ishlatib, qiyin kodlarni o'qishda muammoga duch kelardi —
+// endi standart holatda YOQIQ (kerak bo'lsa foydalanuvchi tugma bilan
+// o'chirishi mumkin).
+let _enhancedScanEnabled = true;
+window.setEnhancedScan = function(on){
+  _enhancedScanEnabled = !!on;
+  toast(on ? '✨ Kuchaytirilgan skanerlash yoqildi' : 'Kuchaytirilgan skanerlash o\'chirildi', on?'green':'amber');
+};
+
 function startDecoding(video){
   stopDecodingOnly();
 
   // 1-USTUVORLIK: nativ BarcodeDetector (mavjud bo'lsa) — ZXing'dan ancha
   // aniqroq va tezroq, video elementni to'g'ridan-to'g'ri (kesishsiz ham)
-  // tahlil qiladi.
+  // tahlil qiladi. ~30 FPS atrofida ishlaydi (requestAnimationFrame ekran
+  // yangilanish tezligiga bog'liq).
   if(_nativeDetector){
     _decodeLoopActive = true;
-    const loop = async ()=>{
+    let lastEnhancedAt = 0;
+    const loop = async (ts)=>{
       if(!_decodeLoopActive) return;
       try{
         const codes = await _nativeDetector.detect(video);
-        if(codes && codes.length) handleDecodedCode(codes[0].rawValue);
-        else handleNoCodeDetected();
-      }catch(e){ handleNoCodeDetected(); /* video hali tayyor bo'lmasligi mumkin — e'tibor bermaymiz */ }
+        if(codes && codes.length){ handleDecodedCode(codes[0].rawValue); if(_decodeLoopActive) requestAnimationFrame(loop); return; }
+      }catch(e){ /* video hali tayyor bo'lmasligi mumkin — e'tibor bermaymiz */ }
+      if(_enhancedScanEnabled && (!lastEnhancedAt || ts - lastEnhancedAt > 700)){
+        lastEnhancedAt = ts;
+        const canvas = grabCroppedCanvas(video, 0.55, 2, true);
+        const result = await decodeCanvasMulti(canvas, false);
+        if(result && result.text){ handleDecodedCode(result.text); if(_decodeLoopActive) requestAnimationFrame(loop); return; }
+      }
+      handleNoCodeDetected();
       if(_decodeLoopActive) requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
     return;
   }
 
-  // 2-ZAXIRA: ZXing (nativ detektor yo'q qurilmalar — masalan iOS Safari)
-  if(!_zxingReady || !window.ZXing) return;
-
-  if(!readerHasCanvasDecode()){
-    // ZAXIRA YO'L: agar ZXing versiyasida decodeFromCanvas bo'lmasa, eski
-    // uslub bilan (butun video kadrini) davom etamiz — hech bo'lmasa
-    // ishlashda davom etadi, faqat kesish/kontrast yaxshilanishisiz.
-    getSharedReader().decodeFromVideoElement(video, (result)=>{
-      if(result) handleDecodedCode(result.getText());
-      else handleNoCodeDetected();
-    });
-    return;
-  }
-
+  // 2-ZAXIRA: nativ BarcodeDetector yo'q qurilmalar (masalan iOS Safari).
+  // Avval Worker ipidagi jsQR bilan (UI'ni bloklamaydi), keyin ZXing-JS
+  // bilan sinaymiz.
   _decodeLoopActive = true;
   let lastTick = 0;
   let toggle = false;
-  const loop = (ts)=>{
+  const loop = async (ts)=>{
     if(!_decodeLoopActive) return;
-    if(ts - lastTick > 180){
+    if(ts - lastTick > 120){
       lastTick = ts;
       // Har safar kesish nisbatini biroz almashtiramiz — kod kameradan
       // turli masofada/burchakda bo'lsa ham topilish ehtimolini oshirish uchun.
       const cropFrac = toggle ? 0.55 : 0.8;
       toggle = !toggle;
       const canvas = grabCroppedCanvas(video, cropFrac, 1.8, true);
-      const text = tryDecodeCanvas(canvas);
-      if(text) handleDecodedCode(text);
-      else handleNoCodeDetected();
+      let handled = false;
+      try{
+        const ctx = canvas.getContext('2d', {willReadFrequently:true});
+        const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const wr = await decodeInWorker(imgData);
+        if(wr && wr.text){ handleDecodedCode(wr.text); handled = true; }
+      }catch(e){}
+      if(!handled && _zxingReady && window.ZXing && readerHasCanvasDecode()){
+        const text = tryDecodeCanvas(canvas);
+        if(text){ handleDecodedCode(text); handled = true; }
+      }
+      if(!handled) handleNoCodeDetected();
     }
     if(_decodeLoopActive) requestAnimationFrame(loop);
   };
@@ -2925,10 +3573,40 @@ function startDecoding(video){
 // shu bitta funksiyada: aniqlangan kodlar soniga qarab avtomatik ravishda
 // bitta tovar (handleDecodedCode) yoki bir nechta tovar (processBatchCodes)
 // rejimiga o'tadi.
+// 📷 "Scan HD" — jonli oqim ushlamasa, foydalanuvchi bitta aniq kadrni
+// "muzlatadi" va biz o'sha kadrni SO'RALGAN 12 xil qayta ishlash usuli
+// bilan (original, grayscale, adaptive threshold, sharpen, contrast+,
+// CLAHE, inverted, morphology, zoom 2x, zoom 3x, markaziy crop, to'liq
+// frame) tayyorlab, HAR BIRINI to'liq 4-dekoderli kaskaddan (nativ →
+// zxing-wasm → ZXing-JS → jsQR) o'tkazamiz. Birinchi muvaffaqiyatli
+// natija qaytariladi. Bu — eng qiyin (kichik/lazer/egilgan/metall
+// yuzadagi) kodlar uchun ham yuqori aniqlik beradigan "professional"
+// rejim; sekinroq (1-3 soniya) bo'lishi mumkin, lekin offline/bir
+// martalik bo'lgani uchun bu muammo emas.
+function buildScanVariants(video){
+  const base = grabCroppedCanvas(video, 1.0, 1, false);
+  if(!base) return [];
+  const list = [
+    {name:'original',            canvas: base},
+    {name:'full-frame-enhanced', canvas: grabCroppedCanvas(video, 1.0, 1.6, true)},
+    {name:'grayscale',           canvas: toGrayscaleCanvas(base)},
+    {name:'adaptive-threshold',  canvas: adaptiveThresholdCanvas(base, 21)},
+    {name:'sharpen',             canvas: sharpenCanvas(base)},
+    {name:'contrast+',           canvas: contrastCanvas(base, 1.8)},
+    {name:'clahe',                canvas: claheApproxCanvas(base, 4)},
+    {name:'inverted',            canvas: invertCanvas(toGrayscaleCanvas(base))},
+    {name:'morphology',          canvas: morphologyCanvas(base, 'dilate')},
+    {name:'zoom-2x',             canvas: grabCroppedCanvas(video, 0.5,  2,   true)},
+    {name:'zoom-3x',             canvas: grabCroppedCanvas(video, 0.35, 3,   true)},
+    {name:'markaziy-crop',       canvas: grabCroppedCanvas(video, 0.4,  1.5, false)},
+  ];
+  return list.filter(v=>v.canvas);
+}
+
 window.captureAndScan = async function(){
   const video = document.getElementById('scan-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
-  setScanStatus('🔍 Tekshirilmoqda, biroz kuting...', '');
+  setScanStatus('🔍 12 xil usulda tekshirilmoqda, biroz kuting...', '');
   // Bu — foydalanuvchi qo'lda bosgan aniq buyruq, shuning uchun avtomatik
   // dublikat-filtridan mustasno qilamiz (xuddi shu kod hozirgina qayta
   // ishlangan bo'lsa ham, tugma bosilgani — yangi donani tasdiqlash demakdir).
@@ -2942,54 +3620,21 @@ window.captureAndScan = async function(){
     return true;
   }
 
-  // Har ikki yo'l (nativ detektor va ZXing) uchun bir xil kesish/kattalashtirish/
-  // kontrast strategiyalari — MUHIM: nativ BarcodeDetector ham ba'zan BUTUN
-  // xira/aralash kadrni emas, aniq kesilgan-kontrastli kadrni ancha yaxshi
-  // o'qiydi, shuning uchun endi u ham faqat "video"ni emas, shu kadrlarni
-  // ham urinib ko'radi — bu zich/kichik DataMatrix kodlarni o'qish
-  // ehtimolini sezilarli oshiradi.
-  const strategies = [
-    {crop:1.0,  scale:1,   enhance:false}, // to'liq kadr — o'zgarishsiz
-    {crop:0.62, scale:1,   enhance:false},
-    {crop:0.62, scale:2,   enhance:true },
-    {crop:0.85, scale:1.5, enhance:true },
-    {crop:1.0,  scale:1.6, enhance:true },
-    {crop:0.45, scale:2.5, enhance:true },
-    {crop:0.35, scale:3,   enhance:true },
-  ];
-
+  // 1-urinish: to'liq video kadr, nativ detektor — BIR NECHTA tovar bir
+  // vaqtda (yon-yonma qo'yilgan) aniqlanishi mumkin bo'lgan yagona holat.
   if(_nativeDetector){
-    // 1-urinish: to'liq video kadr — nativ detektor ko'p kod bo'lsa
-    // (ko'p-tovarli surat) shuni bittada barchasini qaytarish ehtimoli eng
-    // yuqori bo'lgan holat, shu sabab avval shu bilan sinaymiz.
     try{
       const codes = await _nativeDetector.detect(video);
       if(codes && codes.length){ routeCodes(codes.map(c=>c.rawValue)); return; }
     }catch(e){ console.error(e); }
-
-    // 2-urinish: agar to'liq kadrda topilmasa (masalan bitta kod juda kichik/
-    // zich bo'lsa), kesilgan+kattalashtirilgan+kontrastli variantlarni
-    // birma-bir sinaymiz (bularda odatda faqat BITTA kod aniqlanadi).
-    for(const s of strategies.slice(1)){
-      const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
-      try{
-        const codes = await _nativeDetector.detect(canvas);
-        if(codes && codes.length){ routeCodes(codes.map(c=>c.rawValue)); return; }
-      }catch(e){ /* davom etamiz */ }
-      await new Promise(r=>setTimeout(r,0));
-    }
-    setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
-    return;
   }
 
-  // ZAXIRA (ZXing, nativ BarcodeDetector yo'q brauzerlar — masalan iOS
-  // Safari): kutubxona cheklovi tufayli bir martada FAQAT bitta kodni
-  // aniqlay oladi, shuning uchun bu yo'lda "ko'p tovarni birdan" imkoniyati
-  // yo'q — foydalanuvchi har bir tovarni birma-bir skanerlashi kerak bo'ladi.
-  for(const s of strategies){
-    const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
-    const text = await tryDecodeCanvasAsync(canvas);
-    if(text){ handleDecodedCode(text); return; }
+  // 2-urinish: 12 usul x 4-dekoderli to'liq kaskad — faqat BITTA kod uchun
+  // (agar kerak bo'lsa, foydalanuvchi tovarlarni birma-bir suratga oladi).
+  const variants = buildScanVariants(video);
+  for(const v of variants){
+    const result = await decodeCanvasMulti(v.canvas, false);
+    if(result && result.text){ handleDecodedCode(result.text); return; }
     await new Promise(r=>setTimeout(r,0)); // UI muzlab qolmasin
   }
   setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
@@ -3015,8 +3660,12 @@ function processBatchCodes(rawCodes){
   const found = [];    // [{prod, qty}]
   const notFound = []; // [code, ...]
   counts.forEach((qty, code)=>{
-    const prod = findProductByCode(code);
-    if(prod) found.push({prod, qty});
+    // TUZATILDI: findProductByCode {product, type} obyektini qaytaradi,
+    // lekin bu yerda o'sha obyektning o'zi "mahsulot" sifatida ishlatilar
+    // edi (prod.stock, prod.name, prod.id — barchasi undefined bo'lib,
+    // ko'p-tovarli fotosurat orqali skanerlash NaN stock bilan buzilardi).
+    const result = findProductByCode(code);
+    if(result) found.push({prod: result.product, qty});
     else notFound.push(code);
   });
 
@@ -3110,23 +3759,103 @@ function processBatchCodes(rawCodes){
   }
 }
 
-// ===== GS1 DataMatrix PARSER =====
+// ===== GS1 DataMatrix / GS1-128 PARSER (PROFESSIONAL) =====
 // O'zbekistonning "Asl Belgisi" kabi milliy belgilash tizimlari GS1 DataMatrix
 // formatidan foydalanadi: (01)GTIN(21)SERIYA(93)KRIPTOKOD kabi.
 // MUHIM: (01) GTIN — mahsulot TURINI bildiradi va shu turdagi HAR BIR shishada
 // BIR XIL bo'ladi. Lekin (21) seriya raqami va (93) kriptokod — HAR BIR
-// individual shishada BOSHQACHA (noyob) bo'ladi! Shuning uchun to'liq
-// skanerlangan matnni solishtirish ASOSIY sabab — kod hech qachon ikkinchi
-// marta mos kelmaydi. Bu funksiya faqat barqaror GTIN qismini ajratib oladi.
+// individual shishada BOSHQACHA (noyob) bo'ladi!
+// Bu parser IKKALA formatni ham to'liq qo'llab-quvvatlaydi:
+//  1) Odam o'qiydigan (parantezli): "(01)04780069000321(21)ABC123456789"
+//  2) Xom GS1 format (skanerdan to'g'ridan-to'g'ri keladigan, parantezsiz,
+//     o'zgaruvchan uzunlikdagi maydonlar orasida FNC1/GS (\x1D) belgisi
+//     bilan ajratilgan): "010460700123456721ABC123456789" yoki GS bilan.
+const GS1_FIXED_LENGTH_AIS = { '00':18,'01':14,'02':14,'11':6,'12':6,'13':6,'15':6,'17':6,'20':2 };
+const GS1_VARIABLE_AIS = ['10','21','22','30','37','90','91','92','93','94','95','96','97','98','99','240','241','242','250','251','253','254','255'];
+const GS1_GROUP_SEPARATOR = '\u001d'; // FNC1 / GS boshqaruv belgisi
+
+function parseGS1(raw){
+  const result = {isGS1:false, ai:{}, gtin:null, serial:null};
+  if(!raw) return result;
+  raw = raw.trim();
+
+  // 1) Parantezli (odam o'qiydigan) format — bir nechta (AI)qiymat juftligi
+  if(/\(\d{2,4}\)/.test(raw)){
+    const re = /\((\d{2,4})\)([^\(]*)/g;
+    let m, any=false;
+    while((m = re.exec(raw))){ any=true; result.ai[m[1]] = m[2].trim(); }
+    if(any){
+      result.isGS1 = true;
+      result.gtin = result.ai['01'] || null;
+      result.serial = result.ai['21'] || null;
+      return result;
+    }
+  }
+
+  // 2) Xom (parantezsiz) format — AI jadvali bo'yicha ketma-ket tahlil
+  if(raw.startsWith('01') && /^01\d{14}/.test(raw)){
+    let s = raw, any=false;
+    while(s.length >= 2){
+      const ai = s.slice(0,2);
+      const ai3 = s.slice(0,3);
+      if(GS1_FIXED_LENGTH_AIS[ai]){
+        const len = GS1_FIXED_LENGTH_AIS[ai];
+        const val = s.slice(2, 2+len);
+        if(val.length < len) break;
+        result.ai[ai] = val; any = true;
+        s = s.slice(2+len);
+        if(s[0]===GS1_GROUP_SEPARATOR) s = s.slice(1);
+      } else if(GS1_VARIABLE_AIS.includes(ai) || GS1_VARIABLE_AIS.includes(ai3)){
+        const aiLen = GS1_VARIABLE_AIS.includes(ai3) ? 3 : 2;
+        const aiCode = s.slice(0,aiLen);
+        const rest = s.slice(aiLen);
+        const gsIdx = rest.indexOf(GS1_GROUP_SEPARATOR);
+        const val = gsIdx>=0 ? rest.slice(0,gsIdx) : rest;
+        result.ai[aiCode] = val; any = true;
+        s = gsIdx>=0 ? rest.slice(gsIdx+1) : '';
+      } else {
+        // Tanilmagan AI — noto'g'ri talqin qilib qo'ymaslik uchun to'xtaymiz.
+        break;
+      }
+    }
+    if(any && result.ai['01']){
+      result.isGS1 = true;
+      result.gtin = result.ai['01'];
+      result.serial = result.ai['21'] || null;
+      return result;
+    }
+  }
+  return result; // isGS1:false — oddiy QR/barkod/qo'lda kiritilgan kod
+}
+
+// Faqat barqaror GTIN qismini ajratib oladi (seriya/kriptokodsiz) — eski
+// chaqiruvchilar (findProductByCode, doAssignBarcode va h.k.) buzilmasligi
+// uchun eski funksiya nomi va xatti-harakati saqlanadi.
 function extractGTIN(raw){
-  if(!raw) return null;
-  // 1) Odam o'qiy oladigan format: "(01)04780069000321(21)..."
-  let m = raw.match(/\(01\)(\d{14})/);
-  if(m) return m[1];
-  // 2) Xom GS1 format (qavssiz, FNC1/GS bilan ajratilgan): "01" + 14 raqam
-  m = raw.match(/(?:^|[^0-9])01(\d{14})/);
-  if(m) return m[1];
-  return null;
+  const parsed = parseGS1(raw);
+  return parsed.gtin || null;
+}
+// Skanerlangan kodning SERIYA (individual dona) qismini ajratadi — mavjud
+// bo'lsa. Yangi funksiya, ixtiyoriy foydalanish uchun (masalan diagnostika).
+function extractSerial(raw){
+  const parsed = parseGS1(raw);
+  return parsed.serial || null;
+}
+// Skanerlangan kod turini aniqlaydi — UI'da ko'rsatish uchun.
+function detectCodeKind(raw, format){
+  const parsed = parseGS1(raw);
+  if(parsed.isGS1){
+    if(format==='code_128' || format==='Code128') return 'GS1-128';
+    return 'GS1 DataMatrix';
+  }
+  if(format){
+    const f = String(format).toLowerCase();
+    if(f.includes('qr')) return 'QR Code';
+    if(f.includes('data_matrix')||f.includes('datamatrix')) return 'DataMatrix';
+    if(f.includes('code_128')) return 'Code 128';
+    return 'Barcode';
+  }
+  return raw && raw.length > 25 ? 'DataMatrix/QR' : 'Barcode';
 }
 // Skanerlangan kodni "kalit" shaklga keltiradi — agar GS1 GTIN topilsa
 // FAQAT o'shani qaytaradi (seriya/kriptokodsiz), aks holda kodni
@@ -3150,22 +3879,28 @@ function codesMatch(a, b){
 // ko'p-kodli (batch) skanerlash bir xil qidiruvdan foydalanishi uchun.
 function findProductByCode(code){
   if(!code) return null;
-  
-  // Kodni normallashtirish
-  const normalized = normalizeScanCode(code);
-  
+
+  // 1) Avval asosiy barcode (GTIN/EAN) bo'yicha qidiramiz
   for(const product of DB.products){
-    // 1) Asosiy barcode bo'yicha tekshirish (GTIN)
     if(product.barcode && codesMatch(product.barcode, code)){
       return { product, type: 'barcode' };
     }
-    
-    // 2) Noyob serial kodlar bo'yicha tekshirish
+  }
+
+  // 2) Topilmasa — qopqoq/idishdagi QR/DataMatrix kodi (qrCode) bo'yicha
+  for(const product of DB.products){
+    if(product.qrCode && codesMatch(product.qrCode, code)){
+      return { product, type: 'qrCode' };
+    }
+  }
+
+  // 3) Baribir topilmasa — noyob seriya kodlari (serialCodes) bo'yicha
+  for(const product of DB.products){
     if(product.serialCodes && product.serialCodes[code]){
       return { product, type: 'serial' };
     }
   }
-  
+
   return null;
 }
 
@@ -3231,7 +3966,7 @@ function showScanProduct(prod, found, type){
   document.getElementById('scan-prod-name').textContent = prod.name + (prod.volume?` · ${prod.volume}L`:'');
   
   // Qo'shimcha ma'lumot: kod turi
-  const codeType = type === 'serial' ? '🔐 Noyob kod' : '📦 Umumiy kod';
+  const codeType = type === 'serial' ? '🔐 Noyob kod' : (type === 'qrCode' ? '📷 QR/DataMatrix' : '📦 Barcode');
   document.getElementById('scan-prod-info').textContent = `${fmt(prod.price)} so'm · Zaxira: ${prod.stock} ta · ${codeType}`;
 
   // MUHIM: ilgari "umumiy kod" (barcode/GTIN — shu turdagi barcha shishada
@@ -3507,6 +4242,14 @@ window.scanAddToCart = function(){
     // Savatga qo'shamiz (1 dona)
     const inCart = cart[prod.id]||0;
     cart[prod.id] = inCart + 1;
+
+    // Bu kodni "savatda, checkout kutilmoqda" deb belgilaymiz — shunda
+    // (a) checkout paytida stock yana bir marta kamaytirilmaydi (chunki
+    // yuqorida allaqachon kamaytirildi), (b) agar foydalanuvchi checkout
+    // qilmasdan savatdan olib tashlasa, removeFromCart/clearCart buni
+    // to'g'ri bekor qila oladi.
+    if(!cartSerialCodes[prod.id]) cartSerialCodes[prod.id] = [];
+    cartSerialCodes[prod.id].push(code);
     
     // Mahsulotni saqlaymiz — ATOMIK: faqat shu KOD "sotilgan" deb
     // belgilanadi, serialCodes'dan shu KOD o'chiriladi va stock -1
@@ -3548,12 +4291,15 @@ window.scanAddToCart = function(){
 }
 
 window.closeScanner = function(){
-  // Faqat decode loop va video ulanishini to'xtatamiz — kamera OQIMI tirik
-  // qoladi, shunda keyingi ochilish darhol va ruxsatsiz bo'ladi.
+  // Faqat decode loop va video ulanishini to'xtatamiz — kamera OQIMI darhol
+  // o'chirilmaydi (tez orada qayta ochilsa, tez ishlashi uchun), lekin
+  // bir muddat ishlatilmasa avtomatik o'chadi (xotira sizishining oldini
+  // olish uchun — pastdagi scheduleStreamRelease()ga qarang).
   stopDecodingOnly();
   const v=document.getElementById('scan-video'); if(v) v.srcObject=null;
   _scannedCode=null; _scannedProductId=null;
   closeModal('modal-scanner');
+  scheduleStreamRelease();
 }
 
 // FAB ko'rinishini sahifaga qarab boshqarish
@@ -3576,7 +4322,9 @@ let _assignDone = false;
 // ravishda navbatdagi keyingi tovarga o'tadi.
 let _assignQueue = [];      // navbatdagi tovar ID'lari
 let _assignQueueIdx = -1;   // joriy o'rin (-1 = navbat rejimi emas)
-let _assignMode = 'barcode'; // 'barcode' = umumiy kod biriktirish, 'serial' = har bir donani alohida ro'yxatga olish
+let _assignMode = 'barcode'; // 'barcode' = umumiy kod biriktirish (admin tanlaydi), 'serial' = har bir donani alohida ro'yxatga olish, 'field' = qo'shish/tahrirlash formasidagi bitta maydonga yozish
+let _assignFieldTarget = null; // 'field' rejimida qaysi input id'ga yozish kerak
+let _pendingAssignCode = null; // skanerlangan, hali qaysi maydonga (barcode/qrCode) saqlash tanlanmagan kod
 
 window.startBarcodeAssignQueue = function(){
   const missing = DB.products.filter(p=>!p.barcode);
@@ -3677,6 +4425,7 @@ function advanceAssignQueue(){
     closeModal('modal-assign-barcode');
     stopDecodingOnly();
     const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
+    scheduleStreamRelease();
     toast(_assignMode==='serial' ? '✅ Barcha donalar ro\'yxatga olindi!' : '✅ Barcha tovarlarga kod biriktirildi!','green');
     _assignMode = 'barcode';
     return;
@@ -3720,9 +4469,11 @@ window.openAssignBarcode = async function(productId){
     document.getElementById('assign-product-info').innerHTML =
       `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
        <span style="font-size:13px;color:var(--text3);font-weight:400">
-         ${p.barcode ? '⚠️ Joriy kod: '+p.barcode+' — yangi kod bilan almashtiriladi' : 'Hali kod biriktirilmagan'}
+         Barcode: ${p.barcode || '—'} · QR/DataMatrix: ${p.qrCode || '—'}
        </span>`;
   }
+  _pendingAssignCode = null;
+  document.getElementById('assign-choice-buttons').style.display = 'none';
   document.getElementById('assign-code-input').value = '';
   openModal('modal-assign-barcode');
 
@@ -3790,7 +4541,7 @@ function startAssignDecoding(video){
   let toggle = false;
   const loop = (ts)=>{
     if(!_decodeLoopActive) return;
-    if(ts - lastTick > 180){
+    if(ts - lastTick > 120){
       lastTick = ts;
       const cropFrac = toggle ? 0.55 : 0.8;
       toggle = !toggle;
@@ -3807,7 +4558,7 @@ function startAssignDecoding(video){
 window.captureAndScanAssign = async function(){
   const video = document.getElementById('assign-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
-  document.getElementById('assign-status').textContent = '🔍 Tekshirilmoqda, biroz kuting...';
+  document.getElementById('assign-status').textContent = '🔍 12 xil usulda tekshirilmoqda, biroz kuting...';
   document.getElementById('assign-status').style.color = 'var(--text2)';
 
   if(_nativeDetector){
@@ -3815,24 +4566,12 @@ window.captureAndScanAssign = async function(){
       const codes = await _nativeDetector.detect(video);
       if(codes && codes.length && !_assignDone){ doAssignBarcode(codes[0].rawValue.trim()); return; }
     }catch(e){ console.error(e); }
-    document.getElementById('assign-status').textContent = "Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring yoki qo'lda kiriting.";
-    document.getElementById('assign-status').style.color = 'var(--amber)';
-    return;
   }
 
-  const strategies = [
-    {crop:0.62, scale:1,   enhance:false},
-    {crop:0.62, scale:2,   enhance:true },
-    {crop:0.85, scale:1.5, enhance:true },
-    {crop:1.0,  scale:1,   enhance:false},
-    {crop:1.0,  scale:1.6, enhance:true },
-    {crop:0.45, scale:2.5, enhance:true },
-    {crop:0.35, scale:3,   enhance:true },
-  ];
-  for(const s of strategies){
-    const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
-    const text = await tryDecodeCanvasAsync(canvas);
-    if(text && !_assignDone){ doAssignBarcode(text.trim()); return; }
+  const variants = buildScanVariants(video);
+  for(const v of variants){
+    const result = await decodeCanvasMulti(v.canvas, false);
+    if(result && result.text && !_assignDone){ doAssignBarcode(result.text.trim()); return; }
     await new Promise(r=>setTimeout(r,0));
   }
   document.getElementById('assign-status').textContent = "Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring yoki qo'lda kiriting.";
@@ -3852,39 +4591,80 @@ window.doAssignBarcode = async function(code){
     return;
   }
 
-  const p = DB.products.find(x=>x.id===_assignProductId);
-  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
-
-  _assignDone = true;
-
-  // GS1 kod bo'lsa, faqat GTIN qismini olamiz (seriya raqami emas) —
-  // shunda shu turdagi BOSHQA shishalarni skanerlaganda ham mos keladi.
-  const keyCode = normalizeScanCode(code);
-
-  // Boshqa tovar shu kodni ishlatayotganini tekshir
-  const conflict = DB.products.find(x=>x.id!==_assignProductId && x.barcode && codesMatch(x.barcode, keyCode));
-  if(conflict){
-    toast(`⚠️ Bu kod allaqachon "${conflict.name}"ga biriktirilgan!`,'red');
-    _assignDone = false;
-    document.getElementById('assign-status').textContent = `⚠️ Kod "${conflict.name}"da mavjud!`;
-    document.getElementById('assign-status').style.color = 'var(--red)';
+  // Yangi/tahrirlash formasidagi bitta maydonga (Barcode YOKI QR/DataMatrix)
+  // to'g'ridan-to'g'ri kod yozib qo'yish rejimi — bu yerda tovar ham,
+  // tanlov ham kerak emas, chunki qaysi maydon ekani allaqachon ma'lum.
+  if(_assignMode === 'field'){
+    _assignDone = true;
+    const input = document.getElementById(_assignFieldTarget);
+    if(input) input.value = code;
+    if(navigator.vibrate) navigator.vibrate(100);
+    document.getElementById('assign-status').textContent = `✅ Kod maydonga yozildi: ${code}`;
+    document.getElementById('assign-status').style.color = 'var(--green)';
+    toast('✅ Kod maydonga yozildi','green');
+    setTimeout(()=>{ closeAssignBarcode(); }, 500);
     return;
   }
 
-  // Vibrasiya
-  if(navigator.vibrate) navigator.vibrate([100,50,100]);
+  const p = DB.products.find(x=>x.id===_assignProductId);
+  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
 
-  // Status yangilash
-  document.getElementById('assign-status').textContent = `✅ Biriktirildi: ${keyCode}`;
+  // MUHIM: kod endi avtomatik ravishda "barcode" deb hisoblanmaydi.
+  // Skanerlangan/qo'lda kiritilgan kodni qaysi maydonga (📦 Barcode yoki
+  // 📷 QR/DataMatrix) saqlash kerakligini ADMIN O'ZI tanlaydi — shu
+  // maqsadda ikkita tugma ko'rsatiladi (confirm() o'rniga).
+  _pendingAssignCode = code;
+  document.getElementById('assign-status').innerHTML = `Skanerlandi: <b>${code}</b><br>Qaysi kod sifatida saqlansin?`;
+  document.getElementById('assign-status').style.color = 'var(--text2)';
+  document.getElementById('assign-choice-buttons').style.display = 'flex';
+}
+
+// Admin "📦 Barcode sifatida saqlash" yoki "📷 QR/DataMatrix sifatida
+// saqlash" tugmalaridan birini bosgach chaqiriladi. fieldType: 'barcode' | 'qrCode'
+window.commitAssignedCode = function(fieldType){
+  const code = _pendingAssignCode;
+  if(!code){ toast('Avval kodni skanerlang yoki kiriting','red'); return; }
+  const p = DB.products.find(x=>x.id===_assignProductId);
+  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
+
+  document.getElementById('assign-choice-buttons').style.display = 'none';
+
+  if(fieldType === 'barcode'){
+    // GS1 kod bo'lsa, faqat GTIN qismini olamiz (seriya raqami emas) —
+    // shunda shu turdagi BOSHQA shishalarni skanerlaganda ham mos keladi.
+    const keyCode = normalizeScanCode(code);
+    const conflict = DB.products.find(x=>x.id!==p.id && x.barcode && codesMatch(x.barcode, keyCode));
+    if(conflict){
+      toast(`⚠️ Bu kod allaqachon "${conflict.name}"ning barcode'iga biriktirilgan!`,'red');
+      document.getElementById('assign-status').textContent = `⚠️ Kod "${conflict.name}"da mavjud!`;
+      document.getElementById('assign-status').style.color = 'var(--red)';
+      document.getElementById('assign-choice-buttons').style.display = 'flex';
+      return;
+    }
+    _assignDone = true;
+    p.barcode = keyCode;
+    fbUpdateProductFields(p.id, {barcode:keyCode}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+    document.getElementById('assign-status').textContent = `✅ Barcode sifatida biriktirildi: ${keyCode}`;
+    toast(`✅ "${p.name}" → Barcode: ${keyCode}`,'green');
+  } else {
+    const conflict = DB.products.find(x=>x.id!==p.id && x.qrCode && codesMatch(x.qrCode, code));
+    if(conflict){
+      toast(`⚠️ Bu kod allaqachon "${conflict.name}"ning QR/DataMatrix kodiga biriktirilgan!`,'red');
+      document.getElementById('assign-status').textContent = `⚠️ Kod "${conflict.name}"da mavjud!`;
+      document.getElementById('assign-status').style.color = 'var(--red)';
+      document.getElementById('assign-choice-buttons').style.display = 'flex';
+      return;
+    }
+    _assignDone = true;
+    p.qrCode = code;
+    fbUpdateProductFields(p.id, {qrCode:code}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+    document.getElementById('assign-status').textContent = `✅ QR/DataMatrix sifatida biriktirildi: ${code}`;
+    toast(`✅ "${p.name}" → QR/DataMatrix: ${code}`,'green');
+  }
+
   document.getElementById('assign-status').style.color = 'var(--green)';
-
-  // Lokal yangilash
-  p.barcode = keyCode;
-
-  // Firebase ga yoz (fonda)
-  fbSaveProduct(p).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
-
-  toast(`✅ "${p.name}" → ${keyCode}`,'green');
+  _pendingAssignCode = null;
+  if(navigator.vibrate) navigator.vibrate([100,50,100]);
   renderProducts();
 
   // 800ms dan keyin — agar navbat rejimida bo'lsak, keyingi tovarga
@@ -3993,8 +4773,69 @@ window.closeAssignBarcode = function(){
   _assignQueueIdx = -1;
   _assignQueue = [];
   _assignMode = 'barcode';
+  _assignFieldTarget = null;
+  _pendingAssignCode = null;
+  const choiceBtns=document.getElementById('assign-choice-buttons'); if(choiceBtns) choiceBtns.style.display='none';
   closeModal('modal-assign-barcode');
+  scheduleStreamRelease();
 }
+
+// Yangi tovar qo'shish / tahrirlash formasidagi Barcode yoki QR/DataMatrix
+// input maydonlaridagi 📷 tugmasi bosilganda chaqiriladi. Mavjud "Kod
+// biriktirish" kamerasidan foydalanadi, lekin natijani to'g'ridan-to'g'ri
+// ko'rsatilgan input maydoniga yozadi (Firestore'ga yozmaydi — buni
+// admin "Saqlash" tugmasini bosganda saveProduct() amalga oshiradi).
+window.openFieldScanner = async function(targetInputId){
+  _assignMode = 'field';
+  _assignFieldTarget = targetInputId;
+  _assignProductId = null;
+  _assignDone = false;
+  _pendingAssignCode = null;
+  _assignQueueIdx = -1;
+  _assignQueue = [];
+
+  document.getElementById('assign-queue-progress').textContent = '';
+  document.getElementById('assign-skip-btn').style.display = 'none';
+  document.getElementById('assign-choice-buttons').style.display = 'none';
+  const unitProgEl = document.getElementById('assign-unit-progress');
+  unitProgEl.style.display = 'none';
+
+  const isQr = targetInputId === 'p-qrcode';
+  document.getElementById('assign-modal-title').textContent = isQr ? '📷 QR/DataMatrix skanerlash' : '📦 Barcode skanerlash';
+  document.getElementById('assign-product-info').innerHTML =
+    `<span style="color:var(--text3);font-weight:500">Kodni kameraga qarating yoki qo'lda kiriting</span>`;
+  document.getElementById('assign-code-input').value = '';
+  openModal('modal-assign-barcode');
+
+  const video = document.getElementById('assign-video');
+  _activeVideoEl = video;
+
+  if(_sharedStream && _sharedStream.getVideoTracks().some(t=>t.readyState==='live')){
+    video.srcObject = _sharedStream;
+    document.getElementById('assign-status').textContent = 'Kamerani kodga qarating...';
+    document.getElementById('assign-status').style.color = 'var(--text2)';
+  } else {
+    document.getElementById('assign-status').textContent = 'Skaner tayyorlanmoqda...';
+  }
+
+  const nd = await ensureNativeDetector();
+  if(!nd){
+    const ok = await loadZXing();
+    if(!ok){ document.getElementById('assign-status').textContent = "❌ Kutubxona yuklanmadi. Qo'lda kiriting."; return; }
+  }
+
+  try{
+    const stream = await getSharedCameraStream();
+    video.srcObject = stream;
+    document.getElementById('assign-status').textContent = 'Kamerani kodga qarating...';
+    document.getElementById('assign-status').style.color = 'var(--text2)';
+    startAssignDecoding(video);
+  }catch(e){
+    console.error('Kamera xatosi:', e);
+    document.getElementById('assign-status').textContent = typeof describeCameraError==='function' ? describeCameraError(e) : 'Kameraga ruxsat berilmadi.';
+    document.getElementById('assign-status').style.color = 'var(--amber)';
+  }
+};
 
 function isGTIN(code){
   if(!code) return false;
