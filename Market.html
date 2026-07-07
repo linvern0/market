@@ -112,12 +112,19 @@
   /* Sotish gridi uchun maxsus */
   .sell-card{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
   .sell-card:active{transform:scale(.96);opacity:.9}
-  .sell-card.cart-added{animation:cart-pulse .15s ease}
+  .sell-card.cart-added{animation:cart-pulse .3s ease}
   @keyframes cart-pulse{
     0%{transform:scale(1)}
     50%{transform:scale(.93);box-shadow:0 0 0 3px rgba(37,99,235,.4)}
     100%{transform:scale(1)}
   }
+  /* "Qo'shildi/sotildi" kabi barcha tezkor tasdiqlash animatsiyalari — izchil,
+     bir xil 0.3s davomiylikda, his qilinishi tez va "sakramaydigan" bo'lishi uchun */
+  @keyframes flash-added{
+    0%{box-shadow:0 0 0 0 rgba(34,197,94,.85)}
+    100%{box-shadow:0 0 0 16px rgba(34,197,94,0)}
+  }
+  #scan-video-wrap.flash-added{animation:flash-added .3s ease-out}
 
   /* Savatdagi tovar ko'rsatgichi */
   .cart-badge-overlay{position:absolute;top:7px;left:7px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25)}
@@ -808,6 +815,10 @@
 
     <p id="scan-status">Kamerani DataMatrix kodga qarating...</p>
 
+    <!-- Shu skanerlash sessiyasida qo'shilgan tovarlar ro'yxati (ketma-ket
+         bir necha xil tovar skanerlanganda, hammasini kuzatib borish uchun) -->
+    <div id="scan-session-log" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.5rem .65rem;margin-bottom:.65rem"></div>
+
     <label style="display:flex;align-items:center;gap:.5rem;font-size:12.5px;color:var(--text2);margin:.15rem 0 .65rem;cursor:pointer;user-select:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.5rem .65rem">
       <input type="checkbox" id="scan-auto-mode" checked style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
       ⚡ Avtomatik rejim — har skanerlashda darhol 1 dona qo'shiladi (tugma bosmasdan, ko'p tovarni tez ketma-ket skanerlash uchun)
@@ -815,6 +826,9 @@
 
     <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📸 Suratga olib skanerlash</button>
     <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa — qo'lni tinch tutib shu tugmani bosing</p>
+
+    <button class="btn amber" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScanBatch()">📦 Ko'p tovarni birdan skanerlash (6–12 dona)</button>
+    <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Bir nechta tovarni yon-yonma yozib, hammasini bitta suratga tushiring — barchasi avtomatik qo'shiladi</p>
 
     <!-- Natija: tovar topildi -->
     <div id="scan-result-box">
@@ -903,7 +917,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
@@ -916,7 +930,25 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// MUHIM — TEZLIK VA BARQARORLIK UCHUN: standart getFirestore() har bir
+// o'qishni internet orqali kutadi va internet uzilganda yozuvlar zudlik
+// bilan xato beradi. persistentLocalCache yoqilganda esa: (1) barcha
+// ma'lumotlar qurilmada (IndexedDB) saqlanadi va sahifa qayta ochilganda
+// DARHOL — serverni kutmasdan — ko'rsatiladi; (2) internet vaqtincha
+// uzilsa ham yozuvlar lokal navbatga qo'yiladi va aloqa tiklangach
+// avtomatik yuboriladi (xato ko'rsatilmaydi). persistentMultipleTabManager
+// bir nechta brauzer/qurilma oynasi bir vaqtda ochiq bo'lsa ham ishlashini
+// ta'minlaydi. Agar (juda eski brauzerda) bu ishlamasa — oddiy rejimga
+// muammosiz qaytamiz.
+let db;
+try{
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+}catch(e){
+  console.error('Persistent cache yoqilmadi, oddiy rejimda davom etilmoqda:', e);
+  db = getFirestore(app);
+}
 
 window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
 window.currentRole = null;
@@ -934,6 +966,24 @@ function setSyncing(on){
   const d=document.getElementById('sync-dot'); if(d) d.className = _pendingWrites>0 ? 'syncing' : '';
 }
 function setSyncError(){ const d=document.getElementById('sync-dot'); if(d) d.className='error'; }
+
+// Fon yozuvlari (Firebase'ga setDoc/updateDoc/deleteDoc) uchun avtomatik
+// qayta urinish. Wi-Fi/mobil internet vaqtincha "tebranib" turganda
+// (masalan do'kondagi kambag'al internet), bitta muvaffaqiyatsizlik darhol
+// xato ko'rsatmaydi — bir necha marta ozgina kutib qayta urinib ko'radi,
+// va faqat HAMMASI muvaffaqiyatsiz bo'lsagina xato ko'rsatiladi. Ekran esa
+// bundan qat'iy nazar allaqachon (optimistik) yangilangan bo'ladi.
+async function withRetry(fn, attempts=3, baseDelay=350){
+  let lastErr;
+  for(let i=0;i<attempts;i++){
+    try{ return await fn(); }
+    catch(e){
+      lastErr = e;
+      if(i<attempts-1) await new Promise(r=>setTimeout(r, baseDelay*(i+1)));
+    }
+  }
+  throw lastErr;
+}
 
 function localUpsertProduct(p){
   const i = DB.products.findIndex(x=>x.id===p.id);
@@ -974,7 +1024,7 @@ const settingsRef = doc(db,'dokon','settings');
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes})
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -982,7 +1032,7 @@ async function fbSaveProduct(p){
   localUpsertProduct(p);
   refreshProductViews();
   setSyncing(true);
-  setDoc(doc(db,'products',p.id),p)
+  withRetry(()=>setDoc(doc(db,'products',p.id),p))
     .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -990,7 +1040,7 @@ async function fbDeleteProduct(id){
   localRemoveProduct(id);
   refreshProductViews();
   setSyncing(true);
-  deleteDoc(doc(db,'products',id))
+  withRetry(()=>deleteDoc(doc(db,'products',id)))
     .catch(e=>{ setSyncError(); console.error(e); toast("O'chirishda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -998,7 +1048,7 @@ async function fbSaveSale(s){
   localUpsertSale(s);
   refreshSaleViews();
   setSyncing(true);
-  setDoc(doc(db,'sales',s.id),s)
+  withRetry(()=>setDoc(doc(db,'sales',s.id),s))
     .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -1006,7 +1056,7 @@ async function fbUpdateSale(id,data){
   localPatchSale(id, data);
   refreshSaleViews();
   setSyncing(true);
-  updateDoc(doc(db,'sales',id),data)
+  withRetry(()=>updateDoc(doc(db,'sales',id),data))
     .catch(e=>{ setSyncError(); console.error(e); toast("Yangilashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -1018,7 +1068,7 @@ async function fbSaveRestock(r){
   localUpsertRestock(r);
   if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
   setSyncing(true);
-  setDoc(doc(db,'restocks',r.id),r)
+  withRetry(()=>setDoc(doc(db,'restocks',r.id),r))
     .catch(e=>{ setSyncError(); console.error(e); toast("Kirim tarixini saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -1027,7 +1077,7 @@ async function fbSaveDebt(d){
   if(i>=0) DB.debts[i]=d; else DB.debts.push(d);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
   setSyncing(true);
-  setDoc(doc(db,'debts',d.id),d)
+  withRetry(()=>setDoc(doc(db,'debts',d.id),d))
     .catch(e=>{ setSyncError(); console.error(e); toast("Qarz saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -1035,7 +1085,7 @@ async function fbSaveDebtor(d){
   const i=DB.debtors.findIndex(x=>x.id===d.id);
   if(i>=0) DB.debtors[i]=d; else DB.debtors.push(d);
   setSyncing(true);
-  setDoc(doc(db,'debtors',d.id),d)
+  withRetry(()=>setDoc(doc(db,'debtors',d.id),d))
     .catch(e=>{ setSyncError(); console.error(e); toast("Qarzdor ma'lumotini saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -1044,7 +1094,7 @@ async function fbUpdateDebt(id, patch){
   if(d) Object.assign(d, patch);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
   setSyncing(true);
-  updateDoc(doc(db,'debts',id), patch)
+  withRetry(()=>updateDoc(doc(db,'debts',id), patch))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -1495,7 +1545,7 @@ window.sortProducts=async function(by){
   toast('Tovarlar tartiblandi','green');
   setSyncing(true);
   try{
-    await Promise.all(updated.map(p=>setDoc(doc(db,'products',p.id),p)));
+    await Promise.all(updated.map(p=>withRetry(()=>setDoc(doc(db,'products',p.id),p))));
   }catch(e){ setSyncError(); console.error(e); toast('Saqlashda xatolik','red'); }
   setSyncing(false);
 }
@@ -1560,7 +1610,7 @@ async function renumberAllProducts(sortedList){
   refreshProductViews();
   setSyncing(true);
   try{
-    await Promise.all(DB.products.map(p=>setDoc(doc(db,'products',p.id),p)));
+    await Promise.all(DB.products.map(p=>withRetry(()=>setDoc(doc(db,'products',p.id),p))));
   }catch(e){ setSyncError(); console.error(e); toast('Saqlashda xatolik','red'); }
   setSyncing(false);
 }
@@ -1583,7 +1633,7 @@ window.addToCartWithFeedback = function(id, cardEl){
   // Visual feedback on card
   if(cardEl){
     cardEl.classList.add('cart-added');
-    setTimeout(()=>cardEl.classList.remove('cart-added'),250);
+    setTimeout(()=>cardEl.classList.remove('cart-added'),300);
   }
   updateCartBtn();
   // Only update this specific card's data attributes (no full re-render)
@@ -1825,15 +1875,15 @@ window.doDebtSell = async function(){
 
   // Firebase ga fonda yoz (kutmasdan)
   const writes = [
-    setDoc(doc(db,'debtors',debtorId), newDebtor),
-    setDoc(doc(db,'debts',debt.id), debt)
+    withRetry(()=>setDoc(doc(db,'debtors',debtorId), newDebtor)),
+    withRetry(()=>setDoc(doc(db,'debts',debt.id), debt))
   ];
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id) || DB.products.find(x=>x.id===id);
     const saleObj = DB.sales.find(s=>s.productId===id && s.date===now && s.isDebt);
-    if(saleObj) writes.push(setDoc(doc(db,'sales',saleObj.id), saleObj));
+    if(saleObj) writes.push(withRetry(()=>setDoc(doc(db,'sales',saleObj.id), saleObj)));
     const pUpdated = DB.products.find(x=>x.id===id);
-    if(pUpdated) writes.push(setDoc(doc(db,'products',id), pUpdated));
+    if(pUpdated) writes.push(withRetry(()=>setDoc(doc(db,'products',id), pUpdated)));
   });
   Promise.all(writes).catch(e=>{ console.error(e); setSyncError(); toast('Firebase saqlashda xatolik','red'); });
 }
@@ -2369,7 +2419,7 @@ window.clearAll=function(){
     toast('Barcha ma\'lumotlar tozalanmoqda...','amber');
     Promise.all([
       ...productIds.map(id=>fbDeleteProduct(id)),
-      ...saleIds.map(id=>deleteDoc(doc(db,'sales',id)))
+      ...saleIds.map(id=>withRetry(()=>deleteDoc(doc(db,'sales',id))))
     ]).then(()=>{
       toast('Barcha ma\'lumotlar tozalandi','green');
     }).catch(e=>{ console.error(e); toast('Tozalashda xatolik yuz berdi','red'); });
@@ -2443,6 +2493,11 @@ let _zxingLoading = false;
 let _scanMode = null; // 'admin' | 'seller'
 let _scannedProductId = null;
 let _scannedCode = null;
+// Joriy skanerlash sessiyasida (modal ochilgandan yopilgunga) qo'shilgan
+// tovarlar jurnali — sotuvchi/admin ketma-ket ko'p tovarni (masalan A dan
+// 3 ta, B dan 2 ta, C dan 1 ta) skanerlab ketayotganda, har biri avtomatik
+// qo'shilib borishini ko'rib turishi uchun.
+let _scanSessionLog = []; // [{id, name, qty}]
 
 // MUHIM — KAMERA OQIMI VA ZXING READER BUTUN SAHIFA UCHUN BITTA MARTA
 // YARATILADI VA QAYTA ISHLATILADI. Avval har safar skaner ochilganda YANGI
@@ -2573,6 +2628,9 @@ window.openScanner = async function(mode){
   _scanMode = mode;
   _scannedProductId = null;
   _scannedCode = null;
+  _lastProcessedCode = null;
+  _codeAbsentSince = null;
+  _scanSessionLog = [];
   // UI tozalash
   document.getElementById('scan-result-box').classList.remove('show');
   document.getElementById('scan-admin-actions').style.display = 'none';
@@ -2580,6 +2638,8 @@ window.openScanner = async function(mode){
   document.getElementById('scan-found-block').style.display = 'none';
   document.getElementById('scan-new-block').style.display = 'none';
   document.getElementById('manual-code-input').value = '';
+  const logEl = document.getElementById('scan-session-log');
+  if(logEl){ logEl.style.display='none'; logEl.innerHTML=''; }
   document.getElementById('scanner-title').textContent = mode==='admin' ? '📷 Kirim: Skanerlar' : '📷 Sotish: Skanerlar';
   openModal('modal-scanner');
 
@@ -2612,8 +2672,16 @@ window.openScanner = async function(mode){
 }
 
 let _lastProcessedCode = null;
-let _lastProcessedAt = 0;
+let _codeAbsentSince = null;
 let _decodeLoopActive = false;
+// Bir xil shtrix-kodli tovar (masalan oddiy barkod — GS1 emas) bir necha
+// dona ketma-ket sotilganda, HAR BIR dona xuddi shu kodga ega bo'ladi.
+// Shuning uchun oldingi "2 soniya davomida shu kodni bloklash" mantig'i
+// ketma-ket skanerlashga TO'SQINLIK qilardi. Endi kod faqat "hali ham
+// kamera oldida" turgan vaqtda bloklanadi: kod kamera ko'rish maydonidan
+// hech bo'lmasa CODE_ABSENCE_RESET_MS millisoniya davomida yo'qolgach —
+// xuddi shu kod yana kelsa ham, bu YANGI dona hisoblanib, qayta ishlanadi.
+const CODE_ABSENCE_RESET_MS = 450;
 
 // Bitta skanerlangan kodni qayta ishlash — dublikat filtri bilan.
 // Ilgari bu mantiq to'g'ridan-to'g'ri decodeFromVideoElement callback ichida
@@ -2621,15 +2689,22 @@ let _decodeLoopActive = false;
 // ishlatishi uchun alohida funksiyaga chiqarildi.
 function handleDecodedCode(code){
   if(!code) return;
-  const now = Date.now();
-  const isRecentDuplicate = (code === _lastProcessedCode) && (now - _lastProcessedAt < 2000);
-  if(!isRecentDuplicate && code !== _scannedCode){
-    _scannedCode = code;
+  _codeAbsentSince = null; // kod hozir kamera oldida ko'rinyapti
+  if(code !== _lastProcessedCode){
     _lastProcessedCode = code;
-    _lastProcessedAt = now;
     if(navigator.vibrate) navigator.vibrate(120);
     processCode(code);
   }
+}
+
+// Har bir kadrda kod topilmaganda chaqiriladi. Kod ma'lum vaqt davomida
+// ko'rinmasa (foydalanuvchi tovarni olib qo'ygani/almashtirgani belgisi),
+// dublikat xotirasini tozalaymiz — shu bilan xuddi shu kod yana kelsa,
+// yangi dona sifatida darhol qabul qilinadi.
+function handleNoCodeDetected(){
+  const now = Date.now();
+  if(_codeAbsentSince === null) _codeAbsentSince = now;
+  else if(now - _codeAbsentSince > CODE_ABSENCE_RESET_MS) _lastProcessedCode = null;
 }
 
 // ============ TAKOMILLASHTIRILGAN KADR TAYYORLASH ============
@@ -2722,7 +2797,8 @@ function startDecoding(video){
       try{
         const codes = await _nativeDetector.detect(video);
         if(codes && codes.length) handleDecodedCode(codes[0].rawValue);
-      }catch(e){ /* video hali tayyor bo'lmasligi mumkin — e'tibor bermaymiz */ }
+        else handleNoCodeDetected();
+      }catch(e){ handleNoCodeDetected(); /* video hali tayyor bo'lmasligi mumkin — e'tibor bermaymiz */ }
       if(_decodeLoopActive) requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
@@ -2738,6 +2814,7 @@ function startDecoding(video){
     // ishlashda davom etadi, faqat kesish/kontrast yaxshilanishisiz.
     getSharedReader().decodeFromVideoElement(video, (result)=>{
       if(result) handleDecodedCode(result.getText());
+      else handleNoCodeDetected();
     });
     return;
   }
@@ -2756,6 +2833,7 @@ function startDecoding(video){
       const canvas = grabCroppedCanvas(video, cropFrac, 1.8, true);
       const text = tryDecodeCanvas(canvas);
       if(text) handleDecodedCode(text);
+      else handleNoCodeDetected();
     }
     if(_decodeLoopActive) requestAnimationFrame(loop);
   };
@@ -2771,6 +2849,11 @@ window.captureAndScan = async function(){
   const video = document.getElementById('scan-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
   setScanStatus('🔍 Tekshirilmoqda, biroz kuting...', '');
+  // Bu — foydalanuvchi qo'lda bosgan aniq buyruq, shuning uchun avtomatik
+  // dublikat-filtridan mustasno qilamiz (xuddi shu kod hozirgina qayta
+  // ishlangan bo'lsa ham, tugma bosilgani — yangi donani tasdiqlash demakdir).
+  _lastProcessedCode = null;
+  _codeAbsentSince = null;
 
   if(_nativeDetector){
     try{
@@ -2797,6 +2880,143 @@ window.captureAndScan = async function(){
     await new Promise(r=>setTimeout(r,0)); // UI muzlab qolmasin
   }
   setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
+}
+
+// ============ BIR VAQTDA BIR NECHTA TOVARNI SKANERLASH (BATCH) ============
+// Stol ustiga yon-yonma terilgan bir nechta (masalan 6–12 ta) tovarni BITTA
+// suratga olib, barchasini bir yo'la aniqlaydi va avtomatik ombor kirimiga
+// yoki savatga qo'shadi. Zamonaviy brauzerlarning nativ BarcodeDetector'i
+// bitta kadr ichidagi BARCHA kodlarni bittada qaytaradi — shu tufayli bu
+// funksiya asosan shunga tayanadi (Android Chrome, yangi Safari). Nativ
+// detektor yo'q eski brauzerlarda ZXing orqali ko'p-kodli o'qish urinib
+// ko'riladi (kutubxona versiyasiga qarab ishlamasligi ham mumkin), bo'lmasa
+// bitta eng aniq kodni topib, foydalanuvchiga xabar beramiz.
+window.captureAndScanBatch = async function(){
+  const video = document.getElementById('scan-video');
+  if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
+  setScanStatus('🔍 Bir nechta tovar qidirilmoqda...', '');
+
+  let rawCodes = [];
+
+  if(_nativeDetector){
+    try{
+      const codes = await _nativeDetector.detect(video);
+      rawCodes = (codes||[]).map(c=>c.rawValue);
+    }catch(e){ console.error(e); }
+    // Hech narsa topilmasa — kamera fokuslanishi uchun biroz kutib yana
+    // bir bor urinib ko'ramiz (bitta urinishda hammasi tayyor bo'lmasligi mumkin).
+    if(!rawCodes.length){
+      await new Promise(r=>setTimeout(r,300));
+      try{
+        const codes2 = await _nativeDetector.detect(video);
+        rawCodes = (codes2||[]).map(c=>c.rawValue);
+      }catch(e){ /* e'tibor bermaymiz */ }
+    }
+  } else {
+    const canvas = grabCroppedCanvas(video, 1.0, 1.4, true);
+    rawCodes = await tryDecodeMultipleZXing(canvas);
+    if(!rawCodes.length){
+      const single = await tryDecodeCanvasAsync(canvas);
+      if(single) rawCodes = [single];
+    }
+  }
+
+  if(!rawCodes.length){
+    setScanStatus("Hech qanday kod topilmadi. Tovarlarni yorug'roq joyga, kodlar bir-birini to'smaydigan qilib yozib qayta urinib ko'ring.", 'err');
+    return;
+  }
+
+  processBatchCodes(rawCodes);
+}
+
+// ZXing kutubxonasida (agar shu versiyada mavjud bo'lsa) bitta rasmdan bir
+// nechta shtrix-kodni birdaniga o'qishga urinadi. Bu — kutubxona versiyasiga
+// bog'liq imkoniyat, shuning uchun har doim try/catch bilan o'ralgan va
+// muvaffaqiyatsiz bo'lsa shunchaki bo'sh massiv qaytaradi (keyin chaqiruvchi
+// bitta-kodli zaxira usulga o'tadi).
+async function tryDecodeMultipleZXing(canvas){
+  try{
+    if(!canvas || !window.ZXing) return [];
+    const Z = window.ZXing;
+    if(!Z.MultiFormatReader || !Z.GenericMultipleBarcodeReader || !Z.HTMLCanvasElementLuminanceSource || !Z.BinaryBitmap || !Z.HybridBinarizer) return [];
+    const luminance = new Z.HTMLCanvasElementLuminanceSource(canvas);
+    const bitmap = new Z.BinaryBitmap(new Z.HybridBinarizer(luminance));
+    const reader = new Z.MultiFormatReader();
+    if(reader.setHints){
+      const hints = new Map();
+      hints.set(Z.DecodeHintType.TRY_HARDER, true);
+      reader.setHints(hints);
+    }
+    const multiReader = new Z.GenericMultipleBarcodeReader(reader);
+    const results = multiReader.decodeMultiple(bitmap);
+    return (results||[]).map(r=>r.getText());
+  }catch(e){
+    return [];
+  }
+}
+
+// Bitta suratdan topilgan bir nechta kodni guruhlab (bir xil kod necha marta
+// takrorlansa — shuncha dona hisoblanadi), tovarlarni topib, HAMMASINI bir
+// yo'la ombor kirimiga (admin) yoki savatga (sotuvchi) qo'shadi.
+function processBatchCodes(rawCodes){
+  const counts = new Map(); // normalizedCode -> nechta marta uchradi
+  rawCodes.forEach(raw=>{
+    if(!raw) return;
+    const key = normalizeScanCode(raw);
+    counts.set(key, (counts.get(key)||0) + 1);
+  });
+
+  const found = [];    // [{prod, qty}]
+  const notFound = []; // [code, ...]
+  counts.forEach((qty, code)=>{
+    const prod = findProductByCode(code);
+    if(prod) found.push({prod, qty});
+    else notFound.push(code);
+  });
+
+  if(!found.length){
+    setScanStatus(`⚠️ ${notFound.length} ta kod topildi, lekin birortasi ham bazada yo'q.`, 'err');
+    toast("Skanerlangan kodlar bazada topilmadi", 'red');
+    return;
+  }
+
+  if(_scanMode==='admin'){
+    const writes = [];
+    found.forEach(({prod, qty})=>{
+      const stockBefore = prod.stock;
+      const stockAfter = stockBefore + qty;
+      const restock = {
+        id: uid(), productId: prod.id, productName: prod.name, volume: prod.volume||'',
+        type:'in', qty, stockBefore, stockAfter, reason:"Ko'p-tovarli skanerlash orqali kirim", date:new Date().toISOString()
+      };
+      writes.push(fbSaveProduct({...prod, stock: stockAfter}));
+      writes.push(fbSaveRestock(restock));
+      logScanSession(prod, qty);
+    });
+    Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+  } else {
+    found.forEach(({prod, qty})=>{
+      const inCart = cart[prod.id]||0;
+      let addQty = qty;
+      if(inCart+addQty > prod.stock) addQty = Math.max(0, prod.stock - inCart);
+      if(addQty>0){
+        cart[prod.id] = inCart+addQty;
+        logScanSession(prod, addQty);
+      }
+    });
+    updateCartBtn();
+    found.forEach(({prod})=>updateSingleCard(prod.id));
+  }
+
+  flashScanAdded();
+  if(navigator.vibrate) navigator.vibrate([70,30,70,30,70]);
+  const summary = found.map(({prod,qty})=>`${prod.name} ×${qty}`).join(', ');
+  toast(`✅ ${found.length} xil tovar qo'shildi: ${summary}`, 'green');
+  if(notFound.length){
+    setScanStatus(`✅ ${found.length} xil tovar qo'shildi. ⚠️ ${notFound.length} ta kod bazada topilmadi.`, '');
+  } else {
+    setScanStatus(`✅ Barcha ${found.length} xil tovar muvaffaqiyatli qo'shildi. Keyingisini skanerlashingiz mumkin.`, 'ok');
+  }
 }
 
 // ===== GS1 DataMatrix PARSER =====
@@ -2834,6 +3054,15 @@ function codesMatch(a, b){
   return normalizeScanCode(a) === normalizeScanCode(b);
 }
 
+// Kod bo'yicha tovar qidirish — barcode (GS1 GTIN-normallashtirilgan) yoki
+// nomi bo'yicha. Yagona (bir joyda) izlash mantig'i — processCode va
+// ko'p-kodli (batch) skanerlash bir xil qidiruvdan foydalanishi uchun.
+function findProductByCode(code){
+  let prod = DB.products.find(p=>p.barcode && codesMatch(p.barcode, code));
+  if(!prod) prod = DB.products.find(p=>p.name.toLowerCase()===code.toLowerCase());
+  return prod;
+}
+
 window.processCode = function(code){
   code = (code||'').trim();
   if(!code){ toast('Kod bo\'sh', 'red'); return; }
@@ -2843,8 +3072,7 @@ window.processCode = function(code){
   // Tovar izlash (barcode maydoni bo'yicha — GS1 kodlarda faqat GTIN qismi
   // solishtiriladi, chunki seriya raqami har bir shishada boshqacha bo'ladi;
   // topilmasa, nomi bo'yicha ham urinib ko'ramiz)
-  let prod = DB.products.find(p=>p.barcode && codesMatch(p.barcode, code));
-  if(!prod) prod = DB.products.find(p=>p.name.toLowerCase()===code.toLowerCase());
+  let prod = findProductByCode(code);
 
   if(prod){
     _scannedProductId = prod.id;
@@ -2913,6 +3141,47 @@ function setScanStatus(msg, cls=''){
   el.textContent=msg; el.className=cls;
 }
 
+// Har bir muvaffaqiyatli "kirim qo'shildi" / "savatga qo'shildi" / "ko'p
+// tovarli skanerlash" holatida kamera ramkasini qisqa (0.3s) yashil
+// yorqinlik bilan "yaltiratib" tezkor vizual tasdiqlash beradi — natija
+// oynasi darhol keyingi skaner uchun tozalanib ketsa ham, foydalanuvchi
+// har bir donaning qabul qilinganini his qiladi.
+function flashScanAdded(){
+  const wrap = document.getElementById('scan-video-wrap');
+  if(!wrap) return;
+  wrap.classList.remove('flash-added');
+  void wrap.offsetWidth; // reflow — animatsiyani qayta ishga tushirish uchun
+  wrap.classList.add('flash-added');
+}
+
+// Joriy skanerlash sessiyasi jurnaliga tovar qo'shish/miqdorini oshirish.
+// Ketma-ket bir necha xil tovar (A, A, A, B, B, C...) skanerlanganda,
+// har birini alohida qatorda, umumiy sonini yig'ib ko'rsatish uchun.
+function logScanSession(prod, qty){
+  const existing = _scanSessionLog.find(x=>x.id===prod.id);
+  if(existing) existing.qty += qty;
+  else _scanSessionLog.push({id:prod.id, name:prod.name+(prod.volume?` · ${prod.volume}L`:''), qty});
+  renderScanSessionLog();
+}
+
+function renderScanSessionLog(){
+  const wrap = document.getElementById('scan-session-log');
+  if(!wrap) return;
+  if(!_scanSessionLog.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  const totalQty = _scanSessionLog.reduce((s,x)=>s+x.qty,0);
+  wrap.style.display='block';
+  wrap.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.4rem;display:flex;justify-content:space-between">
+      <span>🧾 Shu skanerlashda qo'shildi</span><span>Jami: ${totalQty} ta</span>
+    </div>
+    <div style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem">
+      ${_scanSessionLog.map(x=>`
+        <div style="display:flex;justify-content:space-between;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem">
+          <span>${x.name}</span><strong>${x.qty} ta</strong>
+        </div>`).join('')}
+    </div>`;
+}
+
 // Admin: kirim qo'shish — DARHOL bajariladi (Firebase fonda yoziladi),
 // skaner OYNASI YOPILMAYDI — shu zahoti keyingi tovarni skanerlash mumkin.
 // Shu tufayli 50 ta tovarni ketma-ket, to'xtovsiz skanerlash mumkin bo'ladi.
@@ -2929,6 +3198,8 @@ window.scanDoRestock = function(){
   };
   if(navigator.vibrate) navigator.vibrate([80,40,80]);
   toast(`✓ ${prod.name}: +${qty} ta (${stockBefore} → ${stockAfter})`,'green');
+  flashScanAdded();
+  logScanSession(prod, qty);
   resetScanForNext();
   Promise.all([
     fbSaveProduct({...prod, stock: stockAfter}),
@@ -2972,6 +3243,8 @@ window.scanAddToCart = function(){
   cart[prod.id] = inCart+qty;
   updateCartBtn();
   updateSingleCard(prod.id);
+  flashScanAdded();
+  logScanSession(prod, qty);
   resetScanForNext();
   toast(`✅ +${qty} ta ${prod.name} savatga qo'shildi`,'green');
   if(navigator.vibrate) navigator.vibrate([80,40,80]);
