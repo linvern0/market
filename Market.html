@@ -808,6 +808,9 @@
 
     <p id="scan-status">Kamerani DataMatrix kodga qarating...</p>
 
+    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📸 Suratga olib skanerlash</button>
+    <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa — qo'lni tinch tutib shu tugmani bosing</p>
+
     <!-- Natija: tovar topildi -->
     <div id="scan-result-box">
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
@@ -877,6 +880,8 @@
     </div>
 
     <p id="assign-status" style="text-align:center;margin:.75rem 0;font-size:14px;font-weight:600;color:var(--text2)">Tovarning barkodini skanerga qarating...</p>
+
+    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.25rem" onclick="captureAndScanAssign()">📸 Suratga olib skanerlash</button>
 
     <!-- Qo'lda kiritish -->
     <div style="display:flex;gap:.5rem;margin-top:.25rem">
@@ -2492,7 +2497,7 @@ async function getSharedCameraStream(){
     throw e;
   }
   _sharedStream = await navigator.mediaDevices.getUserMedia({
-    video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+    video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}
   });
   return _sharedStream;
 }
@@ -2522,6 +2527,7 @@ function describeCameraError(e){
 // Skanerlashni to'xtatish (decode loop), LEKIN kamera oqimini o'chirmaslik —
 // shunda keyingi ochilish darhol, ruxsatsiz bo'ladi.
 function stopDecodingOnly(){
+  _decodeLoopActive = false;
   if(_sharedReader){ try{ _sharedReader.reset(); }catch(e){} }
 }
 
@@ -2571,29 +2577,161 @@ window.openScanner = async function(mode){
 
 let _lastProcessedCode = null;
 let _lastProcessedAt = 0;
+let _decodeLoopActive = false;
+
+// Bitta skanerlangan kodni qayta ishlash — dublikat filtri bilan.
+// Ilgari bu mantiq to'g'ridan-to'g'ri decodeFromVideoElement callback ichida
+// yozilgan edi; endi captureAndScan tugmasi ham xuddi shu logikani
+// ishlatishi uchun alohida funksiyaga chiqarildi.
+function handleDecodedCode(code){
+  if(!code) return;
+  const now = Date.now();
+  const isRecentDuplicate = (code === _lastProcessedCode) && (now - _lastProcessedAt < 2000);
+  if(!isRecentDuplicate && code !== _scannedCode){
+    _scannedCode = code;
+    _lastProcessedCode = code;
+    _lastProcessedAt = now;
+    if(navigator.vibrate) navigator.vibrate(120);
+    processCode(code);
+  }
+}
+
+// ============ TAKOMILLASHTIRILGAN KADR TAYYORLASH ============
+// Muammo: ZXing avval BUTUN kamera kadrini (xira fon, aks-sado, plastik
+// o'ram parchalari bilan birga) tekshirar edi. Shisha qopqog'idagi kabi
+// kichik va zich DataMatrix kodlar uchun bu deyarli hech qachon o'qilmasdi —
+// chunki detektor butun kadr ichidan kod chegarasini avval "topishi" kerak,
+// va fondagi shovqin buni chalkashtirib yuboradi.
+// Yechim: har bir kadrni foydalanuvchi ko'rsatib turgan MARKAZIY KVADRATGA
+// kesamiz (aynan ekrandagi sariq ramka joyiga mos), so'ng KATTALASHTIRAMIZ
+// va KULRANG+KONTRASTNI OSHIRAMIZ — bu ZXing dekoderi uchun aniqlikni
+// sezilarli darajada yaxshilaydi.
+function grabCroppedCanvas(video, cropFrac, scale, enhance){
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if(!vw || !vh) return null;
+  const side = Math.min(vw, vh) * cropFrac;
+  const sx = (vw - side)/2, sy = (vh - side)/2;
+  const outSize = Math.max(200, Math.round(side * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = outSize; canvas.height = outSize;
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
+  ctx.imageSmoothingEnabled = scale <= 1;
+  ctx.drawImage(video, sx, sy, side, side, 0, 0, outSize, outSize);
+  if(enhance){
+    try{
+      const imgData = ctx.getImageData(0,0,outSize,outSize);
+      const d = imgData.data;
+      let min=255, max=0;
+      for(let i=0;i<d.length;i+=4){
+        const g = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;
+        if(g<min) min=g; if(g>max) max=g;
+      }
+      const range = Math.max(1, max-min);
+      for(let i=0;i<d.length;i+=4){
+        const g = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;
+        let v = ((g-min)/range)*255;
+        v = v<0?0:(v>255?255:v);
+        d[i]=d[i+1]=d[i+2]=v;
+      }
+      ctx.putImageData(imgData,0,0);
+    }catch(e){ /* getImageData ba'zan CORS sababli xato berishi mumkin — e'tibor bermaymiz */ }
+  }
+  return canvas;
+}
+
+// ZXing versiyasida decodeFromCanvas mavjudligini tekshiradi (0.19+ da bor).
+function readerHasCanvasDecode(){
+  try{ return typeof getSharedReader().decodeFromCanvas === 'function'; }catch(e){ return false; }
+}
+
+// Canvasni SINXRON dekodlashga urinadi (tezkor — video loop uchun).
+function tryDecodeCanvas(canvas){
+  if(!canvas) return null;
+  try{
+    const result = getSharedReader().decodeFromCanvas(canvas);
+    return result ? result.getText() : null;
+  }catch(e){
+    return null; // NotFoundException — bu kod topilmadi degani, oddiy holat
+  }
+}
+
+// Canvasni ASINXRON dekodlaydi — decodeFromCanvas mavjud bo'lmagan eski
+// ZXing versiyalari uchun rasm orqali zaxira yo'l (faqat bir martalik
+// "suratga olish" tugmasi uchun ishlatiladi, sekinroq bo'lsa ham muammo emas).
+async function tryDecodeCanvasAsync(canvas){
+  if(!canvas) return null;
+  if(readerHasCanvasDecode()) return tryDecodeCanvas(canvas);
+  try{
+    const img = new Image();
+    const loaded = new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
+    img.src = canvas.toDataURL('image/png');
+    await loaded;
+    const result = await getSharedReader().decodeFromImage(img);
+    return result ? result.getText() : null;
+  }catch(e){
+    return null;
+  }
+}
 
 function startDecoding(video){
   if(!_zxingReady || !window.ZXing) return;
-  const reader = getSharedReader();
-  stopDecodingOnly(); // avvalgi decode loop bo'lsa to'xtatamiz (qo'shalanmasin)
-  reader.decodeFromVideoElement(video, (result, err)=>{
-    if(result){
-      const code = result.getText();
-      if(!code) return;
-      const now = Date.now();
-      // Bir xil kod kamera oldida hali turgan bo'lsa (masalan admin qo'lini
-      // olib ulgurmagan bo'lsa) — 2 soniya ichida takror ishlanmaydi (dublikat
-      // kirim bo'lib ketmasligi uchun). Boshqa/YANGI kod bo'lsa darhol ishlanadi.
-      const isRecentDuplicate = (code === _lastProcessedCode) && (now - _lastProcessedAt < 2000);
-      if(!isRecentDuplicate && code !== _scannedCode){
-        _scannedCode = code;
-        _lastProcessedCode = code;
-        _lastProcessedAt = now;
-        if(navigator.vibrate) navigator.vibrate(120);
-        processCode(code);
-      }
+  stopDecodingOnly();
+
+  if(!readerHasCanvasDecode()){
+    // ZAXIRA YO'L: agar ZXing versiyasida decodeFromCanvas bo'lmasa, eski
+    // uslub bilan (butun video kadrini) davom etamiz — hech bo'lmasa
+    // ishlashda davom etadi, faqat kesish/kontrast yaxshilanishisiz.
+    getSharedReader().decodeFromVideoElement(video, (result)=>{
+      if(result) handleDecodedCode(result.getText());
+    });
+    return;
+  }
+
+  _decodeLoopActive = true;
+  let lastTick = 0;
+  let toggle = false;
+  const loop = (ts)=>{
+    if(!_decodeLoopActive) return;
+    if(ts - lastTick > 180){
+      lastTick = ts;
+      // Har safar kesish nisbatini biroz almashtiramiz — kod kameradan
+      // turli masofada/burchakda bo'lsa ham topilish ehtimolini oshirish uchun.
+      const cropFrac = toggle ? 0.55 : 0.8;
+      toggle = !toggle;
+      const canvas = grabCroppedCanvas(video, cropFrac, 1.8, true);
+      const text = tryDecodeCanvas(canvas);
+      if(text) handleDecodedCode(text);
     }
-  });
+    if(_decodeLoopActive) requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+
+// "📸 Suratga olib skanerlash" — jonli oqim bir necha marta muvaffaqiyatsiz
+// bo'lsa, foydalanuvchi qo'lni tinch tutib BITTA aniq kadrni "muzlatadi" va
+// biz o'sha kadrni bir nechta kesish/kattalashtirish/kontrast kombinatsiyasi
+// bilan ketma-ket sinab ko'ramiz — real hayotda xira/qiyshiq tushgan
+// suratlar uchun bu jonli tsikldan ancha yuqori muvaffaqiyat foizini beradi.
+window.captureAndScan = async function(){
+  const video = document.getElementById('scan-video');
+  if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
+  setScanStatus('🔍 Tekshirilmoqda, biroz kuting...', '');
+  const strategies = [
+    {crop:0.62, scale:1,   enhance:false},
+    {crop:0.62, scale:2,   enhance:true },
+    {crop:0.85, scale:1.5, enhance:true },
+    {crop:1.0,  scale:1,   enhance:false},
+    {crop:1.0,  scale:1.6, enhance:true },
+    {crop:0.45, scale:2.5, enhance:true },
+    {crop:0.35, scale:3,   enhance:true },
+  ];
+  for(const s of strategies){
+    const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
+    const text = await tryDecodeCanvasAsync(canvas);
+    if(text){ handleDecodedCode(text); return; }
+    await new Promise(r=>setTimeout(r,0)); // UI muzlab qolmasin
+  }
+  setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
 }
 
 // ===== GS1 DataMatrix PARSER =====
@@ -2831,14 +2969,59 @@ window.openAssignBarcode = async function(productId){
 
 function startAssignDecoding(video){
   if(!_zxingReady || !window.ZXing) return;
-  const reader = getSharedReader();
   stopDecodingOnly();
-  reader.decodeFromVideoElement(video, (result, err)=>{
-    if(result && !_assignDone){
-      const code = result.getText().trim();
-      if(code) doAssignBarcode(code);
+
+  if(!readerHasCanvasDecode()){
+    getSharedReader().decodeFromVideoElement(video, (result)=>{
+      if(result && !_assignDone){
+        const code = result.getText().trim();
+        if(code) doAssignBarcode(code);
+      }
+    });
+    return;
+  }
+
+  _decodeLoopActive = true;
+  let lastTick = 0;
+  let toggle = false;
+  const loop = (ts)=>{
+    if(!_decodeLoopActive) return;
+    if(ts - lastTick > 180){
+      lastTick = ts;
+      const cropFrac = toggle ? 0.55 : 0.8;
+      toggle = !toggle;
+      const canvas = grabCroppedCanvas(video, cropFrac, 1.8, true);
+      const text = tryDecodeCanvas(canvas);
+      if(text && !_assignDone) doAssignBarcode(text.trim());
     }
-  });
+    if(_decodeLoopActive) requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+
+// "Kod biriktirish" oynasida ham suratga olib skanerlash imkoniyati
+window.captureAndScanAssign = async function(){
+  const video = document.getElementById('assign-video');
+  if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
+  document.getElementById('assign-status').textContent = '🔍 Tekshirilmoqda, biroz kuting...';
+  document.getElementById('assign-status').style.color = 'var(--text2)';
+  const strategies = [
+    {crop:0.62, scale:1,   enhance:false},
+    {crop:0.62, scale:2,   enhance:true },
+    {crop:0.85, scale:1.5, enhance:true },
+    {crop:1.0,  scale:1,   enhance:false},
+    {crop:1.0,  scale:1.6, enhance:true },
+    {crop:0.45, scale:2.5, enhance:true },
+    {crop:0.35, scale:3,   enhance:true },
+  ];
+  for(const s of strategies){
+    const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
+    const text = await tryDecodeCanvasAsync(canvas);
+    if(text && !_assignDone){ doAssignBarcode(text.trim()); return; }
+    await new Promise(r=>setTimeout(r,0));
+  }
+  document.getElementById('assign-status').textContent = "Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring yoki qo'lda kiriting.";
+  document.getElementById('assign-status').style.color = 'var(--amber)';
 }
 
 window.doAssignBarcode = async function(code){
