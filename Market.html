@@ -1,7 +1,4 @@
 
-
-
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -536,10 +533,17 @@
       </div>
     </div>
     <div class="form-row full">
-      <div class="field">
-        <label>📦 Barcode / DataMatrix kodi <span style="color:var(--text3);font-weight:400">(ixtiyoriy — skanerdan o'qiladi)</span></label>
-        <input id="p-barcode" placeholder="Masalan: 4870003760012"></div>
-    </div>
+  <div class="field">
+    <label>📦 Shtrix-kod (qadoqdagi) <span style="color:var(--text3);font-weight:400">— barcha donalarda bir xil</span></label>
+    <input id="p-barcode" placeholder="Masalan: 4870003760012">
+  </div>
+</div>
+<div class="form-row full">
+  <div class="field">
+    <label>📷 QR/DataMatrix kod (qopqoqdagi) <span style="color:var(--text3);font-weight:400">— har bir donada noyob</span></label>
+    <input id="p-qrcode" placeholder="Masalan: (01)04780069000321(21)ABC123...">
+  </div>
+</div>
     <div id="img-preview-wrap" style="display:none;margin-bottom:.75rem">
       <img id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
     </div>
@@ -921,7 +925,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
   authDomain: "dokon-ce38b.firebaseapp.com",
@@ -1019,19 +1023,39 @@ const settingsRef = doc(db,'dokon','settings');
 // Avval ma'lumot LOKAL saqlanadi va ekran DARHOL yangilanadi, so'ng Firebase
 // yozuvi FONDA (kutmasdan) yuboriladi — shu sabab sekin internetda ham
 // tugmalar/oynalar zudlik bilan javob beradi.
-async function fbSaveSettings(){
-  setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes}))
-    .catch(e=>{ setSyncError(); console.error(e); })
-    .finally(()=>setSyncing(false));
-}
+
 async function fbSaveProduct(p){
+  // Agar eski barcode bo'lsa, uni qrCode ga ko'chiramiz (migratsiya)
+  if(p.barcode && !p.qrCode && !p._migrated){
+    p.qrCode = p.barcode;
+    p._migrated = true;
+  }
+
   localUpsertProduct(p);
   refreshProductViews();
   setSyncing(true);
-  withRetry(()=>setDoc(doc(db,'products',p.id),p))
-    .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
-    .finally(()=>setSyncing(false));
+
+  withRetry(() => setDoc(doc(db,'products',p.id), p))
+    .catch(e => {
+      setSyncError();
+      console.error(e);
+      toast("Saqlashda xatolik",'red');
+    })
+    .finally(() => setSyncing(false));
+}
+
+// MUHIM: bu funksiya butun mahsulot obyektini emas, FAQAT ko'rsatilgan
+// maydonlarni Firestore'da atomik yangilaydi.
+async function fbUpdateProductFields(id, fields){
+  setSyncing(true);
+
+  withRetry(() => updateDoc(doc(db,'products',id), fields))
+    .catch(e => {
+      setSyncError();
+      console.error(e);
+      toast("Saqlashda xatolik",'red');
+    })
+    .finally(() => setSyncing(false));
 }
 async function fbDeleteProduct(id){
   localRemoveProduct(id);
@@ -1193,6 +1217,9 @@ async function init(){
     document.getElementById('login-page').style.display='flex';
     startListeners();
     updateOfflineBanner();
+    
+    // 🆕 Avtomatik migratsiya: eski barcode'larni qrCode ga ko'chirish
+    migrateOldBarcodes();
 
     document.getElementById('today-date').textContent = new Date().toLocaleDateString('uz-UZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     document.querySelectorAll('.role-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -1206,7 +1233,29 @@ async function init(){
     console.error(e);
   }
 }
-
+// 🆕 Avtomatik migratsiya funksiyasi
+async function migrateOldBarcodes() {
+  let migrated = 0;
+  for (const p of DB.products) {
+    // Agar barcode bor va qrCode yo'q bo'lsa
+    if (p.barcode && !p.qrCode && !p._migrated) {
+      // QR kod ekanligini tekshirish (DataMatrix yoki GTIN format)
+      const isQR = isDataMatrix(p.barcode);
+      if (isQR) {
+        p.qrCode = p.barcode;
+        p._migrated = true;
+        migrated++;
+        // Firebase'ga saqlash
+        await fbSaveProduct(p).catch(e => console.error('Migratsiya xatosi:', e));
+      }
+    }
+  }
+  if (migrated > 0) {
+    console.log(`✅ ${migrated} ta tovar migratsiya qilindi (barcode → qrCode)`);
+    toast(`✅ ${migrated} ta tovar avtomatik yangilandi`, 'green');
+    renderProducts();
+  }
+}
 window.doLogin = function(){
   const role = document.querySelector('.role-btn.selected')?.dataset.role;
   const pin = document.getElementById('pin-input').value;
@@ -1350,13 +1399,17 @@ window.renderProducts = function(){
         ${volLabel}
         <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
         <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
-        ${p.barcode
-          ? `<div style="font-size:11px;color:var(--text3);margin-top:.2rem;font-family:monospace;display:flex;align-items:center;gap:.3rem">
-               <span>📦 ${p.barcode}</span>
-               <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
-             </div>`
-          : `<button class="btn sm" onclick="openAssignBarcode('${p.id}')" style="margin-top:.35rem;width:100%;justify-content:center;border-color:var(--amber);color:var(--amber)">📷 Kod biriktirish</button>`
-        }
+               <div style="font-size:11px;color:var(--text3);margin-top:.2rem;font-family:monospace;display:flex;flex-direction:column;gap:.15rem">
+          ${p.barcode 
+            ? `<div style="display:flex;align-items:center;gap:.3rem"><span>📦 Shtrix: ${p.barcode}</span></div>` 
+            : `<div style="color:var(--amber)">⚠️ Shtrix-kod yo'q</div>`
+          }
+          ${p.qrCode 
+            ? `<div style="display:flex;align-items:center;gap:.3rem"><span>📷 QR: ${p.qrCode.substring(0,20)}${p.qrCode.length>20?'...':''}</span></div>` 
+            : `<div style="color:var(--text3)">QR kod yo'q</div>`
+          }
+          <button class="btn sm" onclick="openAssignBarcode('${p.id}')" style="margin-top:.2rem;width:100%;justify-content:center;border-color:var(--accent);color:var(--accent)">🔧 Kodlarni tahrirlash</button>
+        </div>
         <div class="prod-actions">
           <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
           <button class="btn sm amber" onclick="openReturnStock('${p.id}')">↩ Chiqim</button>
@@ -1387,7 +1440,7 @@ function updateAssignQueueBtn(){
 window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
-  ['p-name','p-price','p-qty','p-img','p-note','p-barcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['p-name','p-price','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
@@ -1404,7 +1457,8 @@ window.openEditProduct=function(id){
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
   document.getElementById('p-img-file').value='';
-  const bc=document.getElementById('p-barcode');if(bc)bc.value=p.barcode||'';
+  document.getElementById('p-barcode').value=p.barcode||'';
+  document.getElementById('p-qrcode').value=p.qrCode||p.barcode||''; // 🆕
   const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='none';
   if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
   else document.getElementById('img-preview-wrap').style.display='none';
@@ -1425,67 +1479,90 @@ window.loadImgFile=function(input){
   };
   reader.readAsDataURL(file);
 }
-window.saveProduct=async function(){
-  const name=document.getElementById('p-name').value.trim();
-  const price=parseFloat(document.getElementById('p-price').value);
-  const img=document.getElementById('p-img').value.trim();
-  const note=document.getElementById('p-note').value.trim();
-  const volume=document.getElementById('p-volume').value;
-  const barcode=normalizeScanCode(document.getElementById('p-barcode').value.trim());
-  if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
-  if(editingProductId){
-    const p=DB.products.find(x=>x.id===editingProductId);
+window.saveProduct = async function () {
+  const name = document.getElementById('p-name').value.trim();
+  const price = parseFloat(document.getElementById('p-price').value);
+  const img = document.getElementById('p-img').value.trim();
+  const note = document.getElementById('p-note').value.trim();
+  const volume = document.getElementById('p-volume').value;
+  const barcode = normalizeScanCode(document.getElementById('p-barcode').value.trim());
+  const qrCode = normalizeScanCode(document.getElementById('p-qrcode').value.trim()); // 🆕
+
+  if (!name || isNaN(price)) {
+    toast("Majburiy maydonlarni to'ldiring", 'red');
+    return;
+  }
+
+  if (editingProductId) {
+    const p = DB.products.find(x => x.id === editingProductId);
+
+    await fbSaveProduct({
+      ...p,
+      name,
+      price,
+      img,
+      note,
+      volume,
+      barcode: barcode || p.barcode || '',      // 🆕
+      qrCode: qrCode || p.qrCode || p.barcode || '', // 🆕
+      serialCodes: p.serialCodes || {},
+      soldCodes: p.soldCodes || {}
+    });
+
     closeModal('modal-product');
-    toast('Tovar yangilandi','green');
-  fbSaveProduct({
-    ...p,
+    toast('Tovar yangilandi', 'green');
 
-    name,
-    price,
-    img,
-    note,
-    volume,
-
-    barcode,
-
-    serialCodes:p.serialCodes || {},
-
-    soldCodes:p.soldCodes || {}
-})
   } else {
-    const qty=parseInt(document.getElementById('p-qty').value);
-    if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
-    const newProd = {
-    id: uid(),
-    name,
-    price,
-    stock: qty,
-    img,
-    note,
-    volume,
+    const qty = parseInt(document.getElementById('p-qty').value);
 
-    // Zavod barcode
-    barcode,
-
-    // Har bir shishaning alohida kodi
-    serialCodes:{},
-
-    // Sotilgan kodlar
-    soldCodes:{},
-
-    createdAt:new Date().toISOString()
-};
-    closeModal('modal-product');
-    toast("Tovar qo'shildi",'green');
-    const writes=[fbSaveProduct(newProd)];
-    if(qty>0){
-      writes.push(fbSaveRestock({
-        id:uid(), productId:newProd.id, productName:name, volume,
-        type:'in', qty, stockBefore:0, stockAfter:qty,
-        reason:'Boshlang\'ich zaxira (tovar qo\'shildi)', date:new Date().toISOString()
-      }));
+    if (isNaN(qty) || qty < 0) {
+      toast("Miqdorni kiriting", 'red');
+      return;
     }
-    Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+
+    const newProd = {
+      id: uid(),
+      name,
+      price,
+      stock: qty,
+      img,
+      note,
+      volume,
+      barcode: barcode || '',      // 🆕
+      qrCode: qrCode || '',        // 🆕
+      serialCodes: {},
+      soldCodes: {},
+      createdAt: new Date().toISOString()
+    };
+
+    closeModal('modal-product');
+    toast("Tovar qo'shildi", 'green');
+
+    const writes = [
+      fbSaveProduct(newProd)
+    ];
+
+    if (qty > 0) {
+      writes.push(
+        fbSaveRestock({
+          id: uid(),
+          productId: newProd.id,
+          productName: name,
+          volume,
+          type: 'in',
+          qty,
+          stockBefore: 0,
+          stockAfter: qty,
+          reason: "Boshlang'ich zaxira (tovar qo'shildi)",
+          date: new Date().toISOString()
+        })
+      );
+    }
+
+    Promise.all(writes).catch(e => {
+      console.error(e);
+      toast('Saqlashda xatolik', 'red');
+    });
   }
 }
 window.deleteProduct=function(id){
@@ -1909,7 +1986,7 @@ window.doDebtSell = async function(){
     const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,
       seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
     localUpsertSale(sale);
-    localUpsertProduct({...p, stock:p.stock-qty});
+    p.stock = p.stock - qty; // lokal: joyida o'zgartiramiz (obyekt referensi saqlanadi)
   });
   refreshSaleViews();
   refreshProductViews();
@@ -1925,11 +2002,12 @@ window.doDebtSell = async function(){
     withRetry(()=>setDoc(doc(db,'debts',debt.id), debt))
   ];
   items.forEach(([id,qty])=>{
-    const p=DB.products.find(x=>x.id===id) || DB.products.find(x=>x.id===id);
     const saleObj = DB.sales.find(s=>s.productId===id && s.date===now && s.isDebt);
     if(saleObj) writes.push(withRetry(()=>setDoc(doc(db,'sales',saleObj.id), saleObj)));
-    const pUpdated = DB.products.find(x=>x.id===id);
-    if(pUpdated) writes.push(withRetry(()=>setDoc(doc(db,'products',id), pUpdated)));
+    // ATOMIK: faqat "stock" maydonini increment bilan kamaytiramiz —
+    // butun mahsulot obyektini qayta yozmaymiz (parallel kirim/sotish
+    // bilan to'qnashib, ma'lumot yo'qolib qolmasligi uchun).
+    writes.push(withRetry(()=>updateDoc(doc(db,'products',id), {stock: increment(-qty)})));
   });
   Promise.all(writes).catch(e=>{ console.error(e); setSyncError(); toast('Firebase saqlashda xatolik','red'); });
 }
@@ -2151,7 +2229,14 @@ window.doCartSell=async function(){
     const p=DB.products.find(x=>x.id===id);
     const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
     writes.push(fbSaveSale(sale));
-    writes.push(fbSaveProduct({...p, stock:p.stock-qty}));
+    // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
+    // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
+    // boshqa joyda (masalan admin kirim skanerlayotgan bo'lsa) bo'layotgan
+    // o'zgarish yo'qolib qolmaydi (avvalgi "butun obyektni qayta yozish"
+    // usuli aynan shu sababli serialCodes/soldCodes'ni orqaga qaytarib,
+    // "allaqachon sotilgan" kabi noto'g'ri holatlarga olib kelardi).
+    p.stock = p.stock - qty;
+    writes.push(fbUpdateProductFields(p.id, {stock: increment(-qty)}));
   });
   cart={}; closeModal('modal-cart'); updateCartBtn(); renderSellGrid();
   if(currentRole==='seller') renderMySales();
@@ -2308,7 +2393,7 @@ window.revertSale=function(id){
   const p=DB.products.find(x=>x.id===s.productId);
   toast('Savdo qaytarildi','amber');
   const writes=[fbUpdateSale(id,{reverted:true})];
-  if(p) writes.push(fbSaveProduct({...p, stock:p.stock+s.qty}));
+  if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
@@ -2353,7 +2438,7 @@ window.adminRevert=function(id){
     const p=DB.products.find(x=>x.id===s.productId);
     toast('Savdo qaytarildi','amber');
     const writes=[fbUpdateSale(id,{reverted:true})];
-    if(p) writes.push(fbSaveProduct({...p, stock:p.stock+s.qty}));
+    if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
 }
@@ -3128,22 +3213,21 @@ function codesMatch(a, b){
 // ko'p-kodli (batch) skanerlash bir xil qidiruvdan foydalanishi uchun.
 function findProductByCode(code){
   if(!code) return null;
-  
-  // Kodni normallashtirish
   const normalized = normalizeScanCode(code);
-  
   for(const product of DB.products){
-    // 1) Asosiy barcode bo'yicha tekshirish (GTIN)
+    // 1) Shtrix-kod bo'yicha tekshirish (qadoqdagi)
     if(product.barcode && codesMatch(product.barcode, code)){
       return { product, type: 'barcode' };
     }
-    
-    // 2) Noyob serial kodlar bo'yicha tekshirish
+    // 2) QR/DataMatrix kod bo'yicha tekshirish (qopqoqdagi)
+    if(product.qrCode && codesMatch(product.qrCode, code)){
+      return { product, type: 'qr' };
+    }
+    // 3) Noyob serial kodlar bo'yicha tekshirish
     if(product.serialCodes && product.serialCodes[code]){
       return { product, type: 'serial' };
     }
   }
-  
   return null;
 }
 
@@ -3371,9 +3455,14 @@ window.scanDoRestock = function(){
     toast(`✓ ${prod.name}: +1 ta (${stockBefore} → ${stockAfter}) - ${code}`,'green');
     flashScanAdded();
     logScanSession(prod, 1);
+    refreshProductViews();
     
+    // ATOMIK: faqat shu KOD kalitini serialCodes ichiga qo'shamiz va stockni
+    // +1 oshiramiz — butun mahsulot obyektini qayta yozmaymiz, shunda bir
+    // vaqtda boshqa joyda (masalan sotuvchi tomonidan) bo'layotgan
+    // o'zgarish yo'qolib qolmaydi.
     Promise.all([
-      fbSaveProduct(prod),
+      fbUpdateProductFields(prod.id, {[`serialCodes.${code}`]: true, stock: increment(1)}),
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
@@ -3395,13 +3484,16 @@ window.scanDoRestock = function(){
       date:new Date().toISOString()
     };
     
+    prod.stock = stockAfter; // lokal: joyida o'zgartiramiz, UI darhol yangilanadi
     if(navigator.vibrate) navigator.vibrate([80,40,80]);
     toast(`✓ ${prod.name}: +${qty} ta (${stockBefore} → ${stockAfter})`,'green');
     flashScanAdded();
     logScanSession(prod, qty);
+    refreshProductViews();
     
+    // ATOMIK: faqat "stock" maydonini increment bilan oshiramiz.
     Promise.all([
-      fbSaveProduct({...prod, stock: stockAfter}),
+      fbUpdateProductFields(prod.id, {stock: increment(qty)}),
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
@@ -3478,8 +3570,18 @@ window.scanAddToCart = function(){
     const inCart = cart[prod.id]||0;
     cart[prod.id] = inCart + 1;
     
-    // Mahsulotni saqlaymiz
-    fbSaveProduct(prod).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+    // Mahsulotni saqlaymiz — ATOMIK: faqat shu KOD "sotilgan" deb
+    // belgilanadi, serialCodes'dan shu KOD o'chiriladi va stock -1
+    // qilinadi. Butun obyektni qayta yozmaymiz — shunda deyarli bir vaqtda
+    // boshqa qurilmada/oynada bo'layotgan kirim yoki boshqa dona sotilishi
+    // bu yozuv tomonidan bekor qilib yuborilmaydi (aynan shu "eskirgan
+    // nusxa ustidan yozish" avvalgi xato — hali sotilmagan donani ham
+    // "allaqachon sotilgan" deb ko'rsatishga olib kelardi).
+    fbUpdateProductFields(prod.id, {
+      [`soldCodes.${code}`]: true,
+      [`serialCodes.${code}`]: deleteField(),
+      stock: increment(-1)
+    }).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
     
     updateCartBtn();
     updateSingleCard(prod.id);
@@ -3650,6 +3752,19 @@ window.openAssignBarcode = async function(productId){
   const p = DB.products.find(x=>x.id===productId);
   if(!p) return;
 
+  // 🆕 Sarlavhani yangilash
+  document.getElementById('assign-modal-title').textContent = '🔧 Kodlarni tahrirlash';
+  document.getElementById('assign-product-info').innerHTML = `
+    📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+    <div style="font-size:13px;color:var(--text3);font-weight:400;margin-top:.3rem">
+      <div>📦 Shtrix-kod: ${p.barcode || '<span style="color:var(--amber)">❌ yo\'q</span>'}</div>
+      <div>📷 QR/DataMatrix: ${p.qrCode ? p.qrCode : '<span style="color:var(--amber)">❌ yo\'q</span>'}</div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:.5rem;border-top:1px solid var(--border);padding-top:.5rem">
+      👆 Quyida skanerlash yoki qo\'lda kiriting
+    </div>
+  `;
+
   // Agar bu chaqiruv faol navbat ICHIDA bo'lmasa (ya'ni foydalanuvchi
   // tovar kartochkasidagi ✎/"Kod biriktirish" tugmasini alohida bossa) —
   // rejim har doim oddiy "barcode" bo'lishi kerak, oldingi seriya
@@ -3802,24 +3917,52 @@ window.captureAndScanAssign = async function(){
 window.doAssignBarcode = async function(code){
   code = (code||'').trim();
   if(!code){ toast('Kod bo\'sh','red'); return; }
-  if(_assignDone) return; // Ikki marta ishlamasin
-
-  // Erkin "donalarni ro'yxatga olish" rejimida NAVBATDAGI tovar degan
-  // narsa yo'q — har bir skanerlangan kod o'zining GTIN'i bo'yicha aniq
-  // tovarga topshiriladi (doRegisterSerialUnit ichida).
-  if(_assignMode === 'serial'){
-    doRegisterSerialUnit(code);
-    return;
-  }
+  if(_assignDone) return;
 
   const p = DB.products.find(x=>x.id===_assignProductId);
   if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
 
   _assignDone = true;
 
-  // GS1 kod bo'lsa, faqat GTIN qismini olamiz (seriya raqami emas) —
-  // shunda shu turdagi BOSHQA shishalarni skanerlaganda ham mos keladi.
+  // 🆕 Kod turini aniqlash
   const keyCode = normalizeScanCode(code);
+  const isQR = isDataMatrix(code) || isGTIN(code);
+  
+  // 🆕 Qaysi maydonga yozishni so'raydigan dialog
+  const choice = confirm(
+    `"${p.name}" ga qaysi kod sifatida biriktirilsin?\n\n` +
+    `📦 Shtrix-kod (qadoqdagi, barcha donada bir xil) — "OK"\n` +
+    `📷 QR/DataMatrix (qopqoqdagi, har bir donada noyob) — "Bekor qilish"\n\n` +
+    `Kod: ${keyCode}`
+  );
+  
+  if(choice){
+    // Shtrix-kod sifatida saqlash
+    // Boshqa tovar shu kodni ishlatayotganini tekshir
+    const conflict = DB.products.find(x=>x.id!==_assignProductId && x.barcode && codesMatch(x.barcode, keyCode));
+    if(conflict){
+      toast(`⚠️ Bu shtrix-kod allaqachon "${conflict.name}"ga biriktirilgan!`,'red');
+      _assignDone = false;
+      document.getElementById('assign-status').textContent = `⚠️ Shtrix-kod "${conflict.name}"da mavjud!`;
+      document.getElementById('assign-status').style.color = 'var(--red)';
+      return;
+    }
+    p.barcode = keyCode;
+    toast(`✅ Shtrix-kod biriktirildi: ${keyCode}`,'green');
+  } else {
+    // QR/DataMatrix kod sifatida saqlash
+    // Boshqa tovar shu kodni ishlatayotganini tekshir
+    const conflict = DB.products.find(x=>x.id!==_assignProductId && x.qrCode && codesMatch(x.qrCode, keyCode));
+    if(conflict){
+      toast(`⚠️ Bu QR kod allaqachon "${conflict.name}"ga biriktirilgan!`,'red');
+      _assignDone = false;
+      document.getElementById('assign-status').textContent = `⚠️ QR kod "${conflict.name}"da mavjud!`;
+      document.getElementById('assign-status').style.color = 'var(--red)';
+      return;
+    }
+    p.qrCode = keyCode;
+    toast(`✅ QR/DataMatrix kod biriktirildi: ${keyCode}`,'green');
+  }
 
   // Boshqa tovar shu kodni ishlatayotganini tekshir
   const conflict = DB.products.find(x=>x.id!==_assignProductId && x.barcode && codesMatch(x.barcode, keyCode));
@@ -3918,7 +4061,10 @@ function doRegisterSerialUnit(code){
 
   if(!truep.serialCodes) truep.serialCodes = {};
   truep.serialCodes[code] = true;
-  fbSaveProduct(truep).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  // ATOMIK: faqat shu bitta KOD kalitini qo'shamiz, butun mahsulotni
+  // qayta yozmaymiz (parallel kirim/sotish bilan to'qnashmasligi uchun).
+  fbUpdateProductFields(truep.id, {[`serialCodes.${code}`]: true}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  refreshProductViews();
 
   const registered = Object.keys(truep.serialCodes).length;
   const remaining = unregisteredUnitCount(truep);
@@ -3961,8 +4107,10 @@ function isGTIN(code){
 
 function isDataMatrix(code){
   if(!code) return false;
+  // Agar GTIN bo'lsa (14 raqam) — bu shtrix-kod, QR emas
   if(isGTIN(code)) return false;
-  return code.length > 10 || code.includes('(') || code.includes('01');
+  // QR/DataMatrix odatda: uzun, qavsli, maxsus belgilar
+  return code.length > 14 || code.includes('(') || code.includes('01') || code.includes('21') || code.includes('93');
 }
 
 init();
