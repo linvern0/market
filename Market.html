@@ -917,7 +917,6 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
   authDomain: "dokon-ce38b.firebaseapp.com",
@@ -939,15 +938,7 @@ const app = initializeApp(firebaseConfig);
 // bir nechta brauzer/qurilma oynasi bir vaqtda ochiq bo'lsa ham ishlashini
 // ta'minlaydi. Agar (juda eski brauzerda) bu ishlamasa — oddiy rejimga
 // muammosiz qaytamiz.
-let db;
-try{
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  });
-}catch(e){
-  console.error('Persistent cache yoqilmadi, oddiy rejimda davom etilmoqda:', e);
-  db = getFirestore(app);
-}
+const db = getFirestore(app);
 
 window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
 window.currentRole = null;
@@ -2708,12 +2699,7 @@ function handleNoCodeDetected(){
 // Har bir kadrda kod topilmaganda chaqiriladi. Kod ma'lum vaqt davomida
 // ko'rinmasa (foydalanuvchi tovarni olib qo'ygani/almashtirgani belgisi),
 // dublikat xotirasini tozalaymiz — shu bilan xuddi shu kod yana kelsa,
-// yangi dona sifatida darhol qabul qilinadi.
-function handleNoCodeDetected(){
-  const now = Date.now();
-  if(_codeAbsentSince === null) _codeAbsentSince = now;
-  else if(now - _codeAbsentSince > CODE_ABSENCE_RESET_MS) _lastProcessedCode = null;
-}
+// yangi dona sifatida darhol qabul qilinadi
 
 // ============ TAKOMILLASHTIRILGAN KADR TAYYORLASH ============
 // Muammo: ZXing avval BUTUN kamera kadrini (xira fon, aks-sado, plastik
@@ -2899,73 +2885,6 @@ window.captureAndScan = async function(){
 // detektor yo'q eski brauzerlarda ZXing orqali ko'p-kodli o'qish urinib
 // ko'riladi (kutubxona versiyasiga qarab ishlamasligi ham mumkin), bo'lmasa
 // bitta eng aniq kodni topib, foydalanuvchiga xabar beramiz.
-window.captureAndScanBatch = async function(){
-  const video = document.getElementById('scan-video');
-  if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
-  setScanStatus('🔍 Bir nechta tovar qidirilmoqda...', '');
-
-  let rawCodes = [];
-
-  if(_nativeDetector){
-    try{
-      const codes = await _nativeDetector.detect(video);
-      rawCodes = (codes||[]).map(c=>c.rawValue);
-    }catch(e){ console.error(e); }
-    // Hech narsa topilmasa — kamera fokuslanishi uchun biroz kutib yana
-    // bir bor urinib ko'ramiz (bitta urinishda hammasi tayyor bo'lmasligi mumkin).
-    if(!rawCodes.length){
-      await new Promise(r=>setTimeout(r,300));
-      try{
-        const codes2 = await _nativeDetector.detect(video);
-        rawCodes = (codes2||[]).map(c=>c.rawValue);
-      }catch(e){ /* e'tibor bermaymiz */ }
-    }
-  } else {
-    const canvas = grabCroppedCanvas(video, 1.0, 1.4, true);
-    rawCodes = await tryDecodeMultipleZXing(canvas);
-    if(!rawCodes.length){
-      const single = await tryDecodeCanvasAsync(canvas);
-      if(single) rawCodes = [single];
-    }
-  }
-
-  if(!rawCodes.length){
-    setScanStatus("Hech qanday kod topilmadi. Tovarlarni yorug'roq joyga, kodlar bir-birini to'smaydigan qilib yozib qayta urinib ko'ring.", 'err');
-    return;
-  }
-
-  processBatchCodes(rawCodes);
-}
-
-// ZXing kutubxonasida (agar shu versiyada mavjud bo'lsa) bitta rasmdan bir
-// nechta shtrix-kodni birdaniga o'qishga urinadi. Bu — kutubxona versiyasiga
-// bog'liq imkoniyat, shuning uchun har doim try/catch bilan o'ralgan va
-// muvaffaqiyatsiz bo'lsa shunchaki bo'sh massiv qaytaradi (keyin chaqiruvchi
-// bitta-kodli zaxira usulga o'tadi).
-async function tryDecodeMultipleZXing(canvas){
-  try{
-    if(!canvas || !window.ZXing) return [];
-    const Z = window.ZXing;
-    if(!Z.MultiFormatReader || !Z.GenericMultipleBarcodeReader || !Z.HTMLCanvasElementLuminanceSource || !Z.BinaryBitmap || !Z.HybridBinarizer) return [];
-    const luminance = new Z.HTMLCanvasElementLuminanceSource(canvas);
-    const bitmap = new Z.BinaryBitmap(new Z.HybridBinarizer(luminance));
-    const reader = new Z.MultiFormatReader();
-    if(reader.setHints){
-      const hints = new Map();
-      hints.set(Z.DecodeHintType.TRY_HARDER, true);
-      reader.setHints(hints);
-    }
-    const multiReader = new Z.GenericMultipleBarcodeReader(reader);
-    const results = multiReader.decodeMultiple(bitmap);
-    return (results||[]).map(r=>r.getText());
-  }catch(e){
-    return [];
-  }
-}
-
-// Bitta suratdan topilgan bir nechta kodni guruhlab (bir xil kod necha marta
-// takrorlansa — shuncha dona hisoblanadi), tovarlarni topib, HAMMASINI bir
-// yo'la ombor kirimiga (admin) yoki savatga (sotuvchi) qo'shadi.
 function processBatchCodes(rawCodes){
   const counts = new Map(); // normalizedCode -> nechta marta uchradi
   rawCodes.forEach(raw=>{
@@ -2993,48 +2912,82 @@ function processBatchCodes(rawCodes){
     found.forEach(({prod, qty})=>{
       const stockBefore = prod.stock;
       const stockAfter = stockBefore + qty;
+
       const restock = {
-        id: uid(), productId: prod.id, productName: prod.name, volume: prod.volume||'',
-        type:'in', qty, stockBefore, stockAfter, reason:"Ko'p-tovarli skanerlash orqali kirim", date:new Date().toISOString()
+        id: uid(),
+        productId: prod.id,
+        productName: prod.name,
+        volume: prod.volume || '',
+        type: 'in',
+        qty,
+        stockBefore,
+        stockAfter,
+        reason: "Ko'p-tovarli skanerlash orqali kirim",
+        date: new Date().toISOString()
       };
+
       writes.push(fbSaveProduct({...prod, stock: stockAfter}));
       writes.push(fbSaveRestock(restock));
       logScanSession(prod, qty);
     });
-    Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+
+    Promise.all(writes).catch(e=>{
+      console.error(e);
+      toast('Saqlashda xatolik yuz berdi','red');
+    });
+
+    // ✅ AI tavsiya qilgan o'zgarish
+    if(isAutoScanMode()){
+      setTimeout(() => resetScanForNext(), 300);
+    }
+
   } else {
+
     found.forEach(({prod, qty})=>{
-      const inCart = cart[prod.id]||0;
+      const inCart = cart[prod.id] || 0;
       let addQty = qty;
-      if(inCart+addQty > prod.stock) addQty = Math.max(0, prod.stock - inCart);
-      if(addQty>0){
-        cart[prod.id] = inCart+addQty;
+
+      if(inCart + addQty > prod.stock){
+        addQty = Math.max(0, prod.stock - inCart);
+      }
+
+      if(addQty > 0){
+        cart[prod.id] = inCart + addQty;
         logScanSession(prod, addQty);
       }
     });
+
     updateCartBtn();
     found.forEach(({prod})=>updateSingleCard(prod.id));
+
+    // ✅ AI tavsiya qilgan o'zgarish
+    if(isAutoScanMode()){
+      setTimeout(() => resetScanForNext(), 300);
+    }
   }
 
   flashScanAdded();
-  if(navigator.vibrate) navigator.vibrate([70,30,70,30,70]);
-  const summary = found.map(({prod,qty})=>`${prod.name} ×${qty}`).join(', ');
-  toast(`✅ ${found.length} xil tovar qo'shildi: ${summary}`, 'green');
-  if(notFound.length){
-    setScanStatus(`✅ ${found.length} xil tovar qo'shildi. ⚠️ ${notFound.length} ta kod bazada topilmadi.`, '');
-  } else {
-    setScanStatus(`✅ Barcha ${found.length} xil tovar muvaffaqiyatli qo'shildi. Keyingisini skanerlashingiz mumkin.`, 'ok');
+
+  if(navigator.vibrate){
+    navigator.vibrate([70,30,70,30,70]);
   }
-  if(_scanMode==='admin'){
-    // ... kirim qo'shish ...
-    if(isAutoScanMode()){
-      setTimeout(() => resetScanForNext(), 300);
-    }
+
+  const summary = found
+    .map(({prod,qty})=>`${prod.name} ×${qty}`)
+    .join(', ');
+
+  toast(`✅ ${found.length} xil tovar qo'shildi: ${summary}`, 'green');
+
+  if(notFound.length){
+    setScanStatus(
+      `✅ ${found.length} xil tovar qo'shildi. ⚠️ ${notFound.length} ta kod bazada topilmadi.`,
+      ''
+    );
   } else {
-    // ... savatga qo'shish ...
-    if(isAutoScanMode()){
-      setTimeout(() => resetScanForNext(), 300);
-    }
+    setScanStatus(
+      `✅ Barcha ${found.length} xil tovar muvaffaqiyatli qo'shildi. Keyingisini skanerlashingiz mumkin.`,
+      'ok'
+    );
   }
 }
 
@@ -3093,7 +3046,7 @@ window.processCode = function(code){
   if(prod){
     _scannedProductId = prod.id;
     showScanProduct(prod, true);
-    // Agar avtomatik rejim bo'lmasa, keyingi skanerga tayyor
+    // 🔥 BU QATOR QO'SHILDI
     if(!isAutoScanMode()){
       setTimeout(() => resetScanForNext(), 300);
     }
@@ -3219,7 +3172,7 @@ window.scanDoRestock = function(){
   toast(`✓ ${prod.name}: +${qty} ta (${stockBefore} → ${stockAfter})`,'green');
   flashScanAdded();
   logScanSession(prod, qty);
-  resetScanForNext();
+  resetScanForNext(); // 🔥 BU QATOR QO'SHILDI
   Promise.all([
     fbSaveProduct({...prod, stock: stockAfter}),
     fbSaveRestock(restock)
@@ -3267,7 +3220,7 @@ window.scanAddToCart = function(){
   updateSingleCard(prod.id);
   flashScanAdded();
   logScanSession(prod, qty);
-  resetScanForNext();
+  resetScanForNext(); // 🔥 BU QATOR QO'SHILDI
   toast(`✅ +${qty} ta ${prod.name} savatga qo'shildi`,'green');
   if(navigator.vibrate) navigator.vibrate([80,40,80]);
 }
