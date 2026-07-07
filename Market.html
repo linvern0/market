@@ -338,7 +338,7 @@
     <div><h2>Tovar boshqaruvi</h2><p>Tovarlarni qo'shing va yangilang</p></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
-      <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Umumiy kodi bor, lekin ombordagi har bir donasi alohida seriya kod bilan ro'yxatga olinmagan tovarlarni birma-bir skanerlash">🔢 Donalarni ro'yxatga olish</button>
+      <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Aralash tovarlarning donalarini istalgan tartibda skanerlang — har biri o'zining tovariga avtomatik yoziladi">🔢 Donalarni ro'yxatga olish</button>
       <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
     </div>
   </div>
@@ -3563,13 +3563,64 @@ function unregisteredUnitCount(p){
 window.startSerialRegisterQueue = function(){
   const needing = DB.products.filter(p=>p.barcode && unregisteredUnitCount(p)>0);
   if(!needing.length){ toast('✅ Ombordagi barcha donalar seriya kod bilan ro\'yxatga olingan','green'); return; }
+  // MUHIM O'ZGARISH: avval bu yerda tovarlar ustidan QAT'IY NAVBAT
+  // (birma-bir, faqat shu tovar tugagach keyingisiga) tuzilardi. Lekin
+  // haqiqiy ombordagi donalar ARALASH (turli tovarlar bir uyumda) bo'lgani
+  // uchun bu noqulay edi — ekran doim faqat "navbatdagi" tovarni ko'rsatib,
+  // boshqa (aralash) tovar skanerlansa ham panel yangilanmasdi.
+  // ENDI: navbat YO'Q — istalgan tartibda, istalgan tovar donasi
+  // skanerlanadi, ekran HAR SAFAR aynan o'sha skanerlangan tovarni va uning
+  // ombordagi/ro'yxatdagi sonini ko'rsatadi.
   _assignMode = 'serial';
+  _assignQueueIdx = -1;
+  _assignQueue = [];
+  _assignProductId = null;
   _lastSerialCode = null;
   _lastSerialAt = 0;
-  _assignQueue = needing.map(p=>p.id);
-  _assignQueueIdx = 0;
-  openAssignBarcode(_assignQueue[0]);
+  openSerialFreeScan();
 };
+
+// Navbatsiz, erkin "donalarni ro'yxatga olish" oynasini ochadi.
+async function openSerialFreeScan(){
+  _assignDone = false;
+  document.getElementById('assign-queue-progress').textContent = '';
+  document.getElementById('assign-skip-btn').style.display = 'none';
+  document.getElementById('assign-modal-title').textContent = "🔢 Donalarni ro'yxatga olish";
+  document.getElementById('assign-product-info').innerHTML =
+    `<span style="color:var(--text3);font-weight:500">Istalgan tovarning istalgan donasini skanerlang — mos tovar avtomatik aniqlanadi</span>`;
+  const unitProgEl = document.getElementById('assign-unit-progress');
+  unitProgEl.style.display = 'none';
+  document.getElementById('assign-code-input').value = '';
+  openModal('modal-assign-barcode');
+
+  const video = document.getElementById('assign-video');
+  _activeVideoEl = video;
+
+  if(_sharedStream && _sharedStream.getVideoTracks().some(t=>t.readyState==='live')){
+    video.srcObject = _sharedStream;
+    document.getElementById('assign-status').textContent = 'Kamerani donaga qarating...';
+    document.getElementById('assign-status').style.color = 'var(--text2)';
+  } else {
+    document.getElementById('assign-status').textContent = 'Skaner tayyorlanmoqda...';
+  }
+
+  const nd = await ensureNativeDetector();
+  if(!nd){
+    const ok = await loadZXing();
+    if(!ok){ document.getElementById('assign-status').textContent = '❌ Kutubxona yuklanmadi. Qo\'lda kiriting.'; return; }
+  }
+
+  try{
+    const stream = await getSharedCameraStream();
+    video.srcObject = stream;
+    document.getElementById('assign-status').textContent = 'Kamerani donaga qarating...';
+    document.getElementById('assign-status').style.color = 'var(--text2)';
+    startAssignDecoding(video);
+  }catch(e){
+    document.getElementById('assign-status').textContent = typeof describeCameraError==='function' ? describeCameraError(e) : 'Kameraga ruxsat berilmadi.';
+    document.getElementById('assign-status').style.color = 'var(--amber)';
+  }
+}
 
 window.skipBarcodeAssign = function(){
   if(_assignQueueIdx < 0) return;
@@ -3753,13 +3804,16 @@ window.doAssignBarcode = async function(code){
   if(!code){ toast('Kod bo\'sh','red'); return; }
   if(_assignDone) return; // Ikki marta ishlamasin
 
-  const p = DB.products.find(x=>x.id===_assignProductId);
-  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
-
+  // Erkin "donalarni ro'yxatga olish" rejimida NAVBATDAGI tovar degan
+  // narsa yo'q — har bir skanerlangan kod o'zining GTIN'i bo'yicha aniq
+  // tovarga topshiriladi (doRegisterSerialUnit ichida).
   if(_assignMode === 'serial'){
-    doRegisterSerialUnit(p, code);
+    doRegisterSerialUnit(code);
     return;
   }
+
+  const p = DB.products.find(x=>x.id===_assignProductId);
+  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
 
   _assignDone = true;
 
@@ -3804,13 +3858,15 @@ window.doAssignBarcode = async function(code){
 // ===== HAR BIR DONANI RO'YXATGA OLISH (SERIAL REJIM) =====
 // "Kod biriktirish"dan farqi: bu yerda umumiy p.barcode O'ZGARTIRILMAYDI —
 // har bir skanerlangan (noyob seriyali) kod p.serialCodes ro'yxatiga
-// QO'SHILADI. Kerakli son (stock) ga yetguncha, xuddi shu tovar ustida
-// qolib, ketma-ket bir necha marta skanerlash mumkin; keyin avtomatik
-// navbatdagi tovarga o'tadi.
+// QO'SHILADI. NAVBAT YO'Q: aralash tovarlarni istalgan tartibda
+// skanerlash mumkin — ekran har safar aynan SHU ONDA skanerlangan
+// tovarni, uning ombordagi sonini va nechtasi ro'yxatga olinganini
+// ko'rsatadi. Agar dona allaqachon ro'yxatda bo'lsa, shuni aniq bildiradi
+// (xato bermaydi, keyingi donaga o'tishga tayyor turadi).
 let _lastSerialCode = null;
 let _lastSerialAt = 0;
 
-function doRegisterSerialUnit(queueProduct, code){
+function doRegisterSerialUnit(code){
   code = (code||'').trim();
   if(!code) return;
 
@@ -3822,12 +3878,8 @@ function doRegisterSerialUnit(queueProduct, code){
   _lastSerialCode = code;
   _lastSerialAt = now;
 
-  // MUHIM TUZATISH: ilgari kod tekshirilmasdan, TO'G'RIDAN-TO'G'RI navbatda
-  // turgan tovarga ("queueProduct") qo'shib yuborilardi. Shu sabab, masalan,
-  // "Mineral suv" navbatida turib Pepsi shishasini skanerlasangiz — dona
-  // xato ravishda Mineral suvga yozilib qolardi. Endi kodning GTIN qismi
-  // BAZADAGI umumiy barcode'lar bilan solishtiriladi va dona FAQAT haqiqiy
-  // mos tovarga qo'shiladi — navbatda qaysi tovar turganidan qat'iy nazar.
+  // Kodning GTIN qismi bazadagi umumiy barcode'lar bilan solishtiriladi —
+  // dona qaysi tovarga tegishli ekani shundan aniqlanadi (navbat emas).
   const keyGTIN = normalizeScanCode(code);
   const truep = DB.products.find(x=>x.barcode && codesMatch(x.barcode, keyGTIN));
 
@@ -3838,13 +3890,28 @@ function doRegisterSerialUnit(queueProduct, code){
     return;
   }
 
+  // Panelni HAR DOIM aynan shu topilgan tovarga moslab yangilaymiz.
+  document.getElementById('assign-product-info').innerHTML =
+    `📦 ${truep.name}${truep.volume?' · '+truep.volume+'L':''}`;
+
+  const registeredBefore = Object.keys(truep.serialCodes||{}).length;
+  const total = truep.stock||0;
+  const unitProgEl = document.getElementById('assign-unit-progress');
+  unitProgEl.style.display = 'block';
+
   // Agar bu kod ALLAQACHON ro'yxatga olingan bo'lsa — takror hisoblamaymiz
-  // (bitta shisha ikki marta sanalib ketmasligi uchun).
+  // (bitta shisha ikki marta sanalib ketmasligi uchun), lekin buni ANIQ
+  // ko'rsatamiz va ombordagi/ro'yxatdagi holatni baribir ko'rsatib turamiz.
   if(truep.serialCodes && truep.serialCodes[code]){
-    toast('⚠️ Bu dona allaqachon ro\'yxatga olingan','amber');
-    document.getElementById('assign-status').textContent = "⚠️ Bu kod avval ro'yxatga olingan — boshqa donani skanerlang";
+    if(navigator.vibrate) navigator.vibrate(50);
+    const remaining = unregisteredUnitCount(truep);
+    unitProgEl.style.background = 'var(--amber-bg)';
+    unitProgEl.style.borderColor = 'var(--amber-border)';
+    unitProgEl.style.color = 'var(--amber)';
+    unitProgEl.textContent = `⚠️ Bu dona ALLAQACHON ro'yxatda · ${registeredBefore}/${total} ro'yxatda · ${remaining} tasi qoldi`;
+    document.getElementById('assign-status').textContent = "Bu dona avval ro'yxatga olingan — boshqa donani skanerlang";
     document.getElementById('assign-status').style.color = 'var(--amber)';
-    return; // _assignDone false qolaveradi — keyingi (yangi) kodni darhol qabul qiladi
+    return; // keyingi (yangi) kodni darhol qabul qiladi
   }
 
   if(navigator.vibrate) navigator.vibrate(100);
@@ -3854,46 +3921,23 @@ function doRegisterSerialUnit(queueProduct, code){
   fbSaveProduct(truep).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 
   const registered = Object.keys(truep.serialCodes).length;
-  const total = truep.stock||0;
   const remaining = unregisteredUnitCount(truep);
-  const wrongTurn = truep.id !== queueProduct.id;
 
-  // Agar skanerlangan tovar navbatdagisidan BOSHQA bo'lsa — buni aniq
-  // ko'rsatamiz, shunda foydalanuvchi adashganini darhol payqaydi.
-  document.getElementById('assign-status').textContent = wrongTurn
-    ? `✅ "${truep.name}" ga qo'shildi (${registered}/${total}) — navbatdagi tovar emas, lekin to'g'ri joyga yozildi`
-    : `✅ Ro'yxatga olindi (${registered}/${total})`;
+  unitProgEl.style.background = 'var(--green-bg)';
+  unitProgEl.style.borderColor = 'var(--green-border)';
+  unitProgEl.style.color = 'var(--green)';
+  unitProgEl.textContent = remaining>0
+    ? `✅ Ro'yxatga olindi · ${registered}/${total} ro'yxatda · ${remaining} tasi qoldi`
+    : `✅ Ro'yxatga olindi · ${registered}/${total} — BARCHASI TO'LIQ!`;
+
+  document.getElementById('assign-status').textContent = remaining>0
+    ? 'Keyingi donani skanerlang...'
+    : `🎉 "${truep.name}" ning barcha donalari ro'yxatga olindi!`;
   document.getElementById('assign-status').style.color = 'var(--green)';
 
-  // Progress paneli faqat NAVBATDAGI (ekranda ko'rsatilayotgan) tovar uchun —
-  // agar skanerlangan boshqa tovar bo'lsa, uning holatini alohida toast bilan
-  // ko'rsatamiz, joriy panelni o'zgartirmaymiz.
-  if(!wrongTurn){
-    const unitProgEl = document.getElementById('assign-unit-progress');
-    if(unitProgEl) unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
-  } else {
-    toast(`📦 "${truep.name}" ga qo'shildi (${registered}/${total}) — bu navbatdagi tovar emas edi!`,'amber');
-  }
   renderProducts();
-
-  // Agar skanerlangan tovar (truep) o'zining maqsadiga yetgan bo'lsa va u
-  // hali navbatda bo'lsa — navbatdan olib tashlaymiz (qayta so'ralmasin).
-  if(remaining<=0 && truep.id!==queueProduct.id){
-    const qIdx = _assignQueue.indexOf(truep.id);
-    if(qIdx > _assignQueueIdx) _assignQueue.splice(qIdx,1);
-  }
-
-  if(!wrongTurn && remaining <= 0){
-    // Navbatdagi tovarning barcha donalari ro'yxatga olindi — keyingisiga o'tamiz
-    _assignDone = true;
-    toast(`✅ "${truep.name}" — barcha ${total} dona ro'yxatga olindi!`,'green');
-    setTimeout(()=>{
-      if(_assignQueueIdx >= 0) advanceAssignQueue();
-      else closeAssignBarcode();
-    }, 700);
-  }
-  // Aks holda _assignDone false qolaveradi — kamera shu tovar ustida davom
-  // etib, keyingi donani darhol skanerlashga tayyor turadi.
+  // Navbat yo'q — foydalanuvchi o'zi ✕ tugmasi bilan tugatguncha, istalgan
+  // tartibda, istalgan tovarning donalarini skanerlashda davom etaveradi.
 }
 
 window.closeAssignBarcode = function(){
@@ -3901,13 +3945,11 @@ window.closeAssignBarcode = function(){
   stopDecodingOnly();
   const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
   _assignProductId = null;
-  // Foydalanuvchi navbat rejimida oynani qo'lda (✕ orqali) yopsa — butun
-  // navbatni bekor qilamiz (keyingi safar tugma bosilganda qayta boshlanadi).
-  if(_assignQueueIdx >= 0){
-    _assignQueueIdx = -1;
-    _assignQueue = [];
-    _assignMode = 'barcode';
-  }
+  // Navbat yoki erkin skanerlash rejimidan chiqishda holatni tozalaymiz
+  // (keyingi safar tugma bosilganda toza holatda qayta boshlansin).
+  _assignQueueIdx = -1;
+  _assignQueue = [];
+  _assignMode = 'barcode';
   closeModal('modal-assign-barcode');
 }
 
