@@ -517,6 +517,12 @@
       </div>
       <div class="field"><label>Narx (so'm) *</label><input id="p-price" type="number" min="0" placeholder="5000"></div>
     </div>
+    <div class="form-row">
+      <div class="field"><label>Tannarx (so'm) <span style="color:var(--text3);font-weight:400">(ixtiyoriy — xarid narxi)</span></label><input id="p-cost" type="number" min="0" placeholder="3000"></div>
+      <div class="field" id="profit-display" style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius);padding:.65rem .9rem;align-items:center;justify-content:center">
+        <span style="font-size:12px;color:var(--text3);font-weight:500">Foyda: <span id="p-profit-val" style="color:var(--green);font-weight:700;font-size:16px">0 so'm</span></span>
+      </div>
+    </div>
     <div class="form-row" id="p-qty-row">
       <div class="field"><label>Boshlang'ich miqdor *</label><input id="p-qty" type="number" min="0" placeholder="50"></div>
       <div class="field" style="justify-content:flex-end;padding-bottom:.25rem">
@@ -1391,10 +1397,21 @@ window.renderDashboard = function(){
   const totalQty = filtered.reduce((a,s)=>a+s.qty,0);
   const outStock = DB.products.filter(p=>p.stock===0).length;
   const invValue = DB.products.reduce((a,p)=>a+p.price*p.stock,0);
+  
+  // Foyda hisoblash
+  let totalProfit = 0;
+  filtered.forEach(s=>{
+    const prod = DB.products.find(p=>p.name===s.productName);
+    const costPrice = prod?.costPrice || 0;
+    const itemProfit = (s.sellingPrice || (s.total/s.qty)) - costPrice;
+    totalProfit += itemProfit * s.qty;
+  });
+  
   document.getElementById('stat-grid').innerHTML = `
     <div class="stat green"><div class="val">${fmt(totalRev)}</div><div class="lbl">💰 Savdo hajmi (so'm)</div></div>
     <div class="stat blue"><div class="val">${filtered.length}</div><div class="lbl">🧾 Savdo soni</div></div>
     <div class="stat amber"><div class="val">${totalQty}</div><div class="lbl">📦 Sotilgan miqdor</div></div>
+    <div class="stat ${totalProfit>=0?'green':'red'}"><div class="val">${fmt(totalProfit)}</div><div class="lbl">💵 Foyda (so'm)</div></div>
     <div class="stat red"><div class="val">${outStock}</div><div class="lbl">⚠️ Tugagan tovarlar</div></div>
     <div class="stat blue"><div class="val">${fmt(invValue)}</div><div class="lbl">🏬 Ombordagi tovar qiymati</div></div>`;
   const recent = DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), now)).slice().reverse();
@@ -1503,11 +1520,14 @@ function updateAssignQueueBtn(){
 window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
-  ['p-name','p-price','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['p-name','p-price','p-cost','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('p-profit-val').textContent = '0 so\'m';
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
   const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='';
+  document.getElementById('p-price').oninput=calculateProfitDisplay;
+  document.getElementById('p-cost').oninput=calculateProfitDisplay;
   openModal('modal-product');
 }
 window.openEditProduct=function(id){
@@ -1516,6 +1536,8 @@ window.openEditProduct=function(id){
   document.getElementById('modal-product-title').textContent='Tovarni tahrirlash';
   document.getElementById('p-name').value=p.name;
   document.getElementById('p-price').value=p.price;
+  document.getElementById('p-cost').value=p.costPrice||'';
+  calculateProfitDisplay();
   document.getElementById('p-img').value=p.img||'';
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
@@ -1525,6 +1547,8 @@ window.openEditProduct=function(id){
   const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='none';
   if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
   else document.getElementById('img-preview-wrap').style.display='none';
+  document.getElementById('p-price').oninput=calculateProfitDisplay;
+  document.getElementById('p-cost').oninput=calculateProfitDisplay;
   openModal('modal-product');
 }
 window.previewImg=function(){
@@ -1542,9 +1566,30 @@ window.loadImgFile=function(input){
   };
   reader.readAsDataURL(file);
 }
+window.calculateProfitDisplay=function(){
+  const price=parseFloat(document.getElementById('p-price').value)||0;
+  const costPrice=parseFloat(document.getElementById('p-cost').value)||0;
+  const profit=price-costPrice;
+  const profitPercent=costPrice>0 ? ((profit/costPrice)*100).toFixed(1) : 0;
+  document.getElementById('p-profit-val').textContent=formatPrice(profit)+' so\'m';
+  if(profit<0){
+    document.getElementById('profit-display').style.background='var(--red-bg)';
+    document.getElementById('profit-display').style.borderColor='var(--red-border)';
+    document.getElementById('p-profit-val').style.color='var(--red)';
+  } else if(profit===0){
+    document.getElementById('profit-display').style.background='var(--amber-bg)';
+    document.getElementById('profit-display').style.borderColor='var(--amber-border)';
+    document.getElementById('p-profit-val').style.color='var(--amber)';
+  } else {
+    document.getElementById('profit-display').style.background='var(--green-bg)';
+    document.getElementById('profit-display').style.borderColor='var(--green-border)';
+    document.getElementById('p-profit-val').style.color='var(--green)';
+  }
+}
 window.saveProduct=async function(){
   const name=document.getElementById('p-name').value.trim();
   const price=parseFloat(document.getElementById('p-price').value);
+  const costPrice=parseFloat(document.getElementById('p-cost').value)||0;
   const img=document.getElementById('p-img').value.trim();
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
@@ -1560,6 +1605,7 @@ window.saveProduct=async function(){
 
     name,
     price,
+    costPrice,
     img,
     note,
     volume,
@@ -1578,6 +1624,7 @@ window.saveProduct=async function(){
     id: uid(),
     name,
     price,
+    costPrice,
     stock: qty,
     img,
     note,
@@ -2143,8 +2190,8 @@ window.renderDebts = function(){
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
     <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
-    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
-    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan (so'm)</div></div>`;
 
   const container = document.getElementById('debts-list');
   const none = document.getElementById('no-debts');
