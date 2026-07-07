@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -335,7 +336,10 @@
 <div class="page" id="page-products">
   <div class="section-header">
     <div><h2>Tovar boshqaruvi</h2><p>Tovarlarni qo'shing va yangilang</p></div>
-    <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
+      <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
+    </div>
   </div>
   <div class="sort-bar">
     <span>Tartib:</span>
@@ -824,10 +828,7 @@
     </label>
 
     <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📸 Suratga olib skanerlash</button>
-    <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa — qo'lni tinch tutib shu tugmani bosing</p>
-
-    <button class="btn amber" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScanBatch()">📦 Ko'p tovarni birdan skanerlash (6–12 dona)</button>
-    <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Bir nechta tovarni yon-yonma yozib, hammasini bitta suratga tushiring — barchasi avtomatik qo'shiladi</p>
+    <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa shu tugmani bosing — bitta yoki bir nechta (6–12 dona) tovarni yon-yonma qo'yib suratga olsangiz ham, hammasini birdan aniqlab qo'shadi</p>
 
     <!-- Natija: tovar topildi -->
     <div id="scan-result-box">
@@ -844,7 +845,7 @@
         <div id="scan-found-block" style="display:none">
           <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
             <label style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap">Kirim miqdori:</label>
-            <input id="scan-qty-input" type="number" min="1" value="1" style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .75rem;font-size:16px;font-weight:700;text-align:center;outline:none">
+            <input id="scan-qty-input" type="number" min="1" value="1" onkeyup="if(event.key==='Enter') scanDoRestock()" style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .75rem;font-size:16px;font-weight:700;text-align:center;outline:none">
           </div>
           <button class="btn green" style="width:100%;justify-content:center" onclick="scanDoRestock()">+ Kirim qo'shish</button>
         </div>
@@ -858,7 +859,7 @@
       <div id="scan-seller-actions" style="display:none">
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
           <label style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap">Miqdor:</label>
-          <input id="scan-sell-qty" type="number" min="1" value="1" style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .75rem;font-size:16px;font-weight:700;text-align:center;outline:none">
+          <input id="scan-sell-qty" type="number" min="1" value="1" onkeyup="if(event.key==='Enter') scanAddToCart()" style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .75rem;font-size:16px;font-weight:700;text-align:center;outline:none">
         </div>
         <button class="btn green" style="width:100%;justify-content:center" onclick="scanAddToCart()">🛒 Savatga qo'shish</button>
       </div>
@@ -880,10 +881,11 @@
 <div class="modal-overlay hidden" id="modal-assign-barcode">
   <div class="modal" style="max-width:420px;padding:1.25rem">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      <h3 style="margin:0">📷 Kod biriktirish</h3>
+      <h3 style="margin:0">📷 Kod biriktirish <span id="assign-queue-progress" style="font-size:12px;font-weight:500;color:var(--text3)"></span></h3>
       <button onclick="closeAssignBarcode()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">✕</button>
     </div>
     <div id="assign-product-info" style="background:var(--surface2);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem;font-weight:600;font-size:15px"></div>
+    <button id="assign-skip-btn" onclick="skipBarcodeAssign()" class="btn sm" style="display:none;width:100%;justify-content:center;margin-bottom:.75rem">⏭ Bu tovarni o'tkazib, keyingisiga o'tish</button>
 
     <!-- Kamera -->
     <div id="assign-video-wrap" style="position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:280px">
@@ -1361,6 +1363,22 @@ window.renderProducts = function(){
       </div></div>`;
   }).join('');
   initDrag();
+  updateAssignQueueBtn();
+}
+
+// "Kodsiz tovarlarni belgilash" tugmasida hozir bazada barcode'i yo'q
+// nechta tovar borligini ko'rsatadi va agar hammasida kod bo'lsa tugmani
+// yashiradi.
+function updateAssignQueueBtn(){
+  const btn = document.getElementById('btn-assign-queue');
+  if(!btn) return;
+  const missing = DB.products.filter(p=>!p.barcode).length;
+  if(missing>0){
+    btn.style.display='inline-flex';
+    btn.textContent = `📷 Kodsiz tovarlarni belgilash (${missing} ta)`;
+  } else {
+    btn.style.display='none';
+  }
 }
 
 window.openAddProduct=function(){
@@ -2874,6 +2892,14 @@ function startDecoding(video){
 // biz o'sha kadrni bir nechta kesish/kattalashtirish/kontrast kombinatsiyasi
 // bilan ketma-ket sinab ko'ramiz — real hayotda xira/qiyshiq tushgan
 // suratlar uchun bu jonli tsikldan ancha yuqori muvaffaqiyat foizini beradi.
+// BIRLASHTIRILGAN SKANERLASH: bitta tugma — bitta suratda BITTA yoki
+// BIR NECHTA (6-12 dona yon-yonma qo'yilgan) tovarni ham aniqlaydi.
+// Ilgari "bitta" va "ko'p tovarli" skanerlash ikkita alohida tugma va
+// funksiya edi ("captureAndScanBatch" esa umuman yozilmagan bo'lib chiqdi —
+// shuning uchun ko'p tovarli skaner tugmasi ishlamasdi). Endi ikkalasi ham
+// shu bitta funksiyada: aniqlangan kodlar soniga qarab avtomatik ravishda
+// bitta tovar (handleDecodedCode) yoki bir nechta tovar (processBatchCodes)
+// rejimiga o'tadi.
 window.captureAndScan = async function(){
   const video = document.getElementById('scan-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
@@ -2884,24 +2910,57 @@ window.captureAndScan = async function(){
   _lastProcessedCode = null;
   _codeAbsentSince = null;
 
-  if(_nativeDetector){
-    try{
-      const codes = await _nativeDetector.detect(video);
-      if(codes && codes.length){ handleDecodedCode(codes[0].rawValue); return; }
-    }catch(e){ console.error(e); }
-    setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
-    return;
+  function routeCodes(rawValues){
+    if(!rawValues || !rawValues.length) return false;
+    if(rawValues.length > 1) processBatchCodes(rawValues);
+    else handleDecodedCode(rawValues[0]);
+    return true;
   }
 
+  // Har ikki yo'l (nativ detektor va ZXing) uchun bir xil kesish/kattalashtirish/
+  // kontrast strategiyalari — MUHIM: nativ BarcodeDetector ham ba'zan BUTUN
+  // xira/aralash kadrni emas, aniq kesilgan-kontrastli kadrni ancha yaxshi
+  // o'qiydi, shuning uchun endi u ham faqat "video"ni emas, shu kadrlarni
+  // ham urinib ko'radi — bu zich/kichik DataMatrix kodlarni o'qish
+  // ehtimolini sezilarli oshiradi.
   const strategies = [
+    {crop:1.0,  scale:1,   enhance:false}, // to'liq kadr — o'zgarishsiz
     {crop:0.62, scale:1,   enhance:false},
     {crop:0.62, scale:2,   enhance:true },
     {crop:0.85, scale:1.5, enhance:true },
-    {crop:1.0,  scale:1,   enhance:false},
     {crop:1.0,  scale:1.6, enhance:true },
     {crop:0.45, scale:2.5, enhance:true },
     {crop:0.35, scale:3,   enhance:true },
   ];
+
+  if(_nativeDetector){
+    // 1-urinish: to'liq video kadr — nativ detektor ko'p kod bo'lsa
+    // (ko'p-tovarli surat) shuni bittada barchasini qaytarish ehtimoli eng
+    // yuqori bo'lgan holat, shu sabab avval shu bilan sinaymiz.
+    try{
+      const codes = await _nativeDetector.detect(video);
+      if(codes && codes.length){ routeCodes(codes.map(c=>c.rawValue)); return; }
+    }catch(e){ console.error(e); }
+
+    // 2-urinish: agar to'liq kadrda topilmasa (masalan bitta kod juda kichik/
+    // zich bo'lsa), kesilgan+kattalashtirilgan+kontrastli variantlarni
+    // birma-bir sinaymiz (bularda odatda faqat BITTA kod aniqlanadi).
+    for(const s of strategies.slice(1)){
+      const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
+      try{
+        const codes = await _nativeDetector.detect(canvas);
+        if(codes && codes.length){ routeCodes(codes.map(c=>c.rawValue)); return; }
+      }catch(e){ /* davom etamiz */ }
+      await new Promise(r=>setTimeout(r,0));
+    }
+    setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
+    return;
+  }
+
+  // ZAXIRA (ZXing, nativ BarcodeDetector yo'q brauzerlar — masalan iOS
+  // Safari): kutubxona cheklovi tufayli bir martada FAQAT bitta kodni
+  // aniqlay oladi, shuning uchun bu yo'lda "ko'p tovarni birdan" imkoniyati
+  // yo'q — foydalanuvchi har bir tovarni birma-bir skanerlashi kerak bo'ladi.
   for(const s of strategies){
     const canvas = grabCroppedCanvas(video, s.crop, s.scale, s.enhance);
     const text = await tryDecodeCanvasAsync(canvas);
@@ -3149,24 +3208,50 @@ function showScanProduct(prod, found, type){
   // Qo'shimcha ma'lumot: kod turi
   const codeType = type === 'serial' ? '🔐 Noyob kod' : '📦 Umumiy kod';
   document.getElementById('scan-prod-info').textContent = `${fmt(prod.price)} so'm · Zaxira: ${prod.stock} ta · ${codeType}`;
-  setScanStatus(`✅ Topildi: ${prod.name}`, 'ok');
+
+  // MUHIM XAVFSIZLIK QOIDASI: agar kod "umumiy" bo'lsa (type==='barcode') —
+  // ya'ni shu turdagi BARCHA idishda/shishada BIR XIL kod bo'lsa (masalan
+  // qopqog'ida individual kod yo'q suvlar) — avtomatik rejimda ham
+  // ANIQ TASDIQLASHSIZ darhol qo'shib yubormaymiz. Sabab: bunday tovarlarda
+  // kamera bir oz "tebransa"/tovar biroz siljisa ham kod hali ham ko'rinishda
+  // qolishi mumkin va bu HAR SAFAR YANGI dona sifatida qabul qilinib,
+  // bilmasdan ortiqcha miqdor qo'shilib/sotilib ketishiga olib kelishi mumkin.
+  // Shuning uchun bunday kod uchun — auto rejim yoqilgan bo'lsa ham — foydalanuvchi
+  // miqdorni ko'rib, ENTER yoki tugmani bosib ANIQ tasdiqlashi kerak.
+  // Noyob (type==='serial') kodlar esa har bir jismoniy shishada BOSHQACHA
+  // bo'lgani va allaqachon "avval sotilganmi" tekshiruvidan o'tgani uchun —
+  // ular uchun to'liq avtomatik rejim xavfsiz va o'zgarishsiz qoladi.
+  const isSharedCode = (type === 'barcode');
+  if(isSharedCode && isAutoScanMode()){
+    setScanStatus(`✅ Topildi: ${prod.name} — ⚠️ umumiy kod, miqdorni tasdiqlang`, 'ok');
+  } else {
+    setScanStatus(`✅ Topildi: ${prod.name}`, 'ok');
+  }
 
   if(_scanMode==='admin'){
     document.getElementById('scan-admin-actions').style.display='block';
     document.getElementById('scan-found-block').style.display='block';
     document.getElementById('scan-new-block').style.display='none';
     document.getElementById('scan-qty-input').value='1';
-    if(isAutoScanMode()){ 
+    if(isAutoScanMode() && !isSharedCode){
       setTimeout(() => scanDoRestock(), 100);
-      return; 
+      return;
+    }
+    if(isSharedCode){
+      const qtyEl = document.getElementById('scan-qty-input');
+      setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); }, 50);
     }
   } else {
     document.getElementById('scan-seller-actions').style.display='block';
     document.getElementById('scan-sell-qty').value='1';
     document.getElementById('scan-sell-qty').max = prod.stock;
-    if(isAutoScanMode()){ 
+    if(isAutoScanMode() && !isSharedCode){
       setTimeout(() => scanAddToCart(), 100);
-      return; 
+      return;
+    }
+    if(isSharedCode){
+      const qtyEl = document.getElementById('scan-sell-qty');
+      setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); }, 50);
     }
   }
 }
@@ -3455,11 +3540,54 @@ function updateScanFab(page){
 let _assignProductId = null;
 let _assignDone = false;
 
+// ===== OMBORDAGI KODSIZ TOVARLARNI NAVBAT BILAN BELGILASH =====
+// Yangi bo'lim: "Tovarlar" sahifasida barcode'i hali kiritilmagan barcha
+// tovarlarni bittalab qidirib topish o'rniga, admin bitta tugma bosib
+// ularning HAMMASINI birma-bir (navbat bilan) skanerlab chiqishi mumkin.
+// Har bir kod biriktirilgach yoki "o'tkazib yuborilgach", oyna avtomatik
+// ravishda navbatdagi keyingi tovarga o'tadi.
+let _assignQueue = [];      // navbatdagi tovar ID'lari
+let _assignQueueIdx = -1;   // joriy o'rin (-1 = navbat rejimi emas)
+
+window.startBarcodeAssignQueue = function(){
+  const missing = DB.products.filter(p=>!p.barcode);
+  if(!missing.length){ toast('✅ Barcha tovarlarda kod bor','green'); return; }
+  _assignQueue = missing.map(p=>p.id);
+  _assignQueueIdx = 0;
+  openAssignBarcode(_assignQueue[0]);
+};
+
+window.skipBarcodeAssign = function(){
+  if(_assignQueueIdx < 0) return;
+  advanceAssignQueue();
+};
+
+// Navbatdagi keyingi tovarga o'tadi; agar navbat tugagan bo'lsa, oynani
+// yopib "hammasi bajarildi" xabarini ko'rsatadi.
+function advanceAssignQueue(){
+  _assignQueueIdx++;
+  if(_assignQueueIdx >= _assignQueue.length){
+    _assignQueueIdx = -1;
+    _assignQueue = [];
+    closeModal('modal-assign-barcode');
+    stopDecodingOnly();
+    const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
+    toast('✅ Barcha tovarlarga kod biriktirildi!','green');
+    return;
+  }
+  openAssignBarcode(_assignQueue[_assignQueueIdx]);
+}
+
 window.openAssignBarcode = async function(productId){
   _assignProductId = productId;
   _assignDone = false;
   const p = DB.products.find(x=>x.id===productId);
   if(!p) return;
+
+  const inQueue = _assignQueueIdx >= 0;
+  document.getElementById('assign-queue-progress').textContent = inQueue
+    ? `(${_assignQueueIdx+1}/${_assignQueue.length})` : '';
+  document.getElementById('assign-skip-btn').style.display = inQueue ? 'flex' : 'none';
 
   document.getElementById('assign-product-info').innerHTML =
     `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
@@ -3621,8 +3749,12 @@ window.doAssignBarcode = async function(code){
   toast(`✅ "${p.name}" → ${keyCode}`,'green');
   renderProducts();
 
-  // 800ms dan keyin yop — foydalanuvchi ko'rsin
-  setTimeout(()=>closeAssignBarcode(), 800);
+  // 800ms dan keyin — agar navbat rejimida bo'lsak, keyingi tovarga
+  // avtomatik o'tamiz (kamerani qayta ochmasdan); aks holda oynani yopamiz.
+  setTimeout(()=>{
+    if(_assignQueueIdx >= 0) advanceAssignQueue();
+    else closeAssignBarcode();
+  }, 800);
 }
 
 window.closeAssignBarcode = function(){
@@ -3630,6 +3762,12 @@ window.closeAssignBarcode = function(){
   stopDecodingOnly();
   const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
   _assignProductId = null;
+  // Foydalanuvchi navbat rejimida oynani qo'lda (✕ orqali) yopsa — butun
+  // navbatni bekor qilamiz (keyingi safar tugma bosilganda qayta boshlanadi).
+  if(_assignQueueIdx >= 0){
+    _assignQueueIdx = -1;
+    _assignQueue = [];
+  }
   closeModal('modal-assign-barcode');
 }
 
