@@ -212,6 +212,30 @@
   @media(min-width:769px){
     .product-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
   }
+
+  /* ===== DATAMATRIX / QR SCANNER ===== */
+  #scan-video-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:320px}
+  #scan-video{width:100%;height:100%;object-fit:cover;display:block}
+  #scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  #scan-frame{width:62%;height:62%;border:3px solid #f59e0b;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);position:relative}
+  .scan-corner{position:absolute;width:18px;height:18px;border-color:#f59e0b;border-style:solid}
+  .scan-corner.tl{top:-3px;left:-3px;border-width:4px 0 0 4px;border-radius:3px 0 0 0}
+  .scan-corner.tr{top:-3px;right:-3px;border-width:4px 4px 0 0;border-radius:0 3px 0 0}
+  .scan-corner.bl{bottom:-3px;left:-3px;border-width:0 0 4px 4px;border-radius:0 0 0 3px}
+  .scan-corner.br{bottom:-3px;right:-3px;border-width:0 4px 4px 0;border-radius:0 0 3px 0}
+  .scan-line{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,#f59e0b,transparent);animation:scan-anim 2s ease-in-out infinite}
+  @keyframes scan-anim{0%,100%{top:5%}50%{top:90%}}
+  #scan-status{text-align:center;margin:.75rem 0 0;font-size:14px;font-weight:600;color:var(--text2);min-height:20px}
+  #scan-status.ok{color:var(--green)}
+  #scan-status.err{color:var(--red)}
+  #scan-result-box{display:none;margin-top:.75rem;background:var(--green-bg);border:1.5px solid var(--green-border);border-radius:10px;padding:.9rem 1rem}
+  #scan-result-box.show{display:block}
+  /* FAB scanner button */
+  .scan-fab{position:fixed;right:1.25rem;z-index:110;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;box-shadow:0 4px 16px rgba(245,158,11,.45);font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .scan-fab:active{transform:scale(.88)}
+  .scan-fab.visible{display:flex}
+  @media(max-width:768px){.scan-fab{bottom:70px}}
+  @media(min-width:769px){.scan-fab{bottom:1.25rem}}
 </style>
 </head>
 <body>
@@ -499,6 +523,11 @@
         <input type="file" id="p-img-file" accept="image/*" onchange="loadImgFile(this)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem;font-size:13px;background:#fff;cursor:pointer">
       </div>
     </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>📦 Barcode / DataMatrix kodi <span style="color:var(--text3);font-weight:400">(ixtiyoriy — skanerdan o'qiladi)</span></label>
+        <input id="p-barcode" placeholder="Masalan: 4870003760012"></div>
+    </div>
     <div id="img-preview-wrap" style="display:none;margin-bottom:.75rem">
       <img id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
     </div>
@@ -744,6 +773,121 @@
   </button>
 </div>
 
+<!-- SCAN FAB TUGMALAR -->
+<!-- Admin: Tovarlar sahifasida ko'rinadi -->
+<button class="scan-fab" id="fab-scan-admin" onclick="openScanner('admin')" title="DataMatrix orqali tovar qo'shish / kirim">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="15" y="2" width="7" height="7" rx="1"/><rect x="2" y="15" width="7" height="7" rx="1"/><rect x="12" y="12" width="3" height="3" fill="#fff" stroke="none"/><rect x="17" y="12" width="5" height="2" rx=".5"/><rect x="12" y="17" width="2" height="5" rx=".5"/><rect x="17" y="17" width="5" height="5" rx="1"/></svg>
+</button>
+<!-- Sotuvchi: Sotish sahifasida ko'rinadi -->
+<button class="scan-fab" id="fab-scan-seller" onclick="openScanner('seller')" title="DataMatrix orqali tovar skanerlash">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="15" y="2" width="7" height="7" rx="1"/><rect x="2" y="15" width="7" height="7" rx="1"/><rect x="12" y="12" width="3" height="3" fill="#fff" stroke="none"/><rect x="17" y="12" width="5" height="2" rx=".5"/><rect x="12" y="17" width="2" height="5" rx=".5"/><rect x="17" y="17" width="5" height="5" rx="1"/></svg>
+</button>
+
+<!-- SCANNER MODAL -->
+<div class="modal-overlay hidden" id="modal-scanner">
+  <div class="modal" style="max-width:440px;padding:1.25rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h3 id="scanner-title" style="margin:0">📷 DataMatrix Skanerlar</h3>
+      <button onclick="closeScanner()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);padding:2px 6px">✕</button>
+    </div>
+
+    <!-- Kamera oynasi -->
+    <div id="scan-video-wrap">
+      <video id="scan-video" autoplay playsinline muted></video>
+      <div id="scan-overlay">
+        <div id="scan-frame">
+          <div class="scan-corner tl"></div>
+          <div class="scan-corner tr"></div>
+          <div class="scan-corner bl"></div>
+          <div class="scan-corner br"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <p id="scan-status">Kamerani DataMatrix kodga qarating...</p>
+
+    <!-- Natija: tovar topildi -->
+    <div id="scan-result-box">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+        <div id="scan-prod-img" style="width:52px;height:52px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;overflow:hidden"></div>
+        <div style="flex:1">
+          <div id="scan-prod-name" style="font-weight:700;font-size:15px"></div>
+          <div id="scan-prod-info" style="font-size:13px;color:var(--text3);margin-top:.15rem"></div>
+        </div>
+      </div>
+
+      <!-- Admin: kirim yoki yangi tovar -->
+      <div id="scan-admin-actions" style="display:none">
+        <div id="scan-found-block" style="display:none">
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+            <label style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap">Kirim miqdori:</label>
+            <input id="scan-qty-input" type="number" min="1" value="1" style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .75rem;font-size:16px;font-weight:700;text-align:center;outline:none">
+          </div>
+          <button class="btn green" style="width:100%;justify-content:center" onclick="scanDoRestock()">+ Kirim qo'shish</button>
+        </div>
+        <div id="scan-new-block" style="display:none">
+          <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bu kod hali tovarlar orasida yo'q. Yangi tovar sifatida qo'shing.</p>
+          <button class="btn blue" style="width:100%;justify-content:center" onclick="scanOpenNewProduct()">+ Yangi tovar sifatida qo'shish</button>
+        </div>
+      </div>
+
+      <!-- Sotuvchi: savatga qo'shish -->
+      <div id="scan-seller-actions" style="display:none">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+          <label style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap">Miqdor:</label>
+          <input id="scan-sell-qty" type="number" min="1" value="1" style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .75rem;font-size:16px;font-weight:700;text-align:center;outline:none">
+        </div>
+        <button class="btn green" style="width:100%;justify-content:center" onclick="scanAddToCart()">🛒 Savatga qo'shish</button>
+      </div>
+    </div>
+
+    <!-- Qo'lda kod kiritish -->
+    <div style="margin-top:.85rem;border-top:1px solid var(--border);padding-top:.85rem">
+      <label style="font-size:12px;color:var(--text3);font-weight:600;display:block;margin-bottom:.4rem">Yoki kodni qo'lda kiriting:</label>
+      <div style="display:flex;gap:.5rem">
+        <input id="manual-code-input" placeholder="DataMatrix kodni yozing..." style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.5rem .85rem;font-size:14px;outline:none"
+               onkeyup="if(event.key==='Enter') processCode(this.value)">
+        <button class="btn blue sm" onclick="processCode(document.getElementById('manual-code-input').value)">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KOD BIRIKTIRISH MODAL -->
+<div class="modal-overlay hidden" id="modal-assign-barcode">
+  <div class="modal" style="max-width:420px;padding:1.25rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h3 style="margin:0">📷 Kod biriktirish</h3>
+      <button onclick="closeAssignBarcode()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">✕</button>
+    </div>
+    <div id="assign-product-info" style="background:var(--surface2);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem;font-weight:600;font-size:15px"></div>
+
+    <!-- Kamera -->
+    <div id="assign-video-wrap" style="position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:280px">
+      <video id="assign-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block"></video>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+        <div style="width:60%;height:60%;border:3px solid #60a5fa;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);position:relative">
+          <div class="scan-corner tl"></div><div class="scan-corner tr"></div>
+          <div class="scan-corner bl"></div><div class="scan-corner br"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <p id="assign-status" style="text-align:center;margin:.75rem 0;font-size:14px;font-weight:600;color:var(--text2)">Tovarning barkodini skanerga qarating...</p>
+
+    <!-- Qo'lda kiritish -->
+    <div style="display:flex;gap:.5rem;margin-top:.25rem">
+      <input id="assign-code-input" placeholder="Yoki kodni qo'lda kiriting..." style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:.55rem .85rem;font-size:14px;outline:none"
+             onkeyup="if(event.key==='Enter') doAssignBarcode(this.value)">
+      <button class="btn blue sm" onclick="doAssignBarcode(document.getElementById('assign-code-input').value)">Biriktir</button>
+    </div>
+
+    <p style="font-size:12px;color:var(--text3);margin-top:.6rem">✅ Kod skanerlanishi bilanoq avtomatik biriktiriladi</p>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -813,43 +957,47 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 
 const settingsRef = doc(db,'dokon','settings');
 
+// ===== FIREBASE YOZISH FUNKSIYALARI — "FIRE-AND-FORGET" MODEL =====
+// Avval ma'lumot LOKAL saqlanadi va ekran DARHOL yangilanadi, so'ng Firebase
+// yozuvi FONDA (kutmasdan) yuboriladi — shu sabab sekin internetda ham
+// tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  try{ await setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes}); }
-  catch(e){ setSyncError(); console.error(e); }
-  setSyncing(false);
+  setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes})
+    .catch(e=>{ setSyncError(); console.error(e); })
+    .finally(()=>setSyncing(false));
 }
 async function fbSaveProduct(p){
   localUpsertProduct(p);
   refreshProductViews();
   setSyncing(true);
-  try{ await setDoc(doc(db,'products',p.id),p); }
-  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); }
-  setSyncing(false);
+  setDoc(doc(db,'products',p.id),p)
+    .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 async function fbDeleteProduct(id){
   localRemoveProduct(id);
   refreshProductViews();
   setSyncing(true);
-  try{ await deleteDoc(doc(db,'products',id)); }
-  catch(e){ setSyncError(); console.error(e); toast("O'chirishda xatolik",'red'); }
-  setSyncing(false);
+  deleteDoc(doc(db,'products',id))
+    .catch(e=>{ setSyncError(); console.error(e); toast("O'chirishda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 async function fbSaveSale(s){
   localUpsertSale(s);
   refreshSaleViews();
   setSyncing(true);
-  try{ await setDoc(doc(db,'sales',s.id),s); }
-  catch(e){ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); }
-  setSyncing(false);
+  setDoc(doc(db,'sales',s.id),s)
+    .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 async function fbUpdateSale(id,data){
   localPatchSale(id, data);
   refreshSaleViews();
   setSyncing(true);
-  try{ await updateDoc(doc(db,'sales',id),data); }
-  catch(e){ setSyncError(); console.error(e); toast("Yangilashda xatolik",'red'); }
-  setSyncing(false);
+  updateDoc(doc(db,'sales',id),data)
+    .catch(e=>{ setSyncError(); console.error(e); toast("Yangilashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 function localUpsertRestock(r){
   const i=DB.restocks.findIndex(x=>x.id===r.id);
@@ -859,36 +1007,37 @@ async function fbSaveRestock(r){
   localUpsertRestock(r);
   if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
   setSyncing(true);
-  try{ await setDoc(doc(db,'restocks',r.id),r); }
-  catch(e){ setSyncError(); console.error(e); toast("Kirim tarixini saqlashda xatolik",'red'); }
-  setSyncing(false);
+  setDoc(doc(db,'restocks',r.id),r)
+    .catch(e=>{ setSyncError(); console.error(e); toast("Kirim tarixini saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 async function fbSaveDebt(d){
   const i=DB.debts.findIndex(x=>x.id===d.id);
   if(i>=0) DB.debts[i]=d; else DB.debts.push(d);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
   setSyncing(true);
-  try{ await setDoc(doc(db,'debts',d.id),d); }
-  catch(e){ setSyncError(); console.error(e); toast("Qarz saqlashda xatolik",'red'); }
-  setSyncing(false);
+  setDoc(doc(db,'debts',d.id),d)
+    .catch(e=>{ setSyncError(); console.error(e); toast("Qarz saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 async function fbSaveDebtor(d){
   const i=DB.debtors.findIndex(x=>x.id===d.id);
   if(i>=0) DB.debtors[i]=d; else DB.debtors.push(d);
   setSyncing(true);
-  try{ await setDoc(doc(db,'debtors',d.id),d); }
-  catch(e){ setSyncError(); console.error(e); toast("Qarzdor ma'lumotini saqlashda xatolik",'red'); }
-  setSyncing(false);
+  setDoc(doc(db,'debtors',d.id),d)
+    .catch(e=>{ setSyncError(); console.error(e); toast("Qarzdor ma'lumotini saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
 }
 async function fbUpdateDebt(id, patch){
   const d=DB.debts.find(x=>x.id===id);
   if(d) Object.assign(d, patch);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
   setSyncing(true);
-  try{ await updateDoc(doc(db,'debts',id), patch); }
-  catch(e){ setSyncError(); console.error(e); }
-  setSyncing(false);
+  updateDoc(doc(db,'debts',id), patch)
+    .catch(e=>{ setSyncError(); console.error(e); })
+    .finally(()=>setSyncing(false));
 }
+
 
 function startListeners(){
   onSnapshot(settingsRef, snap=>{
@@ -1062,6 +1211,7 @@ window.showPage = function(page, role){
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
+  updateScanFab(page);
 }
 
 // ===== DASHBOARD =====
@@ -1142,6 +1292,13 @@ window.renderProducts = function(){
         ${volLabel}
         <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
         <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
+        ${p.barcode
+          ? `<div style="font-size:11px;color:var(--text3);margin-top:.2rem;font-family:monospace;display:flex;align-items:center;gap:.3rem">
+               <span>📦 ${p.barcode}</span>
+               <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
+             </div>`
+          : `<button class="btn sm" onclick="openAssignBarcode('${p.id}')" style="margin-top:.35rem;width:100%;justify-content:center;border-color:var(--amber);color:var(--amber)">📷 Kod biriktirish</button>`
+        }
         <div class="prod-actions">
           <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
           <button class="btn sm amber" onclick="openReturnStock('${p.id}')">↩ Chiqim</button>
@@ -1156,11 +1313,11 @@ window.renderProducts = function(){
 window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
-  ['p-name','p-price','p-qty','p-img','p-note'].forEach(id=>document.getElementById(id).value='');
+  ['p-name','p-price','p-qty','p-img','p-note','p-barcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
-  document.getElementById('p-qty-row').style.display='';
+  const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='';
   openModal('modal-product');
 }
 window.openEditProduct=function(id){
@@ -1173,7 +1330,8 @@ window.openEditProduct=function(id){
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
   document.getElementById('p-img-file').value='';
-  document.getElementById('p-qty-row').style.display='none';
+  const bc=document.getElementById('p-barcode');if(bc)bc.value=p.barcode||'';
+  const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='none';
   if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
   else document.getElementById('img-preview-wrap').style.display='none';
   openModal('modal-product');
@@ -1199,16 +1357,17 @@ window.saveProduct=async function(){
   const img=document.getElementById('p-img').value.trim();
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
+  const barcode=document.getElementById('p-barcode').value.trim();
   if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
   if(editingProductId){
     const p=DB.products.find(x=>x.id===editingProductId);
     closeModal('modal-product');
     toast('Tovar yangilandi','green');
-    fbSaveProduct({...p, name, price, img, note, volume}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+    fbSaveProduct({...p, name, price, img, note, volume, barcode}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   } else {
     const qty=parseInt(document.getElementById('p-qty').value);
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
-    const newProd = {id:uid(),name,price,stock:qty,img,note,volume,createdAt:new Date().toISOString()};
+    const newProd = {id:uid(),name,price,stock:qty,img,note,volume,barcode,createdAt:new Date().toISOString()};
     closeModal('modal-product');
     toast("Tovar qo'shildi",'green');
     const writes=[fbSaveProduct(newProd)];
@@ -1895,25 +2054,29 @@ window.doCartSell=async function(){
 
 window.handleSellSearchKey=function(e){
   if(e.key==='Enter'){
-    const q=(document.getElementById('sell-search').value||'').toLowerCase().trim();
+    const q=(document.getElementById('sell-search').value||'').trim();
     if(!q) return;
-    const match = DB.products.find(p=>p.name.toLowerCase().includes(q) && p.stock>0);
+    // Avval barcode bo'yicha aniq qidirish (scanner inputi uchun)
+    let match = DB.products.find(p=>p.barcode && p.barcode===q && p.stock>0);
+    // Topilmasa nom bo'yicha
+    if(!match) match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0);
     if(match){
-      addToCart(match.id);
+      addToCartWithFeedback(match.id, document.querySelector('.sell-card[data-id="'+match.id+'"]'));
       document.getElementById('sell-search').value='';
       renderSellGrid();
     } else {
-      toast('Mos tovar topilmadi','red');
+      toast('Tovar topilmadi yoki tugagan','red');
     }
     return;
   }
   renderSellGrid();
 }
 window.renderSellGrid=function(){
-  const q=(document.getElementById('sell-search')?.value||'').toLowerCase();
+  const q=(document.getElementById('sell-search')?.value||'').trim();
+  const ql=q.toLowerCase();
   const grid=document.getElementById('sell-grid'); const none=document.getElementById('no-sell');
   if(!grid) return;
-  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(q));
+  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.barcode&&p.barcode.includes(q)));
   if(!prods.length){ grid.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
@@ -2236,6 +2399,12 @@ function download(name,type,content){ const a=document.createElement('a'); a.hre
 
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){
+    if(!document.getElementById('modal-scanner').classList.contains('hidden')){
+      closeScanner(); return;
+    }
+    if(!document.getElementById('modal-assign-barcode').classList.contains('hidden')){
+      closeAssignBarcode(); return;
+    }
     document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m=>m.classList.add('hidden'));
     return;
   }
@@ -2255,6 +2424,429 @@ document.addEventListener('keydown', e=>{
     }
   }
 });
+
+// ===== DATAMATRIX / QR SCANNER =====
+// ZXing kutubxonasi async yuklanadi (faqat kerak bo'lganda)
+let _zxingReady = false;
+let _zxingLoading = false;
+let _scanMode = null; // 'admin' | 'seller'
+let _scannedProductId = null;
+let _scannedCode = null;
+
+// MUHIM — KAMERA OQIMI VA ZXING READER BUTUN SAHIFA UCHUN BITTA MARTA
+// YARATILADI VA QAYTA ISHLATILADI. Avval har safar skaner ochilganda YANGI
+// getUserMedia() so'rovi yuborilardi — bu (a) brauzerda ruxsatni har safar
+// qayta so'ratardi va (b) kamera "isinishi" tufayli sekin ochilardi.
+// Endi: birinchi ochilishda BIR MARTA ruxsat so'raladi, oqim tirik saqlanadi
+// (to'xtatilmaydi) va keyingi barcha ochilishlarda darhol qayta ishlatiladi.
+// Xuddi shu oqim va reader "Kod biriktirish" oynasi uchun ham ishlatiladi.
+let _sharedStream = null;
+let _sharedReader = null;
+let _activeVideoEl = null;
+
+async function loadZXing(){
+  if(_zxingReady) return true;
+  if(_zxingLoading) return new Promise(r=>{
+    const check=setInterval(()=>{ if(!_zxingLoading){ clearInterval(check); r(_zxingReady); } },100);
+  });
+  _zxingLoading = true;
+  return new Promise((resolve)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    s.onload = ()=>{ _zxingReady=true; _zxingLoading=false; resolve(true); };
+    s.onerror = ()=>{ _zxingLoading=false; resolve(false); };
+    document.head.appendChild(s);
+  });
+}
+
+function getSharedReader(){
+  if(_sharedReader) return _sharedReader;
+  const hints = new Map();
+  hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    window.ZXing.BarcodeFormat.DATA_MATRIX,
+    window.ZXing.BarcodeFormat.QR_CODE,
+    window.ZXing.BarcodeFormat.EAN_13,
+    window.ZXing.BarcodeFormat.EAN_8,
+    window.ZXing.BarcodeFormat.CODE_128,
+    window.ZXing.BarcodeFormat.CODE_39,
+  ]);
+  hints.set(window.ZXing.DecodeHintType.TRY_HARDER, true);
+  _sharedReader = new window.ZXing.BrowserMultiFormatReader(hints);
+  return _sharedReader;
+}
+
+// Kamera oqimini oladi — agar avval ochilgan va hali tirik bo'lsa, DARHOL
+// o'shani qaytaradi (yangi ruxsat so'ramaydi, yangidan yoqmaydi).
+async function getSharedCameraStream(){
+  if(_sharedStream && _sharedStream.getVideoTracks().some(t=>t.readyState==='live')){
+    return _sharedStream;
+  }
+  // MUHIM: agar sahifa https:// (yoki localhost) orqali ochilmagan bo'lsa,
+  // brauzer getUserMedia funksiyasini UMUMAN taqdim etmaydi — bu holda
+  // hech qanday ruxsat so'rovi chiqmaydi va "ruxsat berilmagan" degan
+  // chalg'ituvchi xato paydo bo'ladi. Shuni oldindan aniq aniqlaymiz:
+  if(!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    const e = new Error('INSECURE_CONTEXT');
+    e.code = 'INSECURE_CONTEXT';
+    throw e;
+  }
+  _sharedStream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+  });
+  return _sharedStream;
+}
+
+// Xato turini odam tushunadigan, TO'G'RI xabarga aylantiradi (aks holda
+// hamma xato "ruxsat berilmagan" deb chalg'ituvchi ko'rsatilardi).
+function describeCameraError(e){
+  if(e && e.code === 'INSECURE_CONTEXT'){
+    return `Kamera faqat https:// (xavfsiz) manzilda ishlaydi. Hozirgi manzil: ${location.protocol}//${location.host}. Sahifani https:// orqali (masalan GitHub Pages, Firebase Hosting) ochib qayta urinib ko'ring — shu sabab ruxsat so'rovi umuman chiqmagan.`;
+  }
+  const name = e && e.name;
+  if(name === 'NotAllowedError' || name === 'PermissionDeniedError'){
+    return "Kameraga ruxsat berilmadi. Brauzer manzil satridagi 🔒/qulf belgisini bosib, Kamera ruxsatini 'Ruxsat berish'ga o'zgartiring va sahifani qayta yuklang.";
+  }
+  if(name === 'NotFoundError' || name === 'DevicesNotFoundError'){
+    return "Qurilmada kamera topilmadi.";
+  }
+  if(name === 'NotReadableError' || name === 'TrackStartError'){
+    return "Kamera boshqa dastur/oyna tomonidan band qilingan. Boshqa kamera ilovalarini yopib qayta urinib ko'ring.";
+  }
+  if(name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError'){
+    return "Qurilma orqa kamerani qo'llamayapti. Qo'lda kod kiriting.";
+  }
+  return "Kamerani ishga tushirishda xatolik: " + (e?.message||name||'Nomaʼlum xato') + ". Qo'lda kod kiriting.";
+}
+
+// Skanerlashni to'xtatish (decode loop), LEKIN kamera oqimini o'chirmaslik —
+// shunda keyingi ochilish darhol, ruxsatsiz bo'ladi.
+function stopDecodingOnly(){
+  if(_sharedReader){ try{ _sharedReader.reset(); }catch(e){} }
+}
+
+// Sahifadan butunlay chiqilganda kamerani chinakam o'chiramiz (batareya/maxfiylik uchun)
+window.addEventListener('pagehide', ()=>{
+  if(_sharedStream){ _sharedStream.getTracks().forEach(t=>t.stop()); _sharedStream=null; }
+});
+
+window.openScanner = async function(mode){
+  _scanMode = mode;
+  _scannedProductId = null;
+  _scannedCode = null;
+  // UI tozalash
+  document.getElementById('scan-result-box').classList.remove('show');
+  document.getElementById('scan-admin-actions').style.display = 'none';
+  document.getElementById('scan-seller-actions').style.display = 'none';
+  document.getElementById('scan-found-block').style.display = 'none';
+  document.getElementById('scan-new-block').style.display = 'none';
+  document.getElementById('manual-code-input').value = '';
+  document.getElementById('scanner-title').textContent = mode==='admin' ? '📷 Kirim: Skanerlar' : '📷 Sotish: Skanerlar';
+  openModal('modal-scanner');
+
+  const video = document.getElementById('scan-video');
+  _activeVideoEl = video;
+
+  // Agar kamera allaqachon ishlab turgan bo'lsa — darhol ko'rsatamiz (kutmasdan)
+  if(_sharedStream && _sharedStream.getVideoTracks().some(t=>t.readyState==='live')){
+    video.srcObject = _sharedStream;
+    setScanStatus('Kamerani DataMatrix / QR kodga qarating...', '');
+  } else {
+    setScanStatus('ZXing kutubxonasi yuklanmoqda...', '');
+  }
+
+  const ok = await loadZXing();
+  if(!ok){ setScanStatus("Kutubxonani yuklashda xatolik. Internet tekshiring.", 'err'); return; }
+
+  try{
+    const stream = await getSharedCameraStream();
+    video.srcObject = stream;
+    setScanStatus('Kamerani DataMatrix / QR kodga qarating...', '');
+    startDecoding(video);
+  }catch(e){
+    console.error('Kamera xatosi:', e);
+    setScanStatus(describeCameraError(e), 'err');
+  }
+}
+
+let _lastProcessedCode = null;
+let _lastProcessedAt = 0;
+
+function startDecoding(video){
+  if(!_zxingReady || !window.ZXing) return;
+  const reader = getSharedReader();
+  stopDecodingOnly(); // avvalgi decode loop bo'lsa to'xtatamiz (qo'shalanmasin)
+  reader.decodeFromVideoElement(video, (result, err)=>{
+    if(result){
+      const code = result.getText();
+      if(!code) return;
+      const now = Date.now();
+      // Bir xil kod kamera oldida hali turgan bo'lsa (masalan admin qo'lini
+      // olib ulgurmagan bo'lsa) — 2 soniya ichida takror ishlanmaydi (dublikat
+      // kirim bo'lib ketmasligi uchun). Boshqa/YANGI kod bo'lsa darhol ishlanadi.
+      const isRecentDuplicate = (code === _lastProcessedCode) && (now - _lastProcessedAt < 2000);
+      if(!isRecentDuplicate && code !== _scannedCode){
+        _scannedCode = code;
+        _lastProcessedCode = code;
+        _lastProcessedAt = now;
+        if(navigator.vibrate) navigator.vibrate(120);
+        processCode(code);
+      }
+    }
+  });
+}
+
+window.processCode = function(code){
+  code = (code||'').trim();
+  if(!code){ toast('Kod bo\'sh', 'red'); return; }
+  _scannedCode = code;
+  document.getElementById('manual-code-input').value = code;
+
+  // Tovar izlash (barcode maydoni bo'yicha, yoki nomi bo'yicha)
+  let prod = DB.products.find(p=>p.barcode===code);
+  if(!prod) prod = DB.products.find(p=>p.name.toLowerCase()===code.toLowerCase());
+
+  if(prod){
+    _scannedProductId = prod.id;
+    showScanProduct(prod, true);
+  } else {
+    // Topilmadi
+    _scannedProductId = null;
+    showScanNotFound(code);
+  }
+}
+
+function showScanProduct(prod, found){
+  const box = document.getElementById('scan-result-box');
+  box.classList.add('show');
+  box.style.background = found ? 'var(--green-bg)' : 'var(--amber-bg)';
+  box.style.borderColor = found ? 'var(--green-border)' : 'var(--amber-border)';
+
+  const imgEl = document.getElementById('scan-prod-img');
+  if(prod.img){ imgEl.innerHTML=`<img src="${prod.img}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='💧'">`; }
+  else imgEl.textContent='💧';
+
+  document.getElementById('scan-prod-name').textContent = prod.name + (prod.volume?` · ${prod.volume}L`:'');
+  document.getElementById('scan-prod-info').textContent = `${fmt(prod.price)} so'm · Zaxira: ${prod.stock} ta`;
+  setScanStatus(`✅ Topildi: ${prod.name}`, 'ok');
+
+  if(_scanMode==='admin'){
+    document.getElementById('scan-admin-actions').style.display='block';
+    document.getElementById('scan-found-block').style.display='block';
+    document.getElementById('scan-new-block').style.display='none';
+    document.getElementById('scan-qty-input').value='1';
+  } else {
+    document.getElementById('scan-seller-actions').style.display='block';
+    document.getElementById('scan-sell-qty').value='1';
+    document.getElementById('scan-sell-qty').max = prod.stock;
+  }
+}
+
+function showScanNotFound(code){
+  const box = document.getElementById('scan-result-box');
+  box.classList.add('show');
+  box.style.background='var(--amber-bg)'; box.style.borderColor='var(--amber-border)';
+  document.getElementById('scan-prod-img').textContent='❓';
+  document.getElementById('scan-prod-name').textContent=`Kod: ${code}`;
+  document.getElementById('scan-prod-info').textContent='Bu kod bazada topilmadi';
+  setScanStatus(`⚠️ Topilmadi: ${code}`, 'err');
+
+  if(_scanMode==='admin'){
+    document.getElementById('scan-admin-actions').style.display='block';
+    document.getElementById('scan-found-block').style.display='none';
+    document.getElementById('scan-new-block').style.display='block';
+  } else {
+    document.getElementById('scan-seller-actions').style.display='none';
+    toast('Tovar bazada topilmadi. Admin tovarni qo\'shsin.', 'red');
+  }
+}
+
+function setScanStatus(msg, cls=''){
+  const el=document.getElementById('scan-status');
+  el.textContent=msg; el.className=cls;
+}
+
+// Admin: kirim qo'shish — DARHOL bajariladi (Firebase fonda yoziladi),
+// skaner OYNASI YOPILMAYDI — shu zahoti keyingi tovarni skanerlash mumkin.
+// Shu tufayli 50 ta tovarni ketma-ket, to'xtovsiz skanerlash mumkin bo'ladi.
+window.scanDoRestock = function(){
+  const prod = DB.products.find(p=>p.id===_scannedProductId);
+  if(!prod){ toast('Tovar topilmadi','red'); return; }
+  const qty = parseInt(document.getElementById('scan-qty-input').value)||1;
+  if(qty<1){ toast('Miqdor 0 dan katta bo\'lsin','red'); return; }
+  const stockBefore = prod.stock;
+  const stockAfter = stockBefore + qty;
+  const restock = {
+    id: uid(), productId: prod.id, productName: prod.name, volume: prod.volume||'',
+    type:'in', qty, stockBefore, stockAfter, reason:'Skanerlash orqali kirim', date:new Date().toISOString()
+  };
+  if(navigator.vibrate) navigator.vibrate([80,40,80]);
+  toast(`✓ ${prod.name}: +${qty} ta (${stockBefore} → ${stockAfter})`,'green');
+  resetScanForNext();
+  Promise.all([
+    fbSaveProduct({...prod, stock: stockAfter}),
+    fbSaveRestock(restock)
+  ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+}
+
+// Skaner oynasini yopmasdan, keyingi kodni skanerlashga tayyorlaydi.
+function resetScanForNext(){
+  _scannedProductId=null; _scannedCode=null;
+  document.getElementById('scan-result-box').classList.remove('show');
+  document.getElementById('scan-admin-actions').style.display='none';
+  document.getElementById('scan-seller-actions').style.display='none';
+  document.getElementById('scan-found-block').style.display='none';
+  document.getElementById('scan-new-block').style.display='none';
+  document.getElementById('manual-code-input').value='';
+  setScanStatus('Kamerani keyingi kodga qarating...','');
+}
+
+// Admin: yangi tovar sifatida qo'shish (skanerlangan kod barcode sifatida kiritiladi)
+window.scanOpenNewProduct = function(){
+  closeScanner();
+  openAddProduct();
+  // Barcode maydoniga kod kiritamiz
+  setTimeout(()=>{
+    const bc = document.getElementById('p-barcode');
+    if(bc) bc.value = _scannedCode||'';
+    toast('Yangi tovar — kodni barcode maydoniga avtomatik yozdik','amber');
+  },200);
+}
+
+// Sotuvchi: savatga qo'shish
+window.scanAddToCart = function(){
+  const prod = DB.products.find(p=>p.id===_scannedProductId);
+  if(!prod){ toast('Tovar topilmadi','red'); return; }
+  const qty = parseInt(document.getElementById('scan-sell-qty').value)||1;
+  const inCart = cart[prod.id]||0;
+  if(inCart+qty > prod.stock){ toast(`Ombordan ko'p! Mavjud: ${prod.stock} ta`,'red'); return; }
+  cart[prod.id] = inCart+qty;
+  updateCartBtn();
+  updateSingleCard(prod.id);
+  resetScanForNext();
+  toast(`✅ +${qty} ta ${prod.name} savatga qo'shildi`,'green');
+  if(navigator.vibrate) navigator.vibrate([80,40,80]);
+}
+
+window.closeScanner = function(){
+  // Faqat decode loop va video ulanishini to'xtatamiz — kamera OQIMI tirik
+  // qoladi, shunda keyingi ochilish darhol va ruxsatsiz bo'ladi.
+  stopDecodingOnly();
+  const v=document.getElementById('scan-video'); if(v) v.srcObject=null;
+  _scannedCode=null; _scannedProductId=null;
+  closeModal('modal-scanner');
+}
+
+// FAB ko'rinishini sahifaga qarab boshqarish
+function updateScanFab(page){
+  const adminFab = document.getElementById('fab-scan-admin');
+  const sellerFab = document.getElementById('fab-scan-seller');
+  if(adminFab) adminFab.classList.toggle('visible', page==='products' && currentRole==='admin');
+  if(sellerFab) sellerFab.classList.toggle('visible', page==='sell' && currentRole==='seller');
+}
+
+// ===== KOD BIRIKTIRISH FUNKSIYASI =====
+let _assignProductId = null;
+let _assignDone = false;
+
+window.openAssignBarcode = async function(productId){
+  _assignProductId = productId;
+  _assignDone = false;
+  const p = DB.products.find(x=>x.id===productId);
+  if(!p) return;
+
+  document.getElementById('assign-product-info').innerHTML =
+    `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+     <span style="font-size:13px;color:var(--text3);font-weight:400">
+       ${p.barcode ? '⚠️ Joriy kod: '+p.barcode+' — yangi kod bilan almashtiriladi' : 'Hali kod biriktirilmagan'}
+     </span>`;
+  document.getElementById('assign-code-input').value = '';
+  openModal('modal-assign-barcode');
+
+  const video = document.getElementById('assign-video');
+  _activeVideoEl = video;
+
+  if(_sharedStream && _sharedStream.getVideoTracks().some(t=>t.readyState==='live')){
+    video.srcObject = _sharedStream;
+    document.getElementById('assign-status').textContent = 'Tovarning barkodini skanerga qarating...';
+    document.getElementById('assign-status').style.color = 'var(--text2)';
+  } else {
+    document.getElementById('assign-status').textContent = 'ZXing kutubxonasi yuklanmoqda...';
+  }
+
+  const ok = await loadZXing();
+  if(!ok){ document.getElementById('assign-status').textContent = '❌ Kutubxona yuklanmadi. Qo\'lda kiriting.'; return; }
+
+  try{
+    const stream = await getSharedCameraStream();
+    video.srcObject = stream;
+    document.getElementById('assign-status').textContent = 'Tovarning barkodini skanerga qarating...';
+    document.getElementById('assign-status').style.color = 'var(--text2)';
+    startAssignDecoding(video);
+  }catch(e){
+    console.error('Kamera xatosi:', e);
+    document.getElementById('assign-status').textContent = describeCameraError(e);
+    document.getElementById('assign-status').style.color = 'var(--amber)';
+  }
+}
+
+function startAssignDecoding(video){
+  if(!_zxingReady || !window.ZXing) return;
+  const reader = getSharedReader();
+  stopDecodingOnly();
+  reader.decodeFromVideoElement(video, (result, err)=>{
+    if(result && !_assignDone){
+      const code = result.getText().trim();
+      if(code) doAssignBarcode(code);
+    }
+  });
+}
+
+window.doAssignBarcode = async function(code){
+  code = (code||'').trim();
+  if(!code){ toast('Kod bo\'sh','red'); return; }
+  if(_assignDone) return; // Ikki marta ishlamasin
+  _assignDone = true;
+
+  const p = DB.products.find(x=>x.id===_assignProductId);
+  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
+
+  // Boshqa tovar shu kodni ishlatayotganini tekshir
+  const conflict = DB.products.find(x=>x.barcode===code && x.id!==_assignProductId);
+  if(conflict){
+    toast(`⚠️ Bu kod allaqachon "${conflict.name}"ga biriktirilgan!`,'red');
+    _assignDone = false;
+    document.getElementById('assign-status').textContent = `⚠️ Kod "${conflict.name}"da mavjud!`;
+    document.getElementById('assign-status').style.color = 'var(--red)';
+    return;
+  }
+
+  // Vibrasiya
+  if(navigator.vibrate) navigator.vibrate([100,50,100]);
+
+  // Status yangilash
+  document.getElementById('assign-status').textContent = `✅ Biriktirildi: ${code}`;
+  document.getElementById('assign-status').style.color = 'var(--green)';
+
+  // Lokal yangilash
+  p.barcode = code;
+
+  // Firebase ga yoz (fonda)
+  fbSaveProduct(p).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+
+  toast(`✅ "${p.name}" → ${code}`,'green');
+  renderProducts();
+
+  // 800ms dan keyin yop — foydalanuvchi ko'rsin
+  setTimeout(()=>closeAssignBarcode(), 800);
+}
+
+window.closeAssignBarcode = function(){
+  _assignDone = false;
+  stopDecodingOnly();
+  const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
+  _assignProductId = null;
+  closeModal('modal-assign-barcode');
+}
 
 init();
 </script>
