@@ -2481,6 +2481,34 @@ function getSharedReader(){
   return _sharedReader;
 }
 
+// ===== NATIV BARCODEDETECTOR API (Chrome/Android) =====
+// MUHIM: ZXing — sof JavaScript algoritmi bo'lib, kichik/zich DataMatrix
+// kodlarni (masalan shisha qopqog'idagi "Milliy belgilash" kodlari) ko'pincha
+// UMUMAN o'qiy olmaydi — bu ZXing kutubxonasining o'zida ma'lum cheklov.
+// Chrome (Android/ChromeOS/macOS) esa qurilmaning tizim darajasidagi
+// (Google Play Services / ML Kit'ga asoslangan) barkod detektorini
+// window.BarcodeDetector orqali taqdim etadi — bu ZXing'ga qaraganda SEZILARLI
+// darajada aniqroq va tezroq DataMatrix'ni taniydi. Mavjud bo'lsa, ENG
+// AVVALO shundan foydalanamiz; bo'lmasa (masalan iOS Safari) ZXing'ga
+// qaytamiz (yuqoridagi kesish/kontrast mantiqi bilan).
+let _nativeDetector = null;
+let _nativeChecked = false;
+async function ensureNativeDetector(){
+  if(_nativeChecked) return _nativeDetector;
+  _nativeChecked = true;
+  if('BarcodeDetector' in window){
+    try{
+      const supported = await window.BarcodeDetector.getSupportedFormats();
+      if(supported.includes('data_matrix')){
+        _nativeDetector = new window.BarcodeDetector({
+          formats:['data_matrix','qr_code','code_128','code_39','ean_13','ean_8']
+        });
+      }
+    }catch(e){ console.error('BarcodeDetector mavjud emas/xato:', e); }
+  }
+  return _nativeDetector;
+}
+
 // Kamera oqimini oladi — agar avval ochilgan va hali tirik bo'lsa, DARHOL
 // o'shani qaytaradi (yangi ruxsat so'ramaydi, yangidan yoqmaydi).
 async function getSharedCameraStream(){
@@ -2558,11 +2586,14 @@ window.openScanner = async function(mode){
     video.srcObject = _sharedStream;
     setScanStatus('Kamerani DataMatrix / QR kodga qarating...', '');
   } else {
-    setScanStatus('ZXing kutubxonasi yuklanmoqda...', '');
+    setScanStatus('Skaner tayyorlanmoqda...', '');
   }
 
-  const ok = await loadZXing();
-  if(!ok){ setScanStatus("Kutubxonani yuklashda xatolik. Internet tekshiring.", 'err'); return; }
+  const nd = await ensureNativeDetector();
+  if(!nd){
+    const ok = await loadZXing();
+    if(!ok){ setScanStatus("Kutubxonani yuklashda xatolik. Internet tekshiring.", 'err'); return; }
+  }
 
   try{
     const stream = await getSharedCameraStream();
@@ -2674,8 +2705,27 @@ async function tryDecodeCanvasAsync(canvas){
 }
 
 function startDecoding(video){
-  if(!_zxingReady || !window.ZXing) return;
   stopDecodingOnly();
+
+  // 1-USTUVORLIK: nativ BarcodeDetector (mavjud bo'lsa) — ZXing'dan ancha
+  // aniqroq va tezroq, video elementni to'g'ridan-to'g'ri (kesishsiz ham)
+  // tahlil qiladi.
+  if(_nativeDetector){
+    _decodeLoopActive = true;
+    const loop = async ()=>{
+      if(!_decodeLoopActive) return;
+      try{
+        const codes = await _nativeDetector.detect(video);
+        if(codes && codes.length) handleDecodedCode(codes[0].rawValue);
+      }catch(e){ /* video hali tayyor bo'lmasligi mumkin — e'tibor bermaymiz */ }
+      if(_decodeLoopActive) requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  // 2-ZAXIRA: ZXing (nativ detektor yo'q qurilmalar — masalan iOS Safari)
+  if(!_zxingReady || !window.ZXing) return;
 
   if(!readerHasCanvasDecode()){
     // ZAXIRA YO'L: agar ZXing versiyasida decodeFromCanvas bo'lmasa, eski
@@ -2716,6 +2766,16 @@ window.captureAndScan = async function(){
   const video = document.getElementById('scan-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
   setScanStatus('🔍 Tekshirilmoqda, biroz kuting...', '');
+
+  if(_nativeDetector){
+    try{
+      const codes = await _nativeDetector.detect(video);
+      if(codes && codes.length){ handleDecodedCode(codes[0].rawValue); return; }
+    }catch(e){ console.error(e); }
+    setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
+    return;
+  }
+
   const strategies = [
     {crop:0.62, scale:1,   enhance:false},
     {crop:0.62, scale:2,   enhance:true },
@@ -2948,11 +3008,14 @@ window.openAssignBarcode = async function(productId){
     document.getElementById('assign-status').textContent = 'Tovarning barkodini skanerga qarating...';
     document.getElementById('assign-status').style.color = 'var(--text2)';
   } else {
-    document.getElementById('assign-status').textContent = 'ZXing kutubxonasi yuklanmoqda...';
+    document.getElementById('assign-status').textContent = 'Skaner tayyorlanmoqda...';
   }
 
-  const ok = await loadZXing();
-  if(!ok){ document.getElementById('assign-status').textContent = '❌ Kutubxona yuklanmadi. Qo\'lda kiriting.'; return; }
+  const nd = await ensureNativeDetector();
+  if(!nd){
+    const ok = await loadZXing();
+    if(!ok){ document.getElementById('assign-status').textContent = '❌ Kutubxona yuklanmadi. Qo\'lda kiriting.'; return; }
+  }
 
   try{
     const stream = await getSharedCameraStream();
@@ -2968,8 +3031,23 @@ window.openAssignBarcode = async function(productId){
 }
 
 function startAssignDecoding(video){
-  if(!_zxingReady || !window.ZXing) return;
   stopDecodingOnly();
+
+  if(_nativeDetector){
+    _decodeLoopActive = true;
+    const loop = async ()=>{
+      if(!_decodeLoopActive) return;
+      try{
+        const codes = await _nativeDetector.detect(video);
+        if(codes && codes.length && !_assignDone) doAssignBarcode(codes[0].rawValue);
+      }catch(e){}
+      if(_decodeLoopActive) requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  if(!_zxingReady || !window.ZXing) return;
 
   if(!readerHasCanvasDecode()){
     getSharedReader().decodeFromVideoElement(video, (result)=>{
@@ -3005,6 +3083,17 @@ window.captureAndScanAssign = async function(){
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
   document.getElementById('assign-status').textContent = '🔍 Tekshirilmoqda, biroz kuting...';
   document.getElementById('assign-status').style.color = 'var(--text2)';
+
+  if(_nativeDetector){
+    try{
+      const codes = await _nativeDetector.detect(video);
+      if(codes && codes.length && !_assignDone){ doAssignBarcode(codes[0].rawValue.trim()); return; }
+    }catch(e){ console.error(e); }
+    document.getElementById('assign-status').textContent = "Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring yoki qo'lda kiriting.";
+    document.getElementById('assign-status').style.color = 'var(--amber)';
+    return;
+  }
+
   const strategies = [
     {crop:0.62, scale:1,   enhance:false},
     {crop:0.62, scale:2,   enhance:true },
