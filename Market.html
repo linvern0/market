@@ -3810,7 +3810,7 @@ window.doAssignBarcode = async function(code){
 let _lastSerialCode = null;
 let _lastSerialAt = 0;
 
-function doRegisterSerialUnit(p, code){
+function doRegisterSerialUnit(queueProduct, code){
   code = (code||'').trim();
   if(!code) return;
 
@@ -3822,11 +3822,25 @@ function doRegisterSerialUnit(p, code){
   _lastSerialCode = code;
   _lastSerialAt = now;
 
-  // Agar bu kod ALLAQACHON shu yoki boshqa tovarda seriya sifatida
-  // ro'yxatga olingan bo'lsa — takror hisoblamaymiz (bitta shisha ikki marta
-  // sanalib ketmasligi uchun).
-  const already = DB.products.some(x=>x.serialCodes && x.serialCodes[code]);
-  if(already){
+  // MUHIM TUZATISH: ilgari kod tekshirilmasdan, TO'G'RIDAN-TO'G'RI navbatda
+  // turgan tovarga ("queueProduct") qo'shib yuborilardi. Shu sabab, masalan,
+  // "Mineral suv" navbatida turib Pepsi shishasini skanerlasangiz — dona
+  // xato ravishda Mineral suvga yozilib qolardi. Endi kodning GTIN qismi
+  // BAZADAGI umumiy barcode'lar bilan solishtiriladi va dona FAQAT haqiqiy
+  // mos tovarga qo'shiladi — navbatda qaysi tovar turganidan qat'iy nazar.
+  const keyGTIN = normalizeScanCode(code);
+  const truep = DB.products.find(x=>x.barcode && codesMatch(x.barcode, keyGTIN));
+
+  if(!truep){
+    toast('⚠️ Bu kod hech qanday tovarning umumiy kodiga mos kelmadi','red');
+    document.getElementById('assign-status').textContent = "⚠️ Noma'lum kod — avval shu tovarga umumiy barcode biriktiring";
+    document.getElementById('assign-status').style.color = 'var(--red)';
+    return;
+  }
+
+  // Agar bu kod ALLAQACHON ro'yxatga olingan bo'lsa — takror hisoblamaymiz
+  // (bitta shisha ikki marta sanalib ketmasligi uchun).
+  if(truep.serialCodes && truep.serialCodes[code]){
     toast('⚠️ Bu dona allaqachon ro\'yxatga olingan','amber');
     document.getElementById('assign-status').textContent = "⚠️ Bu kod avval ro'yxatga olingan — boshqa donani skanerlang";
     document.getElementById('assign-status').style.color = 'var(--amber)';
@@ -3835,24 +3849,44 @@ function doRegisterSerialUnit(p, code){
 
   if(navigator.vibrate) navigator.vibrate(100);
 
-  if(!p.serialCodes) p.serialCodes = {};
-  p.serialCodes[code] = true;
-  fbSaveProduct(p).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  if(!truep.serialCodes) truep.serialCodes = {};
+  truep.serialCodes[code] = true;
+  fbSaveProduct(truep).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 
-  const registered = Object.keys(p.serialCodes).length;
-  const total = p.stock||0;
-  const remaining = unregisteredUnitCount(p);
+  const registered = Object.keys(truep.serialCodes).length;
+  const total = truep.stock||0;
+  const remaining = unregisteredUnitCount(truep);
+  const wrongTurn = truep.id !== queueProduct.id;
 
-  document.getElementById('assign-status').textContent = `✅ Ro'yxatga olindi (${registered}/${total})`;
+  // Agar skanerlangan tovar navbatdagisidan BOSHQA bo'lsa — buni aniq
+  // ko'rsatamiz, shunda foydalanuvchi adashganini darhol payqaydi.
+  document.getElementById('assign-status').textContent = wrongTurn
+    ? `✅ "${truep.name}" ga qo'shildi (${registered}/${total}) — navbatdagi tovar emas, lekin to'g'ri joyga yozildi`
+    : `✅ Ro'yxatga olindi (${registered}/${total})`;
   document.getElementById('assign-status').style.color = 'var(--green)';
-  const unitProgEl = document.getElementById('assign-unit-progress');
-  if(unitProgEl) unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
+
+  // Progress paneli faqat NAVBATDAGI (ekranda ko'rsatilayotgan) tovar uchun —
+  // agar skanerlangan boshqa tovar bo'lsa, uning holatini alohida toast bilan
+  // ko'rsatamiz, joriy panelni o'zgartirmaymiz.
+  if(!wrongTurn){
+    const unitProgEl = document.getElementById('assign-unit-progress');
+    if(unitProgEl) unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
+  } else {
+    toast(`📦 "${truep.name}" ga qo'shildi (${registered}/${total}) — bu navbatdagi tovar emas edi!`,'amber');
+  }
   renderProducts();
 
-  if(remaining <= 0){
-    // Shu tovarning barcha donalari ro'yxatga olindi — navbatdagisiga o'tamiz
+  // Agar skanerlangan tovar (truep) o'zining maqsadiga yetgan bo'lsa va u
+  // hali navbatda bo'lsa — navbatdan olib tashlaymiz (qayta so'ralmasin).
+  if(remaining<=0 && truep.id!==queueProduct.id){
+    const qIdx = _assignQueue.indexOf(truep.id);
+    if(qIdx > _assignQueueIdx) _assignQueue.splice(qIdx,1);
+  }
+
+  if(!wrongTurn && remaining <= 0){
+    // Navbatdagi tovarning barcha donalari ro'yxatga olindi — keyingisiga o'tamiz
     _assignDone = true;
-    toast(`✅ "${p.name}" — barcha ${total} dona ro'yxatga olindi!`,'green');
+    toast(`✅ "${truep.name}" — barcha ${total} dona ro'yxatga olindi!`,'green');
     setTimeout(()=>{
       if(_assignQueueIdx >= 0) advanceAssignQueue();
       else closeAssignBarcode();
