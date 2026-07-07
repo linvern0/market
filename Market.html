@@ -338,6 +338,7 @@
     <div><h2>Tovar boshqaruvi</h2><p>Tovarlarni qo'shing va yangilang</p></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
+      <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Umumiy kodi bor, lekin ombordagi har bir donasi alohida seriya kod bilan ro'yxatga olinmagan tovarlarni birma-bir skanerlash">🔢 Donalarni ro'yxatga olish</button>
       <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
     </div>
   </div>
@@ -877,15 +878,17 @@
   </div>
 </div>
 
-<!-- KOD BIRIKTIRISH MODAL -->
+<!-- KOD BIRIKTIRISH / DONALARNI RO'YXATGA OLISH MODAL -->
 <div class="modal-overlay hidden" id="modal-assign-barcode">
   <div class="modal" style="max-width:420px;padding:1.25rem">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      <h3 style="margin:0">📷 Kod biriktirish <span id="assign-queue-progress" style="font-size:12px;font-weight:500;color:var(--text3)"></span></h3>
+      <h3 style="margin:0"><span id="assign-modal-title">📷 Kod biriktirish</span> <span id="assign-queue-progress" style="font-size:12px;font-weight:500;color:var(--text3)"></span></h3>
       <button onclick="closeAssignBarcode()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">✕</button>
     </div>
-    <div id="assign-product-info" style="background:var(--surface2);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem;font-weight:600;font-size:15px"></div>
+    <div id="assign-product-info" style="background:var(--surface2);border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;font-weight:600;font-size:15px"></div>
+    <div id="assign-unit-progress" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.5rem .75rem;margin-bottom:1rem;font-size:13px;font-weight:700;color:var(--amber);text-align:center"></div>
     <button id="assign-skip-btn" onclick="skipBarcodeAssign()" class="btn sm" style="display:none;width:100%;justify-content:center;margin-bottom:.75rem">⏭ Bu tovarni o'tkazib, keyingisiga o'tish</button>
+
 
     <!-- Kamera -->
     <div id="assign-video-wrap" style="position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:280px">
@@ -3209,49 +3212,34 @@ function showScanProduct(prod, found, type){
   const codeType = type === 'serial' ? '🔐 Noyob kod' : '📦 Umumiy kod';
   document.getElementById('scan-prod-info').textContent = `${fmt(prod.price)} so'm · Zaxira: ${prod.stock} ta · ${codeType}`;
 
-  // MUHIM XAVFSIZLIK QOIDASI: agar kod "umumiy" bo'lsa (type==='barcode') —
-  // ya'ni shu turdagi BARCHA idishda/shishada BIR XIL kod bo'lsa (masalan
-  // qopqog'ida individual kod yo'q suvlar) — avtomatik rejimda ham
-  // ANIQ TASDIQLASHSIZ darhol qo'shib yubormaymiz. Sabab: bunday tovarlarda
-  // kamera bir oz "tebransa"/tovar biroz siljisa ham kod hali ham ko'rinishda
-  // qolishi mumkin va bu HAR SAFAR YANGI dona sifatida qabul qilinib,
-  // bilmasdan ortiqcha miqdor qo'shilib/sotilib ketishiga olib kelishi mumkin.
-  // Shuning uchun bunday kod uchun — auto rejim yoqilgan bo'lsa ham — foydalanuvchi
-  // miqdorni ko'rib, ENTER yoki tugmani bosib ANIQ tasdiqlashi kerak.
-  // Noyob (type==='serial') kodlar esa har bir jismoniy shishada BOSHQACHA
-  // bo'lgani va allaqachon "avval sotilganmi" tekshiruvidan o'tgani uchun —
-  // ular uchun to'liq avtomatik rejim xavfsiz va o'zgarishsiz qoladi.
+  // MUHIM: ilgari "umumiy kod" (barcode/GTIN — shu turdagi barcha shishada
+  // bir xil kod) uchun avtomatik rejimda ham majburiy qo'lda tasdiqlash
+  // talab qilinardi (kamera tebranishi bir xil kodni ikki marta o'qib,
+  // bilmasdan ortiqcha dona qo'shib yuborishidan qo'rqib). Lekin bu himoya
+  // ALLAQACHON boshqa joyda bor: bir xil kod 2 soniya ichida qayta
+  // ishlanmaydi (handleDecodedCode/_lastProcessedAt). Shuning uchun bu
+  // yerdagi qo'shimcha tasdiqlash shunchaki keraksiz to'siq edi — endi
+  // avtomatik rejimda umumiy kodlar ham darhol qo'shiladi, xuddi noyob
+  // (serial) kodlar kabi.
   const isSharedCode = (type === 'barcode');
-  if(isSharedCode && isAutoScanMode()){
-    setScanStatus(`✅ Topildi: ${prod.name} — ⚠️ umumiy kod, miqdorni tasdiqlang`, 'ok');
-  } else {
-    setScanStatus(`✅ Topildi: ${prod.name}`, 'ok');
-  }
+  setScanStatus(`✅ Topildi: ${prod.name}`, 'ok');
 
   if(_scanMode==='admin'){
     document.getElementById('scan-admin-actions').style.display='block';
     document.getElementById('scan-found-block').style.display='block';
     document.getElementById('scan-new-block').style.display='none';
     document.getElementById('scan-qty-input').value='1';
-    if(isAutoScanMode() && !isSharedCode){
+    if(isAutoScanMode()){
       setTimeout(() => scanDoRestock(), 100);
       return;
-    }
-    if(isSharedCode){
-      const qtyEl = document.getElementById('scan-qty-input');
-      setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); }, 50);
     }
   } else {
     document.getElementById('scan-seller-actions').style.display='block';
     document.getElementById('scan-sell-qty').value='1';
     document.getElementById('scan-sell-qty').max = prod.stock;
-    if(isAutoScanMode() && !isSharedCode){
+    if(isAutoScanMode()){
       setTimeout(() => scanAddToCart(), 100);
       return;
-    }
-    if(isSharedCode){
-      const qtyEl = document.getElementById('scan-sell-qty');
-      setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); }, 50);
     }
   }
 }
@@ -3548,11 +3536,37 @@ let _assignDone = false;
 // ravishda navbatdagi keyingi tovarga o'tadi.
 let _assignQueue = [];      // navbatdagi tovar ID'lari
 let _assignQueueIdx = -1;   // joriy o'rin (-1 = navbat rejimi emas)
+let _assignMode = 'barcode'; // 'barcode' = umumiy kod biriktirish, 'serial' = har bir donani alohida ro'yxatga olish
 
 window.startBarcodeAssignQueue = function(){
   const missing = DB.products.filter(p=>!p.barcode);
   if(!missing.length){ toast('✅ Barcha tovarlarda kod bor','green'); return; }
+  _assignMode = 'barcode';
   _assignQueue = missing.map(p=>p.id);
+  _assignQueueIdx = 0;
+  openAssignBarcode(_assignQueue[0]);
+};
+
+// ===== HAR BIR DONANI ALOHIDA SERIYA KOD BILAN RO'YXATGA OLISH =====
+// Farqi "Kodsiz tovarlarni belgilash"dan: bu yerda tovarning UMUMIY kodi
+// (GTIN) ALLAQACHON bor, lekin omborda turgan jismoniy donalarning har biri
+// hali alohida-alohida skanerlanmagan (masalan tovar yozma/qo'lda kirim
+// qilingani uchun). Masalan: 20 dona bor, lekin faqat 6 tasi individual
+// seriya kodi bilan ro'yxatga olingan — demak 14 tasini hali skanerlash kerak.
+// Har bir tovar uchun kerakli sonni skanerlab bo'lgach, navbat avtomatik
+// keyingi tovarga o'tadi.
+function unregisteredUnitCount(p){
+  const registered = Object.keys(p.serialCodes||{}).length;
+  return Math.max(0, (p.stock||0) - registered);
+}
+
+window.startSerialRegisterQueue = function(){
+  const needing = DB.products.filter(p=>p.barcode && unregisteredUnitCount(p)>0);
+  if(!needing.length){ toast('✅ Ombordagi barcha donalar seriya kod bilan ro\'yxatga olingan','green'); return; }
+  _assignMode = 'serial';
+  _lastSerialCode = null;
+  _lastSerialAt = 0;
+  _assignQueue = needing.map(p=>p.id);
   _assignQueueIdx = 0;
   openAssignBarcode(_assignQueue[0]);
 };
@@ -3572,7 +3586,8 @@ function advanceAssignQueue(){
     closeModal('modal-assign-barcode');
     stopDecodingOnly();
     const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
-    toast('✅ Barcha tovarlarga kod biriktirildi!','green');
+    toast(_assignMode==='serial' ? '✅ Barcha donalar ro\'yxatga olindi!' : '✅ Barcha tovarlarga kod biriktirildi!','green');
+    _assignMode = 'barcode';
     return;
   }
   openAssignBarcode(_assignQueue[_assignQueueIdx]);
@@ -3584,16 +3599,39 @@ window.openAssignBarcode = async function(productId){
   const p = DB.products.find(x=>x.id===productId);
   if(!p) return;
 
+  // Agar bu chaqiruv faol navbat ICHIDA bo'lmasa (ya'ni foydalanuvchi
+  // tovar kartochkasidagi ✎/"Kod biriktirish" tugmasini alohida bossa) —
+  // rejim har doim oddiy "barcode" bo'lishi kerak, oldingi seriya
+  // navbatidan qolgan holat ta'sir qilmasligi uchun.
+  if(_assignQueueIdx < 0) _assignMode = 'barcode';
+
   const inQueue = _assignQueueIdx >= 0;
   document.getElementById('assign-queue-progress').textContent = inQueue
     ? `(${_assignQueueIdx+1}/${_assignQueue.length})` : '';
   document.getElementById('assign-skip-btn').style.display = inQueue ? 'flex' : 'none';
 
-  document.getElementById('assign-product-info').innerHTML =
-    `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
-     <span style="font-size:13px;color:var(--text3);font-weight:400">
-       ${p.barcode ? '⚠️ Joriy kod: '+p.barcode+' — yangi kod bilan almashtiriladi' : 'Hali kod biriktirilmagan'}
-     </span>`;
+  const titleEl = document.getElementById('assign-modal-title');
+  const unitProgEl = document.getElementById('assign-unit-progress');
+
+  if(_assignMode === 'serial'){
+    titleEl.textContent = '🔢 Donalarni ro\'yxatga olish';
+    const registered = Object.keys(p.serialCodes||{}).length;
+    const total = p.stock||0;
+    const remaining = unregisteredUnitCount(p);
+    document.getElementById('assign-product-info').innerHTML =
+      `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+       <span style="font-size:13px;color:var(--text3);font-weight:400">Har bir donani birma-bir skanerlang</span>`;
+    unitProgEl.style.display = 'block';
+    unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
+  } else {
+    titleEl.textContent = '📷 Kod biriktirish';
+    unitProgEl.style.display = 'none';
+    document.getElementById('assign-product-info').innerHTML =
+      `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+       <span style="font-size:13px;color:var(--text3);font-weight:400">
+         ${p.barcode ? '⚠️ Joriy kod: '+p.barcode+' — yangi kod bilan almashtiriladi' : 'Hali kod biriktirilmagan'}
+       </span>`;
+  }
   document.getElementById('assign-code-input').value = '';
   openModal('modal-assign-barcode');
 
@@ -3714,10 +3752,16 @@ window.doAssignBarcode = async function(code){
   code = (code||'').trim();
   if(!code){ toast('Kod bo\'sh','red'); return; }
   if(_assignDone) return; // Ikki marta ishlamasin
-  _assignDone = true;
 
   const p = DB.products.find(x=>x.id===_assignProductId);
   if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
+
+  if(_assignMode === 'serial'){
+    doRegisterSerialUnit(p, code);
+    return;
+  }
+
+  _assignDone = true;
 
   // GS1 kod bo'lsa, faqat GTIN qismini olamiz (seriya raqami emas) —
   // shunda shu turdagi BOSHQA shishalarni skanerlaganda ham mos keladi.
@@ -3757,6 +3801,67 @@ window.doAssignBarcode = async function(code){
   }, 800);
 }
 
+// ===== HAR BIR DONANI RO'YXATGA OLISH (SERIAL REJIM) =====
+// "Kod biriktirish"dan farqi: bu yerda umumiy p.barcode O'ZGARTIRILMAYDI —
+// har bir skanerlangan (noyob seriyali) kod p.serialCodes ro'yxatiga
+// QO'SHILADI. Kerakli son (stock) ga yetguncha, xuddi shu tovar ustida
+// qolib, ketma-ket bir necha marta skanerlash mumkin; keyin avtomatik
+// navbatdagi tovarga o'tadi.
+let _lastSerialCode = null;
+let _lastSerialAt = 0;
+
+function doRegisterSerialUnit(p, code){
+  code = (code||'').trim();
+  if(!code) return;
+
+  // Bir xil kod hali kamera oldida turgan bo'lishi mumkin (qo'l ulgurmagan) —
+  // 1.5 soniya ichida bir xil kodni jim o'tkazib yuboramiz, ogohlantirish
+  // spam bo'lib ketmasin.
+  const now = Date.now();
+  if(code === _lastSerialCode && (now - _lastSerialAt) < 1500) return;
+  _lastSerialCode = code;
+  _lastSerialAt = now;
+
+  // Agar bu kod ALLAQACHON shu yoki boshqa tovarda seriya sifatida
+  // ro'yxatga olingan bo'lsa — takror hisoblamaymiz (bitta shisha ikki marta
+  // sanalib ketmasligi uchun).
+  const already = DB.products.some(x=>x.serialCodes && x.serialCodes[code]);
+  if(already){
+    toast('⚠️ Bu dona allaqachon ro\'yxatga olingan','amber');
+    document.getElementById('assign-status').textContent = "⚠️ Bu kod avval ro'yxatga olingan — boshqa donani skanerlang";
+    document.getElementById('assign-status').style.color = 'var(--amber)';
+    return; // _assignDone false qolaveradi — keyingi (yangi) kodni darhol qabul qiladi
+  }
+
+  if(navigator.vibrate) navigator.vibrate(100);
+
+  if(!p.serialCodes) p.serialCodes = {};
+  p.serialCodes[code] = true;
+  fbSaveProduct(p).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+
+  const registered = Object.keys(p.serialCodes).length;
+  const total = p.stock||0;
+  const remaining = unregisteredUnitCount(p);
+
+  document.getElementById('assign-status').textContent = `✅ Ro'yxatga olindi (${registered}/${total})`;
+  document.getElementById('assign-status').style.color = 'var(--green)';
+  const unitProgEl = document.getElementById('assign-unit-progress');
+  if(unitProgEl) unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
+  renderProducts();
+
+  if(remaining <= 0){
+    // Shu tovarning barcha donalari ro'yxatga olindi — navbatdagisiga o'tamiz
+    _assignDone = true;
+    toast(`✅ "${p.name}" — barcha ${total} dona ro'yxatga olindi!`,'green');
+    setTimeout(()=>{
+      if(_assignQueueIdx >= 0) advanceAssignQueue();
+      else closeAssignBarcode();
+    }, 700);
+  }
+  // Aks holda _assignDone false qolaveradi — kamera shu tovar ustida davom
+  // etib, keyingi donani darhol skanerlashga tayyor turadi.
+}
+
 window.closeAssignBarcode = function(){
   _assignDone = false;
   stopDecodingOnly();
@@ -3767,6 +3872,7 @@ window.closeAssignBarcode = function(){
   if(_assignQueueIdx >= 0){
     _assignQueueIdx = -1;
     _assignQueue = [];
+    _assignMode = 'barcode';
   }
   closeModal('modal-assign-barcode');
 }
