@@ -948,6 +948,8 @@ window.cart = {};
 let knownSaleIds = null;
 let debtFilter = 'active';
 let editingDebtorId = null;
+const recentScans = new Map();
+const SCAN_BLOCK_TIME = 800;
 
 let _pendingWrites = 0;
 function setSyncing(on){
@@ -1414,11 +1416,44 @@ window.saveProduct=async function(){
     const p=DB.products.find(x=>x.id===editingProductId);
     closeModal('modal-product');
     toast('Tovar yangilandi','green');
-    fbSaveProduct({...p, name, price, img, note, volume, barcode}).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  fbSaveProduct({
+    ...p,
+
+    name,
+    price,
+    img,
+    note,
+    volume,
+
+    barcode,
+
+    serialCodes:p.serialCodes || {},
+
+    soldCodes:p.soldCodes || {}
+})
   } else {
     const qty=parseInt(document.getElementById('p-qty').value);
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
-    const newProd = {id:uid(),name,price,stock:qty,img,note,volume,barcode,createdAt:new Date().toISOString()};
+    const newProd = {
+    id: uid(),
+    name,
+    price,
+    stock: qty,
+    img,
+    note,
+    volume,
+
+    // Zavod barcode
+    barcode,
+
+    // Har bir shishaning alohida kodi
+    serialCodes:{},
+
+    // Sotilgan kodlar
+    soldCodes:{},
+
+    createdAt:new Date().toISOString()
+};
     closeModal('modal-product');
     toast("Tovar qo'shildi",'green');
     const writes=[fbSaveProduct(newProd)];
@@ -3030,9 +3065,24 @@ function codesMatch(a, b){
 // nomi bo'yicha. Yagona (bir joyda) izlash mantig'i — processCode va
 // ko'p-kodli (batch) skanerlash bir xil qidiruvdan foydalanishi uchun.
 function findProductByCode(code){
-  let prod = DB.products.find(p=>p.barcode && codesMatch(p.barcode, code));
-  if(!prod) prod = DB.products.find(p=>p.name.toLowerCase()===code.toLowerCase());
-  return prod;
+  if(!code) return null;
+  
+  // Kodni normallashtirish
+  const normalized = normalizeScanCode(code);
+  
+  for(const product of DB.products){
+    // 1) Asosiy barcode bo'yicha tekshirish (GTIN)
+    if(product.barcode && codesMatch(product.barcode, code)){
+      return { product, type: 'barcode' };
+    }
+    
+    // 2) Noyob serial kodlar bo'yicha tekshirish
+    if(product.serialCodes && product.serialCodes[code]){
+      return { product, type: 'serial' };
+    }
+  }
+  
+  return null;
 }
 
 window.processCode = function(code){
@@ -3041,12 +3091,40 @@ window.processCode = function(code){
   _scannedCode = code;
   document.getElementById('manual-code-input').value = code;
 
-  let prod = findProductByCode(code);
+  // 1) Kodni normallashtirish (GTIN ajratib olish)
+  const normalizedCode = normalizeScanCode(code);
+  
+  // 2) Kod bo'yicha mahsulot qidirish (barcode yoki serialCodes)
+  let result = findProductByCode(code);
+  
+  // Agar topilmasa, normallashtirilgan kod bilan qayta qidirish
+  if(!result && normalizedCode !== code){
+    result = findProductByCode(normalizedCode);
+  }
 
-  if(prod){
+  if(result){
+    const prod = result.product;
     _scannedProductId = prod.id;
-    showScanProduct(prod, true);
-    // 🔥 BU QATOR QO'SHILDI
+    
+    // 3) AGAR BU NOYOB KOD BO'LSA - SOTILGANLIGINI TEKSHIRISH
+    if(result.type === 'serial'){
+      // Bu kod allaqachon sotilganmi?
+      if(prod.soldCodes && prod.soldCodes[code]){
+        setScanStatus(`❌ Bu kod allaqachon sotilgan! (${code})`, 'err');
+        toast('⚠️ Bu mahsulot avval sotilgan!', 'red');
+        if(navigator.vibrate) navigator.vibrate([200,100,200]);
+        return;
+      }
+      
+      // Bu kod allaqachon omborda mavjudmi?
+      if(!prod.serialCodes || !prod.serialCodes[code]){
+        setScanStatus(`⚠️ Bu kod omborda yo'q! (${code})`, 'err');
+        toast('⚠️ Bu kod omborda mavjud emas!', 'red');
+        return;
+      }
+    }
+    
+    showScanProduct(prod, true, result.type);
     if(!isAutoScanMode()){
       setTimeout(() => resetScanForNext(), 300);
     }
@@ -3056,7 +3134,7 @@ window.processCode = function(code){
   }
 }
 
-function showScanProduct(prod, found){
+function showScanProduct(prod, found, type){
   const box = document.getElementById('scan-result-box');
   box.classList.add('show');
   box.style.background = found ? 'var(--green-bg)' : 'var(--amber-bg)';
@@ -3067,7 +3145,10 @@ function showScanProduct(prod, found){
   else imgEl.textContent='💧';
 
   document.getElementById('scan-prod-name').textContent = prod.name + (prod.volume?` · ${prod.volume}L`:'');
-  document.getElementById('scan-prod-info').textContent = `${fmt(prod.price)} so'm · Zaxira: ${prod.stock} ta`;
+  
+  // Qo'shimcha ma'lumot: kod turi
+  const codeType = type === 'serial' ? '🔐 Noyob kod' : '📦 Umumiy kod';
+  document.getElementById('scan-prod-info').textContent = `${fmt(prod.price)} so'm · Zaxira: ${prod.stock} ta · ${codeType}`;
   setScanStatus(`✅ Topildi: ${prod.name}`, 'ok');
 
   if(_scanMode==='admin'){
@@ -3075,12 +3156,18 @@ function showScanProduct(prod, found){
     document.getElementById('scan-found-block').style.display='block';
     document.getElementById('scan-new-block').style.display='none';
     document.getElementById('scan-qty-input').value='1';
-    if(isAutoScanMode()){ scanDoRestock(); return; }
+    if(isAutoScanMode()){ 
+      setTimeout(() => scanDoRestock(), 100);
+      return; 
+    }
   } else {
     document.getElementById('scan-seller-actions').style.display='block';
     document.getElementById('scan-sell-qty').value='1';
     document.getElementById('scan-sell-qty').max = prod.stock;
-    if(isAutoScanMode()){ scanAddToCart(); return; }
+    if(isAutoScanMode()){ 
+      setTimeout(() => scanAddToCart(), 100);
+      return; 
+    }
   }
 }
 
@@ -3160,23 +3247,93 @@ function renderScanSessionLog(){
 window.scanDoRestock = function(){
   const prod = DB.products.find(p=>p.id===_scannedProductId);
   if(!prod){ toast('Tovar topilmadi','red'); return; }
+  
   const qty = parseInt(document.getElementById('scan-qty-input').value)||1;
   if(qty<1){ toast('Miqdor 0 dan katta bo\'lsin','red'); return; }
-  const stockBefore = prod.stock;
-  const stockAfter = stockBefore + qty;
-  const restock = {
-    id: uid(), productId: prod.id, productName: prod.name, volume: prod.volume||'',
-    type:'in', qty, stockBefore, stockAfter, reason:'Skanerlash orqali kirim', date:new Date().toISOString()
-  };
-  if(navigator.vibrate) navigator.vibrate([80,40,80]);
-  toast(`✓ ${prod.name}: +${qty} ta (${stockBefore} → ${stockAfter})`,'green');
-  flashScanAdded();
-  logScanSession(prod, qty);
-  resetScanForNext(); // 🔥 BU QATOR QO'SHILDI
-  Promise.all([
-    fbSaveProduct({...prod, stock: stockAfter}),
-    fbSaveRestock(restock)
-  ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+  
+  const code = _scannedCode;
+  const normalizedCode = normalizeScanCode(code);
+  
+  // Agar bu noyob kod bo'lsa (serialCodes), uni omborga qo'shamiz
+  const isSerial = code && normalizedCode !== code && !isGTIN(code);
+  
+  if(isSerial){
+    // Kod allaqachon omborda mavjudmi?
+    if(prod.serialCodes && prod.serialCodes[code]){
+      toast(`ℹ️ Bu kod allaqachon omborda mavjud: ${code}`, 'amber');
+      resetScanForNext();
+      return;
+    }
+    
+    // Kod allaqachon sotilganmi?
+    if(prod.soldCodes && prod.soldCodes[code]){
+      toast(`❌ Bu kod allaqachon sotilgan: ${code}`, 'red');
+      resetScanForNext();
+      return;
+    }
+    
+    // Yangi kodni omborga qo'shamiz
+    if(!prod.serialCodes) prod.serialCodes = {};
+    prod.serialCodes[code] = true;
+    
+    // Stockni 1 ga oshiramiz (har bir noyob kod = 1 dona)
+    const stockBefore = prod.stock;
+    const stockAfter = stockBefore + 1;
+    prod.stock = stockAfter;
+    
+    const restock = {
+      id: uid(), 
+      productId: prod.id, 
+      productName: prod.name, 
+      volume: prod.volume||'',
+      type:'in', 
+      qty: 1, 
+      stockBefore, 
+      stockAfter, 
+      reason:`Skanerlash orqali kirim: ${code}`, 
+      date:new Date().toISOString()
+    };
+    
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+    toast(`✓ ${prod.name}: +1 ta (${stockBefore} → ${stockAfter}) - ${code}`,'green');
+    flashScanAdded();
+    logScanSession(prod, 1);
+    
+    Promise.all([
+      fbSaveProduct(prod),
+      fbSaveRestock(restock)
+    ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+    
+    resetScanForNext();
+  } else {
+    // Oddiy barcode bo'lsa - eski usulda ishlaydi
+    const stockBefore = prod.stock;
+    const stockAfter = stockBefore + qty;
+    const restock = {
+      id: uid(), 
+      productId: prod.id, 
+      productName: prod.name, 
+      volume: prod.volume||'',
+      type:'in', 
+      qty, 
+      stockBefore, 
+      stockAfter, 
+      reason:'Skanerlash orqali kirim', 
+      date:new Date().toISOString()
+    };
+    
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+    toast(`✓ ${prod.name}: +${qty} ta (${stockBefore} → ${stockAfter})`,'green');
+    flashScanAdded();
+    logScanSession(prod, qty);
+    
+    Promise.all([
+      fbSaveProduct({...prod, stock: stockAfter}),
+      fbSaveRestock(restock)
+    ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+    
+    resetScanForNext();
+  }
 }
 
 // Skaner oynasini yopmasdan, keyingi kodni skanerlashga tayyorlaydi.
@@ -3212,17 +3369,69 @@ window.scanOpenNewProduct = function(){
 window.scanAddToCart = function(){
   const prod = DB.products.find(p=>p.id===_scannedProductId);
   if(!prod){ toast('Tovar topilmadi','red'); return; }
+  
   const qty = parseInt(document.getElementById('scan-sell-qty').value)||1;
-  const inCart = cart[prod.id]||0;
-  if(inCart+qty > prod.stock){ toast(`Ombordan ko'p! Mavjud: ${prod.stock} ta`,'red'); return; }
-  cart[prod.id] = inCart+qty;
-  updateCartBtn();
-  updateSingleCard(prod.id);
-  flashScanAdded();
-  logScanSession(prod, qty);
-  resetScanForNext(); // 🔥 BU QATOR QO'SHILDI
-  toast(`✅ +${qty} ta ${prod.name} savatga qo'shildi`,'green');
-  if(navigator.vibrate) navigator.vibrate([80,40,80]);
+  const code = _scannedCode;
+  const normalizedCode = normalizeScanCode(code);
+  const isSerial = code && normalizedCode !== code && !isGTIN(code);
+  
+  // Agar noyob kod bo'lsa
+  if(isSerial){
+    // Kod omborda mavjudmi?
+    if(!prod.serialCodes || !prod.serialCodes[code]){
+      toast(`❌ Bu kod omborda yo'q: ${code}`, 'red');
+      resetScanForNext();
+      return;
+    }
+    
+    // Kod allaqachon sotilganmi?
+    if(prod.soldCodes && prod.soldCodes[code]){
+      toast(`❌ Bu kod allaqachon sotilgan: ${code}`, 'red');
+      resetScanForNext();
+      return;
+    }
+    
+    // Kodni "sotilgan" deb belgilaymiz
+    if(!prod.soldCodes) prod.soldCodes = {};
+    prod.soldCodes[code] = true;
+    
+    // serialCodes dan o'chiramiz (endi omborda yo'q)
+    delete prod.serialCodes[code];
+    
+    // Stockni 1 ga kamaytiramiz
+    prod.stock = Math.max(0, prod.stock - 1);
+    
+    // Savatga qo'shamiz (1 dona)
+    const inCart = cart[prod.id]||0;
+    cart[prod.id] = inCart + 1;
+    
+    // Mahsulotni saqlaymiz
+    fbSaveProduct(prod).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+    
+    updateCartBtn();
+    updateSingleCard(prod.id);
+    flashScanAdded();
+    logScanSession(prod, 1);
+    resetScanForNext();
+    toast(`✅ ${prod.name} savatga qo'shildi (${code})`,'green');
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+  } else {
+    // Oddiy barcode bo'lsa - eski usul
+    const inCart = cart[prod.id]||0;
+    if(inCart+qty > prod.stock){ 
+      toast(`Ombordan ko'p! Mavjud: ${prod.stock} ta`,'red'); 
+      resetScanForNext();
+      return; 
+    }
+    cart[prod.id] = inCart+qty;
+    updateCartBtn();
+    updateSingleCard(prod.id);
+    flashScanAdded();
+    logScanSession(prod, qty);
+    resetScanForNext();
+    toast(`✅ +${qty} ta ${prod.name} savatga qo'shildi`,'green');
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+  }
 }
 
 window.closeScanner = function(){
@@ -3424,7 +3633,33 @@ window.closeAssignBarcode = function(){
   closeModal('modal-assign-barcode');
 }
 
+// ===== 1. BARCHA FUNKSIYALAR =====
+// (barcha window.funksiya va boshqa funksiyalar)
+
+// ===== 2. YANGI YORDAMCHI FUNKSIYALAR =====
+function isGTIN(code){
+  if(!code) return false;
+  const cleaned = code.replace(/\D/g, '');
+  return cleaned.length === 14 && /^\d{14}$/.test(cleaned);
+}
+
+function isDataMatrix(code){
+  if(!code) return false;
+  if(isGTIN(code)) return false;
+  return code.length > 10 || code.includes('(') || code.includes('01');
+}
+
+// ===== 3. INIT() FUNKSIYASI =====
+async function init(){
+  // ... barcha init kodi ...
+}
+
+// ===== 4. INIT() NI CHAQIRISH =====
 init();
+
+
+
+
 </script>
 </body>
 </html>
