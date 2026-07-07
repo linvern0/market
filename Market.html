@@ -808,6 +808,11 @@
 
     <p id="scan-status">Kamerani DataMatrix kodga qarating...</p>
 
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:12.5px;color:var(--text2);margin:.15rem 0 .65rem;cursor:pointer;user-select:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.5rem .65rem">
+      <input type="checkbox" id="scan-auto-mode" checked style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      ⚡ Avtomatik rejim — har skanerlashda darhol 1 dona qo'shiladi (tugma bosmasdan, ko'p tovarni tez ketma-ket skanerlash uchun)
+    </label>
+
     <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📸 Suratga olib skanerlash</button>
     <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa — qo'lni tinch tutib shu tugmani bosing</p>
 
@@ -2870,11 +2875,18 @@ function showScanProduct(prod, found){
     document.getElementById('scan-found-block').style.display='block';
     document.getElementById('scan-new-block').style.display='none';
     document.getElementById('scan-qty-input').value='1';
+    if(isAutoScanMode()){ scanDoRestock(); return; }
   } else {
     document.getElementById('scan-seller-actions').style.display='block';
     document.getElementById('scan-sell-qty').value='1';
     document.getElementById('scan-sell-qty').max = prod.stock;
+    if(isAutoScanMode()){ scanAddToCart(); return; }
   }
+}
+
+function isAutoScanMode(){
+  const el = document.getElementById('scan-auto-mode');
+  return el ? el.checked : false;
 }
 
 function showScanNotFound(code){
