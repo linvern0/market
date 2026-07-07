@@ -3633,10 +3633,6 @@ window.closeAssignBarcode = function(){
   closeModal('modal-assign-barcode');
 }
 
-// ===== 1. BARCHA FUNKSIYALAR =====
-// (barcha window.funksiya va boshqa funksiyalar)
-
-// ===== 2. YANGI YORDAMCHI FUNKSIYALAR =====
 function isGTIN(code){
   if(!code) return false;
   const cleaned = code.replace(/\D/g, '');
@@ -3649,12 +3645,6 @@ function isDataMatrix(code){
   return code.length > 10 || code.includes('(') || code.includes('01');
 }
 
-// ===== 3. INIT() FUNKSIYASI =====
-async function init(){
-  // ... barcha init kodi ...
-}
-
-// ===== 4. INIT() NI CHAQIRISH =====
 init();
 
 
