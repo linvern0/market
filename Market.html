@@ -391,7 +391,7 @@
   <div id="history-summary" style="margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Sana/Vaqt</th><th>Tovar</th><th>Kod</th><th>Miqdor</th><th>Narx</th><th>Jami</th><th>Sotuvchi</th><th>Holat</th><th>Amal</th></tr></thead>
+      <thead><tr><th>Sana/Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Narx</th><th>Jami</th><th>Sotuvchi</th><th>Holat</th><th>Amal</th></tr></thead>
       <tbody id="history-body"></tbody>
     </table>
   </div>
@@ -531,7 +531,7 @@
   <div id="seller-daily-summary" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Vaqt</th><th>Tovar</th><th>Hajm</th><th>Kod</th><th>Miqdor</th><th>Jami</th><th>Holat</th><th>Qaytarish</th></tr></thead>
+      <thead><tr><th>Vaqt</th><th>Tovar</th><th>Hajm</th><th>Miqdor</th><th>Jami</th><th>Holat</th><th>Qaytarish</th></tr></thead>
       <tbody id="my-sales-body"></tbody>
     </table>
   </div>
@@ -1081,23 +1081,6 @@ window.cart = {};
 // muammoni to'g'irlash uchun ishlatiladi (pastga qarang: scanAddToCart,
 // removeFromCart, clearCart, doCartSell).
 window.cartSerialCodes = {}; // { productId: [code, code, ...] }
-
-// Sotuv yozuvi uchun kod ma'lumotini aniqlaydi:
-//  - Agar shu tovar savatga QR/DataMatrix (yoki seriya) kod skanerlab
-//    qo'shilgan bo'lsa — o'sha noyob kod(lar) qaytariladi (codeType:'qrCode').
-//  - Aks holda, agar tovarning umumiy Barcode (GTIN/EAN) maydoni to'ldirilgan
-//    bo'lsa — o'sha barcode qaytariladi (codeType:'barcode').
-//  - Hech biri bo'lmasa — bo'sh qiymat.
-function saleCodeInfo(id, p){
-  const codes = cartSerialCodes[id];
-  if(codes && codes.length){
-    return { code: codes.join(', '), codeType: 'qrCode' };
-  }
-  if(p && p.barcode){
-    return { code: p.barcode, codeType: 'barcode' };
-  }
-  return { code: '', codeType: '' };
-}
 
 let knownSaleIds = null;
 let debtFilter = 'active';
@@ -2204,9 +2187,8 @@ window.doDebtSell = async function(){
   // Sales va product stock — local
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
-    const {code, codeType} = saleCodeInfo(id, p);
     const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,
-      seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||'',code,codeType};
+      seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
     localUpsertSale(sale);
     p.stock = p.stock - qty; // lokal: joyida o'zgartiramiz (obyekt referensi saqlanadi)
   });
@@ -2460,8 +2442,7 @@ window.doCartSell=async function(){
   const writes=[];
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
-    const {code, codeType} = saleCodeInfo(id, p);
-    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false,code,codeType};
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
     writes.push(fbSaveSale(sale));
     // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
     // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
@@ -2578,17 +2559,6 @@ window.renderSellGrid=function(){
   }
 }
 
-// Sotuv jadvallarida (Mening sotuvlarim / Savdo tarixi) ko'rsatish uchun
-// sotilgan kod belgisi — Barcode bo'lsa 📦, QR/DataMatrix bo'lsa 📷,
-// kod bo'lmasa "—".
-function saleCodeBadge(s){
-  if(!s.code) return '—';
-  const isQr = s.codeType==='qrCode' || s.codeType==='serial';
-  const icon = isQr ? '📷' : '📦';
-  const color = isQr ? 'var(--amber)' : 'var(--accent)';
-  return `<span style="display:inline-flex;align-items:center;gap:3px;font-family:monospace;font-size:12px;color:${color}">${icon} ${s.code}</span>`;
-}
-
 // ===== MY SALES =====
 window.mySalesFilter = 'today';
 window.setMySalesFilter = function(type){
@@ -2649,7 +2619,7 @@ window.renderMySales=function(){
   none.style.display='none';
   tbody.innerHTML=sales.map(s=>{
     const canRevert=!s.reverted&&(now-new Date(s.date))/60000<=revertMins;
-    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td data-label="Kod">${saleCodeBadge(s)}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
+    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
   }).join('');
 }
 window.revertSale=function(id){
@@ -2694,7 +2664,7 @@ window.renderHistory=function(){
   const totalRev=sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
   const cnt=sales.filter(s=>!s.reverted).length;
   sumEl.innerHTML=`<div style="display:flex;gap:.75rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
-  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Kod">${saleCodeBadge(s)}</td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
+  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
 }
 window.adminRevert=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
@@ -2721,8 +2691,8 @@ window.quickHistoryFilter=function(type){
   renderHistory();
 }
 window.exportCSV=function(){
-  let csv='Sana,Tovar,Kod,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
-  DB.sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}","${s.code||''}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
+  let csv='Sana,Tovar,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
+  DB.sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
   download('savdo_tarixi.csv','text/csv',csv);
 }
 
@@ -2837,76 +2807,18 @@ window.renderStockHistory=function(){
   const tbody=document.getElementById('sh-body'), none=document.getElementById('no-sh');
   if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
-
-  // ✅ YANGI: GURUHLASH. Ilgari har bir yozuv (masalan donalab skanerlab
-  // 30 marta kirim qilingan bo'lsa — 30 ta) alohida qatorda ko'rsatilardi —
-  // bu jadvalni o'qib bo'lmas darajada uzun va chalkash qilib qo'yardi.
-  // Endi bir xil TOVAR + TUR (kirim/chiqim) + KUN bo'yicha yozuvlar bitta
-  // qatorga yig'iladi ("A tovar +30 ta"), qatorni bosib ochilsa esa har bir
-  // aniq vaqt alohida ko'rinadi.
-  const groups = new Map();
-  for(const r of rows){
-    const day = (r.date||'').slice(0,10); // 'YYYY-MM-DD'
-    const key = `${r.productId}_${r.type}_${day}`.replace(/[^a-zA-Z0-9_]/g,'');
-    let g = groups.get(key);
-    if(!g){
-      g = { key, productName:r.productName, volume:r.volume, type:r.type, entries:[], qty:0 };
-      groups.set(key, g);
-    }
-    g.entries.push(r);
-    g.qty += r.qty;
-  }
-  const groupList = Array.from(groups.values());
-  groupList.forEach(g=>{
-    // Guruh ichida yozuvlarni ESKIDAN YANGIGA (vaqt bo'yicha o'sish tartibida)
-    // joylashtiramiz, shunda "ochilganda" tepadan pastga xronologik o'qiladi.
-    g.entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
-    g.stockBefore = g.entries[0].stockBefore;
-    g.stockAfter = g.entries[g.entries.length-1].stockAfter;
-    g.firstDate = g.entries[0].date;
-    g.lastDate = g.entries[g.entries.length-1].date;
-  });
-  // Guruhlarning o'zi — ENG SO'NGGI amal vaqti bo'yicha, yangisi tepada.
-  groupList.sort((a,b)=> new Date(b.lastDate) - new Date(a.lastDate));
-
-  tbody.innerHTML = groupList.map(g=>{
-    const isIn = g.type==='in';
-    const isMulti = g.entries.length>1;
-    const timeLabel = isMulti ? `${timeStr(g.firstDate)} — ${timeStr(g.lastDate)}` : timeStr(g.firstDate);
-    const countBadge = isMulti ? ` <span style="font-size:11px;color:var(--text3);font-weight:400">(${g.entries.length} marta)</span>` : '';
-    const reasonLabel = isMulti ? `${g.entries.length} ta alohida amal — vaqtlarini ko'rish uchun qatorni bosing` : (g.entries[0].reason||'—');
-    const groupRow = `<tr ${isMulti?`onclick="toggleStockHistGroup('${g.key}')" style="cursor:pointer"`:''}>
-      <td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${isMulti?`<span id="sh-arrow-${g.key}" style="display:inline-block;width:1em">▸</span> `:''}${timeLabel}</td>
-      <td data-label="Tovar"><strong>${g.productName}</strong>${countBadge}</td>
-      <td>${g.volume?`<span class="badge blue">${g.volume} L</span>`:'—'}</td>
+  tbody.innerHTML=rows.map(r=>{
+    const isIn=r.type==='in';
+    return `<tr>
+      <td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(r.date)}</td>
+      <td data-label="Tovar"><strong>${r.productName}</strong></td>
+      <td>${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td>
       <td><span class="badge ${isIn?'green':'red'}">${isIn?'📦 Kirim':'↩ Chiqim'}</span></td>
-      <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${g.qty} ta</td>
-      <td style="font-size:13px;color:var(--text2)">${reasonLabel}</td>
-      <td style="font-size:13px">${g.stockBefore??'?'} → <strong>${g.stockAfter??'?'}</strong></td>
+      <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${r.qty} ta</td>
+      <td style="font-size:13px;color:var(--text2)">${r.reason||'—'}</td>
+      <td style="font-size:13px">${r.stockBefore??'?'} → <strong>${r.stockAfter??'?'}</strong></td>
     </tr>`;
-    if(!isMulti) return groupRow;
-    const detailRow = `<tr id="sh-detail-${g.key}" style="display:none">
-      <td colspan="7" style="padding:0;background:var(--bg2)">
-        <div style="padding:.5rem 1rem;display:flex;flex-direction:column;gap:0">
-          ${g.entries.map(e=>`
-            <div style="display:grid;grid-template-columns:110px 1fr 90px;gap:.75rem;align-items:center;font-size:12.5px;color:var(--text2);padding:.3rem .5rem;border-bottom:1px dashed var(--border)">
-              <span>🕐 ${timeStr(e.date)}</span>
-              <span style="color:var(--text3)">${e.reason||''}</span>
-              <span style="text-align:right;white-space:nowrap"><strong style="color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${e.qty}</strong> · ${e.stockBefore??'?'}→${e.stockAfter??'?'}</span>
-            </div>`).join('')}
-        </div>
-      </td>
-    </tr>`;
-    return groupRow + detailRow;
   }).join('');
-}
-window.toggleStockHistGroup = function(key){
-  const row = document.getElementById('sh-detail-'+key);
-  const arrow = document.getElementById('sh-arrow-'+key);
-  if(!row) return;
-  const willOpen = row.style.display === 'none';
-  row.style.display = willOpen ? 'table-row' : 'none';
-  if(arrow) arrow.textContent = willOpen ? '▾' : '▸';
 }
 window.exportStockCSV=function(){
   let csv='Sana,Tovar,Hajm,Turi,Miqdor,Sabab,Oldingi,Keyin\n';
@@ -4278,30 +4190,7 @@ function looksLikePlainBarcodeForProduct(code, product){
 function findProductByCode(code){
   if(!code) return null;
 
-  // ✅ TUZATILDI (MUHIM XATO): "umumiy GTIN" (01) va "noyob seriya" (21)
-  // ikkalasini olib yuruvchi to'liq GS1 kod ilgari FAQAT GTIN qismi
-  // bo'yicha solishtirilib, 'barcode' (ya'ni "cheksiz marta qo'shsa
-  // bo'ladigan umumiy kod") deb hisoblanardi — chunki product.barcode
-  // maydonida ANIQ shu GTIN saqlanadi va codesMatch ikkalasini ham GTIN'ga
-  // normallashtirib solishtiradi. Natijada: bitta jismoniy donaning
-  // to'liq (GTIN+seriya) kodi omborga kirim qilishda "oddiy barcode"
-  // sifatida qabul qilinib, HECH QANDAY dublikat tekshiruvisiz xohlagancha
-  // marta (masalan avtomatik rejimda soniyasiga bir necha marta) qo'shilib
-  // ketardi — bitta shisha bir zumda 31 taga aylanib qolgani shu sabab edi.
-  //
-  // TO'G'RI MANTIQ: agar kodda haqiqiy seriya qismi (AI 21) bo'lsa, bu —
-  // ALOHIDA jismoniy donani anglatadi, garchi undagi GTIN boshqa
-  // donalarniki bilan bir xil ko'rinsa ham. Shu sababli bunday kod HAR
-  // DOIM 'serial' (noyob, faqat 1 marta qabul qilinadigan) sifatida
-  // ko'rib chiqilishi kerak — pastdagi oddiy 'barcode' tekshiruvidan OLDIN.
-  const parsedForType = parseGS1(code);
-  if(parsedForType.isGS1 && parsedForType.serial){
-    const product = DB.products.find(p=>p.barcode && codesMatch(p.barcode, parsedForType.gtin));
-    if(product) return { product, type: 'serial' };
-  }
-
-  // 1) Avval asosiy barcode (GTIN/EAN — SERIYASIZ, ya'ni umumiy/qayta
-  //    ishlatiladigan kod) bo'yicha qidiramiz
+  // 1) Avval asosiy barcode (GTIN/EAN) bo'yicha qidiramiz
   for(const product of DB.products){
     if(product.barcode && codesMatch(product.barcode, code)){
       return { product, type: 'barcode' };
@@ -4324,7 +4213,6 @@ function findProductByCode(code){
 
   return null;
 }
-
 
 window.processCode = function(code){
   code = (code||'').trim();
@@ -4567,12 +4455,7 @@ window.scanDoRestock = function(){
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
-    // TUZATILDI: avtomatik rejimda dublikat-filtrni (preserveDedup=true)
-    // TOZALAMAYMIZ — aks holda kamera hali ham xuddi shu kodga qarab tursa,
-    // keyingi kadrda yana "yangi kod" deb qabul qilinib, bitta tovar
-    // soniyasiga o'nlab marta kirim qilinib ketaverardi (scanAddToCart'dagi
-    // bilan bir xil tuzatish — pastdagi izohga qarang).
-    resetScanForNext(isAutoScanMode());
+    resetScanForNext();
   } else {
     // Oddiy barcode bo'lsa - eski usulda ishlaydi
     const stockBefore = prod.stock;
@@ -4603,46 +4486,24 @@ window.scanDoRestock = function(){
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
-    // TUZATILDI (ASOSIY BUG): ilgari bu yerda resetScanForNext() argumentsiz
-    // chaqirilardi — bu esa _lastProcessedCode dublikat-filtrini DARHOL
-    // tozalab yuborardi. Natijada: oddiy (umumiy GTIN) barcode turidagi
-    // tovarni skanerlashda, kamera hali ham xuddi shu jismoniy tovarga
-    // qarab tursa (foydalanuvchi uni olib ulgurmagan bo'lsa), keyingi
-    // kadrda (~30 fps) tizim buni "yangi skaner" deb qabul qilib, bitta
-    // tovarni soniyasiga o'nlab marta kirim qilib yuborardi. Endi
-    // scanAddToCart()dagi kabi preserveDedup=isAutoScanMode() beriladi —
-    // shunda avtomatik rejimda kod dublikat-filtri tovar kamera oldidan
-    // OLIB QO'YILGUNCHA (yoki ~450ms ko'rinmay qolguncha) ishlab turadi.
-    resetScanForNext(isAutoScanMode());
+    resetScanForNext();
   }
 }
 
 // Skaner oynasini yopmasdan, keyingi kodni skanerlashga tayyorlaydi.
-// preserveDedup=true bo'lsa, _lastProcessedCode/_codeAbsentSince
-// TOZALANMAYDI — bu MUHIM: avtomatik rejimda savatga muvaffaqiyatli
-// qo'shilgandan DARHOL keyin bu bayroqlarni tozalasak, kamera hali ham
-// xuddi shu kodni (foydalanuvchi tovarni olib ulgurmagan bo'lsa) KEYINGI
-// KADRDA yana "yangi kod" deb qabul qilib, bitta tovarni soniyasiga
-// o'nlab marta savatga qo'shib yuboradi. preserveDedup=true bilan kod
-// dublikat-filtri ishlab turadi — foydalanuvchi tovarni kamera oldidan
-// OLIB QO'YGANDA (yoki CODE_ABSENCE_RESET_MS vaqt o'tganda) filtri o'zi
-// avtomatik tozalanadi va keyingi (yoki shu) tovarni qayta skanerlash
-// mumkin bo'ladi.
-function resetScanForNext(preserveDedup){
+function resetScanForNext(){
   _scannedProductId = null;
   _scannedCode = null;
   _scannedCodeType = null;
-  if(!preserveDedup){
-    _lastProcessedCode = null; // DUBLIKAT FILTRINI TOZALASH
-    _codeAbsentSince = null;
-  }
+  _lastProcessedCode = null; // DUBLIKAT FILTRINI TOZALASH
+  _codeAbsentSince = null;
   document.getElementById('scan-result-box').classList.remove('show');
   document.getElementById('scan-admin-actions').style.display = 'none';
   document.getElementById('scan-seller-actions').style.display = 'none';
   document.getElementById('scan-found-block').style.display = 'none';
   document.getElementById('scan-new-block').style.display = 'none';
   document.getElementById('manual-code-input').value = '';
-  setScanStatus(preserveDedup ? "✓ Qo'shildi. Tovarni olib, keyingisini skanerlang..." : 'Kamerani keyingi kodga qarating...','');
+  setScanStatus('Kamerani keyingi kodga qarating...','');
 }
 
 // Admin: yangi tovar sifatida qo'shish (skanerlangan kod barcode sifatida kiritiladi)
@@ -4753,15 +4614,7 @@ window.scanAddToCart = function(){
 
   flashScanAdded();
   logScanSession(prod, res.qty);
-  // ✅ TUZATMA: avtomatik rejimda dublikat-filtrni (preserveDedup=true)
-  // TOZALAMAYMIZ — aks holda kamera hali ham xuddi shu tovarga qarab
-  // tursa (foydalanuvchi tovarni olib ulgurmagan bo'lsa), keyingi kadrda
-  // yana "yangi kod" deb qabul qilinib, bitta tovar soniyasiga o'nlab
-  // marta qo'shilib ketaverardi. Endi: tovarni kamera oldidan OLIB
-  // QO'YMAGUNCHA (yoki ~450ms ko'rinmay qolmaguncha) xuddi shu kod
-  // qayta qo'shilmaydi. Qo'lda (manual) rejimda esa eski xatti-harakat
-  // saqlanadi — chunki u yerda foydalanuvchi har safar tugmani o'zi bosadi.
-  resetScanForNext(isAutoScanMode());
+  resetScanForNext();
   if(res.qty===1 && (codeType==='serial'||codeType==='qrCode')){
     toast(`✅ ${prod.name} savatga qo'shildi (${code})`,'green');
   } else {
@@ -4835,19 +4688,15 @@ window.startSerialRegisterQueue = function(){
   // holatlarda zaxira sifatida ishlatiladi (bu yerga umuman aloqasi yo'q).
   const needing = DB.products.filter(p=>unregisteredUnitCount(p)>0);
   if(!needing.length){ toast('✅ Ombordagi barcha donalar seriya kod bilan ro\'yxatga olingan','green'); return; }
-  // ✅ YANGILANDI: bu yerda avval tovarlar ustidan qat'iy navbat, keyin esa
-  // "avtomatik aniqlash umuman ishlamaydi" degan xulosa bilan FAQAT qo'lda
-  // tanlash qo'llanilgan edi. Amalda esa (masalan O'zbekistonning "Asl
-  // Belgisi" GS1 DataMatrix kodlarida) har bir tovar turining (01) GTIN
-  // qismi barqaror va umumiy bo'ladi — faqat (21) seriya qismi har bir
-  // donada farq qiladi. Shu sababli avtomatik aniqlash (doRegisterSerialUnit
-  // ichida, extractGTIN + product.barcode solishtirish orqali) qayta
-  // TIKLANDI: admin pastdagi tanlagichdan tovarni tanlashi shart emas —
-  // qaysi tovar tanlangan bo'lishidan qat'iy nazar, skanerlangan kod GTIN'i
-  // orqali TO'G'RI tovar avtomatik topiladi va tanlov ekranda o'zi
-  // yangilanadi. Tanlagich endi faqat: (a) GTIN topilmagan eski/tasodifiy
-  // kodlar uchun zaxira, va (b) "hozir nima tanlangani"ni ko'rsatish uchun
-  // qoldirilgan.
+  // MUHIM O'ZGARISH: avval bu yerda tovarlar ustidan QAT'IY NAVBAT
+  // (birma-bir, faqat shu tovar tugagach keyingisiga) tuzilardi, keyin esa
+  // kod ichidagi GTIN orqali tovarni "avtomatik aniqlash"ga o'tilgan edi —
+  // lekin qopqoqdagi haqiqiy QR kodlar odatda GTIN olib yurmaydi (tasodifiy/
+  // noyob qiymat), shu sababli avtomatik aniqlash deyarli hech qachon
+  // ishlamas edi. ENDI: qat'iy navbat YO'Q, lekin avtomatik aniqlash ham
+  // YO'Q — admin skanerlashdan oldin (yuqoridagi tanlagichdan) qaysi
+  // tovarni ro'yxatga olayotganini o'zi tanlaydi, va aralash uyumda boshqa
+  // tovarga o'tganda tanlovni almashtiradi. Bu — sodda va ishonchli.
   _assignMode = 'serial';
   _assignQueueIdx = -1;
   _assignQueue = [];
@@ -4862,7 +4711,7 @@ window.startSerialRegisterQueue = function(){
 // (registration hali kerak bo'lgan barcha tovarlar bilan) to'ldiradi va
 // oldingi tanlov hali ham amal qilsa (masalan, oyna qayta ochilganda) —
 // o'shani saqlab qoladi, aks holda ro'yxatdagi birinchi tovarni tanlaydi.
-function populateAssignSerialProductSelect(){
+function populateAssignSerialProductSelect(isFreshOpen){
   const sel = document.getElementById('assign-serial-product-select');
   const needing = DB.products.filter(p=>unregisteredUnitCount(p)>0);
   const prevId = _assignProductId;
@@ -4872,21 +4721,34 @@ function populateAssignSerialProductSelect(){
   }).join('');
   sel.style.display = needing.length ? 'block' : 'none';
   if(!needing.length){ _assignProductId = null; return; }
+  // MUHIM TUZATISH: bu yerda ilgari, agar tanlangan tovar tugagan bo'lsa,
+  // tizim AVTOMATIK ravishda ro'yxatdagi BOSHQA (needing[0]) tovarga
+  // O'ZI o'tib ketardi — adminning xabarisiz. Bu og'ir xatoga olib kelardi:
+  // native detektor bitta kadrda bir nechta qopqoqni bittada topganda
+  // (codes.forEach bilan ketma-ket ro'yxatga olinganda), agar O'SHA
+  // kadrning O'RTASIDA joriy tovar "tugab" qolsa — tanlov sezdirmasdan
+  // almashib ketardi va O'SHA KADRDAGI QOLGAN (hali ham to'g'ri tovarga
+  // tegishli) qopqoqlar XATO ravishda YANGI (avtomatik tanlangan) tovarga
+  // yozilib qolardi. Keyinroq o'sha (aslida to'g'ri) qopqoqni qayta
+  // skanerlasa — "boshqa tovarga tegishli" xatosi chiqishiga sabab shu edi.
+  // ENDI: tanlov FAQAT admin o'zi dropdown'dan tanlaganda o'zgaradi.
+  // Joriy tovar tugasa — tanlovni bo'sh qoldiramiz (avtomatik almashtirmaymiz),
+  // ekran esa "tugadi, boshqa tovarni tanlang" deb ko'rsatadi. Faqat OYNA
+  // ENDIGINA (yangidan) ochilganda — hali hech narsa skanerlanmagan bo'lsa —
+  // qulaylik uchun ro'yxatdagi birinchi tovarni avtomatik tanlab qo'yamiz
+  // (bu holatda xato-almashtirish xavfi yo'q, chunki hali skaner boshlanmagan).
   const stillNeeds = prevId && needing.some(p=>p.id===prevId);
-  _assignProductId = stillNeeds ? prevId : needing[0].id;
-  sel.value = _assignProductId;
+  _assignProductId = stillNeeds ? prevId : (isFreshOpen ? needing[0].id : null);
+  sel.value = _assignProductId || '';
 }
 
 // Tovar tanlagich (dropdown) o'zgartirilganda chaqiriladi — shundan keyin
 // skanerlangan HAR BIR kod aynan shu tanlangan tovarga yoziladi, toki admin
 // boshqa tovarni tanlamaguncha (aralash uyumda erkin almashish shu orqali).
 window.onAssignSerialProductChange = function(productId){
-  console.log('✅ Tovar tanlandi:', productId); // Debug
   _assignProductId = productId;
   _recentSerialCodes.clear();
   renderAssignSerialProductInfo();
-  // ✅ TUZATMA: Tanlagan tovarni ANIQ saqlash
-  sessionStorage.setItem('_lastAssignedProduct', productId);
 };
 
 function renderAssignSerialProductInfo(){
@@ -4917,7 +4779,7 @@ async function openSerialFreeScan(){
   document.getElementById('assign-queue-progress').textContent = '';
   document.getElementById('assign-skip-btn').style.display = 'none';
   document.getElementById('assign-modal-title').textContent = "🔢 Donalarni ro'yxatga olish";
-  populateAssignSerialProductSelect();
+  populateAssignSerialProductSelect(true);
   renderAssignSerialProductInfo();
   document.getElementById('assign-code-input').value = '';
   openModal('modal-assign-barcode');
@@ -5209,22 +5071,7 @@ window.doAssignBarcode = async function(code, format){
   }
 
   const p = DB.products.find(x=>x.id===_assignProductId);
-  if(!p){ 
-    // ✅ TUZATMA: Agar tovar tanlangan bo'lmasa, oxirgi tanlanganni qayta yukla
-    const lastProductId = sessionStorage.getItem('_lastAssignedProduct');
-    if(lastProductId && DB.products.find(x=>x.id===lastProductId)){
-      _assignProductId = lastProductId;
-      const p2 = DB.products.find(x=>x.id===_assignProductId);
-      if(p2){
-        renderAssignSerialProductInfo();
-        toast(`🔄 Tovar qayta yuklandi: "${p2.name}"`,'blue');
-        return doAssignBarcode(code, format);
-      }
-    }
-    toast('❌ Avval tovarni tanlang','red'); 
-    closeAssignBarcode(); 
-    return; 
-  }
+  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
 
   // MUHIM: kod endi avtomatik ravishda "barcode" deb hisoblanmaydi.
   // Skanerlangan/qo'lda kiritilgan kodni qaysi maydonga (📦 Barcode yoki
@@ -5356,71 +5203,20 @@ function doRegisterSerialUnit(code, format){
   code = (code||'').trim();
   if(!code) return;
 
-  // ✅ TUZATILDI (jiddiy mantiqiy xato shu yerda edi): ilgari, agar
-  // skanerlangan koddan GTIN chiqarilsa-yu, lekin bazadagi HECH BIR
-  // tovarning barcode maydoniga mos kelmasa (masalan tanlangan tovar —
-  // "Mineral suv" — emas, tasodifan boshqa tovar — "Coca-Cola" — ning
-  // kodi skaner qilingan bo'lsa, va Coca-Cola'ning o'zi hali bazada
-  // barcode bilan ro'yxatga olinmagan bo'lsa), tizim kodning kimga
-  // tegishli ekanini UMUMAN TEKSHIRMASDAN uni to'g'ridan-to'g'ri joriy
-  // TANLANGAN tovarga (_assignProductId) biriktirib yuborardi. Natijada
-  // Coca-Cola kodi noto'g'ri ravishda Mineral suvning ro'yxatiga yozilib,
-  // Mineral suvning "ro'yxatdan o'tmagan" soni soxta ravishda kamayardi.
-  //
-  // TO'G'RI MANTIQ: kodni ro'yxatga olishdan OLDIN, agar undan GTIN
-  // (GS1 AI(01)) chiqarilsa, u albatta TANLANGAN tovarning o'z barcode'iga
-  // mos kelishi SHART. Mos kelmasa — bu kod boshqa mahsulotga tegishli
-  // deb hisoblanadi va HECH QACHON tanlangan tovarga yozilmaydi (avtomatik
-  // "tuzatib" boshqa tovarga ham o'tkazilmaydi — bu adminni chalg'itishi
-  // mumkin edi), aksincha aniq xatolik ko'rsatiladi va admin o'zi to'g'ri
-  // tovarni tanlashi so'raladi.
-  let truep = DB.products.find(x=>x.id===_assignProductId);
-
+  // MUHIM (YANGI MANTIQ): "Donalarni ro'yxatga olish" endi tovarning umumiy
+  // barcode/GTIN'iga BUTUNLAY BOG'LIQ EMAS — QR/DataMatrix kod hech qanday
+  // GTIN ma'lumotini o'z ichiga olmasligi mumkin (masalan qopqoqdagi tasodifiy
+  // QR). Shu sababli tovar avtomatik "topilmaydi" — buning o'rniga ADMIN
+  // yuqoridagi tanlagichdan qaysi tovarni ro'yxatga olayotganini o'zi
+  // TANLAYDI, va har bir skanerlangan kod aynan SHU tanlangan tovarga
+  // yoziladi. Barcode faqat sotishda, QR shikastlangan holatda zaxira
+  // sifatida ishlatiladi — bu yerga aloqasi yo'q.
+  const truep = DB.products.find(x=>x.id===_assignProductId);
   if(!truep){
     toast('⚠️ Avval tovarni tanlang','red');
     document.getElementById('assign-status').textContent = "⚠️ Avval yuqoridagi ro'yxatdan tovarni tanlang";
     document.getElementById('assign-status').style.color = 'var(--red)';
     return;
-  }
-
-  const detectedGtin = extractGTIN(code);
-  if(detectedGtin){
-    if(truep.barcode){
-      // Tanlangan tovarning o'z GTIN'i ma'lum — skanerlangan kod ANIQ shu
-      // GTIN'ga mos kelishi kerak.
-      if(!codesMatch(truep.barcode, detectedGtin)){
-        // Qaysi tovarga tegishli ekanini (bo'lsa) faqat XABAR uchun topamiz —
-        // hech qachon avtomatik shunga o'tkazilmaydi/biriktirilmaydi.
-        const other = DB.products.find(p=>p.id!==truep.id && p.barcode && codesMatch(p.barcode, detectedGtin));
-        const msg = other
-          ? `⚠️ Bu kod "${other.name}"ga tegishli, "${truep.name}"ga emas!`
-          : `⚠️ Bu kod "${truep.name}"ga tegishli emas!`;
-        toast(msg,'red');
-        document.getElementById('assign-status').textContent = other
-          ? `⚠️ Bu kod boshqa mahsulotga tegishli: "${other.name}". Yuqoridan to'g'ri tovarni tanlang.`
-          : `⚠️ Bu kod boshqa mahsulotga tegishli — tanlangan tovar ("${truep.name}") emas.`;
-        document.getElementById('assign-status').style.color = 'var(--red)';
-        if(navigator.vibrate) navigator.vibrate([80,60,80]);
-        return; // ❌ RO'YXATGA OLINMAYDI
-      }
-    } else {
-      // Tanlangan tovarning o'z barcode/GTIN'i hali kiritilmagan — o'zi bilan
-      // solishtirib bo'lmaydi, lekin agar bu GTIN aniq BOSHQA (barcode'i
-      // ma'lum) tovarga tegishli bo'lsa, baribir rad etamiz.
-      const other = DB.products.find(p=>p.id!==truep.id && p.barcode && codesMatch(p.barcode, detectedGtin));
-      if(other){
-        toast(`⚠️ Bu kod "${other.name}"ga tegishli, "${truep.name}"ga emas!`,'red');
-        document.getElementById('assign-status').textContent = `⚠️ Bu kod boshqa mahsulotga tegishli: "${other.name}". Yuqoridan to'g'ri tovarni tanlang.`;
-        document.getElementById('assign-status').style.color = 'var(--red)';
-        if(navigator.vibrate) navigator.vibrate([80,60,80]);
-        return; // ❌ RO'YXATGA OLINMAYDI
-      }
-      // Hech qanday tovarning barcode'iga mos kelmadi — bu, ehtimol, hali
-      // umumiy kodi bazaga kiritilmagan yangi tovar. Solishtirish uchun
-      // asos yo'qligi sababli, tanlangan tovarga davom etishga ruxsat
-      // beramiz (bu holat quyidagi crossProduct/serialCodes tekshiruvi
-      // bilan ham qo'shimcha himoyalangan).
-    }
   }
 
   // 1) FORMAT BO'YICHA TEKSHIRISH (dekoder format qaytargan bo'lsa): agar
@@ -5444,15 +5240,32 @@ function doRegisterSerialUnit(code, format){
   }
 
   // 3) Bu kod BOSHQA biror tovarga allaqachon dona sifatida biriktirilgan
-  //    bo'lishi mumkin (masalan admin tovarni almashtirishni unutgan) —
-  //    shu holatda ogohlantiramiz, chunki bitta QR ikkita tovarga tegishli
-  //    bo'lib qolmasligi kerak.
+  //    bo'lishi mumkin (masalan admin tovarni almashtirishni unutgan, yoki
+  //    ilgarigi versiyadagi xato — "tanlov o'zi almashib ketish" — sababli).
+  //    Bunday holatda avtomatik hech narsa o'zgartirmaymiz (bitta QR ikkita
+  //    tovarga tegishli bo'lib qolmasligi kerak), lekin adminga BITTA
+  //    tasdiqlash bilan kodni TO'G'RI tovarga o'tkazish imkonini beramiz —
+  //    aks holda avvalgi xato tufayli noto'g'ri yozilgan kodlar abadiy
+  //    "band" bo'lib qolaveradi.
   const crossProduct = DB.products.find(x=>x.id!==truep.id && x.serialCodes && x.serialCodes[code]);
   if(crossProduct){
-    toast(`⚠️ Bu kod allaqachon "${crossProduct.name}"da ro'yxatga olingan!`,'red');
-    document.getElementById('assign-status').textContent = `⚠️ Bu dona "${crossProduct.name}"ga tegishli — tovarni to'g'ri tanlaganingizni tekshiring`;
-    document.getElementById('assign-status').style.color = 'var(--red)';
-    return;
+    const confirmMsg = `Bu dona hozir "${crossProduct.name}"da ro'yxatga olingan, lekin siz "${truep.name}"ni tanlagansiz.\n\nAgar bu XATO bo'lsa (masalan avvalgi xato tufayli noto'g'ri tovarga yozilgan bo'lsa) — "OK" bosing, kod "${truep.name}"ga o'tkaziladi.\n\nAgar bu kod haqiqatan "${crossProduct.name}"ga tegishli bo'lsa — "Bekor qilish" bosing va to'g'ri tovarni qayta tanlang.`;
+    if(window.confirm(confirmMsg)){
+      delete crossProduct.serialCodes[code];
+      // MUHIM: `null` emas, aynan deleteField() ishlatiladi — aks holda
+      // Firestore'da maydon "null" qiymat bilan QOLIB ketardi (o'chmasdi),
+      // bu esa Object.keys(...).length orqali hisoblanadigan "ro'yxatga
+      // olingan dona soni"ni keyinchalik NOTO'G'RI (haddan ortiq) qilib
+      // ko'rsatib qo'yardi.
+      fbUpdateProductFields(crossProduct.id, {[`serialCodes.${code}`]: deleteField()}).catch(e=>console.error(e));
+      toast(`🔧 Kod "${crossProduct.name}"dan olib tashlandi — endi "${truep.name}"ga yozilmoqda...`,'amber');
+      // Endi kod TO'G'RI tovarga (truep) yoziladi — pastdagi oddiy
+      // ro'yxatga olish oqimi davom etadi (qayta chaqirmasdan).
+    } else {
+      document.getElementById('assign-status').textContent = `⚠️ Bekor qilindi — bu dona "${crossProduct.name}"ga tegishli deb qoldi`;
+      document.getElementById('assign-status').style.color = 'var(--red)';
+      return;
+    }
   }
 
   const registeredBefore = Object.keys(truep.serialCodes||{}).length;
