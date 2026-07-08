@@ -4567,7 +4567,12 @@ window.scanDoRestock = function(){
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
-    resetScanForNext();
+    // TUZATILDI: avtomatik rejimda dublikat-filtrni (preserveDedup=true)
+    // TOZALAMAYMIZ — aks holda kamera hali ham xuddi shu kodga qarab tursa,
+    // keyingi kadrda yana "yangi kod" deb qabul qilinib, bitta tovar
+    // soniyasiga o'nlab marta kirim qilinib ketaverardi (scanAddToCart'dagi
+    // bilan bir xil tuzatish — pastdagi izohga qarang).
+    resetScanForNext(isAutoScanMode());
   } else {
     // Oddiy barcode bo'lsa - eski usulda ishlaydi
     const stockBefore = prod.stock;
@@ -4598,7 +4603,17 @@ window.scanDoRestock = function(){
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
-    resetScanForNext();
+    // TUZATILDI (ASOSIY BUG): ilgari bu yerda resetScanForNext() argumentsiz
+    // chaqirilardi — bu esa _lastProcessedCode dublikat-filtrini DARHOL
+    // tozalab yuborardi. Natijada: oddiy (umumiy GTIN) barcode turidagi
+    // tovarni skanerlashda, kamera hali ham xuddi shu jismoniy tovarga
+    // qarab tursa (foydalanuvchi uni olib ulgurmagan bo'lsa), keyingi
+    // kadrda (~30 fps) tizim buni "yangi skaner" deb qabul qilib, bitta
+    // tovarni soniyasiga o'nlab marta kirim qilib yuborardi. Endi
+    // scanAddToCart()dagi kabi preserveDedup=isAutoScanMode() beriladi —
+    // shunda avtomatik rejimda kod dublikat-filtri tovar kamera oldidan
+    // OLIB QO'YILGUNCHA (yoki ~450ms ko'rinmay qolguncha) ishlab turadi.
+    resetScanForNext(isAutoScanMode());
   }
 }
 
