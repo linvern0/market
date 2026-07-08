@@ -391,7 +391,7 @@
   <div id="history-summary" style="margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Sana/Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Narx</th><th>Jami</th><th>Sotuvchi</th><th>Holat</th><th>Amal</th></tr></thead>
+      <thead><tr><th>Sana/Vaqt</th><th>Tovar</th><th>Kod</th><th>Miqdor</th><th>Narx</th><th>Jami</th><th>Sotuvchi</th><th>Holat</th><th>Amal</th></tr></thead>
       <tbody id="history-body"></tbody>
     </table>
   </div>
@@ -531,7 +531,7 @@
   <div id="seller-daily-summary" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Vaqt</th><th>Tovar</th><th>Hajm</th><th>Miqdor</th><th>Jami</th><th>Holat</th><th>Qaytarish</th></tr></thead>
+      <thead><tr><th>Vaqt</th><th>Tovar</th><th>Hajm</th><th>Kod</th><th>Miqdor</th><th>Jami</th><th>Holat</th><th>Qaytarish</th></tr></thead>
       <tbody id="my-sales-body"></tbody>
     </table>
   </div>
@@ -1081,6 +1081,23 @@ window.cart = {};
 // muammoni to'g'irlash uchun ishlatiladi (pastga qarang: scanAddToCart,
 // removeFromCart, clearCart, doCartSell).
 window.cartSerialCodes = {}; // { productId: [code, code, ...] }
+
+// Sotuv yozuvi uchun kod ma'lumotini aniqlaydi:
+//  - Agar shu tovar savatga QR/DataMatrix (yoki seriya) kod skanerlab
+//    qo'shilgan bo'lsa — o'sha noyob kod(lar) qaytariladi (codeType:'qrCode').
+//  - Aks holda, agar tovarning umumiy Barcode (GTIN/EAN) maydoni to'ldirilgan
+//    bo'lsa — o'sha barcode qaytariladi (codeType:'barcode').
+//  - Hech biri bo'lmasa — bo'sh qiymat.
+function saleCodeInfo(id, p){
+  const codes = cartSerialCodes[id];
+  if(codes && codes.length){
+    return { code: codes.join(', '), codeType: 'qrCode' };
+  }
+  if(p && p.barcode){
+    return { code: p.barcode, codeType: 'barcode' };
+  }
+  return { code: '', codeType: '' };
+}
 
 let knownSaleIds = null;
 let debtFilter = 'active';
@@ -2187,8 +2204,9 @@ window.doDebtSell = async function(){
   // Sales va product stock — local
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
+    const {code, codeType} = saleCodeInfo(id, p);
     const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,
-      seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
+      seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||'',code,codeType};
     localUpsertSale(sale);
     p.stock = p.stock - qty; // lokal: joyida o'zgartiramiz (obyekt referensi saqlanadi)
   });
@@ -2442,7 +2460,8 @@ window.doCartSell=async function(){
   const writes=[];
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
-    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
+    const {code, codeType} = saleCodeInfo(id, p);
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false,code,codeType};
     writes.push(fbSaveSale(sale));
     // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
     // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
@@ -2559,6 +2578,17 @@ window.renderSellGrid=function(){
   }
 }
 
+// Sotuv jadvallarida (Mening sotuvlarim / Savdo tarixi) ko'rsatish uchun
+// sotilgan kod belgisi — Barcode bo'lsa 📦, QR/DataMatrix bo'lsa 📷,
+// kod bo'lmasa "—".
+function saleCodeBadge(s){
+  if(!s.code) return '—';
+  const isQr = s.codeType==='qrCode' || s.codeType==='serial';
+  const icon = isQr ? '📷' : '📦';
+  const color = isQr ? 'var(--amber)' : 'var(--accent)';
+  return `<span style="display:inline-flex;align-items:center;gap:3px;font-family:monospace;font-size:12px;color:${color}">${icon} ${s.code}</span>`;
+}
+
 // ===== MY SALES =====
 window.mySalesFilter = 'today';
 window.setMySalesFilter = function(type){
@@ -2619,7 +2649,7 @@ window.renderMySales=function(){
   none.style.display='none';
   tbody.innerHTML=sales.map(s=>{
     const canRevert=!s.reverted&&(now-new Date(s.date))/60000<=revertMins;
-    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
+    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td data-label="Kod">${saleCodeBadge(s)}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
   }).join('');
 }
 window.revertSale=function(id){
@@ -2664,7 +2694,7 @@ window.renderHistory=function(){
   const totalRev=sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
   const cnt=sales.filter(s=>!s.reverted).length;
   sumEl.innerHTML=`<div style="display:flex;gap:.75rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
-  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
+  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Kod">${saleCodeBadge(s)}</td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
 }
 window.adminRevert=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
@@ -2691,8 +2721,8 @@ window.quickHistoryFilter=function(type){
   renderHistory();
 }
 window.exportCSV=function(){
-  let csv='Sana,Tovar,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
-  DB.sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
+  let csv='Sana,Tovar,Kod,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
+  DB.sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}","${s.code||''}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
   download('savdo_tarixi.csv','text/csv',csv);
 }
 
