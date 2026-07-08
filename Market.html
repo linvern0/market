@@ -4760,9 +4760,12 @@ function populateAssignSerialProductSelect(){
 // skanerlangan HAR BIR kod aynan shu tanlangan tovarga yoziladi, toki admin
 // boshqa tovarni tanlamaguncha (aralash uyumda erkin almashish shu orqali).
 window.onAssignSerialProductChange = function(productId){
+  console.log('✅ Tovar tanlandi:', productId); // Debug
   _assignProductId = productId;
   _recentSerialCodes.clear();
   renderAssignSerialProductInfo();
+  // ✅ TUZATMA: Tanlagan tovarni ANIQ saqlash
+  sessionStorage.setItem('_lastAssignedProduct', productId);
 };
 
 function renderAssignSerialProductInfo(){
@@ -5085,7 +5088,22 @@ window.doAssignBarcode = async function(code, format){
   }
 
   const p = DB.products.find(x=>x.id===_assignProductId);
-  if(!p){ toast('Tovar topilmadi','red'); closeAssignBarcode(); return; }
+  if(!p){ 
+    // ✅ TUZATMA: Agar tovar tanlangan bo'lmasa, oxirgi tanlanganni qayta yukla
+    const lastProductId = sessionStorage.getItem('_lastAssignedProduct');
+    if(lastProductId && DB.products.find(x=>x.id===lastProductId)){
+      _assignProductId = lastProductId;
+      const p2 = DB.products.find(x=>x.id===_assignProductId);
+      if(p2){
+        renderAssignSerialProductInfo();
+        toast(`🔄 Tovar qayta yuklandi: "${p2.name}"`,'blue');
+        return doAssignBarcode(code, format);
+      }
+    }
+    toast('❌ Avval tovarni tanlang','red'); 
+    closeAssignBarcode(); 
+    return; 
+  }
 
   // MUHIM: kod endi avtomatik ravishda "barcode" deb hisoblanmaydi.
   // Skanerlangan/qo'lda kiritilgan kodni qaysi maydonga (📦 Barcode yoki
