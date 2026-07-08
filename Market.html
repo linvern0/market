@@ -2837,18 +2837,76 @@ window.renderStockHistory=function(){
   const tbody=document.getElementById('sh-body'), none=document.getElementById('no-sh');
   if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
-  tbody.innerHTML=rows.map(r=>{
-    const isIn=r.type==='in';
-    return `<tr>
-      <td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(r.date)}</td>
-      <td data-label="Tovar"><strong>${r.productName}</strong></td>
-      <td>${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td>
+
+  // ✅ YANGI: GURUHLASH. Ilgari har bir yozuv (masalan donalab skanerlab
+  // 30 marta kirim qilingan bo'lsa — 30 ta) alohida qatorda ko'rsatilardi —
+  // bu jadvalni o'qib bo'lmas darajada uzun va chalkash qilib qo'yardi.
+  // Endi bir xil TOVAR + TUR (kirim/chiqim) + KUN bo'yicha yozuvlar bitta
+  // qatorga yig'iladi ("A tovar +30 ta"), qatorni bosib ochilsa esa har bir
+  // aniq vaqt alohida ko'rinadi.
+  const groups = new Map();
+  for(const r of rows){
+    const day = (r.date||'').slice(0,10); // 'YYYY-MM-DD'
+    const key = `${r.productId}_${r.type}_${day}`.replace(/[^a-zA-Z0-9_]/g,'');
+    let g = groups.get(key);
+    if(!g){
+      g = { key, productName:r.productName, volume:r.volume, type:r.type, entries:[], qty:0 };
+      groups.set(key, g);
+    }
+    g.entries.push(r);
+    g.qty += r.qty;
+  }
+  const groupList = Array.from(groups.values());
+  groupList.forEach(g=>{
+    // Guruh ichida yozuvlarni ESKIDAN YANGIGA (vaqt bo'yicha o'sish tartibida)
+    // joylashtiramiz, shunda "ochilganda" tepadan pastga xronologik o'qiladi.
+    g.entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    g.stockBefore = g.entries[0].stockBefore;
+    g.stockAfter = g.entries[g.entries.length-1].stockAfter;
+    g.firstDate = g.entries[0].date;
+    g.lastDate = g.entries[g.entries.length-1].date;
+  });
+  // Guruhlarning o'zi — ENG SO'NGGI amal vaqti bo'yicha, yangisi tepada.
+  groupList.sort((a,b)=> new Date(b.lastDate) - new Date(a.lastDate));
+
+  tbody.innerHTML = groupList.map(g=>{
+    const isIn = g.type==='in';
+    const isMulti = g.entries.length>1;
+    const timeLabel = isMulti ? `${timeStr(g.firstDate)} — ${timeStr(g.lastDate)}` : timeStr(g.firstDate);
+    const countBadge = isMulti ? ` <span style="font-size:11px;color:var(--text3);font-weight:400">(${g.entries.length} marta)</span>` : '';
+    const reasonLabel = isMulti ? `${g.entries.length} ta alohida amal — vaqtlarini ko'rish uchun qatorni bosing` : (g.entries[0].reason||'—');
+    const groupRow = `<tr ${isMulti?`onclick="toggleStockHistGroup('${g.key}')" style="cursor:pointer"`:''}>
+      <td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${isMulti?`<span id="sh-arrow-${g.key}" style="display:inline-block;width:1em">▸</span> `:''}${timeLabel}</td>
+      <td data-label="Tovar"><strong>${g.productName}</strong>${countBadge}</td>
+      <td>${g.volume?`<span class="badge blue">${g.volume} L</span>`:'—'}</td>
       <td><span class="badge ${isIn?'green':'red'}">${isIn?'📦 Kirim':'↩ Chiqim'}</span></td>
-      <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${r.qty} ta</td>
-      <td style="font-size:13px;color:var(--text2)">${r.reason||'—'}</td>
-      <td style="font-size:13px">${r.stockBefore??'?'} → <strong>${r.stockAfter??'?'}</strong></td>
+      <td style="font-weight:700;color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${g.qty} ta</td>
+      <td style="font-size:13px;color:var(--text2)">${reasonLabel}</td>
+      <td style="font-size:13px">${g.stockBefore??'?'} → <strong>${g.stockAfter??'?'}</strong></td>
     </tr>`;
+    if(!isMulti) return groupRow;
+    const detailRow = `<tr id="sh-detail-${g.key}" style="display:none">
+      <td colspan="7" style="padding:0;background:var(--bg2)">
+        <div style="padding:.5rem 1rem;display:flex;flex-direction:column;gap:0">
+          ${g.entries.map(e=>`
+            <div style="display:grid;grid-template-columns:110px 1fr 90px;gap:.75rem;align-items:center;font-size:12.5px;color:var(--text2);padding:.3rem .5rem;border-bottom:1px dashed var(--border)">
+              <span>🕐 ${timeStr(e.date)}</span>
+              <span style="color:var(--text3)">${e.reason||''}</span>
+              <span style="text-align:right;white-space:nowrap"><strong style="color:${isIn?'var(--green)':'var(--red)'}">${isIn?'+':'−'}${e.qty}</strong> · ${e.stockBefore??'?'}→${e.stockAfter??'?'}</span>
+            </div>`).join('')}
+        </div>
+      </td>
+    </tr>`;
+    return groupRow + detailRow;
   }).join('');
+}
+window.toggleStockHistGroup = function(key){
+  const row = document.getElementById('sh-detail-'+key);
+  const arrow = document.getElementById('sh-arrow-'+key);
+  if(!row) return;
+  const willOpen = row.style.display === 'none';
+  row.style.display = willOpen ? 'table-row' : 'none';
+  if(arrow) arrow.textContent = willOpen ? '▾' : '▸';
 }
 window.exportStockCSV=function(){
   let csv='Sana,Tovar,Hajm,Turi,Miqdor,Sabab,Oldingi,Keyin\n';
@@ -4220,7 +4278,30 @@ function looksLikePlainBarcodeForProduct(code, product){
 function findProductByCode(code){
   if(!code) return null;
 
-  // 1) Avval asosiy barcode (GTIN/EAN) bo'yicha qidiramiz
+  // ✅ TUZATILDI (MUHIM XATO): "umumiy GTIN" (01) va "noyob seriya" (21)
+  // ikkalasini olib yuruvchi to'liq GS1 kod ilgari FAQAT GTIN qismi
+  // bo'yicha solishtirilib, 'barcode' (ya'ni "cheksiz marta qo'shsa
+  // bo'ladigan umumiy kod") deb hisoblanardi — chunki product.barcode
+  // maydonida ANIQ shu GTIN saqlanadi va codesMatch ikkalasini ham GTIN'ga
+  // normallashtirib solishtiradi. Natijada: bitta jismoniy donaning
+  // to'liq (GTIN+seriya) kodi omborga kirim qilishda "oddiy barcode"
+  // sifatida qabul qilinib, HECH QANDAY dublikat tekshiruvisiz xohlagancha
+  // marta (masalan avtomatik rejimda soniyasiga bir necha marta) qo'shilib
+  // ketardi — bitta shisha bir zumda 31 taga aylanib qolgani shu sabab edi.
+  //
+  // TO'G'RI MANTIQ: agar kodda haqiqiy seriya qismi (AI 21) bo'lsa, bu —
+  // ALOHIDA jismoniy donani anglatadi, garchi undagi GTIN boshqa
+  // donalarniki bilan bir xil ko'rinsa ham. Shu sababli bunday kod HAR
+  // DOIM 'serial' (noyob, faqat 1 marta qabul qilinadigan) sifatida
+  // ko'rib chiqilishi kerak — pastdagi oddiy 'barcode' tekshiruvidan OLDIN.
+  const parsedForType = parseGS1(code);
+  if(parsedForType.isGS1 && parsedForType.serial){
+    const product = DB.products.find(p=>p.barcode && codesMatch(p.barcode, parsedForType.gtin));
+    if(product) return { product, type: 'serial' };
+  }
+
+  // 1) Avval asosiy barcode (GTIN/EAN — SERIYASIZ, ya'ni umumiy/qayta
+  //    ishlatiladigan kod) bo'yicha qidiramiz
   for(const product of DB.products){
     if(product.barcode && codesMatch(product.barcode, code)){
       return { product, type: 'barcode' };
@@ -4243,6 +4324,7 @@ function findProductByCode(code){
 
   return null;
 }
+
 
 window.processCode = function(code){
   code = (code||'').trim();
