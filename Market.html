@@ -2,8 +2,17 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Do'kon Boshqaruvi</title>
+
+<!-- PWA: ilovani Android/iOS/Windows'da "o'rnatiladigan" qilish uchun -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1e293b">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Do'kon">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -283,6 +292,7 @@
     <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa</button>
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
     <button class="tab" onclick="showPage('history','admin')">📋 Savdo tarixi</button>
+    <button class="tab" onclick="showPage('profit','admin')">💹 Foyda</button>
     <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
     <button class="tab" onclick="showPage('debts','admin')">💳 Qarzlar</button>
     <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
@@ -381,6 +391,30 @@
     </table>
   </div>
   <p id="no-history" style="color:var(--text3);text-align:center;padding:3rem;display:none">Savdo tarixi topilmadi.</p>
+</div>
+
+<div class="page" id="page-profit">
+  <div class="section-header">
+    <div><h2>💹 Foyda</h2><p>Foyda = Sotuv narxi − Tannarx</p></div>
+    <select id="profit-period" onchange="renderProfit()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
+      <option value="today">📅 Kunlik (bugun)</option>
+      <option value="week">🗓 Haftalik (bu hafta)</option>
+      <option value="month">📆 Oylik (bu oy)</option>
+      <option value="all">Hammasi</option>
+    </select>
+  </div>
+  <div id="profit-warning" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);border-radius:10px;padding:.85rem 1rem;font-size:13px;margin-bottom:1rem;font-weight:500"></div>
+  <div class="stat-grid" id="profit-stat-grid"></div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">Tovarlar bo'yicha foyda</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Tovar</th><th>Sotilgan miqdor</th><th>Sotuv summasi</th><th>Tannarx summasi</th><th>Foyda / Zarar</th></tr></thead>
+        <tbody id="profit-body"></tbody>
+      </table>
+    </div>
+    <p id="no-profit" style="color:var(--text3);text-align:center;padding:2rem;display:none">Bu davrda savdo yo'q.</p>
+  </div>
 </div>
 
 <div class="page" id="page-stock-history">
@@ -517,10 +551,10 @@
       </div>
       <div class="field"><label>Narx (so'm) *</label><input id="p-price" type="number" min="0" placeholder="5000"></div>
     </div>
-    <div class="form-row">
-      <div class="field"><label>Tannarx (so'm) <span style="color:var(--text3);font-weight:400">(ixtiyoriy — xarid narxi)</span></label><input id="p-cost" type="number" min="0" placeholder="3000"></div>
-      <div class="field" id="profit-display" style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius);padding:.65rem .9rem;align-items:center;justify-content:center">
-        <span style="font-size:12px;color:var(--text3);font-weight:500">Foyda: <span id="p-profit-val" style="color:var(--green);font-weight:700;font-size:16px">0 so'm</span></span>
+    <div class="form-row full">
+      <div class="field">
+        <label>🏷 Tannarx (so'm) <span style="color:var(--text3);font-weight:400">(ixtiyoriy — faqat adminga ko'rinadi, foyda hisobi uchun)</span></label>
+        <input id="p-cost" type="number" min="0" placeholder="Masalan: 3500">
       </div>
     </div>
     <div class="form-row" id="p-qty-row">
@@ -782,6 +816,9 @@
   </button>
   <button id="mtab-history" onclick="showPage('history','admin')" style="display:none">
     <span class="tab-icon">📋</span>Tarix
+  </button>
+  <button id="mtab-profit" onclick="showPage('profit','admin')" style="display:none">
+    <span class="tab-icon">💹</span>Foyda
   </button>
   <button id="mtab-stock-history" onclick="showPage('stock-history','admin')" style="display:none">
     <span class="tab-icon">🚚</span>Kirim
@@ -1063,6 +1100,7 @@ function refreshSaleViews(){
   if(document.getElementById('page-history')?.classList.contains('active')) renderHistory();
   if(document.getElementById('page-my-sales')?.classList.contains('active')) renderMySales();
   if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+  if(document.getElementById('page-profit')?.classList.contains('active')) renderProfit();
 }
 
 function updateOfflineBanner(){
@@ -1222,7 +1260,7 @@ function startListeners(){
       renderSellGrid();
       initHistory();
       if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
-    },20);
+    },120);
   });
   let salesDebounce=null;
   onSnapshot(collection(db,'sales'), snap=>{
@@ -1242,7 +1280,7 @@ function startListeners(){
       if(document.getElementById('page-history')?.classList.contains('active')) renderHistory();
       if(document.getElementById('page-my-sales')?.classList.contains('active')) renderMySales();
       if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
-    },20);
+    },120);
   });
   let shDebounce=null;
   onSnapshot(collection(db,'restocks'), snap=>{
@@ -1251,7 +1289,7 @@ function startListeners(){
     clearTimeout(shDebounce);
     shDebounce=setTimeout(()=>{
       if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
-    },20);
+    },120);
   });
   let debtDebounce=null;
   onSnapshot(collection(db,'debts'), snap=>{
@@ -1260,7 +1298,7 @@ function startListeners(){
     clearTimeout(debtDebounce);
     debtDebounce=setTimeout(()=>{
       if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
-    },20);
+    },120);
   });
   onSnapshot(collection(db,'debtors'), snap=>{
     DB.debtors = snap.docs.map(d=>d.data());
@@ -1331,7 +1369,7 @@ window.doLogin = function(){
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
-    ['dashboard','products','history','stock-history','debts','settings'].forEach(t=>{
+    ['dashboard','products','history','profit','stock-history','debts','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
     ['sell','my-sales'].forEach(t=>{
@@ -1345,7 +1383,7 @@ window.doLogin = function(){
     ['sell','my-sales','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
-    ['dashboard','products','history','stock-history','settings'].forEach(t=>{
+    ['dashboard','products','history','profit','stock-history','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
     });
     showPage('sell','seller');
@@ -1372,6 +1410,7 @@ window.showPage = function(page, role){
   const mtab = document.getElementById('mtab-'+page);
   if(mtab) mtab.classList.add('active');
   if(page==='history'){ initHistory(); renderHistory(); }
+  if(page==='profit'){ renderProfit(); }
   if(page==='my-sales'){ setMySalesFilter('today'); }
   if(page==='sell') renderSellGrid();
   if(page==='settings') document.getElementById('revert-minutes').value=DB.revertMinutes;
@@ -1397,21 +1436,10 @@ window.renderDashboard = function(){
   const totalQty = filtered.reduce((a,s)=>a+s.qty,0);
   const outStock = DB.products.filter(p=>p.stock===0).length;
   const invValue = DB.products.reduce((a,p)=>a+p.price*p.stock,0);
-  
-  // Foyda hisoblash
-  let totalProfit = 0;
-  filtered.forEach(s=>{
-    const prod = DB.products.find(p=>p.name===s.productName);
-    const costPrice = prod?.costPrice || 0;
-    const itemProfit = (s.sellingPrice || (s.total/s.qty)) - costPrice;
-    totalProfit += itemProfit * s.qty;
-  });
-  
   document.getElementById('stat-grid').innerHTML = `
     <div class="stat green"><div class="val">${fmt(totalRev)}</div><div class="lbl">💰 Savdo hajmi (so'm)</div></div>
     <div class="stat blue"><div class="val">${filtered.length}</div><div class="lbl">🧾 Savdo soni</div></div>
     <div class="stat amber"><div class="val">${totalQty}</div><div class="lbl">📦 Sotilgan miqdor</div></div>
-    <div class="stat ${totalProfit>=0?'green':'red'}"><div class="val">${fmt(totalProfit)}</div><div class="lbl">💵 Foyda (so'm)</div></div>
     <div class="stat red"><div class="val">${outStock}</div><div class="lbl">⚠️ Tugagan tovarlar</div></div>
     <div class="stat blue"><div class="val">${fmt(invValue)}</div><div class="lbl">🏬 Ombordagi tovar qiymati</div></div>`;
   const recent = DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), now)).slice().reverse();
@@ -1447,19 +1475,53 @@ window.renderDashboard = function(){
 }
 
 // ===== PRODUCTS =====
+// TEZLIK UCHUN OPTIMALLASHTIRILDI: ilgari bu funksiya HAR safar (hatto
+// bitta mahsulot o'zgarganda ham) butun to'rni (grid.innerHTML) qaytadan
+// yozar edi. Katta ro'yxatlarda (~200+ mahsulot) bu sekin ishlar va past
+// sinfli qurilmalarda "qotib qolish" (jank) hissini berardi. Endi
+// renderSellGrid'dagi kabi diff-based usul qo'llanildi: faqat YANGI,
+// O'CHIRILGAN yoki HAQIQATDA o'zgargan (data-sig orqali tekshiriladi)
+// kartochkalar qayta chiziladi, qolganlari DOM'da tegilmay qoladi.
 window.renderProducts = function(){
   const grid=document.getElementById('product-grid');
   const none=document.getElementById('no-products');
   if(!grid) return;
   const q=(document.getElementById('prod-search')?.value||'').toLowerCase().trim();
   const list = q ? DB.products.filter(p=>p.name.toLowerCase().includes(q)) : DB.products;
-  if(!list.length){ grid.innerHTML=''; none.style.display='block'; none.textContent = q ? "Hech narsa topilmadi." : "Hali tovar yo'q."; return; }
+  if(!list.length){
+    grid.innerHTML='';
+    none.style.display='block';
+    none.textContent = q ? "Hech narsa topilmadi." : "Hali tovar yo'q.";
+    updateAssignQueueBtn();
+    return;
+  }
   none.style.display='none';
-  grid.innerHTML = list.map(p=>{
+
+  const existing = new Map();
+  for(const card of grid.children){
+    if(card.dataset.id) existing.set(card.dataset.id, card);
+  }
+  const newIds = new Set(list.map(p=>p.id));
+  for(const [id, el] of existing){ if(!newIds.has(id)) el.remove(); }
+
+  let lastEl = null;
+  for(const p of list){
     const stockColor=p.stock===0?'red':p.stock<=5?'amber':'green';
     const volLabel = p.volume?`<span class="badge blue" style="margin-top:.3rem">${p.volume} L</span>`:'';
-    return `<div class="prod-card" draggable="true" data-id="${p.id}">
-      <div class="img-wrap">
+    const sig = `${p.stock}|${p.price}|${p.cost}|${p.name}|${p.volume}|${p.img}|${p.barcode}|${p.qrCode}`;
+
+    let card = existing.get(p.id);
+    if(!card){
+      card = document.createElement('div');
+      card.className = 'prod-card';
+      card.draggable = true;
+      card.dataset.id = p.id;
+      bindDragEvents(card);
+    }
+
+    if(card.dataset.sig !== sig){
+      card.dataset.sig = sig;
+      card.innerHTML = `<div class="img-wrap">
         ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="badge ${stockColor}">${p.stock} ta</span></div>
@@ -1469,6 +1531,7 @@ window.renderProducts = function(){
         <div class="prod-name">${p.name}</div>
         ${volLabel}
         <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
+        ${p.cost ? `<div style="font-size:12px;color:var(--text3)">🏷 Tannarx: ${fmt(p.cost)} so'm · <span style="color:${(p.price-p.cost)>=0?'var(--green)':'var(--red)'}">Foyda/dona: ${fmt(p.price-p.cost)} so'm</span></div>` : `<div style="font-size:12px;color:var(--amber)">⚠️ Tannarx kiritilmagan</div>`}
         <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
         <div style="margin-top:.2rem;display:flex;flex-direction:column;gap:.15rem">
           ${p.barcode
@@ -1496,9 +1559,14 @@ window.renderProducts = function(){
           <button class="btn sm" onclick="openEditProduct('${p.id}')">✏️ Tahrirlash</button>
           <button class="btn sm red" onclick="deleteProduct('${p.id}')">🗑 O'chirish</button>
         </div>
-      </div></div>`;
-  }).join('');
-  initDrag();
+      </div>`;
+    }
+
+    // Tartibni saqlaymiz (qo'lda tartiblash — drag&drop — bilan mos kelishi uchun)
+    if(lastEl) lastEl.after(card);
+    else grid.prepend(card);
+    lastEl = card;
+  }
   updateAssignQueueBtn();
 }
 
@@ -1521,13 +1589,10 @@ window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
   ['p-name','p-price','p-cost','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('p-profit-val').textContent = '0 so\'m';
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
   const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='';
-  document.getElementById('p-price').oninput=calculateProfitDisplay;
-  document.getElementById('p-cost').oninput=calculateProfitDisplay;
   openModal('modal-product');
 }
 window.openEditProduct=function(id){
@@ -1536,8 +1601,7 @@ window.openEditProduct=function(id){
   document.getElementById('modal-product-title').textContent='Tovarni tahrirlash';
   document.getElementById('p-name').value=p.name;
   document.getElementById('p-price').value=p.price;
-  document.getElementById('p-cost').value=p.costPrice||'';
-  calculateProfitDisplay();
+  document.getElementById('p-cost').value=p.cost||'';
   document.getElementById('p-img').value=p.img||'';
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
@@ -1547,8 +1611,6 @@ window.openEditProduct=function(id){
   const qr=document.getElementById('p-qty-row');if(qr)qr.style.display='none';
   if(p.img){ document.getElementById('img-preview').src=p.img; document.getElementById('img-preview-wrap').style.display='block'; }
   else document.getElementById('img-preview-wrap').style.display='none';
-  document.getElementById('p-price').oninput=calculateProfitDisplay;
-  document.getElementById('p-cost').oninput=calculateProfitDisplay;
   openModal('modal-product');
 }
 window.previewImg=function(){
@@ -1566,30 +1628,11 @@ window.loadImgFile=function(input){
   };
   reader.readAsDataURL(file);
 }
-window.calculateProfitDisplay=function(){
-  const price=parseFloat(document.getElementById('p-price').value)||0;
-  const costPrice=parseFloat(document.getElementById('p-cost').value)||0;
-  const profit=price-costPrice;
-  const profitPercent=costPrice>0 ? ((profit/costPrice)*100).toFixed(1) : 0;
-  document.getElementById('p-profit-val').textContent=formatPrice(profit)+' so\'m';
-  if(profit<0){
-    document.getElementById('profit-display').style.background='var(--red-bg)';
-    document.getElementById('profit-display').style.borderColor='var(--red-border)';
-    document.getElementById('p-profit-val').style.color='var(--red)';
-  } else if(profit===0){
-    document.getElementById('profit-display').style.background='var(--amber-bg)';
-    document.getElementById('profit-display').style.borderColor='var(--amber-border)';
-    document.getElementById('p-profit-val').style.color='var(--amber)';
-  } else {
-    document.getElementById('profit-display').style.background='var(--green-bg)';
-    document.getElementById('profit-display').style.borderColor='var(--green-border)';
-    document.getElementById('p-profit-val').style.color='var(--green)';
-  }
-}
 window.saveProduct=async function(){
   const name=document.getElementById('p-name').value.trim();
   const price=parseFloat(document.getElementById('p-price').value);
-  const costPrice=parseFloat(document.getElementById('p-cost').value)||0;
+  const costRaw=document.getElementById('p-cost').value;
+  const cost=costRaw===''||costRaw===null||isNaN(parseFloat(costRaw)) ? 0 : parseFloat(costRaw);
   const img=document.getElementById('p-img').value.trim();
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
@@ -1605,7 +1648,7 @@ window.saveProduct=async function(){
 
     name,
     price,
-    costPrice,
+    cost,
     img,
     note,
     volume,
@@ -1624,7 +1667,7 @@ window.saveProduct=async function(){
     id: uid(),
     name,
     price,
-    costPrice,
+    cost,
     stock: qty,
     img,
     note,
@@ -1766,16 +1809,23 @@ window.sortProducts=async function(by){
 }
 
 let dragSrcId=null;
-window.initDrag=function(){
-  document.querySelectorAll('#product-grid .prod-card[data-id]').forEach(card=>{
-    card.addEventListener('dragstart',e=>{ dragSrcId=card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
-    card.addEventListener('dragend',()=>{ card.classList.remove('dragging'); document.querySelectorAll('.prod-card').forEach(c=>c.classList.remove('drag-over')); });
-    card.addEventListener('dragover',e=>{ e.preventDefault(); document.querySelectorAll('.prod-card').forEach(c=>c.classList.remove('drag-over')); card.classList.add('drag-over'); });
-    card.addEventListener('drop', async e=>{
-      e.preventDefault(); card.classList.remove('drag-over');
-      if(!dragSrcId||dragSrcId===card.dataset.id) return;
-      moveProduct(dragSrcId, card.dataset.id);
-    });
+// TUZATILDI: ilgari bu funksiya HAR renderProducts() chaqirilganda BARCHA
+// kartochkalarga qaytadan listener biriktirar edi — chunki o'sha paytda
+// grid.innerHTML har safar to'liq qayta yozilib, kartochkalar doim YANGI
+// DOM elementlari edi (eski listenerlar avtomatik yo'qolardi). Endi
+// renderProducts diff-based bo'lgani uchun (o'zgarmagan kartochka DOM'da
+// saqlanib qoladi), listener'ni faqat kartochka BIRINCHI marta
+// yaratilganda bir marta biriktirish kerak — aks holda bir xil kartochkaga
+// bir nechta marta bir xil listener qo'shilib, drag&drop noto'g'ri
+// ishlab qolishi mumkin edi.
+function bindDragEvents(card){
+  card.addEventListener('dragstart',e=>{ dragSrcId=card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+  card.addEventListener('dragend',()=>{ card.classList.remove('dragging'); document.querySelectorAll('.prod-card').forEach(c=>c.classList.remove('drag-over')); });
+  card.addEventListener('dragover',e=>{ e.preventDefault(); document.querySelectorAll('.prod-card').forEach(c=>c.classList.remove('drag-over')); card.classList.add('drag-over'); });
+  card.addEventListener('drop', async e=>{
+    e.preventDefault(); card.classList.remove('drag-over');
+    if(!dragSrcId||dragSrcId===card.dataset.id) return;
+    moveProduct(dragSrcId, card.dataset.id);
   });
 }
 
@@ -2101,7 +2151,7 @@ window.doDebtSell = async function(){
   // Sales va product stock — local
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
-    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,
       seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
     localUpsertSale(sale);
     p.stock = p.stock - qty; // lokal: joyida o'zgartiramiz (obyekt referensi saqlanadi)
@@ -2190,8 +2240,8 @@ window.renderDebts = function(){
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
     <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
-    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
-    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan (so'm)</div></div>`;
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
+    <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
 
   const container = document.getElementById('debts-list');
   const none = document.getElementById('no-debts');
@@ -2356,7 +2406,7 @@ window.doCartSell=async function(){
   const writes=[];
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
-    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
     writes.push(fbSaveSale(sale));
     // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
     // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
@@ -2384,12 +2434,24 @@ window.handleSellSearchKey=function(e){
     if(!q) return;
     // Avval barcode bo'yicha aniq qidirish (scanner inputi uchun)
     let match = DB.products.find(p=>p.barcode && codesMatch(p.barcode, q) && p.stock>0);
-    // Topilmasa QR/DataMatrix kodi bo'yicha
-    if(!match) match = DB.products.find(p=>p.qrCode && codesMatch(p.qrCode, q) && p.stock>0);
+    let matchType = match ? 'barcode' : null;
+    // Topilmasa QR/DataMatrix kodi bo'yicha (bu — NOYOB kod, faqat 1 marta
+    // sotilishi mumkin, shuning uchun sellCodeMatch orqali o'tkazamiz —
+    // avval bu yerda to'g'ridan-to'g'ri addToCartWithFeedback chaqirilib,
+    // soldCodes/serialCodes umuman TEKSHIRILMASDAN qo'shilardi)
+    if(!match){ match = DB.products.find(p=>p.qrCode && codesMatch(p.qrCode, q) && p.stock>0); if(match) matchType='qrCode'; }
     // Topilmasa nom bo'yicha
-    if(!match) match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0);
+    if(!match){ match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0); matchType=null; }
     if(match){
-      addToCartWithFeedback(match.id, document.querySelector('.sell-card[data-id="'+match.id+'"]'));
+      if(matchType==='qrCode'){
+        const res = sellCodeMatch(match, q, 'qrCode', 1);
+        if(res.ok){
+          toast(`✅ ${match.name} savatga qo'shildi (${q})`,'green');
+          renderSellGrid();
+        }
+      } else {
+        addToCartWithFeedback(match.id, document.querySelector('.sell-card[data-id="'+match.id+'"]'));
+      }
       document.getElementById('sell-search').value='';
       renderSellGrid();
     } else {
@@ -2598,6 +2660,75 @@ window.exportCSV=function(){
   download('savdo_tarixi.csv','text/csv',csv);
 }
 
+// ===== FOYDA (PROFIT) =====
+// Har bir sotuv yozuvida "cost" (tannarx sotuv payti uchun muzlatilgan
+// qiymati) saqlanadi — shunda tovar tannarxi keyinchalik o'zgarsa ham,
+// eski sotuvlarning foydasi TARIXIY jihatdan to'g'ri hisoblanadi.
+// Foyda = (narx - tannarx) * miqdor. Qaytarilgan (reverted) sotuvlar
+// boshqa hisobotlar (Savdo tarixi, Bosh sahifa) bilan bir xil tarzda
+// HISOBGA OLINMAYDI. Qarzga sotilgan (isDebt) savdolar ham, boshqa
+// hisobotlarda bo'lgani kabi, sotuv paytidayoq daromad/foyda deb
+// hisoblanadi (ilovadagi umumiy konventsiyaga mos).
+window.renderProfit = function(){
+  const period = document.getElementById('profit-period')?.value || 'today';
+  const now = new Date();
+  const filtered = DB.sales.filter(s=>{
+    if(s.reverted) return false;
+    const d = new Date(s.date);
+    if(period==='today') return isSameDay(d, now);
+    if(period==='week') return isThisWeek(d, now);
+    if(period==='month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    return true;
+  });
+
+  let totalRev=0, totalCost=0, missingCostCount=0;
+  const prodMap = {};
+  filtered.forEach(s=>{
+    const cost = (typeof s.cost === 'number') ? s.cost : 0;
+    if(!cost) missingCostCount++;
+    const costTotal = cost * s.qty;
+    totalRev += s.total;
+    totalCost += costTotal;
+    const key = s.productName+'|'+(s.volume||'');
+    if(!prodMap[key]) prodMap[key] = {name:s.productName, volume:s.volume||'', qty:0, rev:0, cost:0};
+    prodMap[key].qty += s.qty;
+    prodMap[key].rev += s.total;
+    prodMap[key].cost += costTotal;
+  });
+  const totalProfit = totalRev - totalCost;
+  const margin = totalRev>0 ? (totalProfit/totalRev*100) : 0;
+
+  document.getElementById('profit-stat-grid').innerHTML = `
+    <div class="stat blue"><div class="val">${fmt(totalRev)}</div><div class="lbl">💰 Sotuv summasi (so'm)</div></div>
+    <div class="stat amber"><div class="val">${fmt(totalCost)}</div><div class="lbl">🏷 Tannarx summasi (so'm)</div></div>
+    <div class="stat ${totalProfit>=0?'green':'red'}"><div class="val">${totalProfit>=0?'+':''}${fmt(totalProfit)}</div><div class="lbl">${totalProfit>=0?'📈 Foyda':'📉 Zarar'} (so'm)</div></div>
+    <div class="stat blue"><div class="val">${margin.toFixed(1)}%</div><div class="lbl">📊 Marja</div></div>`;
+
+  const warnEl = document.getElementById('profit-warning');
+  if(missingCostCount>0){
+    warnEl.style.display='block';
+    warnEl.textContent = `⚠️ ${missingCostCount} ta sotuvda tovarning tannarxi kiritilmagan (0 deb hisoblangan) — shu sotuvlar uchun foyda haqiqatdan ko'ra YUQORIROQ ko'rsatilgan bo'lishi mumkin. Aniq hisob uchun "Tovarlar" bo'limida har bir tovarga "Tannarx" kiriting.`;
+  } else {
+    warnEl.style.display='none';
+  }
+
+  const rows = Object.values(prodMap).sort((a,b)=>(b.rev-b.cost)-(a.rev-a.cost));
+  const tbody = document.getElementById('profit-body');
+  const none = document.getElementById('no-profit');
+  if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
+  none.style.display='none';
+  tbody.innerHTML = rows.map(r=>{
+    const profit = r.rev - r.cost;
+    return `<tr>
+      <td><strong>${r.name}</strong>${r.volume?' · '+r.volume+'L':''}</td>
+      <td>${r.qty} ta</td>
+      <td>${fmt(r.rev)} so'm</td>
+      <td>${fmt(r.cost)} so'm</td>
+      <td style="font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}${fmt(profit)} so'm</td>
+    </tr>`;
+  }).join('');
+}
+
 // ===== STOCK HISTORY =====
 let shFilter='today';
 window.setStockHistFilter=function(type){
@@ -2761,6 +2892,17 @@ let _zxingLoading = false;
 let _scanMode = null; // 'admin' | 'seller'
 let _scannedProductId = null;
 let _scannedCode = null;
+// Skanerlangan kodning ANIQ turi — findProductByCode natijasidan olinadi:
+// 'barcode' (umumiy GTIN/EAN — necha marta ham qo'shilaveradi),
+// 'qrCode' (tovarga biriktirilgan noyob QR/DataMatrix — bitta skanerlashda
+// faqat 1 marta, sotilganligi tekshirilib qo'shiladi),
+// 'serial' (serialCodes ro'yxatidagi noyob dona kodi — xuddi shunday).
+// ESLATMA: ilgari bu turlar GS1-format heuristikasi (isGTIN) orqali qayta
+// aniqlanardi — bu GS1 bo'lmagan oddiy QR kodlarni "umumiy kod" deb
+// noto'g'ri hisoblab, ularni serialCodes/soldCodes bilan TEKSHIRMASDAN
+// cheksiz marta savatga qo'shishga imkon berardi. Endi processCode() aniq
+// topgan turi ishlatiladi — heuristika emas.
+let _scannedCodeType = null;
 // Joriy skanerlash sessiyasida (modal ochilgandan yopilgunga) qo'shilgan
 // tovarlar jurnali — sotuvchi/admin ketma-ket ko'p tovarni (masalan A dan
 // 3 ta, B dan 2 ta, C dan 1 ta) skanerlab ketayotganda, har biri avtomatik
@@ -3167,6 +3309,7 @@ window.openScanner = async function(mode){
   _scanMode = mode;
   _scannedProductId = null;
   _scannedCode = null;
+  _scannedCodeType = null;
   _lastProcessedCode = null;
   _codeAbsentSince = null;
   _scanSessionLog = [];
@@ -3575,14 +3718,29 @@ function startDecoding(video){
   }
 
   // 2-ZAXIRA: nativ BarcodeDetector yo'q qurilmalar (masalan iOS Safari).
-  // Avval Worker ipidagi jsQR bilan (UI'ni bloklamaydi), keyin ZXing-JS
-  // bilan sinaymiz.
+  // Avval Worker ipidagi jsQR bilan (UI'ni bloklamaydi), keyin — FAQAT
+  // Enhanced Scan yoqilgan bo'lsa — ZXing-JS bilan ham sinaymiz.
+  //
+  // TUZATILDI (iOS'da sekinlik muammosi): ilgari bu yerdagi ZXing
+  // asosiy-oqim (main-thread) dekodlashi "Enhanced Scan" tugmasi holatidan
+  // QAT'IY NAZAR, HAR BIR kadrda ishga tushardi. ZXing'ning canvas-dekodlash
+  // usuli UI oqimini bloklaydigan (sinxron, og'ir) operatsiya bo'lgani
+  // uchun, aynan native BarcodeDetector'ga ega bo'lmagan (asosan iOS
+  // Safari) qurilmalarda kamera ko'rinishi "sekin/qotib qolgan" his
+  // qilinardi — va "Enhanced Scan" tugmasi bu tezlikka umuman ta'sir
+  // qilmasdi (chunki heч joyda tekshirilmasdi). Endi:
+  //   - Enhanced Scan YOQIQ (standart holat) — to'liq, ikki dekoderli
+  //     (worker jsQR + ZXing) tekshiruv, qiyin kodlarni ham topadi.
+  //   - Enhanced Scan O'CHIQ — faqat yengil, Worker ipidagi jsQR (asosiy
+  //     UI oqimini bloklamaydi) — sezilarli tezroq, lekin ba'zi qiyin
+  //     kodlarni o'tkazib yuborishi mumkin.
   _decodeLoopActive = true;
   let lastTick = 0;
   let toggle = false;
+  const TICK_MS = 100; // ilgari 120ms — biroz tezlashtirildi
   const loop = async (ts)=>{
     if(!_decodeLoopActive) return;
-    if(ts - lastTick > 120){
+    if(ts - lastTick > TICK_MS){
       lastTick = ts;
       // Har safar kesish nisbatini biroz almashtiramiz — kod kameradan
       // turli masofada/burchakda bo'lsa ham topilish ehtimolini oshirish uchun.
@@ -3596,7 +3754,7 @@ function startDecoding(video){
         const wr = await decodeInWorker(imgData);
         if(wr && wr.text){ handleDecodedCode(wr.text); handled = true; }
       }catch(e){}
-      if(!handled && _zxingReady && window.ZXing && readerHasCanvasDecode()){
+      if(!handled && _enhancedScanEnabled && _zxingReady && window.ZXing && readerHasCanvasDecode()){
         const text = tryDecodeCanvas(canvas);
         if(text){ handleDecodedCode(text); handled = true; }
       }
@@ -3971,6 +4129,7 @@ window.processCode = function(code){
   if(result){
     const prod = result.product;
     _scannedProductId = prod.id;
+    _scannedCodeType = result.type; // 'barcode' | 'qrCode' | 'serial'
     
     // 3) AGAR BU NOYOB KOD BO'LSA - SOTILGANLIGINI TEKSHIRISH
     if(result.type === 'serial'){
@@ -3996,6 +4155,7 @@ window.processCode = function(code){
     }
   } else {
     _scannedProductId = null;
+    _scannedCodeType = null;
     showScanNotFound(code);
   }
 }
@@ -4129,10 +4289,14 @@ window.scanDoRestock = function(){
   if(qty<1){ toast('Miqdor 0 dan katta bo\'lsin','red'); return; }
   
   const code = _scannedCode;
-  const normalizedCode = normalizeScanCode(code);
   
-  // Agar bu noyob kod bo'lsa (serialCodes), uni omborga qo'shamiz
-  const isSerial = code && normalizedCode !== code && !isGTIN(code);
+  // Agar bu noyob (serialCodes) kod bo'lsa, uni omborga qo'shamiz.
+  // TUZATILDI: ilgari GS1-format heuristikasi (isGTIN) ishlatilgan edi —
+  // bu GS1 bo'lmagan noyob kodlarni noto'g'ri "oddiy barcode" deb
+  // hisoblab, ularni serialCodes ro'yxatiga umuman yozmay, shunchaki
+  // miqdorni oshirib qo'yardi. Endi processCode() aniq topgan haqiqiy
+  // turdan ('serial') foydalanamiz.
+  const isSerial = _scannedCodeType === 'serial';
   
   if(isSerial){
     // Kod allaqachon omborda mavjudmi?
@@ -4225,6 +4389,7 @@ window.scanDoRestock = function(){
 function resetScanForNext(){
   _scannedProductId = null;
   _scannedCode = null;
+  _scannedCodeType = null;
   _lastProcessedCode = null; // DUBLIKAT FILTRINI TOZALASH
   _codeAbsentSince = null;
   document.getElementById('scan-result-box').classList.remove('show');
@@ -4250,91 +4415,107 @@ window.scanOpenNewProduct = function(){
   },200);
 }
 
-// Sotuvchi: savatga qo'shish
-window.scanAddToCart = function(){
-  const prod = DB.products.find(p=>p.id===_scannedProductId);
-  if(!prod){ toast('Tovar topilmadi','red'); return; }
-  
-  const qty = parseInt(document.getElementById('scan-sell-qty').value)||1;
-  const code = _scannedCode;
-  const normalizedCode = normalizeScanCode(code);
-  const isSerial = code && normalizedCode !== code && !isGTIN(code);
-  
-  // Agar noyob kod bo'lsa
-  if(isSerial){
-    // Kod omborda mavjudmi?
-    if(!prod.serialCodes || !prod.serialCodes[code]){
-      toast(`❌ Bu kod omborda yo'q: ${code}`, 'red');
-      resetScanForNext();
-      return;
-    }
-    
-    // Kod allaqachon sotilganmi?
-    if(prod.soldCodes && prod.soldCodes[code]){
-      toast(`❌ Bu kod allaqachon sotilgan: ${code}`, 'red');
-      resetScanForNext();
-      return;
-    }
-    
-    // Kodni "sotilgan" deb belgilaymiz
-    if(!prod.soldCodes) prod.soldCodes = {};
-    prod.soldCodes[code] = true;
-    
-    // serialCodes dan o'chiramiz (endi omborda yo'q)
-    delete prod.serialCodes[code];
-    
-    // Stockni 1 ga kamaytiramiz
-    prod.stock = Math.max(0, prod.stock - 1);
-    
-    // Savatga qo'shamiz (1 dona)
-    const inCart = cart[prod.id]||0;
-    cart[prod.id] = inCart + 1;
+// Kod turiga (barcode / qrCode / serial) qarab savatga to'g'ri qo'shadigan
+// UMUMIY funksiya. Kameradan skanerlash (scanAddToCart) va sotish
+// sahifasidagi qidiruv qatoridan Enter bilan kiritish (handleSellSearchKey)
+// ikkalasi ham shu bitta joydan foydalanadi — shunda ikkala yo'l ham bir
+// xil, TO'G'RI mantiqqa amal qiladi.
+//
+// MUHIM TUZATISH: ilgari bu yerda "isSerial" GS1-format heuristikasi bilan
+// (kod GTIN'dan farq qiladimi va u 14 xonali GTIN emasmi) aniqlanardi.
+// Bu heuristika FAQAT GS1-formatidagi (AI-kodlangan) unique kodlar uchun
+// ishlar edi. Oddiy (GS1 bo'lmagan) QR/DataMatrix kodlar — masalan
+// tovarga "Kod biriktirish" orqali yozilgan p.qrCode qiymati — bu holda
+// "normalizedCode === code" bo'lib chiqib, NOTO'G'RI ravishda "oddiy
+// barcode" deb hisoblanardi. Natijada bitta noyob QR kod serialCodes/
+// soldCodes bilan HECH TEKSHIRILMASDAN, xohlagancha marta (hatto miqdor
+// maydonida >1 yozib) savatga qo'shilib, bir xil tovar bir necha marta
+// "sotilishi" mumkin edi.
+//
+// Endi kod turi processCode() aniq topgan natijadan (_scannedCodeType /
+// findProductByCode) olinadi — heuristika emas, DATAGA ASOSLANGAN tekshiruv:
+//   - 'barcode'          -> umumiy GTIN/EAN, ko'p marta qo'shilishi mumkin
+//   - 'qrCode' / 'serial'-> NOYOB kod: bitta skanerlash/topish — faqat 1
+//                            dona, va albatta soldCodes/serialCodes orqali
+//                            "allaqachon sotilganmi" tekshiriladi.
+function sellCodeMatch(prod, code, codeType, qty){
+  qty = qty || 1;
+  const isUniqueCode = (codeType === 'serial' || codeType === 'qrCode');
 
-    // Bu kodni "savatda, checkout kutilmoqda" deb belgilaymiz — shunda
-    // (a) checkout paytida stock yana bir marta kamaytirilmaydi (chunki
-    // yuqorida allaqachon kamaytirildi), (b) agar foydalanuvchi checkout
-    // qilmasdan savatdan olib tashlasa, removeFromCart/clearCart buni
-    // to'g'ri bekor qila oladi.
-    if(!cartSerialCodes[prod.id]) cartSerialCodes[prod.id] = [];
-    cartSerialCodes[prod.id].push(code);
-    
-    // Mahsulotni saqlaymiz — ATOMIK: faqat shu KOD "sotilgan" deb
-    // belgilanadi, serialCodes'dan shu KOD o'chiriladi va stock -1
-    // qilinadi. Butun obyektni qayta yozmaymiz — shunda deyarli bir vaqtda
-    // boshqa qurilmada/oynada bo'layotgan kirim yoki boshqa dona sotilishi
-    // bu yozuv tomonidan bekor qilib yuborilmaydi (aynan shu "eskirgan
-    // nusxa ustidan yozish" avvalgi xato — hali sotilmagan donani ham
-    // "allaqachon sotilgan" deb ko'rsatishga olib kelardi).
-    fbUpdateProductFields(prod.id, {
-      [`soldCodes.${code}`]: true,
-      [`serialCodes.${code}`]: deleteField(),
-      stock: increment(-1)
-    }).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
-    
-    updateCartBtn();
-    updateSingleCard(prod.id);
-    flashScanAdded();
-    logScanSession(prod, 1);
-    resetScanForNext();
-    toast(`✅ ${prod.name} savatga qo'shildi (${code})`,'green');
-    if(navigator.vibrate) navigator.vibrate([80,40,80]);
-  } else {
-    // Oddiy barcode bo'lsa - eski usul
+  if(!isUniqueCode){
+    // Oddiy barcode — necha marta bo'lsa ham qo'shilaveradi.
     const inCart = cart[prod.id]||0;
-    if(inCart+qty > prod.stock){ 
-      toast(`Ombordan ko'p! Mavjud: ${prod.stock} ta`,'red'); 
-      resetScanForNext();
-      return; 
+    if(inCart+qty > prod.stock){
+      toast(`Ombordan ko'p! Mavjud: ${prod.stock} ta`,'red');
+      return {ok:false};
     }
     cart[prod.id] = inCart+qty;
     updateCartBtn();
     updateSingleCard(prod.id);
-    flashScanAdded();
-    logScanSession(prod, qty);
-    resetScanForNext();
-    toast(`✅ +${qty} ta ${prod.name} savatga qo'shildi`,'green');
-    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+    return {ok:true, qty};
   }
+
+  // NOYOB KOD (qrCode yoki serial): faqat 1 marta sotilishi mumkin.
+  if(prod.soldCodes && prod.soldCodes[code]){
+    toast(`❌ Bu kod allaqachon sotilgan: ${code}`, 'red');
+    return {ok:false};
+  }
+  // 'serial' turi uchun kod albatta serialCodes ro'yxatida ("ro'yxatga
+  // olingan dona") bo'lishi shart. 'qrCode' turi tovarning o'ziga
+  // biriktirilgan yagona maydon bo'lgani uchun bu qo'shimcha tekshiruv
+  // shart emas — soldCodes tekshiruvi yetarli.
+  if(codeType === 'serial' && (!prod.serialCodes || !prod.serialCodes[code])){
+    toast(`❌ Bu kod omborda yo'q: ${code}`, 'red');
+    return {ok:false};
+  }
+
+  if(!prod.soldCodes) prod.soldCodes = {};
+  prod.soldCodes[code] = true;
+  if(prod.serialCodes) delete prod.serialCodes[code];
+  prod.stock = Math.max(0, prod.stock - 1);
+
+  const inCart = cart[prod.id]||0;
+  cart[prod.id] = inCart + 1;
+
+  // "Savatda, checkout kutilmoqda" — checkoutda ikki marta kamaytirmaslik
+  // va bekor qilinsa to'g'ri qaytarish uchun.
+  if(!cartSerialCodes[prod.id]) cartSerialCodes[prod.id] = [];
+  cartSerialCodes[prod.id].push(code);
+
+  // ATOMIK yozuv — butun obyektni qayta yozmaymiz (parallel operatsiyalar
+  // bilan to'qnashmasligi uchun).
+  fbUpdateProductFields(prod.id, {
+    [`soldCodes.${code}`]: true,
+    [`serialCodes.${code}`]: deleteField(),
+    stock: increment(-1)
+  }).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+
+  updateCartBtn();
+  updateSingleCard(prod.id);
+  return {ok:true, qty:1};
+}
+
+// Sotuvchi: savatga qo'shish (kamera orqali skanerlash)
+window.scanAddToCart = function(){
+  const prod = DB.products.find(p=>p.id===_scannedProductId);
+  if(!prod){ toast('Tovar topilmadi','red'); return; }
+
+  const qty = parseInt(document.getElementById('scan-sell-qty').value)||1;
+  const code = _scannedCode;
+  const codeType = _scannedCodeType;
+
+  const res = sellCodeMatch(prod, code, codeType, qty);
+  if(!res.ok){ resetScanForNext(); return; }
+
+  flashScanAdded();
+  logScanSession(prod, res.qty);
+  resetScanForNext();
+  if(res.qty===1 && (codeType==='serial'||codeType==='qrCode')){
+    toast(`✅ ${prod.name} savatga qo'shildi (${code})`,'green');
+  } else {
+    toast(`✅ +${res.qty} ta ${prod.name} savatga qo'shildi`,'green');
+  }
+  if(navigator.vibrate) navigator.vibrate([80,40,80]);
 }
 
 window.closeScanner = function(){
@@ -4344,7 +4525,7 @@ window.closeScanner = function(){
   // olish uchun — pastdagi scheduleStreamRelease()ga qarang).
   stopDecodingOnly();
   const v=document.getElementById('scan-video'); if(v) v.srcObject=null;
-  _scannedCode=null; _scannedProductId=null;
+  _scannedCode=null; _scannedProductId=null; _scannedCodeType=null;
   closeModal('modal-scanner');
   scheduleStreamRelease();
 }
@@ -4898,7 +5079,17 @@ function isDataMatrix(code){
 
 init();
 
-
+// PWA: Service Worker'ni ro'yxatdan o'tkazish (ilova qobig'ini keshlab,
+// keyingi ochilishlarda internetsiz ham DARHOL yuklash uchun). Eski
+// brauzerlarda (yoki file:// orqali ochilganda) qo'llab-quvvatlanmasa,
+// ilovaning o'zi buzilmasdan, oddiy (offline-shell'siz) rejimda davom etadi.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(e => {
+      console.warn('Service Worker ro\'yxatdan o\'tmadi:', e);
+    });
+  });
+}
 
 
 </script>
