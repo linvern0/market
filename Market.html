@@ -5356,62 +5356,71 @@ function doRegisterSerialUnit(code, format){
   code = (code||'').trim();
   if(!code) return;
 
-  // ✅ TUZATILDI (asosiy xato shu yerda edi): ilgari bu funksiya FAQAT
-  // yuqoridagi tanlagichda QO'LDA tanlangan tovarga (_assignProductId)
-  // ishonar edi — agar admin aralash uyumni skanerlayotganda tanlovni
-  // almashtirishni unutsa (masalan A tanlangan holda C tovarni skanerlasa),
-  // C ning donasi xato ravishda A ning serialCodes ro'yxatiga yozilib
-  // ketardi. Natijada: A "0/30 ro'yxatga olingan" ko'rsatardi (chunki A
-  // ning HAQIQIY donalari hech qachon to'g'ri sanalmagan), C esa umuman
-  // ro'yxatga olinmagan bo'lib qolardi.
+  // ✅ TUZATILDI (jiddiy mantiqiy xato shu yerda edi): ilgari, agar
+  // skanerlangan koddan GTIN chiqarilsa-yu, lekin bazadagi HECH BIR
+  // tovarning barcode maydoniga mos kelmasa (masalan tanlangan tovar —
+  // "Mineral suv" — emas, tasodifan boshqa tovar — "Coca-Cola" — ning
+  // kodi skaner qilingan bo'lsa, va Coca-Cola'ning o'zi hali bazada
+  // barcode bilan ro'yxatga olinmagan bo'lsa), tizim kodning kimga
+  // tegishli ekanini UMUMAN TEKSHIRMASDAN uni to'g'ridan-to'g'ri joriy
+  // TANLANGAN tovarga (_assignProductId) biriktirib yuborardi. Natijada
+  // Coca-Cola kodi noto'g'ri ravishda Mineral suvning ro'yxatiga yozilib,
+  // Mineral suvning "ro'yxatdan o'tmagan" soni soxta ravishda kamayardi.
   //
-  // HAQIQIY SABAB: har bir tovarning DataMatrix kodi umumiy GTIN (GS1 (01)
-  // qismi) olib yuradi — shu GTIN har doim BIR XIL tovar uchun BIR XIL,
-  // faqat (21) seriya qismi har bir donada boshqacha. Demak, tovarni
-  // QO'LDA tanlashning UMUMAN HOJATI YO'Q — skanerlangan koddagi GTIN
-  // orqali tovar turini AVTOMATIK aniqlash mumkin (xuddi findProductByCode
-  // sotishda qilgani kabi). Shu sababli bu yerda ham AVVAL GTIN bo'yicha
-  // avtomatik aniqlashga urinib ko'ramiz; faqat GTIN topilmasa (masalan
-  // eski, GS1 formatida bo'lmagan tasodifiy QR kodlar uchun) qo'ldagi
-  // tanlovga tushamiz.
-  const detectedGtin = extractGTIN(code);
-  let truep = null;
-  if(detectedGtin){
-    const matched = DB.products.find(p=>p.barcode && codesMatch(p.barcode, detectedGtin));
-    if(matched){
-      truep = matched;
-      if(_assignProductId !== matched.id){
-        // Tanlov noto'g'ri edi (yoki hali tanlanmagan edi) — avtomatik
-        // to'g'irlaymiz va buni adminga ANIQ ko'rsatamiz, shunda u nima
-        // uchun ekran o'zgarganini tushunadi. DIQQAT: populateAssignSerial-
-        // ProductSelect()ni chaqirmaymiz, chunki u "hali kerak" ro'yxati
-        // asosida _assignProductId'ni QAYTA belgilab qo'yishi (va shu bilan
-        // aynan hozir topgan to'g'ri tovarni yana boshqasiga almashtirib
-        // yuborishi) mumkin edi — buning o'rniga faqat tanlagichning
-        // ko'rinishini yangilaymiz.
-        _assignProductId = matched.id;
-        const sel = document.getElementById('assign-serial-product-select');
-        if(sel){
-          const hasOption = Array.from(sel.options).some(o=>o.value===matched.id);
-          if(!hasOption) populateAssignSerialProductSelect();
-          sel.value = matched.id;
-        }
-        renderAssignSerialProductInfo();
-        toast(`🔎 Avtomatik aniqlandi: "${matched.name}"`,'blue');
-      }
-    }
-  }
-  // GTIN topilmadi (yoki shu GTIN'ga mos tovar yo'q) — qo'ldagi tanlovga
-  // tushamiz (masalan hali umumiy kodi biriktirilmagan yangi tovar uchun).
-  if(!truep){
-    truep = DB.products.find(x=>x.id===_assignProductId);
-  }
+  // TO'G'RI MANTIQ: kodni ro'yxatga olishdan OLDIN, agar undan GTIN
+  // (GS1 AI(01)) chiqarilsa, u albatta TANLANGAN tovarning o'z barcode'iga
+  // mos kelishi SHART. Mos kelmasa — bu kod boshqa mahsulotga tegishli
+  // deb hisoblanadi va HECH QACHON tanlangan tovarga yozilmaydi (avtomatik
+  // "tuzatib" boshqa tovarga ham o'tkazilmaydi — bu adminni chalg'itishi
+  // mumkin edi), aksincha aniq xatolik ko'rsatiladi va admin o'zi to'g'ri
+  // tovarni tanlashi so'raladi.
+  let truep = DB.products.find(x=>x.id===_assignProductId);
 
   if(!truep){
     toast('⚠️ Avval tovarni tanlang','red');
     document.getElementById('assign-status').textContent = "⚠️ Avval yuqoridagi ro'yxatdan tovarni tanlang";
     document.getElementById('assign-status').style.color = 'var(--red)';
     return;
+  }
+
+  const detectedGtin = extractGTIN(code);
+  if(detectedGtin){
+    if(truep.barcode){
+      // Tanlangan tovarning o'z GTIN'i ma'lum — skanerlangan kod ANIQ shu
+      // GTIN'ga mos kelishi kerak.
+      if(!codesMatch(truep.barcode, detectedGtin)){
+        // Qaysi tovarga tegishli ekanini (bo'lsa) faqat XABAR uchun topamiz —
+        // hech qachon avtomatik shunga o'tkazilmaydi/biriktirilmaydi.
+        const other = DB.products.find(p=>p.id!==truep.id && p.barcode && codesMatch(p.barcode, detectedGtin));
+        const msg = other
+          ? `⚠️ Bu kod "${other.name}"ga tegishli, "${truep.name}"ga emas!`
+          : `⚠️ Bu kod "${truep.name}"ga tegishli emas!`;
+        toast(msg,'red');
+        document.getElementById('assign-status').textContent = other
+          ? `⚠️ Bu kod boshqa mahsulotga tegishli: "${other.name}". Yuqoridan to'g'ri tovarni tanlang.`
+          : `⚠️ Bu kod boshqa mahsulotga tegishli — tanlangan tovar ("${truep.name}") emas.`;
+        document.getElementById('assign-status').style.color = 'var(--red)';
+        if(navigator.vibrate) navigator.vibrate([80,60,80]);
+        return; // ❌ RO'YXATGA OLINMAYDI
+      }
+    } else {
+      // Tanlangan tovarning o'z barcode/GTIN'i hali kiritilmagan — o'zi bilan
+      // solishtirib bo'lmaydi, lekin agar bu GTIN aniq BOSHQA (barcode'i
+      // ma'lum) tovarga tegishli bo'lsa, baribir rad etamiz.
+      const other = DB.products.find(p=>p.id!==truep.id && p.barcode && codesMatch(p.barcode, detectedGtin));
+      if(other){
+        toast(`⚠️ Bu kod "${other.name}"ga tegishli, "${truep.name}"ga emas!`,'red');
+        document.getElementById('assign-status').textContent = `⚠️ Bu kod boshqa mahsulotga tegishli: "${other.name}". Yuqoridan to'g'ri tovarni tanlang.`;
+        document.getElementById('assign-status').style.color = 'var(--red)';
+        if(navigator.vibrate) navigator.vibrate([80,60,80]);
+        return; // ❌ RO'YXATGA OLINMAYDI
+      }
+      // Hech qanday tovarning barcode'iga mos kelmadi — bu, ehtimol, hali
+      // umumiy kodi bazaga kiritilmagan yangi tovar. Solishtirish uchun
+      // asos yo'qligi sababli, tanlangan tovarga davom etishga ruxsat
+      // beramiz (bu holat quyidagi crossProduct/serialCodes tekshiruvi
+      // bilan ham qo'shimcha himoyalangan).
+    }
   }
 
   // 1) FORMAT BO'YICHA TEKSHIRISH (dekoder format qaytargan bo'lsa): agar
