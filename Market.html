@@ -4521,19 +4521,31 @@ window.scanDoRestock = function(){
 }
 
 // Skaner oynasini yopmasdan, keyingi kodni skanerlashga tayyorlaydi.
-function resetScanForNext(){
+// preserveDedup=true bo'lsa, _lastProcessedCode/_codeAbsentSince
+// TOZALANMAYDI — bu MUHIM: avtomatik rejimda savatga muvaffaqiyatli
+// qo'shilgandan DARHOL keyin bu bayroqlarni tozalasak, kamera hali ham
+// xuddi shu kodni (foydalanuvchi tovarni olib ulgurmagan bo'lsa) KEYINGI
+// KADRDA yana "yangi kod" deb qabul qilib, bitta tovarni soniyasiga
+// o'nlab marta savatga qo'shib yuboradi. preserveDedup=true bilan kod
+// dublikat-filtri ishlab turadi — foydalanuvchi tovarni kamera oldidan
+// OLIB QO'YGANDA (yoki CODE_ABSENCE_RESET_MS vaqt o'tganda) filtri o'zi
+// avtomatik tozalanadi va keyingi (yoki shu) tovarni qayta skanerlash
+// mumkin bo'ladi.
+function resetScanForNext(preserveDedup){
   _scannedProductId = null;
   _scannedCode = null;
   _scannedCodeType = null;
-  _lastProcessedCode = null; // DUBLIKAT FILTRINI TOZALASH
-  _codeAbsentSince = null;
+  if(!preserveDedup){
+    _lastProcessedCode = null; // DUBLIKAT FILTRINI TOZALASH
+    _codeAbsentSince = null;
+  }
   document.getElementById('scan-result-box').classList.remove('show');
   document.getElementById('scan-admin-actions').style.display = 'none';
   document.getElementById('scan-seller-actions').style.display = 'none';
   document.getElementById('scan-found-block').style.display = 'none';
   document.getElementById('scan-new-block').style.display = 'none';
   document.getElementById('manual-code-input').value = '';
-  setScanStatus('Kamerani keyingi kodga qarating...','');
+  setScanStatus(preserveDedup ? "✓ Qo'shildi. Tovarni olib, keyingisini skanerlang..." : 'Kamerani keyingi kodga qarating...','');
 }
 
 // Admin: yangi tovar sifatida qo'shish (skanerlangan kod barcode sifatida kiritiladi)
@@ -4644,7 +4656,15 @@ window.scanAddToCart = function(){
 
   flashScanAdded();
   logScanSession(prod, res.qty);
-  resetScanForNext();
+  // ✅ TUZATMA: avtomatik rejimda dublikat-filtrni (preserveDedup=true)
+  // TOZALAMAYMIZ — aks holda kamera hali ham xuddi shu tovarga qarab
+  // tursa (foydalanuvchi tovarni olib ulgurmagan bo'lsa), keyingi kadrda
+  // yana "yangi kod" deb qabul qilinib, bitta tovar soniyasiga o'nlab
+  // marta qo'shilib ketaverardi. Endi: tovarni kamera oldidan OLIB
+  // QO'YMAGUNCHA (yoki ~450ms ko'rinmay qolmaguncha) xuddi shu kod
+  // qayta qo'shilmaydi. Qo'lda (manual) rejimda esa eski xatti-harakat
+  // saqlanadi — chunki u yerda foydalanuvchi har safar tugmani o'zi bosadi.
+  resetScanForNext(isAutoScanMode());
   if(res.qty===1 && (codeType==='serial'||codeType==='qrCode')){
     toast(`✅ ${prod.name} savatga qo'shildi (${code})`,'green');
   } else {
