@@ -4738,15 +4738,19 @@ window.startSerialRegisterQueue = function(){
   // holatlarda zaxira sifatida ishlatiladi (bu yerga umuman aloqasi yo'q).
   const needing = DB.products.filter(p=>unregisteredUnitCount(p)>0);
   if(!needing.length){ toast('✅ Ombordagi barcha donalar seriya kod bilan ro\'yxatga olingan','green'); return; }
-  // MUHIM O'ZGARISH: avval bu yerda tovarlar ustidan QAT'IY NAVBAT
-  // (birma-bir, faqat shu tovar tugagach keyingisiga) tuzilardi, keyin esa
-  // kod ichidagi GTIN orqali tovarni "avtomatik aniqlash"ga o'tilgan edi —
-  // lekin qopqoqdagi haqiqiy QR kodlar odatda GTIN olib yurmaydi (tasodifiy/
-  // noyob qiymat), shu sababli avtomatik aniqlash deyarli hech qachon
-  // ishlamas edi. ENDI: qat'iy navbat YO'Q, lekin avtomatik aniqlash ham
-  // YO'Q — admin skanerlashdan oldin (yuqoridagi tanlagichdan) qaysi
-  // tovarni ro'yxatga olayotganini o'zi tanlaydi, va aralash uyumda boshqa
-  // tovarga o'tganda tanlovni almashtiradi. Bu — sodda va ishonchli.
+  // ✅ YANGILANDI: bu yerda avval tovarlar ustidan qat'iy navbat, keyin esa
+  // "avtomatik aniqlash umuman ishlamaydi" degan xulosa bilan FAQAT qo'lda
+  // tanlash qo'llanilgan edi. Amalda esa (masalan O'zbekistonning "Asl
+  // Belgisi" GS1 DataMatrix kodlarida) har bir tovar turining (01) GTIN
+  // qismi barqaror va umumiy bo'ladi — faqat (21) seriya qismi har bir
+  // donada farq qiladi. Shu sababli avtomatik aniqlash (doRegisterSerialUnit
+  // ichida, extractGTIN + product.barcode solishtirish orqali) qayta
+  // TIKLANDI: admin pastdagi tanlagichdan tovarni tanlashi shart emas —
+  // qaysi tovar tanlangan bo'lishidan qat'iy nazar, skanerlangan kod GTIN'i
+  // orqali TO'G'RI tovar avtomatik topiladi va tanlov ekranda o'zi
+  // yangilanadi. Tanlagich endi faqat: (a) GTIN topilmagan eski/tasodifiy
+  // kodlar uchun zaxira, va (b) "hozir nima tanlangani"ni ko'rsatish uchun
+  // qoldirilgan.
   _assignMode = 'serial';
   _assignQueueIdx = -1;
   _assignQueue = [];
@@ -5255,15 +5259,57 @@ function doRegisterSerialUnit(code, format){
   code = (code||'').trim();
   if(!code) return;
 
-  // MUHIM (YANGI MANTIQ): "Donalarni ro'yxatga olish" endi tovarning umumiy
-  // barcode/GTIN'iga BUTUNLAY BOG'LIQ EMAS — QR/DataMatrix kod hech qanday
-  // GTIN ma'lumotini o'z ichiga olmasligi mumkin (masalan qopqoqdagi tasodifiy
-  // QR). Shu sababli tovar avtomatik "topilmaydi" — buning o'rniga ADMIN
-  // yuqoridagi tanlagichdan qaysi tovarni ro'yxatga olayotganini o'zi
-  // TANLAYDI, va har bir skanerlangan kod aynan SHU tanlangan tovarga
-  // yoziladi. Barcode faqat sotishda, QR shikastlangan holatda zaxira
-  // sifatida ishlatiladi — bu yerga aloqasi yo'q.
-  const truep = DB.products.find(x=>x.id===_assignProductId);
+  // ✅ TUZATILDI (asosiy xato shu yerda edi): ilgari bu funksiya FAQAT
+  // yuqoridagi tanlagichda QO'LDA tanlangan tovarga (_assignProductId)
+  // ishonar edi — agar admin aralash uyumni skanerlayotganda tanlovni
+  // almashtirishni unutsa (masalan A tanlangan holda C tovarni skanerlasa),
+  // C ning donasi xato ravishda A ning serialCodes ro'yxatiga yozilib
+  // ketardi. Natijada: A "0/30 ro'yxatga olingan" ko'rsatardi (chunki A
+  // ning HAQIQIY donalari hech qachon to'g'ri sanalmagan), C esa umuman
+  // ro'yxatga olinmagan bo'lib qolardi.
+  //
+  // HAQIQIY SABAB: har bir tovarning DataMatrix kodi umumiy GTIN (GS1 (01)
+  // qismi) olib yuradi — shu GTIN har doim BIR XIL tovar uchun BIR XIL,
+  // faqat (21) seriya qismi har bir donada boshqacha. Demak, tovarni
+  // QO'LDA tanlashning UMUMAN HOJATI YO'Q — skanerlangan koddagi GTIN
+  // orqali tovar turini AVTOMATIK aniqlash mumkin (xuddi findProductByCode
+  // sotishda qilgani kabi). Shu sababli bu yerda ham AVVAL GTIN bo'yicha
+  // avtomatik aniqlashga urinib ko'ramiz; faqat GTIN topilmasa (masalan
+  // eski, GS1 formatida bo'lmagan tasodifiy QR kodlar uchun) qo'ldagi
+  // tanlovga tushamiz.
+  const detectedGtin = extractGTIN(code);
+  let truep = null;
+  if(detectedGtin){
+    const matched = DB.products.find(p=>p.barcode && codesMatch(p.barcode, detectedGtin));
+    if(matched){
+      truep = matched;
+      if(_assignProductId !== matched.id){
+        // Tanlov noto'g'ri edi (yoki hali tanlanmagan edi) — avtomatik
+        // to'g'irlaymiz va buni adminga ANIQ ko'rsatamiz, shunda u nima
+        // uchun ekran o'zgarganini tushunadi. DIQQAT: populateAssignSerial-
+        // ProductSelect()ni chaqirmaymiz, chunki u "hali kerak" ro'yxati
+        // asosida _assignProductId'ni QAYTA belgilab qo'yishi (va shu bilan
+        // aynan hozir topgan to'g'ri tovarni yana boshqasiga almashtirib
+        // yuborishi) mumkin edi — buning o'rniga faqat tanlagichning
+        // ko'rinishini yangilaymiz.
+        _assignProductId = matched.id;
+        const sel = document.getElementById('assign-serial-product-select');
+        if(sel){
+          const hasOption = Array.from(sel.options).some(o=>o.value===matched.id);
+          if(!hasOption) populateAssignSerialProductSelect();
+          sel.value = matched.id;
+        }
+        renderAssignSerialProductInfo();
+        toast(`🔎 Avtomatik aniqlandi: "${matched.name}"`,'blue');
+      }
+    }
+  }
+  // GTIN topilmadi (yoki shu GTIN'ga mos tovar yo'q) — qo'ldagi tanlovga
+  // tushamiz (masalan hali umumiy kodi biriktirilmagan yangi tovar uchun).
+  if(!truep){
+    truep = DB.products.find(x=>x.id===_assignProductId);
+  }
+
   if(!truep){
     toast('⚠️ Avval tovarni tanlang','red');
     document.getElementById('assign-status').textContent = "⚠️ Avval yuqoridagi ro'yxatdan tovarni tanlang";
