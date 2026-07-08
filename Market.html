@@ -349,7 +349,7 @@
     <div><h2>Tovar boshqaruvi</h2><p>Tovarlarni qo'shing va yangilang</p></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
-      <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Aralash tovarlarning donalarini istalgan tartibda skanerlang — har biri o'zining tovariga avtomatik yoziladi">🔢 Donalarni ro'yxatga olish</button>
+      <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Tovarni tanlab, uning donalarini QR/DataMatrix kod bilan birma-bir ro'yxatga oling — tovar almashsa, tanlovni o'zgartiring">🔢 Donalarni ro'yxatga olish</button>
       <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
     </div>
   </div>
@@ -955,6 +955,15 @@
       <h3 style="margin:0"><span id="assign-modal-title">📷 Kod biriktirish</span> <span id="assign-queue-progress" style="font-size:12px;font-weight:500;color:var(--text3)"></span></h3>
       <button onclick="closeAssignBarcode()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">✕</button>
     </div>
+    <!-- "Donalarni ro'yxatga olish" (serial) rejimida — QR kod hech qanday
+         umumiy barcode/GTIN'ga bog'liq emasligi sababli, tizim skanerlangan
+         kodning O'ZIDAN qaysi tovarga tegishli ekanini bilolmaydi. Shuning
+         uchun admin skanerlashdan OLDIN (yoki tovar almashganda) shu yerdan
+         "hozir qaysi tovarni ro'yxatga olyapman" — deb TANLAYDI. Tanlangan
+         tovar o'zgarmaguncha barcha keyingi skanerlar shu tovarga yoziladi —
+         aralash uyumda tovarlar orasida istalganda erkin almashish mumkin. -->
+    <select id="assign-serial-product-select" onchange="onAssignSerialProductChange(this.value)"
+            style="display:none;width:100%;border:1.5px solid var(--border2);border-radius:8px;padding:.55rem .7rem;font-size:14px;font-weight:600;margin-bottom:.5rem;outline:none"></select>
     <div id="assign-product-info" style="background:var(--surface2);border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;font-weight:600;font-size:15px"></div>
     <div id="assign-unit-progress" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.5rem .75rem;margin-bottom:1rem;font-size:13px;font-weight:700;color:var(--amber);text-align:center"></div>
     <button id="assign-skip-btn" onclick="skipBarcodeAssign()" class="btn sm" style="display:none;width:100%;justify-content:center;margin-bottom:.75rem">⏭ Bu tovarni o'tkazib, keyingisiga o'tish</button>
@@ -972,6 +981,23 @@
       </div>
     </div>
 
+    <!-- Kamera boshqaruv paneli: Torch / Zoom / Fokus / Enhanced Scan —
+         sotishdagi skaner bilan bir xil (lazer bilan bosilgan kichik QR
+         kodlarni ham o'qiy olishi uchun; barchasi bitta jismoniy kamera
+         oqimiga ta'sir qiladi, shu sabab pastdagi funksiyalar yuqoridagi
+         "Kod biriktirish"/sotish skanerlaridagi bilan bir xil ishlaydi). -->
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.6rem 0;justify-content:center">
+      <button class="btn sm" id="assign-btn-torch" onclick="onToggleTorchAssign()" title="Fonar (agar qurilma qo'llasa)">🔦 Torch</button>
+      <button class="btn sm" id="assign-btn-focus-auto" onclick="setFocusMode('continuous')" title="Avtomatik fokus">🎯 Avto-fokus</button>
+      <button class="btn sm" id="assign-btn-focus-manual" onclick="setFocusMode('manual', 0.15)" title="Qo'lda fokus (yaqin masofa — lazerli/kichik kodlar uchun tavsiya etiladi)">🔍 Yaqin fokus</button>
+      <button class="btn sm" id="assign-btn-enhanced-scan" onclick="onToggleEnhancedScanAssign()" title="Real vaqtda qo'shimcha kuchli tekshiruv — sekinroq, lekin qiyin (lazerli/kichik) kodlarni ham topadi">✨ Enhanced Scan</button>
+    </div>
+    <div id="assign-zoom-control-wrap" style="display:none;align-items:center;gap:.5rem;margin:0 0 .6rem;font-size:12px;color:var(--text3)">
+      <span>🔎</span>
+      <input type="range" id="assign-zoom-slider" min="1" max="5" step="0.1" value="1" oninput="setZoomAssign(this.value)" style="flex:1">
+      <span id="assign-zoom-value">1.0x</span>
+    </div>
+
     <p id="assign-status" style="text-align:center;margin:.75rem 0;font-size:14px;font-weight:600;color:var(--text2)">Tovarning barkodini skanerga qarating...</p>
 
     <!-- Shu ro'yxatga olish sessiyasida qo'shilgan donalar jurnali (donalarni
@@ -984,7 +1010,8 @@
       <button class="btn sm" style="flex:1;justify-content:center;border-color:var(--amber);color:var(--amber)" onclick="commitAssignedCode('qrCode')">📷 QR/DataMatrix sifatida saqlash</button>
     </div>
 
-    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.25rem" onclick="captureAndScanAssign()">📸 Suratga olib skanerlash</button>
+    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.25rem" onclick="captureAndScanAssign()">📷 Scan HD (12 usul bilan chuqur tekshirish)</button>
+    <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.1rem 0 .5rem">Jonli skaner ushlamasa (masalan lazer bilan bosilgan kichik kod) shu tugmani bosing</p>
 
     <!-- Qo'lda kiritish -->
     <div style="display:flex;gap:.5rem;margin-top:.25rem">
@@ -3401,6 +3428,48 @@ window.setZoom = async function(value){
   if(lbl) lbl.textContent = Number(value).toFixed(1)+'x';
 }
 
+// ===== "Kod biriktirish" / "Donalarni ro'yxatga olish" oynasi uchun HAM
+// XUDDI SHUNDAY Torch/Zoom/Fokus/Enhanced-Scan boshqaruvi — pastdagi
+// funksiyalar YUQORIDAGI (sotish skaneridagi) bilan bir xil PASTKI
+// DARAJADAGI (toggleTorch, setZoom_impl, setEnhancedScan) funksiyalarni
+// chaqiradi, chunki bitta jismoniy kamera oqimi (_sharedStream) ikkala
+// oynada ham ishlatiladi — faqat UI elementlari (tugma/slayder) boshqa
+// id'larga ega bo'lgani uchun alohida "wrapper" kerak. Bu ayniqsa
+// qopqoqqa LAZER bilan bosilgan kichik, kontrastsiz QR kodlarni o'qishda
+// muhim: Torch — yorug'lik, Yaqin fokus — makro, Zoom — kod ramkaga
+// to'liq sig'ishi, Enhanced Scan — real vaqtda qo'shimcha og'ir tekshiruv.
+function setupAssignCameraControlsUI(){
+  const zoomCaps = getZoomCapabilities();
+  const zoomWrap = document.getElementById('assign-zoom-control-wrap');
+  const slider = document.getElementById('assign-zoom-slider');
+  if(zoomCaps && zoomWrap && slider){
+    slider.min = zoomCaps.min; slider.max = zoomCaps.max; slider.step = zoomCaps.step || 0.1;
+    slider.value = zoomCaps.min;
+    zoomWrap.style.display = 'flex';
+  } else if(zoomWrap){
+    zoomWrap.style.display = 'none';
+  }
+  const torchBtn = document.getElementById('assign-btn-torch');
+  if(torchBtn) torchBtn.classList.toggle('blue', _torchOn);
+  const enhBtn = document.getElementById('assign-btn-enhanced-scan');
+  if(enhBtn) enhBtn.classList.toggle('blue', _enhancedScanEnabled);
+}
+window.onToggleTorchAssign = async function(){
+  const on = await toggleTorch();
+  const btn = document.getElementById('assign-btn-torch');
+  if(btn) btn.classList.toggle('blue', on);
+}
+window.onToggleEnhancedScanAssign = function(){
+  setEnhancedScan(!_enhancedScanEnabled);
+  const btn = document.getElementById('assign-btn-enhanced-scan');
+  if(btn) btn.classList.toggle('blue', _enhancedScanEnabled);
+}
+window.setZoomAssign = async function(value){
+  await setZoom_impl(value);
+  const lbl = document.getElementById('assign-zoom-value');
+  if(lbl) lbl.textContent = Number(value).toFixed(1)+'x';
+}
+
 let _lastProcessedCode = null;
 let _codeAbsentSince = null;
 let _decodeLoopActive = false;
@@ -4613,16 +4682,21 @@ function unregisteredUnitCount(p){
 }
 
 window.startSerialRegisterQueue = function(){
-  const needing = DB.products.filter(p=>p.barcode && unregisteredUnitCount(p)>0);
+  // MUHIM: bu yerda p.barcode borligi ENDI shart EMAS — donalarni QR kod
+  // bilan ro'yxatga olishning umumiy barcode'ga (GTIN'ga) hech qanday
+  // aloqasi yo'q. Barcode faqat sotishda, QR kod shikastlangan/o'qilmagan
+  // holatlarda zaxira sifatida ishlatiladi (bu yerga umuman aloqasi yo'q).
+  const needing = DB.products.filter(p=>unregisteredUnitCount(p)>0);
   if(!needing.length){ toast('✅ Ombordagi barcha donalar seriya kod bilan ro\'yxatga olingan','green'); return; }
   // MUHIM O'ZGARISH: avval bu yerda tovarlar ustidan QAT'IY NAVBAT
-  // (birma-bir, faqat shu tovar tugagach keyingisiga) tuzilardi. Lekin
-  // haqiqiy ombordagi donalar ARALASH (turli tovarlar bir uyumda) bo'lgani
-  // uchun bu noqulay edi — ekran doim faqat "navbatdagi" tovarni ko'rsatib,
-  // boshqa (aralash) tovar skanerlansa ham panel yangilanmasdi.
-  // ENDI: navbat YO'Q — istalgan tartibda, istalgan tovar donasi
-  // skanerlanadi, ekran HAR SAFAR aynan o'sha skanerlangan tovarni va uning
-  // ombordagi/ro'yxatdagi sonini ko'rsatadi.
+  // (birma-bir, faqat shu tovar tugagach keyingisiga) tuzilardi, keyin esa
+  // kod ichidagi GTIN orqali tovarni "avtomatik aniqlash"ga o'tilgan edi —
+  // lekin qopqoqdagi haqiqiy QR kodlar odatda GTIN olib yurmaydi (tasodifiy/
+  // noyob qiymat), shu sababli avtomatik aniqlash deyarli hech qachon
+  // ishlamas edi. ENDI: qat'iy navbat YO'Q, lekin avtomatik aniqlash ham
+  // YO'Q — admin skanerlashdan oldin (yuqoridagi tanlagichdan) qaysi
+  // tovarni ro'yxatga olayotganini o'zi tanlaydi, va aralash uyumda boshqa
+  // tovarga o'tganda tanlovni almashtiradi. Bu — sodda va ishonchli.
   _assignMode = 'serial';
   _assignQueueIdx = -1;
   _assignQueue = [];
@@ -4633,16 +4707,64 @@ window.startSerialRegisterQueue = function(){
   openSerialFreeScan();
 };
 
+// Erkin "donalarni ro'yxatga olish" oynasidagi tovar tanlagichini
+// (registration hali kerak bo'lgan barcha tovarlar bilan) to'ldiradi va
+// oldingi tanlov hali ham amal qilsa (masalan, oyna qayta ochilganda) —
+// o'shani saqlab qoladi, aks holda ro'yxatdagi birinchi tovarni tanlaydi.
+function populateAssignSerialProductSelect(){
+  const sel = document.getElementById('assign-serial-product-select');
+  const needing = DB.products.filter(p=>unregisteredUnitCount(p)>0);
+  const prevId = _assignProductId;
+  sel.innerHTML = needing.map(p=>{
+    const remaining = unregisteredUnitCount(p);
+    return `<option value="${p.id}">📦 ${p.name}${p.volume?' · '+p.volume+'L':''} — ${remaining} ta qoldi</option>`;
+  }).join('');
+  sel.style.display = needing.length ? 'block' : 'none';
+  if(!needing.length){ _assignProductId = null; return; }
+  const stillNeeds = prevId && needing.some(p=>p.id===prevId);
+  _assignProductId = stillNeeds ? prevId : needing[0].id;
+  sel.value = _assignProductId;
+}
+
+// Tovar tanlagich (dropdown) o'zgartirilganda chaqiriladi — shundan keyin
+// skanerlangan HAR BIR kod aynan shu tanlangan tovarga yoziladi, toki admin
+// boshqa tovarni tanlamaguncha (aralash uyumda erkin almashish shu orqali).
+window.onAssignSerialProductChange = function(productId){
+  _assignProductId = productId;
+  _recentSerialCodes.clear();
+  renderAssignSerialProductInfo();
+};
+
+function renderAssignSerialProductInfo(){
+  const p = DB.products.find(x=>x.id===_assignProductId);
+  const unitProgEl = document.getElementById('assign-unit-progress');
+  if(!p){
+    document.getElementById('assign-product-info').innerHTML =
+      `<span style="color:var(--text3);font-weight:500">Avval yuqoridan tovarni tanlang</span>`;
+    unitProgEl.style.display = 'none';
+    return;
+  }
+  const registered = Object.keys(p.serialCodes||{}).length;
+  const total = p.stock||0;
+  const remaining = unregisteredUnitCount(p);
+  document.getElementById('assign-product-info').innerHTML =
+    `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+     <span style="font-size:13px;color:var(--text3);font-weight:400">Shu tovarning donalarini birma-bir skanerlang</span>`;
+  unitProgEl.style.display = 'block';
+  unitProgEl.style.background = 'var(--amber-bg)';
+  unitProgEl.style.borderColor = 'var(--amber-border)';
+  unitProgEl.style.color = 'var(--amber)';
+  unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
+}
+
 // Navbatsiz, erkin "donalarni ro'yxatga olish" oynasini ochadi.
 async function openSerialFreeScan(){
   _assignDone = false;
   document.getElementById('assign-queue-progress').textContent = '';
   document.getElementById('assign-skip-btn').style.display = 'none';
   document.getElementById('assign-modal-title').textContent = "🔢 Donalarni ro'yxatga olish";
-  document.getElementById('assign-product-info').innerHTML =
-    `<span style="color:var(--text3);font-weight:500">Istalgan tovarning istalgan donasini skanerlang — mos tovar avtomatik aniqlanadi</span>`;
-  const unitProgEl = document.getElementById('assign-unit-progress');
-  unitProgEl.style.display = 'none';
+  populateAssignSerialProductSelect();
+  renderAssignSerialProductInfo();
   document.getElementById('assign-code-input').value = '';
   openModal('modal-assign-barcode');
 
@@ -4669,6 +4791,7 @@ async function openSerialFreeScan(){
     document.getElementById('assign-status').textContent = 'Kamerani donaga qarating...';
     document.getElementById('assign-status').style.color = 'var(--text2)';
     startAssignDecoding(video);
+    setupAssignCameraControlsUI();
   }catch(e){
     document.getElementById('assign-status').textContent = typeof describeCameraError==='function' ? describeCameraError(e) : 'Kameraga ruxsat berilmadi.';
     document.getElementById('assign-status').style.color = 'var(--amber)';
@@ -4687,6 +4810,7 @@ function advanceAssignQueue(){
   if(_assignQueueIdx >= _assignQueue.length){
     _assignQueueIdx = -1;
     _assignQueue = [];
+    const sel=document.getElementById('assign-serial-product-select'); if(sel) sel.style.display='none';
     closeModal('modal-assign-barcode');
     stopDecodingOnly();
     const v=document.getElementById('assign-video'); if(v) v.srcObject=null;
@@ -4717,6 +4841,7 @@ window.openAssignBarcode = async function(productId){
 
   const titleEl = document.getElementById('assign-modal-title');
   const unitProgEl = document.getElementById('assign-unit-progress');
+  document.getElementById('assign-serial-product-select').style.display = 'none';
 
   if(_assignMode === 'serial'){
     titleEl.textContent = '🔢 Donalarni ro\'yxatga olish';
@@ -4765,6 +4890,7 @@ window.openAssignBarcode = async function(productId){
     document.getElementById('assign-status').textContent = 'Tovarning barkodini skanerga qarating...';
     document.getElementById('assign-status').style.color = 'var(--text2)';
     startAssignDecoding(video);
+    setupAssignCameraControlsUI();
   }catch(e){
     console.error('Kamera xatosi:', e);
     document.getElementById('assign-status').textContent = describeCameraError(e);
@@ -4777,7 +4903,8 @@ function startAssignDecoding(video){
 
   if(_nativeDetector){
     _decodeLoopActive = true;
-    const loop = async ()=>{
+    let lastEnhancedAt = 0;
+    const loop = async (ts)=>{
       if(!_decodeLoopActive) return;
       try{
         const codes = await _nativeDetector.detect(video);
@@ -4791,14 +4918,36 @@ function startAssignDecoding(video){
           } else {
             doAssignBarcode(codes[0].rawValue, codes[0].format);
           }
+          if(_decodeLoopActive) requestAnimationFrame(loop);
+          return;
         }
       }catch(e){}
+      // Nativ detektor hech narsa topmadi. "Enhanced Scan" yoqiq bo'lsa,
+      // har ~700ms'da bir marta kesilgan+kattalashtirilgan+kontrastli
+      // kadrni qo'shimcha (og'irroq, ko'p-dekoderli) tekshiruvdan ham
+      // o'tkazamiz — bu QOPQOQQA LAZER bilan bosilgan, kontrastsiz kichik
+      // QR kodlar kabi qiyin holatlarni nativ detektor o'tkazib yuborganda
+      // ham tutib qolish uchun (sotishdagi Enhanced Scan bilan bir xil).
+      if(_enhancedScanEnabled && !_assignDone && (!lastEnhancedAt || ts - lastEnhancedAt > 700)){
+        lastEnhancedAt = ts;
+        const canvas = grabCroppedCanvas(video, 0.55, 2, true);
+        const result = await decodeCanvasMulti(canvas, false);
+        if(result && result.text && !_assignDone){
+          doAssignBarcode(result.text, result.format);
+          if(_decodeLoopActive) requestAnimationFrame(loop);
+          return;
+        }
+      }
       if(_decodeLoopActive) requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
     return;
   }
 
+  // 2-ZAXIRA: nativ BarcodeDetector yo'q qurilmalar (masalan iOS Safari) —
+  // sotish skaneridagi bilan bir xil ikki bosqichli mantiq: avval Worker
+  // ipidagi jsQR (UI'ni bloklamaydi), "Enhanced Scan" yoqiq bo'lsa — ustiga
+  // ZXing-JS bilan ham qo'shimcha tekshiruv.
   if(!_zxingReady || !window.ZXing) return;
 
   if(!readerHasCanvasDecode()){
@@ -4814,22 +4963,38 @@ function startAssignDecoding(video){
   _decodeLoopActive = true;
   let lastTick = 0;
   let toggle = false;
-  const loop = (ts)=>{
+  const TICK_MS = 100;
+  const loop = async (ts)=>{
     if(!_decodeLoopActive) return;
-    if(ts - lastTick > 120){
+    if(ts - lastTick > TICK_MS){
       lastTick = ts;
       const cropFrac = toggle ? 0.55 : 0.8;
       toggle = !toggle;
       const canvas = grabCroppedCanvas(video, cropFrac, 1.8, true);
-      const text = tryDecodeCanvas(canvas);
-      if(text && !_assignDone) doAssignBarcode(text.trim(), null);
+      let handled = false;
+      try{
+        const ctx = canvas.getContext('2d', {willReadFrequently:true});
+        const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const wr = await decodeInWorker(imgData);
+        if(wr && wr.text && !_assignDone){ doAssignBarcode(wr.text, null); handled = true; }
+      }catch(e){}
+      if(!handled && _enhancedScanEnabled && _zxingReady && window.ZXing && readerHasCanvasDecode()){
+        const text = tryDecodeCanvas(canvas);
+        if(text && !_assignDone){ doAssignBarcode(text.trim(), null); handled = true; }
+      }
     }
     if(_decodeLoopActive) requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 }
 
-// "Kod biriktirish" oynasida ham suratga olib skanerlash imkoniyati
+// "Kod biriktirish" / "Donalarni ro'yxatga olish" oynasida ham sotishdagi
+// bilan bir xil "Scan HD" (12 usul x ko'p-dekoderli chuqur tekshiruv)
+// imkoniyati — qopqoqqa lazer bilan bosilgan kichik/kontrastsiz QR kodlar
+// uchun ayniqsa foydali. Serial (donalarni ro'yxatga olish) rejimida,
+// nativ detektor bitta kadrda BIR NECHTA dona (turli QR) topsa — hammasi
+// bittada tanlangan tovarga ro'yxatga olinadi (sotishdagi ko'p-tovarli
+// skanerlash bilan bir xil g'oya).
 window.captureAndScanAssign = async function(){
   const video = document.getElementById('assign-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
@@ -4839,7 +5004,11 @@ window.captureAndScanAssign = async function(){
   if(_nativeDetector){
     try{
       const codes = await _nativeDetector.detect(video);
-      if(codes && codes.length && !_assignDone){ doAssignBarcode(codes[0].rawValue.trim(), codes[0].format); return; }
+      if(codes && codes.length && !_assignDone){
+        if(_assignMode === 'serial') codes.forEach(c=>doAssignBarcode(c.rawValue, c.format));
+        else doAssignBarcode(codes[0].rawValue.trim(), codes[0].format);
+        return;
+      }
     }catch(e){ console.error(e); }
   }
 
@@ -4859,10 +5028,12 @@ window.doAssignBarcode = async function(code, format){
   if(_assignDone) return; // Ikki marta ishlamasin
 
   // Erkin "donalarni ro'yxatga olish" rejimida NAVBATDAGI tovar degan
-  // narsa yo'q — har bir skanerlangan kod o'zining GTIN'i bo'yicha aniq
-  // tovarga topshiriladi (doRegisterSerialUnit ichida). `format` dekoder
-  // (native BarcodeDetector / zxing-wasm) qaytargan kod turi — mavjud
-  // bo'lsa, doRegisterSerialUnit shu yordamida BARCODE'larni rad etadi.
+  // narsa yo'q — admin tanlagichdan qaysi tovarni ro'yxatga olayotganini
+  // o'zi tanlaydi (_assignProductId), va har bir skanerlangan kod aynan
+  // SHU tovarga topshiriladi (doRegisterSerialUnit ichida). Bu — umumiy
+  // barcode/GTIN'ga BOG'LIQ EMAS. `format` dekoder (native BarcodeDetector /
+  // zxing-wasm) qaytargan kod turi — mavjud bo'lsa, doRegisterSerialUnit
+  // shu yordamida BARCODE'larni rad etadi.
   if(_assignMode === 'serial'){
     doRegisterSerialUnit(code, format);
     return;
@@ -5016,42 +5187,53 @@ function doRegisterSerialUnit(code, format){
   code = (code||'').trim();
   if(!code) return;
 
+  // MUHIM (YANGI MANTIQ): "Donalarni ro'yxatga olish" endi tovarning umumiy
+  // barcode/GTIN'iga BUTUNLAY BOG'LIQ EMAS — QR/DataMatrix kod hech qanday
+  // GTIN ma'lumotini o'z ichiga olmasligi mumkin (masalan qopqoqdagi tasodifiy
+  // QR). Shu sababli tovar avtomatik "topilmaydi" — buning o'rniga ADMIN
+  // yuqoridagi tanlagichdan qaysi tovarni ro'yxatga olayotganini o'zi
+  // TANLAYDI, va har bir skanerlangan kod aynan SHU tanlangan tovarga
+  // yoziladi. Barcode faqat sotishda, QR shikastlangan holatda zaxira
+  // sifatida ishlatiladi — bu yerga aloqasi yo'q.
+  const truep = DB.products.find(x=>x.id===_assignProductId);
+  if(!truep){
+    toast('⚠️ Avval tovarni tanlang','red');
+    document.getElementById('assign-status').textContent = "⚠️ Avval yuqoridagi ro'yxatdan tovarni tanlang";
+    document.getElementById('assign-status').style.color = 'var(--red)';
+    return;
+  }
+
   // 1) FORMAT BO'YICHA TEKSHIRISH (dekoder format qaytargan bo'lsa): agar
   //    bu ANIQ oddiy barcode (EAN/UPC/Code128/Code39...) bo'lsa — rad
   //    etamiz, chunki bunday kod BARCHA donalarda BIR XIL bo'ladi va
   //    "noyob dona" sifatida hisoblanishi mumkin emas.
   if(isBarcodeFormat(format)){
-    rejectSerialBarcodeScan(code);
+    rejectSerialBarcodeScan(code, truep);
     return;
   }
 
   if(_isRecentSerialDuplicate(code)) return;
 
-  // Kodning GTIN qismi bazadagi umumiy barcode'lar bilan solishtiriladi —
-  // dona qaysi tovarga tegishli ekani shundan aniqlanadi (navbat emas).
-  const keyGTIN = normalizeScanCode(code);
-  const truep = DB.products.find(x=>x.barcode && codesMatch(x.barcode, keyGTIN));
-
-  if(!truep){
-    toast('⚠️ Bu kod hech qanday tovarning umumiy kodiga mos kelmadi','red');
-    document.getElementById('assign-status').textContent = "⚠️ Noma'lum kod — avval shu tovarga umumiy barcode biriktiring";
-    document.getElementById('assign-status').style.color = 'var(--red)';
-    return;
-  }
-
   // 2) MAZMUNGA ASOSLANGAN TEKSHIRISH (format noma'lum bo'lgan dekoder
   //    yo'llari yoki qo'lda kiritish uchun HAM ishlaydi): agar skanerlangan
-  //    kod aynan shu tovarning umumiy barcode'iga so'zma-so'z teng bo'lsa
-  //    va haqiqiy GS1 tuzilmasi bo'lmasa — bu ODDIY BARCODE, noyob dona
-  //    kodi EMAS.
+  //    kod aynan tanlangan tovarning umumiy barcode'iga so'zma-so'z teng
+  //    bo'lsa — bu ODDIY BARCODE (qo'shimcha yorliq), noyob dona kodi EMAS.
   if(looksLikePlainBarcodeForProduct(code, truep)){
     rejectSerialBarcodeScan(code, truep);
     return;
   }
 
-  // Panelni HAR DOIM aynan shu topilgan tovarga moslab yangilaymiz.
-  document.getElementById('assign-product-info').innerHTML =
-    `📦 ${truep.name}${truep.volume?' · '+truep.volume+'L':''}`;
+  // 3) Bu kod BOSHQA biror tovarga allaqachon dona sifatida biriktirilgan
+  //    bo'lishi mumkin (masalan admin tovarni almashtirishni unutgan) —
+  //    shu holatda ogohlantiramiz, chunki bitta QR ikkita tovarga tegishli
+  //    bo'lib qolmasligi kerak.
+  const crossProduct = DB.products.find(x=>x.id!==truep.id && x.serialCodes && x.serialCodes[code]);
+  if(crossProduct){
+    toast(`⚠️ Bu kod allaqachon "${crossProduct.name}"da ro'yxatga olingan!`,'red');
+    document.getElementById('assign-status').textContent = `⚠️ Bu dona "${crossProduct.name}"ga tegishli — tovarni to'g'ri tanlaganingizni tekshiring`;
+    document.getElementById('assign-status').style.color = 'var(--red)';
+    return;
+  }
 
   const registeredBefore = Object.keys(truep.serialCodes||{}).length;
   const total = truep.stock||0;
@@ -5100,6 +5282,13 @@ function doRegisterSerialUnit(code, format){
   flashAssignAdded();
   logAssignSession(truep, 1);
   renderProducts();
+  // Tanlagichdagi "qoldi" sonini yangilaymiz; agar shu tovar to'liq
+  // ro'yxatga olingan bo'lsa — ro'yxatdan chiqib ketadi va (bo'lsa) navbatdagi
+  // tovar avtomatik tanlanadi, aks holda tanlov o'zgarishsiz qoladi.
+  populateAssignSerialProductSelect();
+  const sel = document.getElementById('assign-serial-product-select');
+  if(sel && _assignProductId) sel.value = _assignProductId;
+  if(remaining<=0) renderAssignSerialProductInfo();
   // Navbat yo'q — foydalanuvchi o'zi ✕ tugmasi bilan tugatguncha, istalgan
   // tartibda, istalgan tovarning donalarini skanerlashda davom etaveradi.
 }
@@ -5140,6 +5329,7 @@ window.closeAssignBarcode = function(){
   _assignSessionLog = [];
   renderAssignSessionLog();
   const choiceBtns=document.getElementById('assign-choice-buttons'); if(choiceBtns) choiceBtns.style.display='none';
+  const sel=document.getElementById('assign-serial-product-select'); if(sel) sel.style.display='none';
   closeModal('modal-assign-barcode');
   scheduleStreamRelease();
 }
