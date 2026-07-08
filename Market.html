@@ -1,3 +1,7 @@
+
+
+
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -130,6 +134,7 @@
     100%{box-shadow:0 0 0 16px rgba(34,197,94,0)}
   }
   #scan-video-wrap.flash-added{animation:flash-added .1s ease-out}
+  #assign-video-wrap.flash-added{animation:flash-added .1s ease-out}
 
   /* Savatdagi tovar ko'rsatgichi */
   .cart-badge-overlay{position:absolute;top:7px;left:7px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25)}
@@ -968,6 +973,10 @@
     </div>
 
     <p id="assign-status" style="text-align:center;margin:.75rem 0;font-size:14px;font-weight:600;color:var(--text2)">Tovarning barkodini skanerga qarating...</p>
+
+    <!-- Shu ro'yxatga olish sessiyasida qo'shilgan donalar jurnali (donalarni
+         ro'yxatga olish rejimida — sotishdagi "session log" bilan bir xil) -->
+    <div id="assign-session-log" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.5rem .65rem;margin-bottom:.65rem"></div>
 
     <!-- Kod skanerlangach, admin uni qaysi maydonga saqlashni o'zi tanlaydi -->
     <div id="assign-choice-buttons" style="display:none;gap:.5rem;margin-bottom:.75rem">
@@ -4079,6 +4088,33 @@ function codesMatch(a, b){
   return normalizeScanCode(a) === normalizeScanCode(b);
 }
 
+// ===== KOD FORMATI: BARCODE vs QR/DataMatrix =====
+// "Donalarni ro'yxatga olish" FAQAT QR/DataMatrix (har bir donada NOYOB)
+// kod bilan ishlashi kerak — oddiy BARCODE (EAN/UPC/Code128/Code39 — barcha
+// donalarda BIR XIL) bilan emas. Dekoder (native BarcodeDetector yoki
+// zxing-wasm) qaytargan `format` shu ikkisini ajratish uchun ishlatiladi.
+const _BARCODE_FORMATS = new Set([
+  'ean_13','ean_8','upc_a','upc_e','code_128','code_39','codabar','itf','upc',
+  'EAN-13','EAN-8','UPC-A','UPC-E','Code128','Code39','Codabar','ITF'
+]);
+const _QR_DATAMATRIX_FORMATS = new Set([
+  'qr_code','data_matrix','aztec','pdf417',
+  'QRCode','DataMatrix','Aztec','PDF417'
+]);
+function isBarcodeFormat(format){ return !!format && _BARCODE_FORMATS.has(format); }
+function isQrOrDataMatrixFormat(format){ return !!format && _QR_DATAMATRIX_FORMATS.has(format); }
+// Format ma'lumoti yo'q (ba'zi dekoder yo'llarida bo'lmasligi mumkin) hollar
+// uchun MAZMUNGA qarab tekshirish: agar kod GS1 tuzilmasi bo'lmasa VA aynan
+// tovarning umumiy barcode'iga so'zma-so'z teng bo'lsa — bu ODDIY BARCODE,
+// noyob dona kodi emas (chunki haqiqiy noyob QR/DataMatrix hech qachon
+// barcode bilan bir xil bo'lmaydi — unda qo'shimcha seriya/kripto ma'lumoti
+// yoki butunlay boshqa qiymat bo'ladi).
+function looksLikePlainBarcodeForProduct(code, product){
+  if(!product || !product.barcode) return false;
+  if(parseGS1(code).isGS1) return false; // haqiqiy GS1 DataMatrix — ruxsat
+  return codesMatch(code, product.barcode);
+}
+
 // Kod bo'yicha tovar qidirish — barcode (GS1 GTIN-normallashtirilgan) yoki
 // nomi bo'yicha. Yagona (bir joyda) izlash mantig'i — processCode va
 // ko'p-kodli (batch) skanerlash bir xil qidiruvdan foydalanishi uchun.
@@ -4591,8 +4627,9 @@ window.startSerialRegisterQueue = function(){
   _assignQueueIdx = -1;
   _assignQueue = [];
   _assignProductId = null;
-  _lastSerialCode = null;
-  _lastSerialAt = 0;
+  _recentSerialCodes.clear();
+  _assignSessionLog = [];
+  renderAssignSessionLog();
   openSerialFreeScan();
 };
 
@@ -4744,7 +4781,17 @@ function startAssignDecoding(video){
       if(!_decodeLoopActive) return;
       try{
         const codes = await _nativeDetector.detect(video);
-        if(codes && codes.length && !_assignDone) doAssignBarcode(codes[0].rawValue);
+        if(codes && codes.length && !_assignDone){
+          if(_assignMode === 'serial'){
+            // BATCH: kadrda bir nechta dona (turli QR/DataMatrix) ko'rinishi
+            // mumkin — hammasini bittada qayta ishlaymiz, foydalanuvchi
+            // stol ustiga terib qo'ygan bir nechta shishani tez skanerlashi
+            // uchun (xuddi sotishdagi ko'p-tovarli skanerlash kabi).
+            codes.forEach(c=>doAssignBarcode(c.rawValue, c.format));
+          } else {
+            doAssignBarcode(codes[0].rawValue, codes[0].format);
+          }
+        }
       }catch(e){}
       if(_decodeLoopActive) requestAnimationFrame(loop);
     };
@@ -4758,7 +4805,7 @@ function startAssignDecoding(video){
     getSharedReader().decodeFromVideoElement(video, (result)=>{
       if(result && !_assignDone){
         const code = result.getText().trim();
-        if(code) doAssignBarcode(code);
+        if(code) doAssignBarcode(code, null);
       }
     });
     return;
@@ -4775,7 +4822,7 @@ function startAssignDecoding(video){
       toggle = !toggle;
       const canvas = grabCroppedCanvas(video, cropFrac, 1.8, true);
       const text = tryDecodeCanvas(canvas);
-      if(text && !_assignDone) doAssignBarcode(text.trim());
+      if(text && !_assignDone) doAssignBarcode(text.trim(), null);
     }
     if(_decodeLoopActive) requestAnimationFrame(loop);
   };
@@ -4792,30 +4839,32 @@ window.captureAndScanAssign = async function(){
   if(_nativeDetector){
     try{
       const codes = await _nativeDetector.detect(video);
-      if(codes && codes.length && !_assignDone){ doAssignBarcode(codes[0].rawValue.trim()); return; }
+      if(codes && codes.length && !_assignDone){ doAssignBarcode(codes[0].rawValue.trim(), codes[0].format); return; }
     }catch(e){ console.error(e); }
   }
 
   const variants = buildScanVariants(video);
   for(const v of variants){
     const result = await decodeCanvasMulti(v.canvas, false);
-    if(result && result.text && !_assignDone){ doAssignBarcode(result.text.trim()); return; }
+    if(result && result.text && !_assignDone){ doAssignBarcode(result.text.trim(), result.format); return; }
     await new Promise(r=>setTimeout(r,0));
   }
   document.getElementById('assign-status').textContent = "Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring yoki qo'lda kiriting.";
   document.getElementById('assign-status').style.color = 'var(--amber)';
 }
 
-window.doAssignBarcode = async function(code){
+window.doAssignBarcode = async function(code, format){
   code = (code||'').trim();
   if(!code){ toast('Kod bo\'sh','red'); return; }
   if(_assignDone) return; // Ikki marta ishlamasin
 
   // Erkin "donalarni ro'yxatga olish" rejimida NAVBATDAGI tovar degan
   // narsa yo'q — har bir skanerlangan kod o'zining GTIN'i bo'yicha aniq
-  // tovarga topshiriladi (doRegisterSerialUnit ichida).
+  // tovarga topshiriladi (doRegisterSerialUnit ichida). `format` dekoder
+  // (native BarcodeDetector / zxing-wasm) qaytargan kod turi — mavjud
+  // bo'lsa, doRegisterSerialUnit shu yordamida BARCODE'larni rad etadi.
   if(_assignMode === 'serial'){
-    doRegisterSerialUnit(code);
+    doRegisterSerialUnit(code, format);
     return;
   }
 
@@ -4911,20 +4960,72 @@ window.commitAssignedCode = function(fieldType){
 // tovarni, uning ombordagi sonini va nechtasi ro'yxatga olinganini
 // ko'rsatadi. Agar dona allaqachon ro'yxatda bo'lsa, shuni aniq bildiradi
 // (xato bermaydi, keyingi donaga o'tishga tayyor turadi).
-let _lastSerialCode = null;
-let _lastSerialAt = 0;
+// Bir xil kod hali kamera oldida turgan bo'lishi mumkin (qo'l ulgurmagan) —
+// har bir kod uchun ALOHIDA 1.5 soniyalik "jim o'tkazish" oynasi (Map),
+// shunda bitta kadrda bir nechta TURLI dona ko'rinsa ham, har biri o'z
+// holicha to'g'ri qayta ishlanadi (faqat AYNAN O'SHA kod qaytarilganda
+// spam bo'lib ketmaydi).
+let _recentSerialCodes = new Map(); // code -> oxirgi ko'rilgan vaqt (ms)
+function _isRecentSerialDuplicate(code){
+  const now = Date.now();
+  for(const [c,t] of _recentSerialCodes){ if(now-t>1500) _recentSerialCodes.delete(c); }
+  const last = _recentSerialCodes.get(code);
+  _recentSerialCodes.set(code, now);
+  return !!(last && (now-last)<1500);
+}
 
-function doRegisterSerialUnit(code){
+// Shu ro'yxatga olish sessiyasida (oyna ochilgandan yopilgunga) ro'yxatga
+// olingan donalar jurnali — sotishdagi "session log" bilan bir xil g'oya.
+let _assignSessionLog = []; // [{id, name, qty}]
+function logAssignSession(prod, qty){
+  const existing = _assignSessionLog.find(x=>x.id===prod.id);
+  if(existing) existing.qty += qty;
+  else _assignSessionLog.push({id:prod.id, name:prod.name+(prod.volume?` · ${prod.volume}L`:''), qty});
+  renderAssignSessionLog();
+}
+function renderAssignSessionLog(){
+  const wrap = document.getElementById('assign-session-log');
+  if(!wrap) return;
+  if(!_assignSessionLog.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  const totalQty = _assignSessionLog.reduce((s,x)=>s+x.qty,0);
+  wrap.style.display='block';
+  wrap.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.4rem;display:flex;justify-content:space-between">
+      <span>🧾 Shu sessiyada ro'yxatga olindi</span><span>Jami: ${totalQty} dona</span>
+    </div>
+    <div style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem">
+      ${_assignSessionLog.map(x=>`
+        <div style="display:flex;justify-content:space-between;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem">
+          <span>${x.name}</span><strong>${x.qty} dona</strong>
+        </div>`).join('')}
+    </div>`;
+}
+
+// Kamera ramkasini (assign-video-wrap) qisqa yashil "yalt" bilan yoritib,
+// donaning qabul qilinganini tezkor vizual tasdiqlaydi (sotishdagi
+// flashScanAdded() bilan bir xil g'oya, faqat boshqa oynaga qo'llanadi).
+function flashAssignAdded(){
+  const wrap = document.getElementById('assign-video-wrap');
+  if(!wrap) return;
+  wrap.classList.remove('flash-added');
+  void wrap.offsetWidth; // reflow — animatsiyani qayta ishga tushirish uchun
+  wrap.classList.add('flash-added');
+}
+
+function doRegisterSerialUnit(code, format){
   code = (code||'').trim();
   if(!code) return;
 
-  // Bir xil kod hali kamera oldida turgan bo'lishi mumkin (qo'l ulgurmagan) —
-  // 1.5 soniya ichida bir xil kodni jim o'tkazib yuboramiz, ogohlantirish
-  // spam bo'lib ketmasin.
-  const now = Date.now();
-  if(code === _lastSerialCode && (now - _lastSerialAt) < 1500) return;
-  _lastSerialCode = code;
-  _lastSerialAt = now;
+  // 1) FORMAT BO'YICHA TEKSHIRISH (dekoder format qaytargan bo'lsa): agar
+  //    bu ANIQ oddiy barcode (EAN/UPC/Code128/Code39...) bo'lsa — rad
+  //    etamiz, chunki bunday kod BARCHA donalarda BIR XIL bo'ladi va
+  //    "noyob dona" sifatida hisoblanishi mumkin emas.
+  if(isBarcodeFormat(format)){
+    rejectSerialBarcodeScan(code);
+    return;
+  }
+
+  if(_isRecentSerialDuplicate(code)) return;
 
   // Kodning GTIN qismi bazadagi umumiy barcode'lar bilan solishtiriladi —
   // dona qaysi tovarga tegishli ekani shundan aniqlanadi (navbat emas).
@@ -4935,6 +5036,16 @@ function doRegisterSerialUnit(code){
     toast('⚠️ Bu kod hech qanday tovarning umumiy kodiga mos kelmadi','red');
     document.getElementById('assign-status').textContent = "⚠️ Noma'lum kod — avval shu tovarga umumiy barcode biriktiring";
     document.getElementById('assign-status').style.color = 'var(--red)';
+    return;
+  }
+
+  // 2) MAZMUNGA ASOSLANGAN TEKSHIRISH (format noma'lum bo'lgan dekoder
+  //    yo'llari yoki qo'lda kiritish uchun HAM ishlaydi): agar skanerlangan
+  //    kod aynan shu tovarning umumiy barcode'iga so'zma-so'z teng bo'lsa
+  //    va haqiqiy GS1 tuzilmasi bo'lmasa — bu ODDIY BARCODE, noyob dona
+  //    kodi EMAS.
+  if(looksLikePlainBarcodeForProduct(code, truep)){
+    rejectSerialBarcodeScan(code, truep);
     return;
   }
 
@@ -4986,9 +5097,31 @@ function doRegisterSerialUnit(code){
     : `🎉 "${truep.name}" ning barcha donalari ro'yxatga olindi!`;
   document.getElementById('assign-status').style.color = 'var(--green)';
 
+  flashAssignAdded();
+  logAssignSession(truep, 1);
   renderProducts();
   // Navbat yo'q — foydalanuvchi o'zi ✕ tugmasi bilan tugatguncha, istalgan
   // tartibda, istalgan tovarning donalarini skanerlashda davom etaveradi.
+}
+
+// Skanerlangan kod aslida BARCODE (umumiy, hamma donada bir xil) ekani
+// aniqlanganda chaqiriladi — donalarni ro'yxatga olishda bunday kod
+// QABUL QILINMAYDI, chunki har bir dona NOYOB QR/DataMatrix bilan
+// ro'yxatga olinishi kerak.
+function rejectSerialBarcodeScan(code, product){
+  if(navigator.vibrate) navigator.vibrate([200,80,200]);
+  const unitProgEl = document.getElementById('assign-unit-progress');
+  if(unitProgEl){
+    unitProgEl.style.display = 'block';
+    unitProgEl.style.background = 'var(--red-bg)';
+    unitProgEl.style.borderColor = 'var(--red-border)';
+    unitProgEl.style.color = 'var(--red)';
+    unitProgEl.textContent = `❌ Bu BARCODE (umumiy kod)${product?' — '+product.name:''} — donalarni ro'yxatga olish uchun yaroqsiz`;
+  }
+  document.getElementById('assign-status').textContent =
+    "❌ Bu — BARCODE. Donalarni ro'yxatga olishda faqat QR/DataMatrix kod (har bir donaning o'zinikidir) ishlatiladi.";
+  document.getElementById('assign-status').style.color = 'var(--red)';
+  toast('❌ Bu barcode — QR/DataMatrix kod kerak','red');
 }
 
 window.closeAssignBarcode = function(){
@@ -5003,6 +5136,9 @@ window.closeAssignBarcode = function(){
   _assignMode = 'barcode';
   _assignFieldTarget = null;
   _pendingAssignCode = null;
+  _recentSerialCodes.clear();
+  _assignSessionLog = [];
+  renderAssignSessionLog();
   const choiceBtns=document.getElementById('assign-choice-buttons'); if(choiceBtns) choiceBtns.style.display='none';
   closeModal('modal-assign-barcode');
   scheduleStreamRelease();
