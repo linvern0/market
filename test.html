@@ -1026,7 +1026,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
   authDomain: "dokon-ce38b.firebaseapp.com",
@@ -1176,6 +1176,32 @@ async function fbSaveProduct(p){
 async function fbUpdateProductFields(id, fields){
   setSyncing(true);
   withRetry(()=>updateDoc(doc(db,'products',id), fields))
+    .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
+}
+// TUZATILDI: skanerlangan kodlarni (serialCodes/soldCodes xaritasining
+// kaliti sifatida) oddiy "obj.kalit" satr yo'li bilan yozish XAVFLI —
+// agar kodning o'zida NUQTA (".") belgisi bo'lsa (masalan seriya/kripto
+// qismida), Firestore buni "ichma-ich maydon yo'li" deb noto'g'ri talqin
+// qilib, kodni butunligicha SAQLAMAY, uni bo'laklarga bo'lib, mutlaqo
+// boshqa (chalkash) ichki tuzilma yaratib qo'yishi mumkin edi. Bizning
+// haqiqiy skanerlangan kodlarimizda ";", "?", ")", ":", "-", "_" kabi
+// turli maxsus belgilar uchraydi — demak "." belgisi ham istisno emas.
+// FieldPath(topKey, code) esa kodni HECH QACHON bo'lmaydigan, doim BITTA
+// yaxlit kalit sifatida yozadi — qanday belgi bo'lishidan qat'iy nazar.
+async function fbUpdateProductCodeFields(id, plainFields, codeFieldPairs){
+  // plainFields: oddiy {stock: increment(1)} kabi maydonlar (ixtiyoriy, null bo'lishi mumkin)
+  // codeFieldPairs: [['serialCodes', code, true], ['soldCodes', code, deleteField()], ...]
+  const args = [];
+  if(plainFields){
+    Object.keys(plainFields).forEach(k=>{ args.push(k, plainFields[k]); });
+  }
+  (codeFieldPairs||[]).forEach(([topKey, code, value])=>{
+    args.push(new FieldPath(topKey, code), value);
+  });
+  if(!args.length) return;
+  setSyncing(true);
+  withRetry(()=>updateDoc(doc(db,'products',id), ...args))
     .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -2027,11 +2053,10 @@ function revertCartSerialCode(id){
     p.serialCodes[code] = true;
     if(p.soldCodes) delete p.soldCodes[code];
     p.stock = (p.stock||0) + 1;
-    fbUpdateProductFields(id, {
-      [`serialCodes.${code}`]: true,
-      [`soldCodes.${code}`]: deleteField(),
-      stock: increment(1)
-    }).catch(e=>{ console.error(e); toast('Bekor qilishda xatolik','red'); });
+    fbUpdateProductCodeFields(id,
+      { stock: increment(1) },
+      [['serialCodes', code, true], ['soldCodes', code, deleteField()]]
+    );
   }
   return true;
 }
@@ -4129,6 +4154,13 @@ function parseGS1(raw){
   const result = {isGS1:false, ai:{}, gtin:null, serial:null};
   if(!raw) return result;
   raw = raw.trim();
+  // Ba'zi kameralar/dekoderlar DataMatrix boshidagi FNC1/GS boshqaruv
+  // belgisini (yoki uning noto'g'ri talqin qilingan ko'rinishini, masalan
+  // ']d2' kabi DataMatrix simvologiya identifikatorini) qoldirib
+  // yuboradi — bu "01" bilan boshlanishi kerak bo'lgan tekshiruvni
+  // buzib, haqiqiy GS1 kodni oddiy "noma'lum kod" deb hisoblashga olib
+  // kelardi. Shunday boshlang'ich belgilarni tozalaymiz.
+  raw = raw.replace(/^\u001d+/, '').replace(/^\]d2/i, '').replace(/^\]Q3/i, '').trim();
 
   // 1) Parantezli (odam o'qiydigan) format — bir nechta (AI)qiymat juftligi
   if(/\(\d{2,4}\)/.test(raw)){
@@ -4278,27 +4310,61 @@ function looksLikePlainBarcodeForProduct(code, product){
 // Kod bo'yicha tovar qidirish — barcode (GS1 GTIN-normallashtirilgan) yoki
 // nomi bo'yicha. Yagona (bir joyda) izlash mantig'i — processCode va
 // ko'p-kodli (batch) skanerlash bir xil qidiruvdan foydalanishi uchun.
+//
+// MUHIM TUZATISH (2026-07): Ilgari BIRINCHI navbatda faqat `barcode`
+// maydoni tekshirilardi — agar skanerlangan kodning GTIN qismi
+// product.barcode bilan mos kelsa, kod DARHOL 'barcode' (umumiy,
+// cheksiz, himoyasiz) turi deb hisoblanardi — HATTO kod haqiqiy GS1
+// DataMatrix bo'lib, ichida noyob seriya raqami (AI 21) bo'lsa ham!
+// Natijada: (a) sotishda bitta jismoniy shisha bir necha marta "sotilishi"
+// mumkin edi (soldCodes tekshiruvi umuman ishlamasdi), (b) kirimda bir xil
+// shisha qayta-qayta skanerlansa, sonini cheksiz oshiraverar edi.
+// Endi: agar kodda GS1 seriya qismi (AI 21) bo'lsa — bu SO'ZSIZ alohida
+// jismoniy donaning o'ziga xos kodi (garchi GTIN'i umumiy barcode bilan
+// bir xil bo'lsa ham) — shuning uchun 'serial' turi sifatida qaytariladi,
+// bu esa uni takror-sotish/takror-kirim himoyasidan (serialCodes/soldCodes)
+// albatta o'tkazadi.
 function findProductByCode(code){
   if(!code) return null;
 
-  // 1) Avval asosiy barcode (GTIN/EAN) bo'yicha qidiramiz
+  // 1) Avval — bu ANIQ kod allaqachon biror tovarning serialCodes
+  //    ro'yxatida ro'yxatga olinganmi (avval kirim qilingan noyob dona)?
+  for(const product of DB.products){
+    if(product.serialCodes && product.serialCodes[code]){
+      return { product, type: 'serial' };
+    }
+  }
+
+  // 2) Kod haligacha hech qayerda ro'yxatga olinmagan. Agar bu haqiqiy
+  //    GS1 kod bo'lib, ichida NOYOB seriya (AI 21) bo'lsa — GTIN orqali
+  //    tovarni aniqlaymiz (barcode YOKI qrCode maydoni bilan), lekin
+  //    baribir 'serial' (noyob, hali ro'yxatga olinmagan) turi sifatida
+  //    qaytaramiz.
+  const parsedForSerial = parseGS1(code);
+  if(parsedForSerial.isGS1 && parsedForSerial.serial){
+    for(const product of DB.products){
+      if((product.barcode && codesMatch(product.barcode, code)) ||
+         (product.qrCode && codesMatch(product.qrCode, code))){
+        return { product, type: 'serial' };
+      }
+    }
+  }
+
+  // 3) Oddiy (seriyasiz) asosiy barcode (GTIN/EAN) bo'yicha qidiramiz —
+  //    bu holatda kod HAQIQATAN HAM umumiy, cheksiz marta qo'shilishi
+  //    mumkin bo'lgan kod (masalan qo'lda EAN-13 kiritilgan yoki oddiy
+  //    barcode skanerlangan, seriya raqamisiz).
   for(const product of DB.products){
     if(product.barcode && codesMatch(product.barcode, code)){
       return { product, type: 'barcode' };
     }
   }
 
-  // 2) Topilmasa — qopqoq/idishdagi QR/DataMatrix kodi (qrCode) bo'yicha
+  // 4) Topilmasa — qopqoq/idishdagi QR/DataMatrix kodi (qrCode) bo'yicha
+  //    (seriyasiz, oddiy QR sifatida biriktirilgan eski/yagona holat)
   for(const product of DB.products){
     if(product.qrCode && codesMatch(product.qrCode, code)){
       return { product, type: 'qrCode' };
-    }
-  }
-
-  // 3) Baribir topilmasa — noyob seriya kodlari (serialCodes) bo'yicha
-  for(const product of DB.products){
-    if(product.serialCodes && product.serialCodes[code]){
-      return { product, type: 'serial' };
     }
   }
 
@@ -4337,8 +4403,15 @@ window.processCode = function(code){
         return;
       }
       
-      // Bu kod allaqachon omborda mavjudmi?
-      if(!prod.serialCodes || !prod.serialCodes[code]){
+      // Bu kod allaqachon omborda mavjudmi? MUHIM: bu tekshiruv FAQAT
+      // SOTUVCHI rejimida talab qilinadi — hali hech qachon kirim
+      // qilinmagan (omborga qo'shilmagan) donani sotib bo'lmaydi. ADMIN
+      // rejimida esa, aksincha, aynan SHU — hali serialCodes'da yo'q,
+      // yangi kod — kirim qilinishi kerak bo'lgan holat, shuning uchun
+      // admin uchun bu yerda TO'XTATILMAYDI (findProductByCode GTIN orqali
+      // tovarni allaqachon to'g'ri aniqlab bergan, scanDoRestock esa yangi
+      // kodni serialCodes'ga qo'shib, stockni +1 oshiradi).
+      if(_scanMode === 'seller' && (!prod.serialCodes || !prod.serialCodes[code])){
         setScanStatus(`⚠️ Bu kod omborda yo'q! (${code})`, 'err');
         toast('⚠️ Bu kod omborda mavjud emas!', 'red');
         return;
@@ -4492,6 +4565,53 @@ window.scanDoRestock = function(){
   // hisoblab, ularni serialCodes ro'yxatiga umuman yozmay, shunchaki
   // miqdorni oshirib qo'yardi. Endi processCode() aniq topgan haqiqiy
   // turdan ('serial') foydalanamiz.
+  //
+  // MUHIM TUZATISH (2026-07): 'qrCode' turi ('Kod biriktirish'da tovarga
+  // yozib qo'yilgan yagona QR/DataMatrix qiymati) ILGARI bu yerda "oddiy
+  // barcode" sifatida ko'rilib, HECH QANDAY dublikat tekshiruvisiz, har
+  // safar skanerlanganda miqdorni (hatto bir xil kod ketma-ket bir necha
+  // marta o'qilganda ham) qayta-qayta oshiraverar edi. Bu — foydalanuvchi
+  // xabar qilgan "qayta-qayta ro'yxatga olinyapti" xatosining sababi edi.
+  // Endi 'qrCode' turi ham 'serial' kabi — NOYOB, faqat BIR MARTA qabul
+  // qilinadigan kod sifatida ko'riladi (qopqoqdagi/idishdagi noyob kod
+  // haqiqatan ham FAQAT SHU BITTA jismoniy donaga tegishli bo'lgani uchun).
+  const isQrCodeType = _scannedCodeType === 'qrCode';
+  
+  if(isQrCodeType){
+    if(prod.qrCodeReceived){
+      toast(`ℹ️ Bu QR/DataMatrix kod allaqachon kirim qilingan: ${code}`, 'amber');
+      resetScanForNext();
+      return;
+    }
+    const stockBefore = prod.stock;
+    const stockAfter = stockBefore + 1;
+    prod.stock = stockAfter;
+    prod.qrCodeReceived = true;
+    const restock = {
+      id: uid(),
+      productId: prod.id,
+      productName: prod.name,
+      volume: prod.volume||'',
+      type:'in',
+      qty: 1,
+      stockBefore,
+      stockAfter,
+      reason:`Skanerlash orqali kirim (QR/DataMatrix): ${code}`,
+      date:new Date().toISOString()
+    };
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+    toast(`✓ ${prod.name}: +1 ta (${stockBefore} → ${stockAfter}) - ${code}`,'green');
+    flashScanAdded();
+    logScanSession(prod, 1);
+    refreshProductViews();
+    Promise.all([
+      fbUpdateProductFields(prod.id, {qrCodeReceived:true, stock: increment(1)}),
+      fbSaveRestock(restock)
+    ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
+    resetScanForNext();
+    return;
+  }
+  
   const isSerial = _scannedCodeType === 'serial';
   
   if(isSerial){
@@ -4542,7 +4662,7 @@ window.scanDoRestock = function(){
     // vaqtda boshqa joyda (masalan sotuvchi tomonidan) bo'layotgan
     // o'zgarish yo'qolib qolmaydi.
     Promise.all([
-      fbUpdateProductFields(prod.id, {[`serialCodes.${code}`]: true, stock: increment(1)}),
+      fbUpdateProductCodeFields(prod.id, {stock: increment(1)}, [['serialCodes', code, true]]),
       fbSaveRestock(restock)
     ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
     
@@ -4688,11 +4808,10 @@ function sellCodeMatch(prod, code, codeType, qty){
 
   // ATOMIK yozuv — butun obyektni qayta yozmaymiz (parallel operatsiyalar
   // bilan to'qnashmasligi uchun).
-  fbUpdateProductFields(prod.id, {
-    [`soldCodes.${code}`]: true,
-    [`serialCodes.${code}`]: deleteField(),
-    stock: increment(-1)
-  }).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  fbUpdateProductCodeFields(prod.id,
+    {stock: increment(-1)},
+    [['soldCodes', code, true], ['serialCodes', code, deleteField()]]
+  );
 
   updateCartBtn();
   updateSingleCard(prod.id);
@@ -5269,7 +5388,17 @@ function doRegisterSerialUnit(code, format){
   // 2) GTIN (yoki umumiy barcode) orqali AVTOMATIK mahsulot aniqlash.
   //    extractGTIN/codesMatch GS1 DataMatrix'dagi (01)GTIN qismini ajratib,
   //    tovarlarning `barcode` maydoni bilan solishtiradi.
-  const product = DB.products.find(p=>p.barcode && codesMatch(p.barcode, code));
+  //    TUZATILDI: ilgari FAQAT `barcode` maydoni tekshirilardi. Agar
+  //    tovarga hali umumiy `barcode` kiritilmagan bo'lsa-yu, faqat
+  //    `qrCode` (Kod biriktirish orqali) belgilangan bo'lsa — bunday
+  //    tovar bu yerda HECH QACHON topilmasdi ("Bu mahsulot bazada mavjud
+  //    emas" xatosi — aynan "qopqoqdagi kodni ro'yxatga olish umuman
+  //    ishlamayabdi" shikoyatining sababi). Endi `qrCode` ham GTIN
+  //    darajasida solishtiriladi.
+  const product = DB.products.find(p=>
+    (p.barcode && codesMatch(p.barcode, code)) ||
+    (p.qrCode && codesMatch(p.qrCode, code))
+  );
   if(!product){
     if(navigator.vibrate) navigator.vibrate([200,80,200]);
     unitProgEl.style.background = 'var(--red-bg)';
@@ -5291,8 +5420,7 @@ function doRegisterSerialUnit(code, format){
   // ATOMIK: faqat shu bitta KOD kalitini qo'shamiz va stockni serverda
   // increment() bilan +1 oshiramiz — butun mahsulotni qayta yozmaymiz
   // (parallel kirim/sotish bilan to'qnashmasligi uchun).
-  fbUpdateProductFields(product.id, {[`serialCodes.${code}`]: true, stock: increment(1)})
-    .catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  fbUpdateProductCodeFields(product.id, {stock: increment(1)}, [['serialCodes', code, true]]);
   refreshProductViews();
 
   unitProgEl.style.background = 'var(--green-bg)';
