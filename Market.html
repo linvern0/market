@@ -615,13 +615,33 @@
 }
 
 /* Table Enhancements */
-table thead {
+/* TUZATILDI (2026-07): "table thead{position:sticky}" BARCHA jadvallarga
+   umumiy qo'llanilardi, lekin ularni o'rab turgan .tbl-wrap konteynerida
+   overflow-x:auto bor edi. Bu esa brauzerga .tbl-wrap'ni sticky hisoblash
+   uchun "scroll konteyner" deb qabul qildirar, natijada eng yangi (birinchi)
+   qator sarlavha orqasida qisman yashirinib/kesilib ko'rinar edi — aynan
+   "Mening sotuvlarim"da oxirgi sotilgan tovar to'liq ko'rinmasligi shundan
+   edi. Endi sticky faqat shu uchun mo'ljallangan ".tbl-sticky" klassi
+   qo'yilgan jadvallargagina qo'llanadi (hozircha hech biriga qo'yilmagan),
+   oddiy jadvallar esa sahifa bilan birga tabiiy ravishda scroll bo'ladi.
+*/
+table.tbl-sticky thead {
   position: sticky;
   top: 56px;
+  z-index: 5;
 }
 
 tr.selected td {
   background: var(--accent-bg) !important;
+}
+
+/* YANGI (2026-07): yangi qo'shilgan savdo qatorini vaqtincha yoritish */
+@keyframes row-flash-anim {
+  0% { background: var(--green-bg); }
+  100% { background: transparent; }
+}
+tr.row-flash td {
+  animation: row-flash-anim 2.2s ease-out;
 }
 
 /* Status Badges */
@@ -1048,6 +1068,11 @@ body.dark tr:hover td {
     <button class="btn sm" id="ms-btn-yesterday" onclick="setMySalesFilter('yesterday')">Kecha</button>
     <button class="btn sm" id="ms-btn-all" onclick="setMySalesFilter('all')">Barchasi</button>
     <input type="date" id="ms-date" onchange="setMySalesFilter('custom')">
+  </div>
+  <!-- YANGI (2026-07): tovar nomi bo'yicha tezkor qidiruv — sotuvchi ro'yxat
+       uzun bo'lganda kerakli savdoni tez topishi uchun. -->
+  <div style="margin-bottom:.75rem">
+    <input type="text" id="ms-search" oninput="renderMySales()" placeholder="🔍 Tovar nomi bo'yicha qidirish..." style="width:100%;max-width:320px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .9rem;font-size:14px;outline:none">
   </div>
   <div id="seller-daily-summary" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
@@ -3576,6 +3601,7 @@ window.doCartSell=async function(){
         const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
         receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty});
         writes.push(fbSaveSale(sale));
+        window._lastSaleFlashId = sale.id; // YANGI: oxirgi qo'shilgan savdoni "Mening sotuvlarim"da yoritish uchun
         // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
         // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
         // boshqa joyda (masalan admin kirim skanerlayotgan bo'lsa) bo'layotgan
@@ -3778,19 +3804,31 @@ function renderMySalesInner(){
     : allMySales;
   sales = sales.slice().reverse();
 
+  // YANGI (2026-07): tovar nomi bo'yicha qidiruv filtri.
+  const searchEl = document.getElementById('ms-search');
+  const q = (searchEl?.value||'').trim().toLowerCase();
+  if(q) sales = sales.filter(s=>(s.productName||'').toLowerCase().includes(q));
+
   const tbody=document.getElementById('my-sales-body'); const none=document.getElementById('no-my-sales');
-  if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; return; }
+  if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; none.textContent = q ? "Qidiruvga mos savdo topilmadi." : "Savdolar yo'q."; return; }
   none.style.display='none';
+  // YANGI (2026-07): yangi qo'shilgan savdo bir necha soniya yashil rang bilan
+  // yoritilib, foydalanuvchiga savdo muvaffaqiyatli ro'yxatga tushganini
+  // ko'rgazmali tasdiqlaydi (ayniqsa oxirgi sotuv "ko'rinmayapti" degan
+  // shubhaning oldini olish uchun).
+  const flashId = window._lastSaleFlashId || null;
   tbody.innerHTML=sales.map(s=>{
     try{
       const saleTime=new Date(s.date).getTime();
       const canRevert=!s.reverted && !isNaN(saleTime) && (now-saleTime)/60000<=revertMins;
-      return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:''}</td></tr>`;
+      const flashCls = (flashId && s.id===flashId) ? ' row-flash' : '';
+      return `<tr class="${flashCls}"><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:''}</td></tr>`;
     }catch(rowErr){
       console.error('Savdo qatorini chizishda xatolik:', s?.id, rowErr);
       return '';
     }
   }).join('');
+  if(flashId){ window._lastSaleFlashId=null; setTimeout(()=>{ document.querySelectorAll('#my-sales-body tr.row-flash').forEach(r=>r.classList.remove('row-flash')); },2500); }
 }
 window.revertSale=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
