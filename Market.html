@@ -3557,29 +3557,55 @@ window.doCartSell=async function(){
   const total=cartTotal();
   const writes=[];
   const receiptItems=[];
-  items.forEach(([id,qty])=>{
-    const p=DB.products.find(x=>x.id===id);
-    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
-    receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty});
-    writes.push(fbSaveSale(sale));
-    // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
-    // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
-    // boshqa joyda (masalan admin kirim skanerlayotgan bo'lsa) bo'layotgan
-    // o'zgarish yo'qolib qolmaydi (avvalgi "butun obyektni qayta yozish"
-    // usuli aynan shu sababli serialCodes/soldCodes'ni orqaga qaytarib,
-    // "allaqachon sotilgan" kabi noto'g'ri holatlarga olib kelardi).
-    const serialQty = (cartSerialCodes[id]||[]).length;
-    const nonSerialQty = Math.max(0, qty - serialQty);
-    if(nonSerialQty > 0){
-      p.stock = p.stock - nonSerialQty;
-      writes.push(fbUpdateProductFields(p.id, {stock: increment(-nonSerialQty)}));
-    }
-    delete cartSerialCodes[id]; // endi haqiqatan ham sotildi — "checkout kutilmoqda" ro'yxatidan chiqaramiz
-  });
-  cart={}; closeModal('modal-cart'); updateCartBtn(); renderSellGrid();
-  if(currentRole==='seller') renderMySales();
-  toast(`✓ Savdo yakunlandi — ${fmt(total)} so'm`,'green');
-  openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total));
+  // TUZATILDI (2026-07): ilgari shu forEach ichida BIRORTA tovarda kutilmagan
+  // xatolik (masalan noto'g'ri/eskirgan mahsulot ma'lumoti) yuz bersa, JS
+  // xatoligi BUTUN funksiyani sekundida to'xtatib qo'yardi — shu sababli pastdagi
+  // "cart={}...", "renderMySales()" va hatto "toast(...)" qatorlari umuman
+  // ISHGA TUSHMASDAN qolardi. Natijada ba'zi tovarlar sotilgan (yozuv Firestore'ga
+  // ketgan) bo'lsa ham, ekranda ("Mening sotuvlarim"dagi eng oxirgi savdo va uning
+  // "↩ Qaytarish" tugmasi) HECH NARSA yangilanmasdan, sahifani yangilamaguncha
+  // "yo'q" bo'lib ko'rinardi. Endi har bir tovar ALOHIDA try/catch bilan
+  // qayta ishlanadi — bittasi muvaffaqiyatsiz bo'lsa ham, qolganlari baribir
+  // sotiladi va ekran doim yangilanadi (finally bloki).
+  const failedItems=[];
+  try{
+    items.forEach(([id,qty])=>{
+      try{
+        const p=DB.products.find(x=>x.id===id);
+        if(!p) throw new Error('Tovar topilmadi: '+id);
+        const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
+        receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty});
+        writes.push(fbSaveSale(sale));
+        // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
+        // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
+        // boshqa joyda (masalan admin kirim skanerlayotgan bo'lsa) bo'layotgan
+        // o'zgarish yo'qolib qolmaydi (avvalgi "butun obyektni qayta yozish"
+        // usuli aynan shu sababli serialCodes/soldCodes'ni orqaga qaytarib,
+        // "allaqachon sotilgan" kabi noto'g'ri holatlarga olib kelardi).
+        const serialQty = (cartSerialCodes[id]||[]).length;
+        const nonSerialQty = Math.max(0, qty - serialQty);
+        if(nonSerialQty > 0){
+          p.stock = p.stock - nonSerialQty;
+          writes.push(fbUpdateProductFields(p.id, {stock: increment(-nonSerialQty)}));
+        }
+        delete cartSerialCodes[id]; // endi haqiqatan ham sotildi — "checkout kutilmoqda" ro'yxatidan chiqaramiz
+      }catch(itemErr){
+        console.error('Savdo qatorini yozishda xatolik:', id, itemErr);
+        failedItems.push(id);
+      }
+    });
+  }finally{
+    // Xatolik bo'lsa ham, muvaffaqiyatli qismi uchun ekran DOIM yangilanadi.
+    cart={}; closeModal('modal-cart'); updateCartBtn(); renderSellGrid();
+    if(currentRole==='seller') renderMySales();
+  }
+  if(failedItems.length){
+    toast(`⚠️ ${failedItems.length} ta tovar sotilmadi (xatolik). Konsolni tekshiring.`,'red');
+  }
+  if(receiptItems.length){
+    toast(`✓ Savdo yakunlandi — ${fmt(total)} so'm`,'green');
+    openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total));
+  }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
 
@@ -3690,6 +3716,20 @@ window.setMySalesFilter = function(type){
   renderMySales();
 }
 window.renderMySales=function(){
+  try{
+    renderMySalesInner();
+  }catch(e){
+    // TUZATILDI (2026-07): ilgari bitta noto'g'ri/eskirgan savdo yozuvi
+    // (masalan buzilgan sana) BUTUN jadval chizilishini xatolik bilan
+    // to'xtatib qo'yishi mumkin edi — natijada "Mening sotuvlarim" bo'sh
+    // ko'rinardi va "↩ Qaytarish" tugmasi ham umuman chiqmasdi. Endi bu
+    // funksiya butunlay o'ralgan, xatolik konsolga yoziladi va foydalanuvchi
+    // xabardor qilinadi, lekin ilova "qotib" qolmaydi.
+    console.error('renderMySales xatosi:', e);
+    toast("Savdolar ro'yxatini ko'rsatishda xatolik yuz berdi",'red');
+  }
+}
+function renderMySalesInner(){
   const revertMins=DB.revertMinutes;
   const info=document.getElementById('my-revert-info');
   info.style.display='block';
@@ -3742,8 +3782,14 @@ window.renderMySales=function(){
   if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
   tbody.innerHTML=sales.map(s=>{
-    const canRevert=!s.reverted&&(now-new Date(s.date))/60000<=revertMins;
-    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:''}</td></tr>`;
+    try{
+      const saleTime=new Date(s.date).getTime();
+      const canRevert=!s.reverted && !isNaN(saleTime) && (now-saleTime)/60000<=revertMins;
+      return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:''}</td></tr>`;
+    }catch(rowErr){
+      console.error('Savdo qatorini chizishda xatolik:', s?.id, rowErr);
+      return '';
+    }
   }).join('');
 }
 window.revertSale=function(id){
