@@ -346,10 +346,6 @@
         <div class="desc">Savdo qilish</div>
       </div>
     </div>
-    <div class="pin-section" id="seller-name-section" style="display:none">
-      <label>Ismingiz</label>
-      <input type="text" id="seller-name-input" placeholder="Masalan: Aziz" autocomplete="off" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:15px;outline:none;transition:.1s">
-    </div>
     <div class="pin-section">
       <label>PIN kod</label>
       <input class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="····" id="pin-input">
@@ -364,7 +360,7 @@
 <nav>
   <div class="logo">🏪 <span>Do'kon</span></div>
   <div id="nav-admin" style="display:none;gap:.25rem">
-    <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa</button>
+    <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa<span id="dash-low-badge"></span></button>
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
     <button class="tab" onclick="showPage('history','admin')">📋 Savdo tarixi</button>
     <button class="tab" onclick="showPage('profit','admin')">💹 Foyda</button>
@@ -394,6 +390,8 @@
         <option value="all">Hammasi</option>
       </select>
       <button class="btn sm amber" onclick="exportDashboardPDF()" title="Umumiy holat hisobotini PDF qilib yuklab olish">📄 Umumiy hisobot (PDF)</button>
+      <button class="btn sm blue" onclick="exportSalesCSV()" title="Barcha savdolar tarixini Excel/CSV formatida yuklab olish">📊 Savdolar (CSV)</button>
+      <button class="btn sm blue" onclick="exportProductsCSV()" title="Tovarlar ro'yxatini Excel/CSV formatida yuklab olish">📦 Tovarlar (CSV)</button>
     </div>
   </div>
   <div class="stat-grid" id="stat-grid"></div>
@@ -418,6 +416,10 @@
       <div class="card">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
         <div id="low-stock-list"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🐌 Harakatsiz tovarlar (30+ kun sotilmagan)</h3>
+        <div id="stale-products-list"></div>
       </div>
     </div>
   </div>
@@ -821,7 +823,7 @@ body.dark tr:hover td {
     <button class="btn sm" onclick="sortProducts('vol')">Hajm bo'yicha</button>
     <button class="btn sm" onclick="sortProducts('stock_asc')">Kam zaxira</button>
     <button class="btn sm" onclick="sortProducts('added')">Qo'shilgan tartib</button>
-    <input type="text" id="prod-search" onkeyup="renderProducts()" placeholder="🔍 Qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;outline:none;min-width:160px">
+    <input type="text" id="prod-search" onkeyup="debouncedRenderProducts()" placeholder="🔍 Qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;outline:none;min-width:160px">
   </div>
   <div class="product-grid" id="product-grid"></div>
   <p id="no-products" style="color:var(--text3);text-align:center;padding:3rem;display:none">Hali tovar yo'q.</p>
@@ -989,7 +991,7 @@ body.dark tr:hover td {
     <input type="date" id="debt-from" onchange="renderDebts()">
     <input type="date" id="debt-to" onchange="renderDebts()">
     <button class="btn sm" onclick="clearDebtDateFilter()">✕ Sana</button>
-    <input type="text" id="debt-search" oninput="renderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
+    <input type="text" id="debt-search" oninput="debouncedRenderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
     <button class="btn sm green" onclick="exportDebtsCSV()" title="Qarzlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
     <button class="btn sm green" onclick="exportDebtsExcel()" title="Qarzlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
   </div>
@@ -1675,6 +1677,20 @@ const PerformanceMonitor = {
 // Utility
 function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
+// YANGI: TEZLIK — qidiruv maydonlarida har bir bosilgan tugma uchun DARHOL
+// butun ro'yxatni qayta chizish o'rniga, foydalanuvchi yozishni to'xtatishi
+// bilan (150ms) bir marta chizadi. Katta tovar/qarzdorlar ro'yxatida bu
+// sezilarli darajada yumshoqroq va tezroq ishlaydi.
+function debounce(fn, wait){
+  let t;
+  return function(...args){
+    clearTimeout(t);
+    t = setTimeout(()=>fn.apply(this, args), wait);
+  };
+}
+window.debouncedRenderProducts = debounce(()=>window.renderProducts(), 150);
+window.debouncedRenderDebts = debounce(()=>window.renderDebts(), 150);
+
 // FIREBASE INIT
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -1711,6 +1727,24 @@ try {
   ErrorHandler.handle(new AppError('Firebase init xatosi', 'FIREBASE_INIT_ERROR'), 'Firebase initialization');
   console.error("Firebase initialization failed:", e);
 }
+
+// YANGI: ISHONCHLILIK — kutilmagan JS xatolari (masalan kelajakda yana
+// biror joyda xatolik bo'lib qolsa) endi butun ilovani "jim" qotirib
+// qo'ymaydi, hech bo'lmasa konsolga va ErrorHandler jurnaliga yoziladi —
+// shunda muammoni keyinchalik tezroq topish mumkin. Har bir kichik xato
+// uchun foydalanuvchiga bezovta qiluvchi toast ko'rsatilmaydi (faqat jim
+// jurnalga yoziladi); qo'lda tekshirish uchun konsolda `ErrorHandler.getLogs()`.
+window.addEventListener('error', (e)=>{
+  console.error('Kutilmagan xatolik:', e.message, e.filename+':'+e.lineno);
+  ErrorHandler.errors.push({ message:e.message, code:'UNCAUGHT_ERROR', context:`${e.filename}:${e.lineno}`, timestamp:new Date(), severity:'error' });
+  if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  const msg = (e.reason && (e.reason.message || String(e.reason))) || "Noma'lum promise xatosi";
+  console.error("Ushlanmagan promise xatosi:", msg);
+  ErrorHandler.errors.push({ message:msg, code:'UNHANDLED_REJECTION', context:'', timestamp:new Date(), severity:'error' });
+  if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
+});
 
 window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30, lowStockThreshold: 5 };
 window.currentRole = null;
@@ -2043,16 +2077,8 @@ async function init(){
       document.querySelectorAll('.role-btn').forEach(x=>x.classList.remove('selected'));
       b.classList.add('selected');
       document.getElementById('pin-input').placeholder = b.dataset.role==='admin'?'Admin PIN':'Sotuvchi PIN';
-      const nameSection=document.getElementById('seller-name-section');
-      if(b.dataset.role==='seller'){
-        nameSection.style.display='block';
-        document.getElementById('seller-name-input').value = localStorage.getItem('dokon_seller_name')||'';
-      } else {
-        nameSection.style.display='none';
-      }
     }));
     document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
-    document.getElementById('seller-name-input').addEventListener('keyup', e=>{ if(e.key==='Enter') document.getElementById('pin-input').focus(); });
   }
 
   try{
@@ -2119,25 +2145,53 @@ async function init(){
   proceedToLogin();
 }
 
+// YANGI (XAVFSIZLIK): PIN kodni "taxmin qilib ko'rish" (brute-force) dan
+// himoya — ketma-ket 5 marta noto'g'ri PIN kiritilsa, kirish 30 soniyaga
+// vaqtincha bloklanadi. Holat localStorage'da saqlanadi, shuning uchun
+// sahifa qayta yuklansa ham blok davom etadi.
+const LOGIN_LOCK_KEY = 'dokon_login_lock';
+function getLoginLockState(){
+  try{ return JSON.parse(localStorage.getItem(LOGIN_LOCK_KEY)||'{}'); }catch(e){ return {}; }
+}
+function setLoginLockState(state){
+  try{ localStorage.setItem(LOGIN_LOCK_KEY, JSON.stringify(state)); }catch(e){}
+}
+function registerFailedLogin(){
+  const lock = getLoginLockState();
+  const count = (lock.count||0) + 1;
+  if(count >= 5){
+    setLoginLockState({ count: 0, until: Date.now() + 30000 });
+  } else {
+    setLoginLockState({ count, until: 0 });
+  }
+}
+
 window.doLogin = function(){
   const role = document.querySelector('.role-btn.selected')?.dataset.role;
   const pin = document.getElementById('pin-input').value;
   const err = document.getElementById('err-msg');
+
+  const lock = getLoginLockState();
+  if(lock.until && Date.now() < lock.until){
+    const secLeft = Math.ceil((lock.until - Date.now())/1000);
+    err.textContent = `⛔ Juda ko'p noto'g'ri urinish. ${secLeft} soniyadan keyin qayta urinib ko'ring.`;
+    return;
+  }
+
   if(!role){ err.textContent='Rolni tanlang'; return; }
   if(!pin){ err.textContent='PIN kiriting'; return; }
-  if(role==='admin' && pin!==DB.pins.admin){ err.textContent="Admin PIN noto'g'ri"; return; }
-  if(role==='seller' && pin!==DB.pins.seller){ err.textContent="Sotuvchi PIN noto'g'ri"; return; }
-  let sellerName = 'Sotuvchi';
-  if(role==='seller'){
-    sellerName = (document.getElementById('seller-name-input').value||'').trim();
-    if(!sellerName){ err.textContent="Ismingizni kiriting"; return; }
-    localStorage.setItem('dokon_seller_name', sellerName);
-  }
+  if(role==='admin' && pin!==DB.pins.admin){ registerFailedLogin(); err.textContent="Admin PIN noto'g'ri"; return; }
+  if(role==='seller' && pin!==DB.pins.seller){ registerFailedLogin(); err.textContent="Sotuvchi PIN noto'g'ri"; return; }
+  setLoginLockState({}); // muvaffaqiyatli kirish — hisoblagichni tozalash
+  // TUZATILDI: endi kirishda sotuvchidan ISM SO'RALMAYDI — PIN kiritish
+  // yetarli, savdo yozuvlarida umumiy "Sotuvchi" nomi ishlatiladi.
+  const sellerName = 'Sotuvchi';
   currentSellerName = sellerName;
   currentRole = role;
   err.textContent='';
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
+  resetInactivityTimer();
   document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 '+sellerName);
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
@@ -2173,13 +2227,32 @@ window.doLogin = function(){
   }
 }
 
+// YANGI (XAVFSIZLIK): 20 daqiqa harakatsizlikdan so'ng avtomatik tizimdan
+// chiqarish — ayniqsa umumiy/ulashilgan qurilmada admin panelini ochiq
+// qoldirib ketish xavfini kamaytiradi.
+const INACTIVITY_LIMIT_MS = 20*60*1000;
+let _inactivityTimer = null;
+function resetInactivityTimer(){
+  if(!currentRole) return;
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = setTimeout(()=>{
+    if(currentRole){
+      logout();
+      toast('⏱ Uzoq vaqt harakatsizlik tufayli tizimdan chiqildi','amber');
+    }
+  }, INACTIVITY_LIMIT_MS);
+}
+['click','keydown','touchstart','mousemove'].forEach(evt=>{
+  window.addEventListener(evt, ()=>{ if(currentRole) resetInactivityTimer(); }, {passive:true});
+});
+
 window.logout = function(){
+  clearTimeout(_inactivityTimer);
   Object.keys(cartSerialCodes).forEach(id=>{ while(revertCartSerialCode(id)){} });
   currentRole=null; currentSellerName='Sotuvchi'; cart={};
   document.getElementById('login-page').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pin-input').value='';
-  document.getElementById('seller-name-section').style.display='none';
   document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
 }
 
@@ -2276,8 +2349,86 @@ window.renderDashboard = function(){
       <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
 
+  // YANGI: "Bosh sahifa" navigatsiya tugmasida kam qolgan/tugagan
+  // tovarlar sonini kichik qizil belgi (badge) sifatida ko'rsatamiz —
+  // admin har safar "Kam qolgan tovarlar" bo'limini ochmasdan ham darhol
+  // e'tibor talab qilinishini bilib oladi.
+  const lowBadgeCount = DB.products.filter(p=>p.stock<=DB.lowStockThreshold).length;
+  const lowBadgeEl = document.getElementById('dash-low-badge');
+  if(lowBadgeEl){
+    lowBadgeEl.innerHTML = lowBadgeCount>0
+      ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;margin-left:5px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;vertical-align:middle">${lowBadgeCount}</span>`
+      : '';
+  }
+
+  renderStaleProducts();
   renderSalesTrendChart();
 }
+
+// YANGI: 30 kundan buyon (yoki umuman) sotilmagan, lekin omborda hali bor
+// tovarlarni ko'rsatadi — admin qaysi tovarlar "muzlab qolganini" (kapital
+// band bo'lib turganini) ko'rib, aksiya/chegirma yoki kirimni to'xtatish
+// haqida qaror qabul qilishi uchun foydali.
+function renderStaleProducts(){
+  const el = document.getElementById('stale-products-list');
+  if(!el) return;
+  const THRESHOLD_DAYS = 30;
+  const cutoff = Date.now() - THRESHOLD_DAYS*24*60*60*1000;
+  const lastSaleMap = {};
+  DB.sales.forEach(s=>{
+    if(s.reverted || !s.productId) return;
+    const t = new Date(s.date).getTime();
+    if(!lastSaleMap[s.productId] || t>lastSaleMap[s.productId]) lastSaleMap[s.productId] = t;
+  });
+  const stale = DB.products
+    .filter(p=>p.stock>0 && (!lastSaleMap[p.id] || lastSaleMap[p.id]<cutoff))
+    .sort((a,b)=>(lastSaleMap[a.id]||0)-(lastSaleMap[b.id]||0))
+    .slice(0,8);
+  el.innerHTML = stale.length ? stale.map(p=>{
+    const last = lastSaleMap[p.id];
+    const info = last ? `${Math.floor((Date.now()-last)/(24*60*60*1000))} kun oldin sotilgan` : "Hech qachon sotilmagan";
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
+      <span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${info}</span>
+    </div>`;
+  }).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi faol sotilmoqda ✓</p>';
+}
+
+// YANGI: barcha savdolar tarixini Excel'da ochsa bo'ladigan CSV formatida
+// yuklab olish — qarzdorlar/buxgalteriya bilan hisob-kitob qilishda, yoki
+// ma'lumotlarni boshqa dasturga ko'chirishda foydali.
+window.exportSalesCSV = function(){
+  const rows = DB.sales.filter(s=>!s.reverted).map(s=>({
+    Sana: new Date(s.date).toLocaleString('uz-UZ'),
+    Tovar: s.productName,
+    Hajm: s.volume||'',
+    Miqdor: s.qty,
+    "Narx (1 dona)": s.price,
+    Jami: s.total,
+    Tannarx: s.cost||0,
+    Sotuvchi: s.seller||'Sotuvchi'
+  }));
+  if(!rows.length){ toast("Eksport uchun savdo ma'lumoti yo'q",'amber'); return; }
+  BatchOperations.exportToCSV(rows, `savdolar_${new Date().toISOString().slice(0,10)}.csv`);
+  toast('✓ Savdolar CSV fayli yuklandi','green');
+};
+
+// YANGI: joriy tovarlar ro'yxatini (narx, tannarx, soni, kodlari bilan)
+// CSV formatida yuklab olish.
+window.exportProductsCSV = function(){
+  const rows = DB.products.map(p=>({
+    Nomi: p.name,
+    Hajm: p.volume||'',
+    Narx: p.price,
+    Tannarx: p.cost||0,
+    Soni: p.stock,
+    Barcode: p.barcode||'',
+    "QR/DataMatrix": p.qrCode||''
+  }));
+  if(!rows.length){ toast("Eksport uchun tovar yo'q",'amber'); return; }
+  BatchOperations.exportToCSV(rows, `tovarlar_${new Date().toISOString().slice(0,10)}.csv`);
+  toast('✓ Tovarlar CSV fayli yuklandi','green');
+};
 
 // YANGI: so'nggi 7 kunlik savdo hajmini (so'mda) oddiy SVG ustunli
 // grafik sifatida chizadi. Tashqi kutubxonasiz, faqat DB.sales asosida.
