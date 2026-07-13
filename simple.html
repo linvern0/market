@@ -6452,7 +6452,9 @@ window.startSerialRegisterQueue = function(){
   // umumiy barcode orqali tizim AVTOMATIK qaysi mahsulotga tegishli
   // ekanini aniqlaydi (parseGS1/extractGTIN + product.barcode solishtirish
   // orqali — pastda doRegisterSerialUnit ichida), kodni O'SHA mahsulotning
-  // serialCodes ro'yxatiga yozadi va uning stock (soni)ni +1 oshiradi.
+  // serialCodes ro'yxatiga yozadi (stockga TEGMAYDI — chunki bu son
+  // ALLAQACHON qo'lda/yozma kirim orqali kiritilgan bo'ladi; bu rejimning
+  // vazifasi faqat har bir jismoniy donaga kod BIRIKTIRISH).
   // Kamera admin ✕ (Stop) tugmasini bosmaguncha uzluksiz ishlayveradi.
   _assignMode = 'serial';
   _assignQueueIdx = -1;
@@ -6977,20 +6979,51 @@ function doRegisterSerialUnit(code, format){
   if(navigator.vibrate) navigator.vibrate(100);
 
   // 3) Yangi, hali ro'yxatda bo'lmagan dona — o'sha mahsulotning serialCodes
-  //    ro'yxatiga qo'shamiz va ombordagi sonini (stock) +1 oshiramiz.
+  //    ro'yxatiga qo'shamiz.
+  //
+  //    TUZATILDI (MUHIM) — ILGARI bu yerda stock ham +1 OSHIRILARDI. Bu
+  //    XATO edi: "donalarni ro'yxatga olish" rejimining maqsadi — allaqachon
+  //    QO'LDA/YOZMA kirim qilingan sondagi (masalan "Fuse Tea 20 dona kirim
+  //    qilindi" deb qo'lda kiritilgan, stock=20) jismoniy donalarning har
+  //    biriga individual QR/DataMatrix kodni BIRIKTIRISH — ombordagi sonni
+  //    QAYTA OSHIRISH EMAS. Avvalgi kodda har bir skanerlash stockni yana
+  //    +1 oshirgani uchun, 20 dona qo'lda kirim qilingandan keyin 20 tasini
+  //    skanerlab chiqilsa, ombor soni noto'g'ri 40 taga chiqib ketardi
+  //    (qo'shaloq hisoblash). Endi bu funksiya FAQAT serialCodes'ga yozadi;
+  //    stockni faqat "to'g'ridan-to'g'ri kirim skaneri" (doAdminIntake /
+  //    yuqoridagi increment(1) chaqiruvlari, alohida rejim) oshiradi.
   if(!product.serialCodes) product.serialCodes = {};
   product.serialCodes[code] = true;
-  product.stock = (product.stock||0) + 1;
-  // ATOMIK: faqat shu bitta KOD kalitini qo'shamiz va stockni serverda
-  // increment() bilan +1 oshiramiz — butun mahsulotni qayta yozmaymiz
-  // (parallel kirim/sotish bilan to'qnashmasligi uchun).
-  fbUpdateProductCodeFields(product.id, {stock: increment(1)}, [['serialCodes', code, true]]);
+  // ATOMIK: faqat shu bitta KOD kalitini qo'shamiz — stockga TEGMAYMIZ
+  // (butun mahsulotni qayta yozmaymiz, parallel kirim/sotish bilan
+  // to'qnashmasligi uchun).
+  fbUpdateProductCodeFields(product.id, null, [['serialCodes', code, true]]);
   refreshProductViews();
 
-  unitProgEl.style.background = 'var(--green-bg)';
-  unitProgEl.style.borderColor = 'var(--green-border)';
-  unitProgEl.style.color = 'var(--green)';
-  unitProgEl.textContent = `✅ ${product.name}${product.volume?' · '+product.volume+'L':''} +1 — omborda: ${product.stock} ta`;
+  const registeredCount = Object.keys(product.serialCodes).length;
+  const totalStock = product.stock || 0;
+  const remaining = Math.max(0, totalStock - registeredCount);
+  const overCount = registeredCount > totalStock;
+
+  if(overCount){
+    // YANGI: registeredCount stockdan oshib ketdi — demak yo qo'lda
+    // kiritilgan "kirim" soni noto'g'ri (kam), yoki bu dona allaqachon
+    // boshqa yo'l bilan (masalan to'g'ridan-to'g'ri kirim skaneri orqali)
+    // hisoblangan. Bloklamaymiz (dona jismonan real), lekin admin buni
+    // ko'rib, kerak bo'lsa stock sonini qo'lda to'g'rilashi uchun aniq
+    // ogohlantiramiz — aks holda bu nomuvofiqlik sezilmay qolardi.
+    unitProgEl.style.background = 'var(--amber-bg)';
+    unitProgEl.style.borderColor = 'var(--amber-border)';
+    unitProgEl.style.color = 'var(--amber)';
+    unitProgEl.textContent = `⚠️ ${product.name} — ro'yxatga olindi: ${registeredCount}, lekin omborda yozilgan stock bor-yo'g'i ${totalStock} ta! Stock sonini tekshiring/to'g'rilang.`;
+  } else {
+    unitProgEl.style.background = 'var(--green-bg)';
+    unitProgEl.style.borderColor = 'var(--green-border)';
+    unitProgEl.style.color = 'var(--green)';
+    unitProgEl.textContent = remaining > 0
+      ? `✅ ${product.name}${product.volume?' · '+product.volume+'L':''} — ro'yxatga olindi: ${registeredCount}/${totalStock} (yana ${remaining} ta qoldi)`
+      : `✅ ${product.name}${product.volume?' · '+product.volume+'L':''} — barcha ${totalStock} dona ro'yxatga olindi!`;
+  }
 
   document.getElementById('assign-status').textContent = 'Keyingi kodni skanerlang...';
   document.getElementById('assign-status').style.color = 'var(--green)';
