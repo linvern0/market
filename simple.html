@@ -17,6 +17,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Do'kon">
+<!-- Excel (.xlsx) va PDF hisobotlar uchun kutubxonalar (faqat eksport funksiyalarida ishlatiladi) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -255,6 +259,32 @@
   @media(max-width:768px){.scan-fab{bottom:70px}}
   @media(min-width:769px){.scan-fab{bottom:1.25rem}}
 </style>
+<style>
+  /* ===== TUNGI REJIM (DARK MODE) ===== */
+  body.dark{
+    --bg:#0f1419;--surface:#1a2129;--surface2:#212a34;
+    --border:#2d3742;--border2:#3a4652;
+    --text:#e5e9ee;--text2:#b0bac4;--text3:#7c8794;
+    --accent:#3b82f6;--accent-bg:#1e293b;--accent-border:#3b5578;
+    --green:#22c55e;--green-bg:#132a1c;--green-border:#22492f;
+    --red:#f87171;--red-bg:#301a1a;--red-border:#552626;
+    --amber:#fbbf24;--amber-bg:#332208;--amber-border:#5a4413;
+  }
+  body.dark .login-card,body.dark .modal{background:var(--surface);color:var(--text)}
+  body.dark .field input,body.dark .field select,body.dark .field textarea{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+  body.dark .role-btn{background:var(--surface);border-color:var(--border2)}
+  body.dark th{background:var(--surface2)}
+  body.dark tr:hover td{background:var(--surface2)}
+  body.dark #receipt-content{color:#111} /* chek doim oq qog'ozda o'qilishi uchun */
+  body.dark #receipt-content{background:#fff;border-radius:8px;padding:.5rem}
+
+  /* ===== CHEKNI CHOP ETISH ===== */
+  @media print{
+    body *{visibility:hidden}
+    #receipt-content, #receipt-content *{visibility:visible}
+    #receipt-content{position:fixed;top:0;left:0;width:100%;padding:1rem}
+  }
+</style>
 </head>
 <body>
 
@@ -279,6 +309,10 @@
         <div class="name">Sotuvchi</div>
         <div class="desc">Savdo qilish</div>
       </div>
+    </div>
+    <div class="pin-section" id="seller-name-section" style="display:none">
+      <label>Ismingiz</label>
+      <input type="text" id="seller-name-input" placeholder="Masalan: Aziz" autocomplete="off" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:15px;outline:none;transition:.1s">
     </div>
     <div class="pin-section">
       <label>PIN kod</label>
@@ -309,20 +343,28 @@
   </div>
   <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
   <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
+  <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#334155;border-color:#475569;color:#94a3b8">🌙</button>
   <button class="btn sm" onclick="logout()" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
 </nav>
 
 <div class="page active" id="page-dashboard">
   <div class="section-header">
     <div><h2>Bosh sahifa</h2><p id="today-date"></p></div>
-    <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
-      <option value="today">Bugun</option>
-      <option value="week">Bu hafta</option>
-      <option value="month">Bu oy</option>
-      <option value="all">Hammasi</option>
-    </select>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+      <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
+        <option value="today">Bugun</option>
+        <option value="week">Bu hafta</option>
+        <option value="month">Bu oy</option>
+        <option value="all">Hammasi</option>
+      </select>
+      <button class="btn sm amber" onclick="exportDashboardPDF()" title="Umumiy holat hisobotini PDF qilib yuklab olish">📄 Umumiy hisobot (PDF)</button>
+    </div>
   </div>
   <div class="stat-grid" id="stat-grid"></div>
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">📈 So'nggi 7 kunlik savdo trendi</h3>
+    <div id="sales-trend-chart"></div>
+  </div>
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;margin-bottom:1rem" id="dash-grid">
     <div class="card">
       <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">Bugungi savdolar</h3>
@@ -332,6 +374,10 @@
       <div class="card">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🏆 Top sotilganlar</h3>
         <div id="top-products"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🏅 Top sotuvchilar</h3>
+        <div id="top-sellers"></div>
       </div>
       <div class="card">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
@@ -350,6 +396,8 @@
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
       <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Kamerani oching va mahsulotlarni istalgan tartibda ketma-ket skanerlang — tizim har bir koddagi GTIN orqali qaysi mahsulot ekanini avtomatik aniqlaydi va ro'yxatga oladi">🔢 Donalarni ro'yxatga olish</button>
+      <button class="btn sm green" onclick="exportProductsCSV()" title="Barcha tovarlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
+      <button class="btn sm green" onclick="exportProductsExcel()" title="Barcha tovarlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
       <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
     </div>
   </div>
@@ -383,10 +431,12 @@
       <option value="10">Noyabr</option><option value="11">Dekabr</option>
     </select>
     <select id="f-year" onchange="renderHistory()"><option value="">Barcha yillar</option></select>
-    <select id="f-seller" onchange="renderHistory()"><option value="">Barcha sotuvchilar</option><option value="Sotuvchi">Sotuvchi</option></select>
+    <select id="f-seller" onchange="renderHistory()"><option value="">Barcha sotuvchilar</option></select>
     <select id="f-product" onchange="renderHistory()"><option value="">Barcha tovarlar</option></select>
     <button class="btn sm" onclick="clearFilters()">✕ Tozalash</button>
     <button class="btn sm green" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn sm green" onclick="exportHistoryExcel()" title="Excel (.xlsx) formatida yuklab olish">⬇ Excel</button>
+    <button class="btn sm amber" onclick="exportHistoryPDF()" title="PDF hisobot sifatida yuklab olish">📄 PDF</button>
   </div>
   <div id="history-summary" style="margin-bottom:1rem"></div>
   <div class="tbl-wrap">
@@ -401,15 +451,22 @@
 <div class="page" id="page-profit">
   <div class="section-header">
     <div><h2>💹 Foyda</h2><p>Foyda = Sotuv narxi − Tannarx</p></div>
-    <select id="profit-period" onchange="renderProfit()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
-      <option value="today">📅 Kunlik (bugun)</option>
-      <option value="week">🗓 Haftalik (bu hafta)</option>
-      <option value="month">📆 Oylik (bu oy)</option>
-      <option value="all">Hammasi</option>
-    </select>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+      <select id="profit-period" onchange="renderProfit()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
+        <option value="today">📅 Kunlik (bugun)</option>
+        <option value="week">🗓 Haftalik (bu hafta)</option>
+        <option value="month">📆 Oylik (bu oy)</option>
+        <option value="all">Hammasi</option>
+      </select>
+      <button class="btn sm amber" onclick="exportProfitPDF()" title="PDF hisobot sifatida yuklab olish">📄 PDF hisobot</button>
+    </div>
   </div>
   <div id="profit-warning" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);border-radius:10px;padding:.85rem 1rem;font-size:13px;margin-bottom:1rem;font-weight:500"></div>
   <div class="stat-grid" id="profit-stat-grid"></div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">📊 So'nggi 6 oylik sotuv va foyda solishtiruvi</h3>
+    <div id="profit-trend-chart"></div>
+  </div>
   <div class="card" style="margin-bottom:1.5rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">Tovarlar bo'yicha foyda</h3>
     <div class="tbl-wrap">
@@ -439,6 +496,7 @@
       <option value="out">Faqat Chiqim</option>
     </select>
     <button class="btn sm green" onclick="exportStockCSV()">⬇ CSV</button>
+    <button class="btn sm green" onclick="exportStockExcel()">⬇ Excel</button>
   </div>
   <div id="sh-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
@@ -475,6 +533,24 @@
     </div>
   </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qoldiq chegarasi</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Tovar miqdori shu sondan kam yoki teng bo'lsa, "Kam qoldi" deb ogohlantiriladi.</p>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="low-stock-threshold" min="1" max="1000" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="5">
+      <span style="font-size:14px;color:var(--text2)">dona</span>
+      <button class="btn sm blue" onclick="saveLowStockThreshold()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">💾 Zaxira nusxa (Backup)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlarni (tovarlar, savdolar, qarzlar va h.k.) bitta faylga saqlab qo'ying — kerak bo'lganda shu fayldan tiklashingiz mumkin.</p>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+      <button class="btn green" onclick="exportBackupJSON()">⬇ To'liq zaxira (JSON)</button>
+      <button class="btn amber" onclick="document.getElementById('restore-file-input').click()">⬆ Fayldan tiklash</button>
+      <input type="file" id="restore-file-input" accept="application/json" style="display:none" onchange="importBackupJSON(this)">
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Ma'lumotlar</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.</p>
     <div style="display:flex;gap:.75rem;flex-wrap:wrap">
@@ -501,6 +577,8 @@
     <input type="date" id="debt-to" onchange="renderDebts()">
     <button class="btn sm" onclick="clearDebtDateFilter()">✕ Sana</button>
     <input type="text" id="debt-search" oninput="renderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
+    <button class="btn sm green" onclick="exportDebtsCSV()" title="Qarzlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
+    <button class="btn sm green" onclick="exportDebtsExcel()" title="Qarzlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
   </div>
   <div id="debt-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div id="debts-list"></div>
@@ -776,6 +854,28 @@
   </div>
 </div>
 
+<!-- CHEK (RECEIPT) MODAL -->
+<div class="modal-overlay hidden" id="modal-receipt">
+  <div class="modal" style="max-width:380px">
+    <div id="receipt-content" style="font-family:'Courier New',monospace;font-size:13px;color:#111">
+      <div style="text-align:center;margin-bottom:.75rem">
+        <div style="font-size:18px;font-weight:700">🏪 Do'kon</div>
+        <div id="receipt-date" style="font-size:12px;color:#555"></div>
+        <div id="receipt-seller" style="font-size:12px;color:#555"></div>
+      </div>
+      <div style="border-top:1px dashed #999;border-bottom:1px dashed #999;padding:.5rem 0;margin-bottom:.5rem" id="receipt-items"></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px">
+        <span>JAMI:</span><span id="receipt-total">0 so'm</span>
+      </div>
+      <div style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-receipt')">Yopish</button>
+      <button class="btn blue" onclick="printReceipt()">🖨 Chop etish</button>
+    </div>
+  </div>
+</div>
+
 <!-- Qarzdor login/parol tahrirlash modal -->
 <div class="modal-overlay hidden" id="modal-debtor-login">
   <div class="modal" style="max-width:400px">
@@ -898,7 +998,7 @@
       ⚡ Avtomatik rejim — har skanerlashda darhol 1 dona qo'shiladi (tugma bosmasdan, ko'p tovarni tez ketma-ket skanerlash uchun)
     </label>
 
-    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📷 Scan HD (12 usul bilan chuqur tekshirish)</button>
+    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.5rem" onclick="captureAndScan()">📷 Scan HD (lazerli kodlar uchun chuqur tekshirish)</button>
     <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.25rem 0 .5rem">Jonli skaner ushlamasa shu tugmani bosing — bitta yoki bir nechta (6–12 dona) tovarni yon-yonma qo'yib suratga olsangiz ham, hammasini birdan aniqlab qo'shadi</p>
 
     <!-- Natija: tovar topildi -->
@@ -1008,7 +1108,7 @@
       <button class="btn sm" style="flex:1;justify-content:center;border-color:var(--amber);color:var(--amber)" onclick="commitAssignedCode('qrCode')">📷 QR/DataMatrix sifatida saqlash</button>
     </div>
 
-    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.25rem" onclick="captureAndScanAssign()">📷 Scan HD (12 usul bilan chuqur tekshirish)</button>
+    <button class="btn blue" style="width:100%;justify-content:center;margin-bottom:.25rem" onclick="captureAndScanAssign()">📷 Scan HD (lazerli kodlar uchun chuqur tekshirish)</button>
     <p style="font-size:11.5px;color:var(--text3);text-align:center;margin:-.1rem 0 .5rem">Jonli skaner ushlamasa (masalan lazer bilan bosilgan kichik kod) shu tugmani bosing</p>
 
     <!-- Qo'lda kiritish -->
@@ -1063,8 +1163,9 @@ try{
   db = getFirestore(app);
 }
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30 };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30, lowStockThreshold: 5 };
 window.currentRole = null;
+window.currentSellerName = 'Sotuvchi';
 window.editingProductId = null;
 window.restockId = null;
 window.cart = {};
@@ -1152,7 +1253,7 @@ const settingsRef = doc(db,'dokon','settings');
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -1307,6 +1408,7 @@ function startListeners(){
       const d=snap.data();
       DB.pins=d.pins||DB.pins;
       DB.revertMinutes=d.revertMinutes||30;
+      DB.lowStockThreshold=d.lowStockThreshold||5;
     }
   });
   let prodDebounce=null;
@@ -1394,8 +1496,16 @@ async function init(){
       document.querySelectorAll('.role-btn').forEach(x=>x.classList.remove('selected'));
       b.classList.add('selected');
       document.getElementById('pin-input').placeholder = b.dataset.role==='admin'?'Admin PIN':'Sotuvchi PIN';
+      const nameSection=document.getElementById('seller-name-section');
+      if(b.dataset.role==='seller'){
+        nameSection.style.display='block';
+        document.getElementById('seller-name-input').value = localStorage.getItem('dokon_seller_name')||'';
+      } else {
+        nameSection.style.display='none';
+      }
     }));
     document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
+    document.getElementById('seller-name-input').addEventListener('keyup', e=>{ if(e.key==='Enter') document.getElementById('pin-input').focus(); });
   }
 
   try{
@@ -1419,8 +1529,9 @@ async function init(){
           const d=settingsR.value.data();
           DB.pins=d.pins||DB.pins;
           DB.revertMinutes=d.revertMinutes||30;
+          DB.lowStockThreshold=d.lowStockThreshold||5;
         } else {
-          setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -1469,11 +1580,18 @@ window.doLogin = function(){
   if(!pin){ err.textContent='PIN kiriting'; return; }
   if(role==='admin' && pin!==DB.pins.admin){ err.textContent="Admin PIN noto'g'ri"; return; }
   if(role==='seller' && pin!==DB.pins.seller){ err.textContent="Sotuvchi PIN noto'g'ri"; return; }
+  let sellerName = 'Sotuvchi';
+  if(role==='seller'){
+    sellerName = (document.getElementById('seller-name-input').value||'').trim();
+    if(!sellerName){ err.textContent="Ismingizni kiriting"; return; }
+    localStorage.setItem('dokon_seller_name', sellerName);
+  }
+  currentSellerName = sellerName;
   currentRole = role;
   err.textContent='';
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
-  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 Sotuvchi');
+  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 '+sellerName);
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
@@ -1485,6 +1603,15 @@ window.doLogin = function(){
     });
     showPage('dashboard','admin');
     renderDashboard();
+    // YANGI: admin kirganda, agar kam qolgan yoki tugagan tovarlar bo'lsa,
+    // shu haqda darhol ogohlantiramiz — sahifani qidirib yurishga hojat qolmaydi.
+    setTimeout(()=>{
+      const lowCount = DB.products.filter(p=>p.stock<=DB.lowStockThreshold).length;
+      const outCount = DB.products.filter(p=>p.stock===0).length;
+      if(lowCount>0){
+        toast(`⚠️ ${lowCount} ta tovarda zaxira kam qoldi${outCount?` (shundan ${outCount} tasi tugagan)`:''}`, outCount?'red':'amber');
+      }
+    }, 600);
   } else {
     document.getElementById('nav-seller').style.display='flex';
     document.getElementById('nav-admin').style.display='none';
@@ -1501,10 +1628,11 @@ window.doLogin = function(){
 
 window.logout = function(){
   Object.keys(cartSerialCodes).forEach(id=>{ while(revertCartSerialCode(id)){} });
-  currentRole=null; cart={};
+  currentRole=null; currentSellerName='Sotuvchi'; cart={};
   document.getElementById('login-page').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pin-input').value='';
+  document.getElementById('seller-name-section').style.display='none';
   document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
 }
 
@@ -1521,7 +1649,7 @@ window.showPage = function(page, role){
   if(page==='profit'){ renderProfit(); }
   if(page==='my-sales'){ setMySalesFilter('today'); }
   if(page==='sell') renderSellGrid();
-  if(page==='settings') document.getElementById('revert-minutes').value=DB.revertMinutes;
+  if(page==='settings'){ document.getElementById('revert-minutes').value=DB.revertMinutes; const lst=document.getElementById('low-stock-threshold'); if(lst) lst.value=DB.lowStockThreshold; }
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
@@ -1574,12 +1702,130 @@ window.renderDashboard = function(){
       <div style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">${t.qty} ta</div>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Bu davrda savdo yo\'q.</p>';
 
-  const low = DB.products.filter(p=>p.stock<=5).sort((a,b)=>a.stock-b.stock).slice(0,8);
+  const sellerMap = {};
+  filtered.forEach(s=>{
+    const key = s.seller||'Sotuvchi';
+    if(!sellerMap[key]) sellerMap[key] = {name:key, qty:0, total:0, count:0};
+    sellerMap[key].qty += s.qty;
+    sellerMap[key].total += s.total;
+    sellerMap[key].count += 1;
+  });
+  const topSellers = Object.values(sellerMap).sort((a,b)=>b.total-a.total).slice(0,5);
+  const tsEl = document.getElementById('top-sellers');
+  if(tsEl) tsEl.innerHTML = topSellers.length ? topSellers.map((t,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;${i<topSellers.length-1?'border-bottom:1px solid var(--border)':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#fbbf24':i===1?'#cbd5e1':i===2?'#d97706':'var(--surface2)'};color:${i<3?'#fff':'var(--text3)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${t.count} ta savdo</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">${fmt(t.total)}</div>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Bu davrda savdo yo\'q.</p>';
+
+  const low = DB.products.filter(p=>p.stock<=DB.lowStockThreshold).sort((a,b)=>a.stock-b.stock).slice(0,8);
   document.getElementById('low-stock-list').innerHTML = low.length ? low.map(p=>`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
       <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
+
+  renderSalesTrendChart();
+}
+
+// YANGI: so'nggi 7 kunlik savdo hajmini (so'mda) oddiy SVG ustunli
+// grafik sifatida chizadi. Tashqi kutubxonasiz, faqat DB.sales asosida.
+function renderSalesTrendChart(){
+  const el = document.getElementById('sales-trend-chart');
+  if(!el) return;
+  const now = new Date();
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(now); d.setDate(now.getDate()-i); d.setHours(0,0,0,0);
+    days.push(d);
+  }
+  const totals = days.map(d=>{
+    return DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), d)).reduce((a,s)=>a+s.total,0);
+  });
+  const max = Math.max(...totals, 1);
+  const w = 640, h = 170, padB = 28, padT = 10, barGap = 10;
+  const barW = (w - barGap*(days.length+1)) / days.length;
+  const dayNames = ['Yak','Dush','Sesh','Chor','Pay','Jum','Shan'];
+  let bars = '';
+  days.forEach((d,i)=>{
+    const barH = Math.max(2, (totals[i]/max) * (h - padB - padT));
+    const x = barGap + i*(barW+barGap);
+    const y = h - padB - barH;
+    const isToday = isSameDay(d, now);
+    bars += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${isToday?'var(--accent)':'var(--green)'}" opacity="${isToday?1:.75}"></rect>`;
+    bars += `<text x="${x+barW/2}" y="${h-padB+16}" text-anchor="middle" font-size="11" fill="var(--text3)">${dayNames[d.getDay()]}</text>`;
+    bars += `<text x="${x+barW/2}" y="${y-4}" text-anchor="middle" font-size="10" fill="var(--text2)" font-weight="600">${totals[i]>0?fmt(totals[i]):''}</text>`;
+  });
+  const totalWeek = totals.reduce((a,b)=>a+b,0);
+  el.innerHTML = totalWeek>0 ? `
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:200px;display:block">${bars}</svg>
+    <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:.35rem">7 kunlik jami: <strong style="color:var(--green)">${fmt(totalWeek)} so'm</strong></p>
+  ` : '<p style="color:var(--text3);text-align:center;padding:1.5rem;font-size:13px">So\'nggi 7 kunda savdo bo\'lmagan.</p>';
+}
+
+// YANGI: Bosh sahifadagi joriy davr (bugun/hafta/oy/hammasi) bo'yicha
+// umumiy holatni — savdo hajmi, top tovarlar, top sotuvchilar, kam qolgan
+// tovarlar — bitta PDF hisobotga jamlab yuklab beradi. Do'kon egasi buni
+// har kuni chop etib, hisobot sifatida saqlashi mumkin.
+window.exportDashboardPDF=function(){
+  const period = document.getElementById('stat-period')?.value||'today';
+  const periodLabel = {today:'Bugun', week:'Bu hafta', month:'Bu oy', all:'Barcha vaqt'}[period] || period;
+  const now = new Date();
+  const filtered = DB.sales.filter(s=>{
+    if(s.reverted) return false;
+    const d=new Date(s.date);
+    if(period==='today') return isSameDay(d,now);
+    if(period==='week') return isThisWeek(d,now);
+    if(period==='month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    return true;
+  });
+  const totalRev = filtered.reduce((a,s)=>a+s.total,0);
+  const totalQty = filtered.reduce((a,s)=>a+s.qty,0);
+  const outStock = DB.products.filter(p=>p.stock===0).length;
+  const invValue = DB.products.reduce((a,p)=>a+p.price*p.stock,0);
+
+  const prodMap={};
+  filtered.forEach(s=>{
+    const key=s.productName+'|'+(s.volume||'');
+    if(!prodMap[key]) prodMap[key]={name:s.productName, volume:s.volume||'', qty:0, total:0};
+    prodMap[key].qty+=s.qty; prodMap[key].total+=s.total;
+  });
+  const top = Object.values(prodMap).sort((a,b)=>b.qty-a.qty).slice(0,10);
+  const low = DB.products.filter(p=>p.stock<=DB.lowStockThreshold).sort((a,b)=>a.stock-b.stock);
+
+  if(typeof window.jspdf === 'undefined'){ toast("PDF kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'pt' });
+  doc.setFontSize(16);
+  doc.text("🏪 Do'kon — umumiy hisobot", 40, 40);
+  doc.setFontSize(10); doc.setTextColor(120);
+  doc.text(`Davr: ${periodLabel}  ·  Yaratildi: ${new Date().toLocaleString('uz-UZ')}`, 40, 58);
+  doc.setFontSize(11); doc.setTextColor(30);
+  doc.text(`Savdo hajmi: ${fmt(totalRev)} so'm   |   Savdo soni: ${filtered.length} ta   |   Sotilgan miqdor: ${totalQty} ta`, 40, 80);
+  doc.text(`Tugagan tovarlar: ${outStock} ta   |   Ombordagi tovar qiymati: ${fmt(invValue)} so'm`, 40, 98);
+
+  let y = 120;
+  if(top.length){
+    doc.autoTable({
+      startY:y, head:[['Top tovar','Sotilgan miqdor','Sotuv summasi']],
+      body: top.map(t=>[t.name+(t.volume?' · '+t.volume+'L':''), t.qty+' ta', fmt(t.total)]),
+      styles:{fontSize:9, cellPadding:5}, headStyles:{fillColor:[37,99,235], textColor:255, fontStyle:'bold'}, margin:{left:40,right:40}
+    });
+    y = doc.lastAutoTable.finalY + 25;
+  }
+  if(low.length){
+    doc.autoTable({
+      startY:y, head:[['Kam qolgan tovar','Zaxira']],
+      body: low.map(p=>[p.name+(p.volume?' · '+p.volume+'L':''), p.stock+' ta']),
+      styles:{fontSize:9, cellPadding:5}, headStyles:{fillColor:[220,38,38], textColor:255, fontStyle:'bold'}, margin:{left:40,right:40}
+    });
+  }
+  doc.save(`umumiy_hisobot_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('✓ PDF hisobot yuklandi','green');
 }
 
 // ===== PRODUCTS =====
@@ -1614,9 +1860,9 @@ window.renderProducts = function(){
 
   let lastEl = null;
   for(const p of list){
-    const stockColor=p.stock===0?'red':p.stock<=5?'amber':'green';
+    const stockColor=p.stock===0?'red':p.stock<=DB.lowStockThreshold?'amber':'green';
     const volLabel = p.volume?`<span class="badge blue" style="margin-top:.3rem">${p.volume} L</span>`:'';
-    const sig = `${p.stock}|${p.price}|${p.cost}|${p.name}|${p.volume}|${p.img}|${p.barcode}|${p.qrCode}`;
+    const sig = `${p.stock}|${p.price}|${p.cost}|${p.name}|${p.volume}|${p.img}|${p.barcode}|${p.qrCode}|${DB.lowStockThreshold}`;
 
     let card = existing.get(p.id);
     if(!card){
@@ -1640,7 +1886,7 @@ window.renderProducts = function(){
         ${volLabel}
         <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
         ${p.cost ? `<div style="font-size:12px;color:var(--text3)">🏷 Tannarx: ${fmt(p.cost)} so'm · <span style="color:${(p.price-p.cost)>=0?'var(--green)':'var(--red)'}">Foyda/dona: ${fmt(p.price-p.cost)} so'm</span></div>` : `<div style="font-size:12px;color:var(--amber)">⚠️ Tannarx kiritilmagan</div>`}
-        <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=5?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=5?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
+        <div class="prod-stock" style="color:${p.stock===0?'var(--red)':p.stock<=DB.lowStockThreshold?'var(--amber)':'var(--text3)'}">${p.stock===0?'⚠️ Tugagan':p.stock<=DB.lowStockThreshold?'⚠️ Kam qoldi':'Mavjud: '+p.stock+' ta'}</div>
         <div style="margin-top:.2rem;display:flex;flex-direction:column;gap:.15rem">
           ${p.barcode
             ? `<div style="font-size:11px;color:var(--text3);font-family:monospace;display:flex;align-items:center;gap:.3rem">
@@ -2340,12 +2586,14 @@ window.renderDebts = function(){
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
+  const overdueCount = list.filter(d=>!d.paid && Math.floor((new Date()-new Date(d.date))/86400000)>=14).length;
   const orgCount = new Set(list.filter(d=>d.org).map(d=>d.org)).size;
   const personCount = new Set(list.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
   
   document.getElementById('debt-stats').innerHTML=`
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${overdueCount}</div><div class="lbl">⏰ Muddati o'tgan (14+ kun)</div></div>
     <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
@@ -2410,12 +2658,15 @@ window.renderDebts = function(){
               <div style="text-align:right;font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
             </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
-              ${p.debts.map(d=>`
-                <div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
+              ${p.debts.map(d=>{
+                const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
+                const overdue = !d.paid && daysOld>=14;
+                return `
+                <div style="border:1px solid ${d.paid?'var(--green-border)':overdue?'var(--red-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':overdue?'var(--red-bg)':'var(--amber-bg)'}">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
                     <div>
                       <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
-                      <span class="badge ${d.paid?'green':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':'⏳ Kutilmoqda'}</span>
+                      <span class="badge ${d.paid?'green':overdue?'red':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':overdue?`⏰ Muddati o'tgan (${daysOld} kun)`:'⏳ Kutilmoqda'}</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:.5rem">
                       <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
@@ -2427,7 +2678,8 @@ window.renderDebts = function(){
                   </div>
                   ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
                   ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
-                </div>`).join('')}
+                </div>`;
+              }).join('')}
             </div>
           </div>`;
         }).join('')}
@@ -2511,9 +2763,11 @@ window.doCartSell=async function(){
   if(!ok) return;
   const total=cartTotal();
   const writes=[];
+  const receiptItems=[];
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
-    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:'Sotuvchi',date:now,reverted:false};
+    const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
+    receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty});
     writes.push(fbSaveSale(sale));
     // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
     // "stock" maydonini ATOMIK increment bilan yuboramiz — shunda shu payt
@@ -2532,6 +2786,7 @@ window.doCartSell=async function(){
   cart={}; closeModal('modal-cart'); updateCartBtn(); renderSellGrid();
   if(currentRole==='seller') renderMySales();
   toast(`✓ Savdo yakunlandi — ${fmt(total)} so'm`,'green');
+  openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total));
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
 
@@ -2595,7 +2850,7 @@ window.renderSellGrid=function(){
     const newHTML = `<div class="img-wrap" style="${out?'opacity:.5':''}">
         ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
-        <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=5?'amber':'green'}">${p.stock}</span></div>
+        <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=DB.lowStockThreshold?'amber':'green'}">${p.stock}</span></div>
         ${cartBadge}
       </div>
       <div class="body">
@@ -2690,7 +2945,7 @@ window.renderMySales=function(){
   none.style.display='none';
   tbody.innerHTML=sales.map(s=>{
     const canRevert=!s.reverted&&(now-new Date(s.date))/60000<=revertMins;
-    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:'—'}</td></tr>`;
+    return `<tr><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:''}</td></tr>`;
   }).join('');
 }
 window.revertSale=function(id){
@@ -2717,8 +2972,15 @@ window.initHistory=function(){
   const years=[...new Set(DB.sales.map(s=>new Date(s.date).getFullYear()))].sort((a,b)=>b-a);
   yrSel.innerHTML='<option value="">Barcha yillar</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
   if(curYr) yrSel.value=curYr;
+  const sellerSel=document.getElementById('f-seller'); const curSeller=sellerSel.value;
+  const sellerNames=[...new Set(DB.sales.map(s=>s.seller).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uz'));
+  sellerSel.innerHTML='<option value="">Barcha sotuvchilar</option>'+sellerNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+  if(curSeller && sellerNames.includes(curSeller)) sellerSel.value=curSeller; else sellerSel.value='';
 }
-window.renderHistory=function(){
+// YANGI: filtr logikasi alohida funksiyaga chiqarildi — endi buni
+// renderHistory ham, exportCSV ham (eksport ekranda ko'rinayotgan
+// natijaga mos bo'lishi uchun) baravar ishlatadi.
+function getFilteredHistorySales(){
   const from=document.getElementById('f-from').value, to=document.getElementById('f-to').value;
   const seller=document.getElementById('f-seller').value, product=document.getElementById('f-product').value;
   const month=document.getElementById('f-month').value, year=document.getElementById('f-year').value;
@@ -2729,13 +2991,17 @@ window.renderHistory=function(){
   if(year) sales=sales.filter(s=>new Date(s.date).getFullYear()===parseInt(year));
   if(seller) sales=sales.filter(s=>s.seller===seller);
   if(product) sales=sales.filter(s=>s.productName===product);
+  return sales;
+}
+window.renderHistory=function(){
+  const sales = getFilteredHistorySales();
   const tbody=document.getElementById('history-body'), none=document.getElementById('no-history'), sumEl=document.getElementById('history-summary');
   if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; sumEl.innerHTML=''; return; }
   none.style.display='none';
   const totalRev=sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
   const cnt=sales.filter(s=>!s.reverted).length;
   sumEl.innerHTML=`<div style="display:flex;gap:.75rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
-  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:'—'}</td></tr>`).join('');
+  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:''}</td></tr>`).join('');
 }
 window.adminRevert=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
@@ -2762,9 +3028,101 @@ window.quickHistoryFilter=function(type){
   renderHistory();
 }
 window.exportCSV=function(){
+  // TUZATILDI: ilgari filtrlar (sana/sotuvchi/tovar) qo'llanган bo'lsa ham,
+  // CSV har doim DB.sales'dagi BARCHA yozuvlarni eksport qilardi — bu
+  // foydalanuvchini chalg'itardi (ekranda 10 ta savdo ko'rinsa-yu, fayldan
+  // 500 tasi chiqsa). Endi ekranda ko'rinayotgan xuddi shu filtrlangan
+  // ro'yxat eksport qilinadi.
+  const sales = getFilteredHistorySales();
+  if(!sales.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   let csv='Sana,Tovar,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
-  DB.sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
-  download('savdo_tarixi.csv','text/csv',csv);
+  sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
+  // "\uFEFF" (BOM) — Excel'da o'zbekcha belgilar (o', g', apostrof)
+  // to'g'ri ko'rinishi uchun qo'shildi, aks holda Excel UTF-8'ni
+  // noto'g'ri kodировкада ochib, belgilarni buzib ko'rsatardi.
+  download('savdo_tarixi.csv','text/csv','\uFEFF'+csv);
+  toast(`✓ ${sales.length} ta yozuv CSV formatda yuklandi`,'green');
+}
+
+// YANGI: savdo tarixini (ekranda ko'rinayotgan filtrlangan ro'yxatni)
+// haqiqiy Excel (.xlsx) faylga yuklab olish.
+window.exportHistoryExcel=function(){
+  const sales = getFilteredHistorySales();
+  if(!sales.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
+  const headers=['Sana','Tovar','Miqdor','Narx','Jami','Sotuvchi','Holat'];
+  const rows=sales.map(s=>[timeStr(s.date), s.productName, s.qty, s.price, s.total, s.seller, s.reverted?'Qaytarilgan':'Aktiv']);
+  if(exportToExcel(`savdo_tarixi_${new Date().toISOString().slice(0,10)}.xlsx`,'Savdo tarixi',headers,rows)){
+    toast(`✓ ${sales.length} ta yozuv Excel formatda yuklandi`,'green');
+  }
+}
+// YANGI: savdo tarixini (jami summa/soni bilan) formatlangan PDF hisobot
+// sifatida yuklab olish — bosib chiqarish yoki elektron pochta orqali
+// yuborish uchun qulay.
+window.exportHistoryPDF=function(){
+  const sales = getFilteredHistorySales();
+  if(!sales.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
+  const totalRev = sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
+  const cnt = sales.filter(s=>!s.reverted).length;
+  const headers=['Sana','Tovar','Miqdor','Narx','Jami','Sotuvchi','Holat'];
+  const rows=sales.map(s=>[timeStr(s.date), s.productName, s.qty+' ta', fmt(s.price), fmt(s.total), s.seller, s.reverted?'Qaytarilgan':'Aktiv']);
+  exportToPDF({
+    filename:`savdo_tarixi_${new Date().toISOString().slice(0,10)}.pdf`,
+    title:"Savdo tarixi hisoboti",
+    summaryLines:[`Jami savdo summasi: ${fmt(totalRev)} so'm`, `Aktiv savdolar soni: ${cnt} ta`],
+    headers, rows
+  });
+  toast('✓ PDF hisobot yuklandi','green');
+}
+
+// YANGI: butun ombordagi tovarlar ro'yxatini (nomi, hajmi, narxi, tannarxi,
+// qoldig'i, umumiy qiymati) CSV/Excel formatida yuklab olish — inventarizatsiya
+// va buxgalteriya hisobotlari uchun qulay.
+window.exportProductsCSV=function(){
+  if(!DB.products.length){ toast("Eksport qilish uchun tovar yo'q",'red'); return; }
+  let csv="Nomi,Hajmi (L),Narxi,Tannarxi,Qoldiq,Umumiy qiymati (narx bo'yicha),Barcode,QR/DataMatrix\n";
+  DB.products.slice().sort((a,b)=>a.name.localeCompare(b.name,'uz')).forEach(p=>{
+    csv+=`"${p.name}",${p.volume||''},${p.price},${p.cost||0},${p.stock},${p.price*p.stock},"${p.barcode||''}","${p.qrCode||''}"\n`;
+  });
+  download(`tovarlar_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
+  toast(`✓ ${DB.products.length} ta tovar CSV formatda yuklandi`,'green');
+}
+
+// YANGI: tovarlar ro'yxatini Excel (.xlsx) formatida yuklab olish —
+// inventarizatsiya va buxgalteriya uchun CSV'ga qaraganda qulayroq.
+window.exportProductsExcel=function(){
+  if(!DB.products.length){ toast("Eksport qilish uchun tovar yo'q",'red'); return; }
+  const headers=["Nomi","Hajmi (L)","Narxi","Tannarxi","Qoldiq","Umumiy qiymati","Barcode","QR/DataMatrix"];
+  const rows=DB.products.slice().sort((a,b)=>a.name.localeCompare(b.name,'uz'))
+    .map(p=>[p.name, p.volume||'', p.price, p.cost||0, p.stock, p.price*p.stock, p.barcode||'', p.qrCode||'']);
+  if(exportToExcel(`tovarlar_royxati_${new Date().toISOString().slice(0,10)}.xlsx`,'Tovarlar',headers,rows)){
+    toast(`✓ ${DB.products.length} ta tovar Excel formatda yuklandi`,'green');
+  }
+}
+
+// YANGI: qarzlar ro'yxatini (kim, tashkilot, summa, sana, holat) CSV
+// formatida yuklab olish — qarzdorlar bilan hisob-kitob qilishda foydali.
+window.exportDebtsCSV=function(){
+  if(!DB.debts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
+  let csv="Sana,Ism/Tashkilot,Turi,Telefon,Summa,Holat,Izoh\n";
+  DB.debts.slice().reverse().forEach(d=>{
+    csv+=`"${timeStr(d.date)}","${d.debtorName}${d.org?' ('+d.org+')':''}",${d.type==='organization'?'Tashkilot':'Shaxs'},"${d.phone||''}",${d.total},"${d.paid?"To'langan":'Faol'}","${(d.note||'').replace(/"/g,'""')}"\n`;
+  });
+  download(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
+  toast(`✓ ${DB.debts.length} ta qarz yozuvi CSV formatda yuklandi`,'green');
+}
+
+// YANGI: qarzlar ro'yxatini Excel (.xlsx) formatida yuklab olish.
+window.exportDebtsExcel=function(){
+  if(!DB.debts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
+  const headers=["Sana","Ism/Tashkilot","Turi","Telefon","Summa","Holat","Izoh"];
+  const rows=DB.debts.slice().reverse().map(d=>[
+    timeStr(d.date), d.debtorName+(d.org?' ('+d.org+')':''),
+    d.type==='organization'?'Tashkilot':'Shaxs', d.phone||'', d.total,
+    d.paid?"To'langan":'Faol', d.note||''
+  ]);
+  if(exportToExcel(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.xlsx`,'Qarzlar',headers,rows)){
+    toast(`✓ ${DB.debts.length} ta qarz yozuvi Excel formatda yuklandi`,'green');
+  }
 }
 
 // ===== FOYDA (PROFIT) =====
@@ -2822,18 +3180,111 @@ window.renderProfit = function(){
   const rows = Object.values(prodMap).sort((a,b)=>(b.rev-b.cost)-(a.rev-a.cost));
   const tbody = document.getElementById('profit-body');
   const none = document.getElementById('no-profit');
-  if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
-  none.style.display='none';
-  tbody.innerHTML = rows.map(r=>{
-    const profit = r.rev - r.cost;
-    return `<tr>
-      <td><strong>${r.name}</strong>${r.volume?' · '+r.volume+'L':''}</td>
-      <td>${r.qty} ta</td>
-      <td>${fmt(r.rev)} so'm</td>
-      <td>${fmt(r.cost)} so'm</td>
-      <td style="font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}${fmt(profit)} so'm</td>
-    </tr>`;
-  }).join('');
+  if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; }
+  else{
+    none.style.display='none';
+    tbody.innerHTML = rows.map(r=>{
+      const profit = r.rev - r.cost;
+      return `<tr>
+        <td><strong>${r.name}</strong>${r.volume?' · '+r.volume+'L':''}</td>
+        <td>${r.qty} ta</td>
+        <td>${fmt(r.rev)} so'm</td>
+        <td>${fmt(r.cost)} so'm</td>
+        <td style="font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}${fmt(profit)} so'm</td>
+      </tr>`;
+    }).join('');
+  }
+  renderProfitTrendChart();
+}
+
+// YANGI: so'nggi 6 oylik daromad/tannarx/foyda solishtiruvi — ustunli
+// SVG grafik (sales-trend-chart bilan bir xil uslubda, tashqi
+// kutubxonasiz). Har oy uchun Sotuv (ko'k) va Foyda (yashil/qizil)
+// ustunlari yonma-yon chiziladi, shu orqali qaysi oy foydali/zararli
+// bo'lgani bir qarashda ko'rinadi.
+function renderProfitTrendChart(){
+  const el = document.getElementById('profit-trend-chart');
+  if(!el) return;
+  const now = new Date();
+  const months = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push(d);
+  }
+  const monthNames = ['Yan','Fev','Mar','Apr','May','Iyun','Iyul','Avg','Sen','Okt','Noy','Dek'];
+  const data = months.map(m=>{
+    const sales = DB.sales.filter(s=>!s.reverted && new Date(s.date).getMonth()===m.getMonth() && new Date(s.date).getFullYear()===m.getFullYear());
+    const rev = sales.reduce((a,s)=>a+s.total,0);
+    const cost = sales.reduce((a,s)=>a+((typeof s.cost==='number'?s.cost:0)*s.qty),0);
+    return { rev, profit: rev-cost };
+  });
+  const max = Math.max(...data.map(d=>d.rev), 1);
+  const w=640, h=190, padB=28, padT=14, groupGap=14, barGap=4;
+  const groupW = (w - groupGap*(months.length+1)) / months.length;
+  const barW = (groupW - barGap)/2;
+  let bars='';
+  months.forEach((m,i)=>{
+    const gx = groupGap + i*(groupW+groupGap);
+    const revH = Math.max(2, (data[i].rev/max)*(h-padB-padT));
+    const profH = Math.max(2, (Math.abs(data[i].profit)/max)*(h-padB-padT));
+    const revY = h-padB-revH;
+    const profY = h-padB-profH;
+    const profColor = data[i].profit>=0 ? 'var(--green)' : 'var(--red)';
+    bars += `<rect x="${gx}" y="${revY}" width="${barW}" height="${revH}" rx="3" fill="var(--accent)" opacity=".85"></rect>`;
+    bars += `<rect x="${gx+barW+barGap}" y="${profY}" width="${barW}" height="${profH}" rx="3" fill="${profColor}" opacity=".85"></rect>`;
+    bars += `<text x="${gx+groupW/2-barGap/2}" y="${h-padB+16}" text-anchor="middle" font-size="11" fill="var(--text3)">${monthNames[m.getMonth()]}</text>`;
+  });
+  const anyData = data.some(d=>d.rev>0);
+  el.innerHTML = anyData ? `
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:220px;display:block">${bars}</svg>
+    <div style="display:flex;gap:1rem;justify-content:center;margin-top:.5rem;font-size:12px;color:var(--text3)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;margin-right:4px"></span>Sotuv summasi</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Foyda</span>
+    </div>
+  ` : '<p style="color:var(--text3);text-align:center;padding:1.5rem;font-size:13px">So\'nggi 6 oyda savdo bo\'lmagan.</p>';
+}
+
+// YANGI: joriy filtr (kunlik/haftalik/oylik/hammasi) bo'yicha ko'rinib
+// turgan foyda hisobotini formatlangan PDF faylga yuklab olish.
+window.exportProfitPDF=function(){
+  const period = document.getElementById('profit-period')?.value || 'today';
+  const periodLabel = {today:'Bugun', week:'Bu hafta', month:'Bu oy', all:'Barcha vaqt'}[period] || period;
+  const now = new Date();
+  const filtered = DB.sales.filter(s=>{
+    if(s.reverted) return false;
+    const d = new Date(s.date);
+    if(period==='today') return isSameDay(d, now);
+    if(period==='week') return isThisWeek(d, now);
+    if(period==='month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    return true;
+  });
+  if(!filtered.length){ toast("Bu davrda ma'lumot yo'q",'red'); return; }
+  let totalRev=0, totalCost=0;
+  const prodMap={};
+  filtered.forEach(s=>{
+    const cost=(typeof s.cost==='number')?s.cost:0;
+    const costTotal=cost*s.qty;
+    totalRev+=s.total; totalCost+=costTotal;
+    const key=s.productName+'|'+(s.volume||'');
+    if(!prodMap[key]) prodMap[key]={name:s.productName, volume:s.volume||'', qty:0, rev:0, cost:0};
+    prodMap[key].qty+=s.qty; prodMap[key].rev+=s.total; prodMap[key].cost+=costTotal;
+  });
+  const totalProfit=totalRev-totalCost;
+  const margin=totalRev>0?(totalProfit/totalRev*100):0;
+  const rows=Object.values(prodMap).sort((a,b)=>(b.rev-b.cost)-(a.rev-a.cost))
+    .map(r=>[r.name+(r.volume?' · '+r.volume+'L':''), r.qty+' ta', fmt(r.rev), fmt(r.cost), (r.rev-r.cost>=0?'+':'')+fmt(r.rev-r.cost)]);
+  exportToPDF({
+    filename:`foyda_hisobot_${new Date().toISOString().slice(0,10)}.pdf`,
+    title:`Foyda hisoboti — ${periodLabel}`,
+    summaryLines:[
+      `Sotuv summasi: ${fmt(totalRev)} so'm`,
+      `Tannarx summasi: ${fmt(totalCost)} so'm`,
+      `${totalProfit>=0?'Foyda':'Zarar'}: ${fmt(totalProfit)} so'm  (Marja: ${margin.toFixed(1)}%)`
+    ],
+    headers:['Tovar','Sotilgan miqdor','Sotuv summasi','Tannarx summasi','Foyda/Zarar'],
+    rows
+  });
+  toast('✓ PDF hisobot yuklandi','green');
 }
 
 // ===== STOCK HISTORY =====
@@ -2892,11 +3343,26 @@ window.renderStockHistory=function(){
   }).join('');
 }
 window.exportStockCSV=function(){
+  if(!DB.restocks.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   let csv='Sana,Tovar,Hajm,Turi,Miqdor,Sabab,Oldingi,Keyin\n';
   DB.restocks.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(r=>{
     csv+=`"${timeStr(r.date)}","${r.productName}","${r.volume||''}","${r.type==='in'?'Kirim':'Chiqim'}",${r.qty},"${r.reason||''}",${r.stockBefore??''},${r.stockAfter??''}\n`;
   });
-  download('kirim_chiqim.csv','text/csv',csv);
+  // TUZATILDI: bu funksiyada boshqa CSV eksportlaridan farqli o'laroq
+  // "\uFEFF" (BOM) belgisi yo'q edi — natijada Excel'da o'zbekcha
+  // belgilar (o', g') buzilib ko'rinardi. Endi boshqalarga mos qilindi.
+  download(`kirim_chiqim_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
+  toast(`✓ ${DB.restocks.length} ta yozuv CSV formatda yuklandi`,'green');
+}
+// YANGI: kirim/chiqim tarixini Excel (.xlsx) formatida yuklab olish.
+window.exportStockExcel=function(){
+  if(!DB.restocks.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
+  const headers=["Sana","Tovar","Hajm","Turi","Miqdor","Sabab","Oldingi","Keyin"];
+  const rows=DB.restocks.slice().sort((a,b)=>new Date(a.date)-new Date(b.date))
+    .map(r=>[timeStr(r.date), r.productName, r.volume||'', r.type==='in'?'Kirim':'Chiqim', r.qty, r.reason||'', r.stockBefore??'', r.stockAfter??'']);
+  if(exportToExcel(`kirim_chiqim_${new Date().toISOString().slice(0,10)}.xlsx`,'Kirim-Chiqim',headers,rows)){
+    toast(`✓ ${DB.restocks.length} ta yozuv Excel formatda yuklandi`,'green');
+  }
 }
 
 // ===== SETTINGS =====
@@ -2917,6 +3383,115 @@ window.saveRevertTime=function(){
   toast('Vaqt saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
+window.saveLowStockThreshold=function(){
+  const v=parseInt(document.getElementById('low-stock-threshold').value);
+  if(isNaN(v)||v<1){ toast("Noto'g'ri qiymat",'red'); return; }
+  DB.lowStockThreshold=v;
+  toast('Chegara saqlandi','green');
+  refreshProductViews();
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+
+// ===== ZAXIRA NUSXA (BACKUP) VA TIKLASH (RESTORE) =====
+// To'liq bazani (mahsulotlar, savdolar, kirim/chiqim, qarzlar, qarzdorlar,
+// sozlamalar) bitta JSON faylga eksport qiladi. Bu — Firestore'dan
+// mustaqil, mahalliy zaxira nusxa: internet/Firebase muammosi bo'lganda
+// yoki boshqa loyihaga ko'chirishda foydalanish uchun.
+window.exportBackupJSON=function(){
+  const backup={
+    _meta:{ exportedAt:new Date().toISOString(), app:'Do\'kon Boshqaruvi', version:1 },
+    products:DB.products, sales:DB.sales, restocks:DB.restocks,
+    debts:DB.debts, debtors:DB.debtors,
+    settings:{ pins:DB.pins, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold }
+  };
+  download(`dokon-backup-${new Date().toISOString().slice(0,10)}.json`, 'application/json', JSON.stringify(backup, null, 2));
+  toast('✓ Zaxira nusxa yuklab olindi','green');
+}
+// Foydalanuvchi tanlagan JSON fayldan barcha ma'lumotlarni Firestore'ga
+// qayta yozadi (import). Xavfli amal bo'lgani uchun tasdiqlash so'raladi.
+// Mavjud yozuvlarni saqlab qolib, faylda kelgan yozuvlarni ustidan yozadi
+// (id bo'yicha) — mavjud bo'lmagan ma'lumotlarni O'CHIRMAYDI.
+window.importBackupJSON=function(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async (e)=>{
+    let data;
+    try{ data=JSON.parse(e.target.result); }
+    catch(err){ toast("Fayl noto'g'ri formatda (JSON emas)",'red'); input.value=''; return; }
+    if(!data || (!data.products && !data.sales)){ toast("Bu fayl zaxira nusxa emasga o'xshaydi",'red'); input.value=''; return; }
+    confirm2('Zaxira nusxadan tiklash',
+      `Fayldan ${data.products?.length||0} ta tovar, ${data.sales?.length||0} ta savdo, ${data.debts?.length||0} ta qarz yozuvi topildi. Bularning barchasi joriy ma'lumotlar ustidan yoziladi (id mos kelsa). Davom etilsinmi?`,
+      async ()=>{
+        toast('Tiklanmoqda, biroz kuting...','amber');
+        try{
+          const writes=[];
+          (data.products||[]).forEach(p=>writes.push(withRetry(()=>setDoc(doc(db,'products',p.id),p))));
+          (data.sales||[]).forEach(s=>writes.push(withRetry(()=>setDoc(doc(db,'sales',s.id),s))));
+          (data.restocks||[]).forEach(r=>writes.push(withRetry(()=>setDoc(doc(db,'restocks',r.id),r))));
+          (data.debts||[]).forEach(d=>writes.push(withRetry(()=>setDoc(doc(db,'debts',d.id),d))));
+          (data.debtors||[]).forEach(d=>writes.push(withRetry(()=>setDoc(doc(db,'debtors',d.id),d))));
+          if(data.settings){
+            DB.pins=data.settings.pins||DB.pins;
+            DB.revertMinutes=data.settings.revertMinutes||DB.revertMinutes;
+            DB.lowStockThreshold=data.settings.lowStockThreshold||DB.lowStockThreshold;
+            writes.push(fbSaveSettings());
+          }
+          await Promise.all(writes);
+          toast('✓ Ma\'lumotlar muvaffaqiyatli tiklandi','green');
+        }catch(err){
+          console.error(err);
+          toast('Tiklashda xatolik yuz berdi','red');
+        }
+        input.value='';
+      });
+  };
+  reader.readAsText(file);
+}
+
+// ===== TUNGI REJIM (DARK MODE) =====
+window.toggleDarkMode=function(){
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('dokon_dark_mode', isDark ? '1' : '0');
+  const btn=document.getElementById('dark-toggle'); if(btn) btn.textContent = isDark ? '☀️' : '🌙';
+}
+(function applySavedDarkMode(){
+  if(localStorage.getItem('dokon_dark_mode')==='1'){
+    document.body.classList.add('dark');
+    document.addEventListener('DOMContentLoaded', ()=>{ const b=document.getElementById('dark-toggle'); if(b) b.textContent='☀️'; });
+  }
+})();
+
+// ===== CHEK (RECEIPT) CHIQARISH =====
+let lastReceiptData=null;
+function buildReceiptFromItems(items, sellerName, totalOverride){
+  // items: [{name, volume, qty, price, total}]
+  const total = totalOverride!=null ? totalOverride : items.reduce((a,i)=>a+i.total,0);
+  return { items, sellerName: sellerName||currentSellerName||'Sotuvchi', total, date:new Date() };
+}
+window.openReceiptModal=function(receiptData){
+  lastReceiptData = receiptData;
+  document.getElementById('receipt-date').textContent = receiptData.date.toLocaleString('uz-UZ');
+  document.getElementById('receipt-seller').textContent = 'Sotuvchi: '+receiptData.sellerName;
+  document.getElementById('receipt-items').innerHTML = receiptData.items.map(i=>`
+    <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+      <span>${i.name}${i.volume?' ('+i.volume+'L)':''} x${i.qty}</span>
+      <span>${fmt(i.total)}</span>
+    </div>`).join('');
+  document.getElementById('receipt-total').textContent = fmt(receiptData.total)+" so'm";
+  openModal('modal-receipt');
+}
+window.printReceipt=function(){
+  if(!lastReceiptData){ toast('Chek topilmadi','red'); return; }
+  window.print();
+}
+// Savdo tarixidan bitta yozuv uchun chek chiqarish (masalan qayta chop etish)
+window.printSaleReceipt=function(saleId){
+  const s=DB.sales.find(x=>x.id===saleId); if(!s) return;
+  const rd=buildReceiptFromItems([{name:s.productName, volume:s.volume, qty:s.qty, price:s.price, total:s.total}], s.seller, s.total);
+  rd.date = new Date(s.date);
+  openReceiptModal(rd);
+}
+
 window.clearAll=function(){
   confirm2('Hammasini o\'chirish','Barcha tovarlar va savdolar o\'chiriladi!', ()=>{
     const productIds=DB.products.map(p=>p.id);
@@ -2963,6 +3538,59 @@ function timeStr(iso){
 function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
 function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
 function download(name,type,content){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
+
+// ===== YANGI: EXCEL (.xlsx) VA PDF HISOBOT EKSPORTI =====
+// Umumiy yordamchi funksiya — headers (ustun nomlari) va rows (2 o'lchamli
+// massiv) asosida haqiqiy .xlsx (Excel) fayl yaratadi. CSV'dan farqli
+// o'laroq, Excel'da ochilganda kodировка/formatlash muammosi bo'lmaydi,
+// ustunlar avtomatik kenglikka moslanadi.
+function exportToExcel(filename, sheetName, headers, rows){
+  if(typeof XLSX === 'undefined'){ toast("Excel kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return false; }
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = headers.map((h,i)=>{
+    const maxLen = Math.max(String(h).length, ...rows.map(r=>String(r[i]??'').length));
+    return { wch: Math.min(Math.max(maxLen+2, 10), 40) };
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0,31));
+  XLSX.writeFile(wb, filename);
+  return true;
+}
+// Umumiy PDF hisobot generatori — sarlavha, ixtiyoriy xulosa qatorlari
+// va jadval (headers/rows) asosida chiroyli formatlangan A4 PDF yaratadi.
+// Har bir hisobot sahifasida do'kon nomi, yaratilgan sana va jami qatorlar
+// soni ko'rsatiladi.
+function exportToPDF(opts){
+  const { filename, title, summaryLines=[], headers, rows } = opts;
+  if(typeof window.jspdf === 'undefined'){ toast("PDF kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return false; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: rows && headers && headers.length>5 ? 'landscape':'portrait', unit:'pt' });
+  doc.setFontSize(16);
+  doc.text(title, 40, 40);
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text(`🏪 Do'kon Tizimi — yaratildi: ${new Date().toLocaleString('uz-UZ')}`, 40, 58);
+  let startY = 75;
+  if(summaryLines.length){
+    doc.setFontSize(11);
+    doc.setTextColor(30);
+    summaryLines.forEach((line,i)=>{ doc.text(line, 40, startY + i*16); });
+    startY += summaryLines.length*16 + 10;
+  }
+  if(headers && rows){
+    doc.autoTable({
+      startY,
+      head: [headers],
+      body: rows,
+      styles:{ fontSize:9, cellPadding:5 },
+      headStyles:{ fillColor:[37,99,235], textColor:255, fontStyle:'bold' },
+      alternateRowStyles:{ fillColor:[247,247,245] },
+      margin:{ left:40, right:40 }
+    });
+  }
+  doc.save(filename);
+  return true;
+}
 
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){
@@ -3206,7 +3834,14 @@ async function decodeCanvasMulti(canvas, fast){
     try{
       const ctx = canvas.getContext('2d', {willReadFrequently:true});
       const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
-      const results = await zw(imgData, {tryHarder:true, formats:ZXING_WASM_FORMATS, maxNumberOfSymbols:1});
+      // TUZATILDI — LAZERLI/DOT-PEEN DataMatrix o'qilmasligi: zxing-wasm
+      // (zxing-cpp) da "tryDenoise" maxsus nuqta-nuqta (dot-peen) va lazer
+      // bilan tushirilgan, shovqinli kodlar uchun mo'ljallangan — ilgari
+      // yoqilmagan edi. "tryInvert" oq-qora teskari (metall fonda och
+      // nuqtalar) holatlarni ham qo'shimcha tekshiradi. "tryRotate" kod
+      // burchak ostida tushganda ham topadi (standart yoqiq, aniq ko'rsatib
+      // qo'yildi).
+      const results = await zw(imgData, {tryHarder:true, tryRotate:true, tryInvert:true, tryDenoise:true, formats:ZXING_WASM_FORMATS, maxNumberOfSymbols:1});
       if(results && results.length && results[0].text) return {text:results[0].text, format:results[0].format, engine:'zxing-wasm'};
     }catch(e){}
   }
@@ -3780,6 +4415,162 @@ function morphologyCanvas(src, op){
   ctx.putImageData(imgData,0,0);
   return c;
 }
+// TUZATILDI — LAZERLI/DOT-PEEN DataMatrix maxsus tayyorlash: qopqoqqa
+// lazer bilan "kuydirilgan" kodlar ZXing/jsQR kabi dekoderlar kutgan
+// "to'liq to'ldirilgan kvadratcha" modullardan emas, balki bir-biridan
+// ajralgan MAYDA DOIRACHA (nuqta)lardan tashkil topgan bo'ladi. Dekoder
+// har bir modulni "yaxlit" deb tekshirgani uchun, nuqtalar orasidagi
+// bo'shliq uni chalkashtirib, kodni butunlay o'qib bo'lmay qoladi. Yechim:
+// avval moslashuvchan chegaralash bilan nuqtalarni aniq oq/qora qilamiz,
+// so'ng ikki marta ketma-ket "dilate" (kengaytirish) qo'llab, qo'shni
+// nuqtalarni bir-biriga ULAB, har bir modulni ZXing/jsQR kutgan yaxlit
+// kvadratchaga yaqinlashtiramiz. blockSize parametri — foydalanuvchi
+// kameradan qanchalik uzoq/yaqin turganiga qarab nuqtalar orasidagi
+// masofa o'zgaradi, shuning uchun endi buni sozlab bo'ladi (kichikroq
+// blockSize — zich/yaqin nuqtalar, kattaroq — siyrak/uzoqroq nuqtalar).
+function dotPeenMergeCanvas(src, blockSize, extraDilate){
+  let c = adaptiveThresholdCanvas(src, blockSize || 11);
+  c = morphologyCanvas(c, 'dilate');
+  c = morphologyCanvas(c, 'dilate');
+  if(extraDilate) c = morphologyCanvas(c, 'dilate');
+  return c;
+}
+// YANGI — dilate-dan keyin bitta "erode" qo'shib, nuqtalar haddan ortiq
+// kattalashib bir-biriga QO'SHILIB (modul chegaralarini yo'qotib)
+// ketgan hollarda buni biroz "orqaga qaytaradi" — shaklni saqlab, faqat
+// bo'shliqlarnigina yopadi (morfologik "closing" operatsiyasi).
+function dotPeenMergeCleanCanvas(src, blockSize){
+  let c = dotPeenMergeCanvas(src, blockSize, false);
+  c = morphologyCanvas(c, 'erode');
+  return c;
+}
+// YANGI — Otsu global chegaralash: adaptiveThreshold mahalliy o'rtachaga
+// asoslangani uchun juda notekis yorug'likda ba'zan xato qiladi. Otsu esa
+// butun tasvir uchun statistik jihatdan ENG OPTIMAL bitta chegara
+// qiymatini topadi — laser bilan qattiq, keskin qora fonga qarshi tushган
+// och nuqtalar uchun ko'pincha adaptivedan ham ishonchli natija beradi.
+function otsuThresholdCanvas(src){
+  const gray = toGrayscaleCanvas(src);
+  const ctx = gray.getContext('2d', {willReadFrequently:true});
+  const w=gray.width, h=gray.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const hist = new Array(256).fill(0);
+  for(let i=0;i<d.length;i+=4) hist[d[i]|0]++;
+  const total = w*h;
+  let sum=0; for(let t=0;t<256;t++) sum += t*hist[t];
+  let sumB=0, wB=0, wF=0, maxVar=0, threshold=127;
+  for(let t=0;t<256;t++){
+    wB += hist[t]; if(wB===0) continue;
+    wF = total-wB; if(wF===0) break;
+    sumB += t*hist[t];
+    const mB = sumB/wB, mF = (sum-sumB)/wF;
+    const varBetween = wB*wF*(mB-mF)*(mB-mF);
+    if(varBetween > maxVar){ maxVar = varBetween; threshold = t; }
+  }
+  for(let i=0;i<d.length;i+=4){
+    const v = d[i] > threshold ? 255 : 0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(imgData,0,0);
+  return gray;
+}
+// YANGI — YALTIROQ/AKS-SADO (glare) bostirish: metall qopqoqda kamera
+// yorug'ligi aks etib, kodning bir qismini "kuydirib" (butunlay oq qilib)
+// yuborishi juda keng tarqalgan muammo — bu yerda kod modulining o'zi
+// yo'qolib, dekoder uchun "teshik" hosil bo'ladi. Juda yorqin (deyarli
+// oq) piksellarni atrofidagi o'rtacha qiymat bilan almashtirib, bu
+// "kuygan" hududlarni yumshatamiz.
+function suppressGlareCanvas(src, threshold){
+  const c = toGrayscaleCanvas(src);
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  const w=c.width, h=c.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const th = threshold==null ? 246 : threshold;
+  const copy = new Uint8ClampedArray(d);
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const idx=(y*w+x)*4;
+      if(copy[idx] >= th){
+        let sum=0,cnt=0;
+        for(let ky=-2;ky<=2;ky++) for(let kx=-2;kx<=2;kx++){
+          const nx=x+kx, ny=y+ky;
+          if(nx<0||ny<0||nx>=w||ny>=h) continue;
+          const nidx=(ny*w+nx)*4;
+          if(copy[nidx] < th){ sum+=copy[nidx]; cnt++; }
+        }
+        if(cnt>0){ const v=sum/cnt; d[idx]=d[idx+1]=d[idx+2]=v; }
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  return c;
+}
+// YANGI — canvasni 90° karrali burchakka aylantiradi. Kamera kadri
+// har doim ham kod bilan "to'g'ri" burchakda tushmaydi (masalan shisha
+// aylanaga tegishli bo'lgani uchun DataMatrix istalgan burchak ostida
+// bo'lishi mumkin). zxing-wasm o'zi tryRotate bilan buni qisman
+// hal qiladi, lekin ZXing-JS/jsQR buni QILMAYDI — shuning uchun eng
+// qiyin holatlarda kadrni qo'lda 90/180/270°ga aylantirib, har birini
+// alohida sinaymiz.
+function rotateCanvas90(src, degrees){
+  const swap = degrees===90 || degrees===270;
+  const c = document.createElement('canvas');
+  c.width = swap ? src.height : src.width;
+  c.height = swap ? src.width : src.height;
+  const ctx = c.getContext('2d');
+  ctx.save();
+  ctx.translate(c.width/2, c.height/2);
+  ctx.rotate(degrees*Math.PI/180);
+  ctx.drawImage(src, -src.width/2, -src.height/2);
+  ctx.restore();
+  return c;
+}
+// YANGI — bitta canvas'ni 0/90/180/270° burchaklarda ketma-ket sinab,
+// birinchi topilgan natijani qaytaradi. Faqat ENG QIYIN (dot-peen)
+// holatlarda ishlatiladi — chunki 4 baravar sekinroq.
+async function tryDecodeAllRotations(canvas){
+  for(const deg of [0,90,180,270]){
+    const test = deg===0 ? canvas : rotateCanvas90(canvas, deg);
+    const r = await decodeCanvasMulti(test, false);
+    if(r && r.text) return r;
+  }
+  return null;
+}
+// YANGI — tezkor "aniqlik/xiralik" bahosi: markazdagi kichik hudud
+// bo'yicha qo'shni piksellar farqining o'rtacha kattaligini hisoblaydi
+// (soddalashtirilgan Laplacian). Qiymat past bo'lsa — kadr xira (qo'l
+// tebranishi/fokus qayta sozlanmoqda) va OG'IR dot-peen tekshiruvini
+// shu kadrda ishga tushirish behuda — kadr o'tkazib yuborilib, birozdan
+// keyin (fokus tiklangach) qayta urinilishi kutiladi. Bu ilgari xira
+// kadrlarda ham har safar 3 marta og'ir qayta-ishlashga urinib, batareya/
+// protsessorni behuda band qilib, aslida ISHLAMAYDIGAN natija chiqarardi.
+function estimateSharpness(video){
+  try{
+    const c = document.createElement('canvas');
+    const size = 64;
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d', {willReadFrequently:true});
+    const vw=video.videoWidth, vh=video.videoHeight;
+    if(!vw||!vh) return 0;
+    const side = Math.min(vw,vh)*0.5;
+    ctx.drawImage(video, (vw-side)/2, (vh-side)/2, side, side, 0,0,size,size);
+    const d = ctx.getImageData(0,0,size,size).data;
+    let sum=0, sumSq=0, n=0;
+    for(let y=1;y<size-1;y++){
+      for(let x=1;x<size-1;x++){
+        const i=(y*size+x)*4;
+        const gL = d[i-4], gR = d[i+4];
+        const diff = Math.abs(gR-gL);
+        sum+=diff; sumSq+=diff*diff; n++;
+      }
+    }
+    return n ? sum/n : 0;
+  }catch(e){ return 999; } // xato bo'lsa — cheklamaymiz, urinishga ruxsat
+}
+const SHARPNESS_MIN_FOR_HEAVY_SCAN = 6;
+
 // CLAHE'ga yaqinlashtirish (soddalashtirilgan): tasvirni kataklarga bo'lib,
 // har birida gistogramma tekislashtirish qiladi — notekis yoritilgan
 // (masalan qisman soyada qolgan) kodlarni ochib beradi.
@@ -3879,6 +4670,18 @@ function startDecoding(video){
         const canvas = grabCroppedCanvas(video, 0.55, 2, true);
         const result = await decodeCanvasMulti(canvas, false);
         if(result && result.text){ handleDecodedCode(result.text); if(_decodeLoopActive) requestAnimationFrame(loop); return; }
+        // TUZATILDI — LAZERLI/DOT-PEEN kod jonli oqimda o'qilmasligi: oddiy
+        // "enhanced" urinish muvaffaqiyatsiz bo'lsa, xuddi shu kadrni
+        // qopqoqdagi nuqta-nuqta kodlar uchun maxsus tayyorlab (nuqtalarni
+        // ulab) yana bir marta sinaymiz — foydalanuvchi "Scan HD" tugmasini
+        // bosishini kutmasdan, oddiy tutib turishning o'zida ham topiladi.
+        // Faqat kadr yetarlicha "aniq" (xira emas) bo'lsa — aks holda bu
+        // og'ir ishlov behuda protsessor/batareyani band qiladi.
+        if(estimateSharpness(video) >= SHARPNESS_MIN_FOR_HEAVY_SCAN){
+          const dp = dotPeenMergeCanvas(grabCroppedCanvas(video, 0.4, 2.5, false), 11);
+          const dpResult = await decodeCanvasMulti(dp, false);
+          if(dpResult && dpResult.text){ handleDecodedCode(dpResult.text); if(_decodeLoopActive) requestAnimationFrame(loop); return; }
+        }
       }
       handleNoCodeDetected();
       if(_decodeLoopActive) requestAnimationFrame(loop);
@@ -3961,6 +4764,8 @@ function startDecoding(video){
 function buildScanVariants(video){
   const base = grabCroppedCanvas(video, 1.0, 1, false);
   if(!base) return [];
+  const zoom3 = grabCroppedCanvas(video, 0.35, 3, false);
+  const zoom25 = grabCroppedCanvas(video, 0.4, 2.5, false);
   const list = [
     {name:'original',            canvas: base},
     {name:'full-frame-enhanced', canvas: grabCroppedCanvas(video, 1.0, 1.6, true)},
@@ -3972,8 +4777,23 @@ function buildScanVariants(video){
     {name:'inverted',            canvas: invertCanvas(toGrayscaleCanvas(base))},
     {name:'morphology',          canvas: morphologyCanvas(base, 'dilate')},
     {name:'zoom-2x',             canvas: grabCroppedCanvas(video, 0.5,  2,   true)},
-    {name:'zoom-3x',             canvas: grabCroppedCanvas(video, 0.35, 3,   true)},
+    {name:'zoom-3x',             canvas: zoom3},
+    {name:'zoom-4x',             canvas: grabCroppedCanvas(video, 0.22, 4,   true)},
     {name:'markaziy-crop',       canvas: grabCroppedCanvas(video, 0.4,  1.5, false)},
+    // ===== Lazer/dot-peen kodlar uchun maxsus to'plam (nuqtalarni ulab,
+    // yaxlit modulga aylantiradi) — turli nuqta zichligi/masofa uchun
+    // bir nechta blockSize bilan, chunki eng yaxshi blockSize kameradan
+    // masofaga qarab har xil bo'ladi:
+    {name:'dot-peen-merge-tight',  canvas: dotPeenMergeCanvas(base, 7)},
+    {name:'dot-peen-merge',        canvas: dotPeenMergeCanvas(base, 11)},
+    {name:'dot-peen-merge-wide',   canvas: dotPeenMergeCanvas(base, 17)},
+    {name:'dot-peen-merge-zoom',   canvas: zoom3 ? dotPeenMergeCanvas(zoom3, 11) : null},
+    {name:'dot-peen-clean',        canvas: dotPeenMergeCleanCanvas(base, 11)},
+    // Otsu global chegaralash — notekis yorug'likda adaptivedan ishonchliroq:
+    {name:'otsu-threshold',        canvas: otsuThresholdCanvas(base)},
+    {name:'otsu-zoom',             canvas: zoom25 ? otsuThresholdCanvas(zoom25) : null},
+    // Metall qopqoqdagi yorug'lik aksini (glare) bostirib, keyin dot-peen ulaydi:
+    {name:'glare-suppress-dotpeen', canvas: zoom25 ? dotPeenMergeCanvas(suppressGlareCanvas(zoom25), 11) : null},
   ];
   return list.filter(v=>v.canvas);
 }
@@ -3981,7 +4801,7 @@ function buildScanVariants(video){
 window.captureAndScan = async function(){
   const video = document.getElementById('scan-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
-  setScanStatus('🔍 12 xil usulda tekshirilmoqda, biroz kuting...', '');
+  setScanStatus("🔍 Chuqur tekshirilmoqda (ko'p usul + burchaklar), biroz kuting...", '');
   // Bu — foydalanuvchi qo'lda bosgan aniq buyruq, shuning uchun avtomatik
   // dublikat-filtridan mustasno qilamiz (xuddi shu kod hozirgina qayta
   // ishlangan bo'lsa ham, tugma bosilgani — yangi donani tasdiqlash demakdir).
@@ -4005,13 +4825,28 @@ window.captureAndScan = async function(){
     }catch(e){ console.error(e); }
   }
 
-  // 2-urinish: 12 usul x 4-dekoderli to'liq kaskad — faqat BITTA kod uchun
+  // 2-urinish: ko'p usul x 4-dekoderli to'liq kaskad — faqat BITTA kod uchun
   // (agar kerak bo'lsa, foydalanuvchi tovarlarni birma-bir suratga oladi).
   const variants = buildScanVariants(video);
   for(const v of variants){
     const result = await decodeCanvasMulti(v.canvas, false);
     if(result && result.text){ handleDecodedCode(result.text); return; }
     await new Promise(r=>setTimeout(r,0)); // UI muzlab qolmasin
+  }
+
+  // YANGI — 3-urinish: eng qiyin (dot-peen/otsu/glare) variantlarni endi
+  // 0/90/180/270° burchaklarning har birida ham sinaymiz. DataMatrix kod
+  // shishaning aylana yuzasida istalgan burchak ostida bo'lishi mumkin —
+  // ZXing-JS va jsQR (native detektor va zxing-wasm'dan farqli o'laroq)
+  // o'zi avtomatik aylantirib ko'rmaydi, shuning uchun bu qo'lda bajariladi.
+  // Sekinroq (yana 1-2 soniya), lekin bu — foydalanuvchi ataylab bosgan
+  // "chuqur tekshirish" tugmasi, shuning uchun vaqt muammo emas.
+  setScanStatus('🔄 Burchaklar bo\'yicha ham tekshirilmoqda...', '');
+  const hardVariants = variants.filter(v=>/dot-peen|otsu|glare/.test(v.name));
+  for(const v of hardVariants){
+    const result = await tryDecodeAllRotations(v.canvas);
+    if(result && result.text){ handleDecodedCode(result.text); return; }
+    await new Promise(r=>setTimeout(r,0));
   }
   setScanStatus("Kod topilmadi. Yorug'likni yaxshilang, kodni ramka ichiga aniqroq joylashtiring va qayta urinib ko'ring, yoki qo'lda kiriting.", 'err');
 }
@@ -5108,6 +5943,17 @@ function startAssignDecoding(video){
           if(_decodeLoopActive) requestAnimationFrame(loop);
           return;
         }
+        // Lazer/dot-peen kodlar uchun maxsus urinish (nuqtalarni ulab) —
+        // faqat kadr yetarlicha aniq bo'lsa (batareya/protsessorni tejash uchun).
+        if(estimateSharpness(video) >= SHARPNESS_MIN_FOR_HEAVY_SCAN){
+          const dp = dotPeenMergeCanvas(grabCroppedCanvas(video, 0.4, 2.5, false), 11);
+          const dpResult = await decodeCanvasMulti(dp, false);
+          if(dpResult && dpResult.text && !_assignDone){
+            doAssignBarcode(dpResult.text, dpResult.format);
+            if(_decodeLoopActive) requestAnimationFrame(loop);
+            return;
+          }
+        }
       }
       if(_decodeLoopActive) requestAnimationFrame(loop);
     };
@@ -5169,7 +6015,7 @@ function startAssignDecoding(video){
 window.captureAndScanAssign = async function(){
   const video = document.getElementById('assign-video');
   if(!video || !video.videoWidth){ toast('Kamera hali tayyor emas','red'); return; }
-  document.getElementById('assign-status').textContent = '🔍 12 xil usulda tekshirilmoqda, biroz kuting...';
+  document.getElementById('assign-status').textContent = "🔍 Chuqur tekshirilmoqda (ko'p usul + burchaklar), biroz kuting...";
   document.getElementById('assign-status').style.color = 'var(--text2)';
 
   if(_nativeDetector){
@@ -5186,6 +6032,15 @@ window.captureAndScanAssign = async function(){
   const variants = buildScanVariants(video);
   for(const v of variants){
     const result = await decodeCanvasMulti(v.canvas, false);
+    if(result && result.text && !_assignDone){ doAssignBarcode(result.text.trim(), result.format); return; }
+    await new Promise(r=>setTimeout(r,0));
+  }
+  // Eng qiyin (dot-peen/otsu/glare) variantlarni burchaklar bo'yicha ham
+  // tekshiramiz — sotish skaneridagi bilan bir xil mantiq.
+  document.getElementById('assign-status').textContent = "🔄 Burchaklar bo'yicha ham tekshirilmoqda...";
+  const hardVariants = variants.filter(v=>/dot-peen|otsu|glare/.test(v.name));
+  for(const v of hardVariants){
+    const result = await tryDecodeAllRotations(v.canvas);
     if(result && result.text && !_assignDone){ doAssignBarcode(result.text.trim(), result.format); return; }
     await new Promise(r=>setTimeout(r,0));
   }
