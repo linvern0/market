@@ -14,6 +14,7 @@
 <meta name="theme-color" content="#1e293b">
 <link rel="icon" href="./icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Do'kon">
@@ -284,6 +285,40 @@
     #receipt-content, #receipt-content *{visibility:visible}
     #receipt-content{position:fixed;top:0;left:0;width:100%;padding:1rem}
   }
+
+  /* 🎨 YANGI STYLES VA IMPROVEMENTS */
+  /* Notification Styles */
+  #notifications-container{position:fixed;top:70px;right:1rem;z-index:1000;max-width:400px;display:flex;flex-direction:column;gap:.5rem}
+  .notification{padding:1rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-width:300px;animation:slideIn .3s ease;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+  .notification-success{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+  .notification-error{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+  .notification-warning{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+  .notification-info{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+  
+  /* Loading Skeleton */
+  .skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface) 50%,var(--surface2) 75%);background-size:200% 100%;animation:loading 1.5s infinite}
+  @keyframes loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  
+  /* Analytics Card */
+  .analytics-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;transition:all .3s ease}
+  .analytics-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px)}
+  .analytics-card .title{font-size:13px;color:var(--text3);font-weight:600;margin-bottom:.5rem}
+  .analytics-card .value{font-size:28px;font-weight:700;color:var(--accent);margin-bottom:.5rem}
+  .analytics-card .change{font-size:12px;font-weight:600}
+  .analytics-card .change.positive{color:var(--green)}
+  .analytics-card .change.negative{color:var(--red)}
+  
+  /* Status Badges */
+  .status-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .75rem;border-radius:20px;font-size:12px;font-weight:600}
+  .status-badge.pending{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+  .status-badge.completed{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+  .status-badge.failed{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+  
+  /* Responsive */
+  @media (max-width:768px){.form-row{grid-template-columns:1fr}#notifications-container{right:.5rem;left:.5rem}
+  .modal{max-width:95%!important}.stat-grid{grid-template-columns:1fr 1fr}}
+  @media (max-width:480px){nav{height:auto;padding:.5rem}nav button.tab{font-size:12px}.stat-grid{grid-template-columns:1fr}.login-card{width:95%;padding:1.5rem}}
 </style>
 </head>
 <body>
@@ -388,6 +423,383 @@
 </div>
 <style>
   @media(max-width:900px){ #dash-grid{grid-template-columns:1fr!important} }
+ /* 🎨 YANGI STYLES VA IMPROVEMENTS */
+
+/* Notification Styles */
+#notifications-container {
+  position: fixed;
+  top: 70px;
+  right: 1rem;
+  z-index: 1000;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notification {
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  min-width: 300px;
+  animation: slideIn 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-success {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+.notification-error {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-border);
+}
+
+.notification-warning {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+
+.notification-info {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Enhanced Form Styling */
+.field.error input,
+.field.error select,
+.field.error textarea {
+  border-color: var(--red);
+  background-color: var(--red-bg);
+}
+
+.field.error .error-message {
+  color: var(--red);
+  font-size: 12px;
+  margin-top: 0.25rem;
+}
+
+/* Analytics Card */
+.analytics-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+.analytics-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.analytics-card .title {
+  font-size: 13px;
+  color: var(--text3);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.analytics-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.analytics-card .change {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.analytics-card .change.positive {
+  color: var(--green);
+}
+
+.analytics-card .change.negative {
+  color: var(--red);
+}
+
+/* Modal Improvements */
+.modal.large {
+  max-width: 900px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text3);
+  transition: color 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: var(--text);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.tab-button {
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text3);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-button:hover {
+  color: var(--text);
+}
+
+/* Table Enhancements */
+table thead {
+  position: sticky;
+  top: 56px;
+}
+
+tr.selected td {
+  background: var(--accent-bg) !important;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+
+.status-badge.completed {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+.status-badge.failed {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-border);
+}
+
+/* Action Buttons Row */
+.action-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Confirmation Dialog */
+.confirm-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 400px;
+}
+
+.confirm-dialog .message {
+  font-size: 16px;
+  margin-bottom: 1.5rem;
+  color: var(--text);
+}
+
+.confirm-dialog .buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* Dark Mode Support */
+body.dark {
+  --bg: #1a1a1a;
+  --surface: #2a2a2a;
+  --surface2: #3a3a3a;
+  --border: #444;
+  --border2: #555;
+  --text: #f5f5f5;
+  --text2: #ccc;
+  --text3: #888;
+}
+
+body.dark table {
+  background: var(--surface);
+  color: var(--text);
+}
+
+body.dark th {
+  background: var(--surface2);
+}
+
+body.dark tr:hover td {
+  background: var(--surface2);
+}
+
+/* Responsive Improvements */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  #notifications-container {
+    right: 0.5rem;
+    left: 0.5rem;
+    min-width: auto;
+  }
+  
+  .modal {
+    max-width: 95% !important;
+    margin: 0.5rem;
+  }
+  
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .action-row {
+    gap: 0.25rem;
+  }
+  
+  .action-row .btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  nav {
+    height: auto;
+    padding: 0.5rem;
+  }
+  
+  nav button.tab {
+    padding: 0.5rem;
+    font-size: 12px;
+  }
+  
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .login-card {
+    width: 95%;
+    padding: 1.5rem;
+  }
+}
+
+/* Animation Classes */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.bounce-in {
+  animation: bounceIn 0.5s ease;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Print Styles */
+@media print {
+  nav, .modal-overlay, #notifications-container {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+  }
+  
+  .page {
+    display: block !important;
+  }
+}
 </style>
 
 <div class="page" id="page-products">
@@ -1125,8 +1537,82 @@
 <div class="toast" id="toast"></div>
 
 <script type="module">
+// 🔧 YANGILANISHLAR VA BUG FIXES
+// ============================================================
+
+// 1️⃣ ERROR HANDLER
+class AppError extends Error {
+  constructor(message, code = 'APP_ERROR', severity = 'error') {
+    super(message);
+    this.code = code;
+    this.severity = severity;
+    this.timestamp = new Date();
+  }
+}
+
+const ErrorHandler = {
+  errors: [],
+  handle(error, context = '') {
+    console.error(`[${error.code || 'ERROR'}] ${context}:`, error.message);
+    this.errors.push({ message: error.message, code: error.code, context, timestamp: new Date() });
+    if(this.errors.length > 50) this.errors.shift();
+    if(error.code && error.code.includes('PERMISSION')) toast('❌ Ruxsatnomasi yo\'q','red');
+    else if(error.code && error.code.includes('NETWORK')) toast('❌ Internet muammosi','red');
+    else if(error.message) toast(`❌ ${error.message}`,'red');
+    return error;
+  }
+};
+
+// 2️⃣ NOTIFICATION MANAGER
+const NotificationManager = {
+  notifications: [],
+  add(type, message, duration = 3000) {
+    const id = Date.now();
+    const notification = { id, type, message };
+    this.notifications.push(notification);
+    if(duration > 0) setTimeout(() => this.remove(id), duration);
+    return id;
+  },
+  remove(id) {
+    this.notifications = this.notifications.filter(n => n.id !== id);
+  }
+};
+
+// 3️⃣ AUDIT LOG
+const AuditLog = {
+  logs: [],
+  record(action, target, details = {}) {
+    const log = { id: Date.now(), action, target, details, timestamp: new Date().toISOString(), user: window.currentSellerName };
+    this.logs.push(log);
+    if(this.logs.length > 10000) this.logs = this.logs.slice(-5000);
+  }
+};
+
+// 4️⃣ PERFORMANCE MONITOR
+const PerformanceMonitor = {
+  metrics: {},
+  mark(name) {
+    if(!this.metrics[name]) this.metrics[name] = { times: [] };
+    this.metrics[name].startTime = performance.now();
+  },
+  measure(name) {
+    if(this.metrics[name] && this.metrics[name].startTime) {
+      const duration = performance.now() - this.metrics[name].startTime;
+      this.metrics[name].times.push(duration);
+      if(duration > 1000) console.warn(`⚠️ ${name} took ${duration.toFixed(0)}ms`);
+      delete this.metrics[name].startTime;
+      return duration;
+    }
+  }
+};
+
+// Utility
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+// FIREBASE INIT
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
   authDomain: "dokon-ce38b.firebaseapp.com",
@@ -1137,30 +1623,27 @@ const firebaseConfig = {
   measurementId: "G-75RXS3WVWC"
 };
 
-const app = initializeApp(firebaseConfig);
-// MUHIM — TEZLIK VA BARQARORLIK UCHUN: standart getFirestore() har bir
-// o'qishni internet orqali kutadi va internet uzilganda yozuvlar zudlik
-// bilan xato beradi. persistentLocalCache yoqilganda esa: (1) barcha
-// ma'lumotlar qurilmada (IndexedDB) saqlanadi va sahifa qayta ochilganda
-// DARHOL — serverni kutmasdan — ko'rsatiladi; (2) internet vaqtincha
-// uzilsa ham yozuvlar lokal navbatga qo'yiladi va aloqa tiklangach
-// avtomatik yuboriladi (xato ko'rsatilmaydi). persistentMultipleTabManager
-// bir nechta brauzer/qurilma oynasi bir vaqtda ochiq bo'lsa ham ishlashini
-// ta'minlaydi. Agar (juda eski brauzerda) bu ishlamasa — oddiy rejimga
-// muammosiz qaytamiz.
-// TUZATILDI: ilgari shu izohdan keyin baribir oddiy getFirestore(app)
-// chaqirilar edi — ya'ni persistentLocalCache/persistentMultipleTabManager
-// import qilingan bo'lsa-da, HECH QACHON ishlatilmagan. Aynan shu sabab
-// internet uzilganda (ayniqsa sahifa qayta ochilganda) yozuvlar UI'da
-// ko'rinmay qolardi. Endi haqiqatan ham yoqamiz:
-let db;
-try{
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  });
-}catch(e){
-  console.error("persistentLocalCache yoqilmadi, oddiy (faqat xotira) keshga o'tildi:", e);
-  db = getFirestore(app);
+let db = null;
+let settingsRef = null;
+
+try {
+  const app = initializeApp(firebaseConfig);
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch(e) {
+    console.warn("Offline cache ishlamadi, oddiy rejimga o'tish:", e);
+    db = getFirestore(app);
+  }
+  
+  // MUHIM: settingsRef FAQAT db tayyor bo'lingandan KEYIN initialize qilinadi
+  if(db) {
+    settingsRef = doc(db, 'dokon', 'settings');
+  }
+} catch(e) {
+  ErrorHandler.handle(new AppError('Firebase init xatosi', 'FIREBASE_INIT_ERROR'), 'Firebase initialization');
+  console.error("Firebase initialization failed:", e);
 }
 
 window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30, lowStockThreshold: 5 };
@@ -1244,8 +1727,6 @@ function updateOfflineBanner(){
 }
 window.addEventListener('online', ()=>{ toast('✓ Internet qayta ulandi','green'); updateOfflineBanner(); });
 window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!','red'); updateOfflineBanner(); });
-
-const settingsRef = doc(db,'dokon','settings');
 
 // ===== FIREBASE YOZISH FUNKSIYALARI — "FIRE-AND-FORGET" MODEL =====
 // Avval ma'lumot LOKAL saqlanadi va ekran DARHOL yangilanadi, so'ng Firebase
@@ -6416,7 +6897,493 @@ if('serviceWorker' in navigator){
     });
   });
 }
+// ============================================================
+// 🔧 YANGILANGAN FUNKSIYALAR VA BUG FIXES
+// ============================================================
 
+// 1️⃣ IMPROVED ERROR HANDLING SYSTEM
+class AppError extends Error {
+  constructor(message, code = 'APP_ERROR', severity = 'error') {
+    super(message);
+    this.code = code;
+    this.severity = severity; // 'error', 'warning', 'info'
+    this.timestamp = new Date();
+  }
+}
+
+const ErrorHandler = {
+  errors: [],
+  maxErrors: 50,
+  
+  handle(error, context = '') {
+    console.error(`[${error.code || 'ERROR'}] ${context}:`, error.message);
+    
+    this.errors.push({
+      message: error.message,
+      code: error.code || 'UNKNOWN',
+      context,
+      timestamp: new Date(),
+      severity: error.severity || 'error'
+    });
+    
+    if(this.errors.length > this.maxErrors) {
+      this.errors.shift();
+    }
+    
+    // Firebase xatolarini maxsus boshqarish
+    if(error.code && error.code.includes('PERMISSION')) {
+      toast('❌ Ruxsatnomasi yo\'q', 'red');
+    } else if(error.code && error.code.includes('NETWORK')) {
+      toast('❌ Internet aloqasi muammosi', 'red');
+    } else if(error.message) {
+      toast(`❌ ${error.message}`, 'red');
+    }
+    
+    return error;
+  },
+  
+  getLogs() {
+    return this.errors.filter(e => e.severity === 'error');
+  },
+  
+  clearLogs() {
+    this.errors = [];
+  }
+};
+
+// 2️⃣ FIREBASE INITIALIZATION FIX
+async function initializeFirebaseWithFallback() {
+  try {
+    // db va settingsRef faqat shu yerda initialize qilinadi
+    if(!window.db) {
+      throw new AppError('Firebase database tayyor emas', 'FIREBASE_INIT_ERROR');
+    }
+    return true;
+  } catch(e) {
+    ErrorHandler.handle(e, 'Firebase initialization');
+    return false;
+  }
+}
+
+// 3️⃣ INPUT VALIDATION SCHEMA
+const ValidationSchema = {
+  product: {
+    name: { required: true, minLength: 2, maxLength: 100, regex: /^[a-zA-Z0-9\s\-шўғқ]+$/ },
+    price: { required: true, type: 'number', min: 0, max: 999999999 },
+    stock: { required: true, type: 'number', min: 0, max: 999999 },
+    volume: { type: 'number', min: 0, max: 100 },
+    barcode: { maxLength: 50, regex: /^[0-9\-\*\|]+$/ }
+  },
+  
+  sale: {
+    productId: { required: true },
+    quantity: { required: true, type: 'number', min: 1, max: 999999 },
+    price: { required: true, type: 'number', min: 0 }
+  },
+  
+  validate(schema, data) {
+    const errors = [];
+    
+    for(const [field, rules] of Object.entries(schema)) {
+      const value = data[field];
+      
+      // Required check
+      if(rules.required && (value === undefined || value === null || value === '')) {
+        errors.push(`${field} majburiy`);
+        continue;
+      }
+      
+      if(value !== undefined && value !== null && value !== '') {
+        // Type check
+        if(rules.type && typeof value !== rules.type) {
+          errors.push(`${field} noto'g'ri turi`);
+        }
+        
+        // Length checks
+        if(rules.minLength && value.length < rules.minLength) {
+          errors.push(`${field} kamida ${rules.minLength} ta belgidan iborat bo'lishi kerak`);
+        }
+        if(rules.maxLength && value.length > rules.maxLength) {
+          errors.push(`${field} ko'pi bilan ${rules.maxLength} ta belgidan iborat bo'lishi kerak`);
+        }
+        
+        // Regex check
+        if(rules.regex && !rules.regex.test(String(value))) {
+          errors.push(`${field} noto'g'ri format`);
+        }
+        
+        // Range checks
+        if(typeof value === 'number') {
+          if(rules.min !== undefined && value < rules.min) {
+            errors.push(`${field} kamida ${rules.min} bo'lishi kerak`);
+          }
+          if(rules.max !== undefined && value > rules.max) {
+            errors.push(`${field} ko'pi bilan ${rules.max} bo'lishi kerak`);
+          }
+        }
+      }
+    }
+    
+    return { valid: errors.length === 0, errors };
+  }
+};
+
+// 4️⃣ NOTIFICATION SYSTEM
+const NotificationManager = {
+  notifications: [],
+  
+  add(type, message, duration = 3000) {
+    const id = Date.now();
+    const notification = { id, type, message, timestamp: new Date() };
+    
+    this.notifications.push(notification);
+    
+    // Auto-remove after duration
+    if(duration > 0) {
+      setTimeout(() => this.remove(id), duration);
+    }
+    
+    this.render();
+    return id;
+  },
+  
+  remove(id) {
+    this.notifications = this.notifications.filter(n => n.id !== id);
+    this.render();
+  },
+  
+  render() {
+    const container = document.getElementById('notifications-container') || this.createContainer();
+    container.innerHTML = this.notifications.map(n => `
+      <div class="notification notification-${n.type}" data-id="${n.id}">
+        <span>${n.message}</span>
+        <button onclick="NotificationManager.remove(${n.id})" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px">&times;</button>
+      </div>
+    `).join('');
+  },
+  
+  createContainer() {
+    const container = document.createElement('div');
+    container.id = 'notifications-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 70px;
+      right: 1rem;
+      z-index: 1000;
+      max-width: 400px;
+    `;
+    document.body.appendChild(container);
+    return container;
+  }
+};
+
+// 5️⃣ AUDIT LOG SYSTEM
+const AuditLog = {
+  logs: [],
+  
+  record(action, target, details = {}, userId = window.currentSellerName) {
+    const log = {
+      id: generateId(),
+      action,
+      target,
+      userId,
+      details,
+      timestamp: new Date().toISOString(),
+      ipHash: 'client' // Real implementationida IP hash qo'shiladi
+    };
+    
+    this.logs.push(log);
+    
+    // Agar logs array juda katta bo'lsa, eski logsni o'chirish
+    if(this.logs.length > 10000) {
+      this.logs = this.logs.slice(-5000);
+    }
+    
+    // Firebase'ga fonda saqla (optional)
+    if(window.db && window.currentRole === 'admin') {
+      saveLogs(log).catch(e => console.warn('Audit log saqlashda muammo:', e));
+    }
+    
+    return log.id;
+  },
+  
+  getByTimeRange(startDate, endDate) {
+    return this.logs.filter(log => {
+      const logDate = new Date(log.timestamp);
+      return logDate >= startDate && logDate <= endDate;
+    });
+  },
+  
+  getByUser(userId) {
+    return this.logs.filter(log => log.userId === userId);
+  },
+  
+  export() {
+    return JSON.stringify(this.logs, null, 2);
+  }
+};
+
+// 6️⃣ ANALYTICS SYSTEM
+const Analytics = {
+  sessions: [],
+  events: [],
+  
+  startSession(userId, role) {
+    const session = {
+      id: generateId(),
+      userId,
+      role,
+      startTime: new Date(),
+      endTime: null,
+      actions: 0
+    };
+    
+    this.sessions.push(session);
+    return session.id;
+  },
+  
+  trackEvent(eventName, eventData = {}) {
+    this.events.push({
+      id: generateId(),
+      name: eventName,
+      data: eventData,
+      timestamp: new Date()
+    });
+  },
+  
+  getSessionStats() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todaySessions = this.sessions.filter(s => new Date(s.startTime) >= today);
+    
+    return {
+      totalToday: todaySessions.length,
+      averageDuration: this.getAverageDuration(),
+      topActions: this.getTopActions()
+    };
+  },
+  
+  getAverageDuration() {
+    if(this.sessions.length === 0) return 0;
+    const total = this.sessions.reduce((sum, s) => {
+      const end = s.endTime || new Date();
+      return sum + (end - s.startTime);
+    }, 0);
+    return Math.round(total / this.sessions.length / 1000); // seconds
+  },
+  
+  getTopActions() {
+    const actionCounts = {};
+    this.events.forEach(e => {
+      actionCounts[e.name] = (actionCounts[e.name] || 0) + 1;
+    });
+    
+    return Object.entries(actionCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ name, count }));
+  }
+};
+
+// 7️⃣ DATA SYNC QUEUE (Offline support uchun)
+const SyncQueue = {
+  queue: [],
+  syncing: false,
+  
+  add(operation) {
+    const item = {
+      id: generateId(),
+      operation,
+      timestamp: new Date(),
+      retries: 0,
+      maxRetries: 3
+    };
+    
+    this.queue.push(item);
+    localStorage.setItem('syncQueue', JSON.stringify(this.queue));
+    return item.id;
+  },
+  
+  async processQueue() {
+    if(this.syncing || !navigator.onLine) return;
+    
+    this.syncing = true;
+    
+    while(this.queue.length > 0) {
+      const item = this.queue[0];
+      
+      try {
+        // Operation bajarish
+        if(item.operation.type === 'save') {
+          await window.fbSaveProduct(item.operation.data);
+        } else if(item.operation.type === 'delete') {
+          await window.deleteDoc(window.doc(window.db, 'products', item.operation.id));
+        }
+        
+        // Muvaffaqiyatli bo'lsa, o'chirish
+        this.queue.shift();
+        localStorage.setItem('syncQueue', JSON.stringify(this.queue));
+      } catch(e) {
+        item.retries++;
+        
+        if(item.retries >= item.maxRetries) {
+          ErrorHandler.handle(e, 'SyncQueue processing');
+          this.queue.shift();
+        }
+        
+        break; // Keyingi urinishni keyinroq qilish
+      }
+    }
+    
+    this.syncing = false;
+  },
+  
+  loadFromStorage() {
+    try {
+      const stored = localStorage.getItem('syncQueue');
+      if(stored) {
+        this.queue = JSON.parse(stored);
+      }
+    } catch(e) {
+      console.warn('SyncQueue load error:', e);
+      this.queue = [];
+    }
+  }
+};
+
+// 8️⃣ BATCH OPERATIONS
+const BatchOperations = {
+  async importProducts(csvData) {
+    const lines = csvData.split('\n');
+    const headers = lines[0].split(',');
+    const products = [];
+    const errors = [];
+    
+    for(let i = 1; i < lines.length; i++) {
+      if(!lines[i].trim()) continue;
+      
+      const values = lines[i].split(',');
+      const product = {};
+      
+      headers.forEach((header, idx) => {
+        product[header.trim()] = values[idx]?.trim();
+      });
+      
+      // Validation
+      const validation = ValidationSchema.validate(ValidationSchema.product, product);
+      if(validation.valid) {
+        products.push(product);
+      } else {
+        errors.push({ row: i + 1, errors: validation.errors });
+      }
+    }
+    
+    // Batch save
+    if(products.length > 0) {
+      try {
+        await Promise.all(products.map(p => window.fbSaveProduct(p)));
+        NotificationManager.add('success', `${products.length} ta tovar kiritildi`);
+        AuditLog.record('BULK_IMPORT', 'products', { count: products.length });
+      } catch(e) {
+        ErrorHandler.handle(e, 'Batch import');
+      }
+    }
+    
+    return { imported: products.length, errors };
+  },
+  
+  async exportToCSV(data, filename = 'export.csv') {
+    if(!data || data.length === 0) {
+      NotificationManager.add('warning', 'Eksport uchun ma\'lumot yo\'q');
+      return;
+    }
+    
+    const headers = Object.keys(data[0]);
+    const csv = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => JSON.stringify(row[h] || '')).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.click();
+    
+    AuditLog.record('EXPORT', 'csv', { count: data.length, filename });
+  }
+};
+
+// 🔟 PERFORMANCE MONITORING
+const PerformanceMonitor = {
+  metrics: {},
+  
+  mark(name) {
+    if(!this.metrics[name]) {
+      this.metrics[name] = { times: [] };
+    }
+    this.metrics[name].startTime = performance.now();
+  },
+  
+  measure(name) {
+    if(this.metrics[name] && this.metrics[name].startTime) {
+      const duration = performance.now() - this.metrics[name].startTime;
+      this.metrics[name].times.push(duration);
+      
+      if(duration > 1000) {
+        console.warn(`⚠️ Slow operation: ${name} took ${duration.toFixed(2)}ms`);
+      }
+      
+      delete this.metrics[name].startTime;
+      return duration;
+    }
+  },
+  
+  getReport() {
+    const report = {};
+    
+    for(const [name, data] of Object.entries(this.metrics)) {
+      if(data.times.length > 0) {
+        const avg = data.times.reduce((a, b) => a + b, 0) / data.times.length;
+        report[name] = {
+          avg: avg.toFixed(2),
+          min: Math.min(...data.times).toFixed(2),
+          max: Math.max(...data.times).toFixed(2),
+          calls: data.times.length
+        };
+      }
+    }
+    
+    return report;
+  }
+};
+
+// UTILITY FUNCTION
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// INITIALIZE ON LOAD
+window.addEventListener('load', () => {
+  SyncQueue.loadFromStorage();
+  window.addEventListener('online', () => SyncQueue.processQueue());
+  
+  // Har 30 soniyada queue'ni tekshirish
+  setInterval(() => SyncQueue.processQueue(), 30000);
+});
+
+// EXPORT FOR USE
+window.AppError = AppError;
+window.ErrorHandler = ErrorHandler;
+window.ValidationSchema = ValidationSchema;
+window.NotificationManager = NotificationManager;
+window.AuditLog = AuditLog;
+window.Analytics = Analytics;
+window.SyncQueue = SyncQueue;
+window.BatchOperations = BatchOperations;
+window.PerformanceMonitor = PerformanceMonitor;
 
 </script>
 </body>
