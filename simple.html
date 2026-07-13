@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -1552,14 +1553,21 @@ class AppError extends Error {
 
 const ErrorHandler = {
   errors: [],
+  maxErrors: 50,
   handle(error, context = '') {
     console.error(`[${error.code || 'ERROR'}] ${context}:`, error.message);
-    this.errors.push({ message: error.message, code: error.code, context, timestamp: new Date() });
-    if(this.errors.length > 50) this.errors.shift();
+    this.errors.push({ message: error.message, code: error.code, context, timestamp: new Date(), severity: error.severity || 'error' });
+    if(this.errors.length > this.maxErrors) this.errors.shift();
     if(error.code && error.code.includes('PERMISSION')) toast('❌ Ruxsatnomasi yo\'q','red');
     else if(error.code && error.code.includes('NETWORK')) toast('❌ Internet muammosi','red');
     else if(error.message) toast(`❌ ${error.message}`,'red');
     return error;
+  },
+  getLogs() {
+    return this.errors.filter(e => e.severity === 'error');
+  },
+  clearLogs() {
+    this.errors = [];
   }
 };
 
@@ -1568,23 +1576,66 @@ const NotificationManager = {
   notifications: [],
   add(type, message, duration = 3000) {
     const id = Date.now();
-    const notification = { id, type, message };
+    const notification = { id, type, message, timestamp: new Date() };
     this.notifications.push(notification);
     if(duration > 0) setTimeout(() => this.remove(id), duration);
+    this.render();
     return id;
   },
   remove(id) {
     this.notifications = this.notifications.filter(n => n.id !== id);
+    this.render();
+  },
+  render() {
+    const container = document.getElementById('notifications-container') || this.createContainer();
+    container.innerHTML = this.notifications.map(n => `
+      <div class="notification notification-${n.type}" data-id="${n.id}">
+        <span>${n.message}</span>
+        <button onclick="NotificationManager.remove(${n.id})" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px">&times;</button>
+      </div>
+    `).join('');
+  },
+  createContainer() {
+    const container = document.createElement('div');
+    container.id = 'notifications-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 70px;
+      right: 1rem;
+      z-index: 1000;
+      max-width: 400px;
+    `;
+    document.body.appendChild(container);
+    return container;
   }
 };
 
 // 3️⃣ AUDIT LOG
 const AuditLog = {
   logs: [],
-  record(action, target, details = {}) {
-    const log = { id: Date.now(), action, target, details, timestamp: new Date().toISOString(), user: window.currentSellerName };
+  record(action, target, details = {}, userId = window.currentSellerName) {
+    const log = { id: generateId(), action, target, userId, user: userId, details, timestamp: new Date().toISOString(), ipHash: 'client' };
     this.logs.push(log);
     if(this.logs.length > 10000) this.logs = this.logs.slice(-5000);
+    // Firebase'ga fonda saqla (agar saveLogs() aniqlangan bo'lsa) — ilgari
+    // bu funksiya umuman TA'RIFLANMAGAN edi va admin sifatida ishlaganda
+    // "saveLogs is not defined" xatosini berardi.
+    if(window.db && window.currentRole === 'admin' && typeof saveLogs === 'function'){
+      saveLogs(log).catch(e => console.warn('Audit log saqlashda muammo:', e));
+    }
+    return log.id;
+  },
+  getByTimeRange(startDate, endDate) {
+    return this.logs.filter(log => {
+      const logDate = new Date(log.timestamp);
+      return logDate >= startDate && logDate <= endDate;
+    });
+  },
+  getByUser(userId) {
+    return this.logs.filter(log => log.userId === userId);
+  },
+  export() {
+    return JSON.stringify(this.logs, null, 2);
   }
 };
 
@@ -1603,6 +1654,21 @@ const PerformanceMonitor = {
       delete this.metrics[name].startTime;
       return duration;
     }
+  },
+  getReport() {
+    const report = {};
+    for(const [name, data] of Object.entries(this.metrics)) {
+      if(data.times.length > 0) {
+        const avg = data.times.reduce((a, b) => a + b, 0) / data.times.length;
+        report[name] = {
+          avg: avg.toFixed(2),
+          min: Math.min(...data.times).toFixed(2),
+          max: Math.max(...data.times).toFixed(2),
+          calls: data.times.length
+        };
+      }
+    }
+    return report;
   }
 };
 
@@ -3934,8 +4000,19 @@ window.toggleDarkMode=function(){
   const isDark = document.body.classList.toggle('dark');
   localStorage.setItem('dokon_dark_mode', isDark ? '1' : '0');
   const btn=document.getElementById('dark-toggle'); if(btn) btn.textContent = isDark ? '☀️' : '🌙';
-}
-(function applySavedDarkMode(){
+};
+// MUHIM TUZATISH ("Firebase bilan ulanmay qoldi" xatosining ASL sababi):
+// yuqoridagi funksiya tugagandan keyin ORTIQCHA ";" YO'Q edi. JavaScript
+// avtomatik nuqta-vergul qo'yish (ASI) qoidasiga ko'ra, bu holda pastdagi
+// "(function applySavedDarkMode(){...})()" qatori ALOHIDA IIFE sifatida
+// emas, balki YUQORIDAGI funksiyani "chaqirish" sifatida talqin qilinardi:
+// window.toggleDarkMode = toggleDarkModeFn(applySavedDarkModeFn)() — bu esa
+// "(intermediate value)(...) is not a function" xatosini berardi VA butun
+// <script type="module"> ICHIDAGI QOLGAN barcha kod (shu jumladan pastroqda
+// joylashgan init() chaqiruvi — aynan Firebase'dan ma'lumot yuklaydigan
+// funksiya) HECH QACHON ishga tushmasdi. Boshiga ";" qo'yish shu ikkala
+// mustaqil ifodani to'g'ri ajratadi.
+;(function applySavedDarkMode(){
   if(localStorage.getItem('dokon_dark_mode')==='1'){
     document.body.classList.add('dark');
     document.addEventListener('DOMContentLoaded', ()=>{ const b=document.getElementById('dark-toggle'); if(b) b.textContent='☀️'; });
@@ -6898,58 +6975,20 @@ if('serviceWorker' in navigator){
   });
 }
 // ============================================================
-// 🔧 YANGILANGAN FUNKSIYALAR VA BUG FIXES
+// 🔧 QO'SHIMCHA TIZIMLAR (Validation, Analytics, Sync Queue va h.k.)
 // ============================================================
-
-// 1️⃣ IMPROVED ERROR HANDLING SYSTEM
-class AppError extends Error {
-  constructor(message, code = 'APP_ERROR', severity = 'error') {
-    super(message);
-    this.code = code;
-    this.severity = severity; // 'error', 'warning', 'info'
-    this.timestamp = new Date();
-  }
-}
-
-const ErrorHandler = {
-  errors: [],
-  maxErrors: 50,
-  
-  handle(error, context = '') {
-    console.error(`[${error.code || 'ERROR'}] ${context}:`, error.message);
-    
-    this.errors.push({
-      message: error.message,
-      code: error.code || 'UNKNOWN',
-      context,
-      timestamp: new Date(),
-      severity: error.severity || 'error'
-    });
-    
-    if(this.errors.length > this.maxErrors) {
-      this.errors.shift();
-    }
-    
-    // Firebase xatolarini maxsus boshqarish
-    if(error.code && error.code.includes('PERMISSION')) {
-      toast('❌ Ruxsatnomasi yo\'q', 'red');
-    } else if(error.code && error.code.includes('NETWORK')) {
-      toast('❌ Internet aloqasi muammosi', 'red');
-    } else if(error.message) {
-      toast(`❌ ${error.message}`, 'red');
-    }
-    
-    return error;
-  },
-  
-  getLogs() {
-    return this.errors.filter(e => e.severity === 'error');
-  },
-  
-  clearLogs() {
-    this.errors = [];
-  }
-};
+// MUHIM TUZATISH ("Firebase bilan ulanmay qoldi" xatosi): bu joyda ilgari
+// AppError, ErrorHandler, NotificationManager, AuditLog, PerformanceMonitor
+// va generateId() YANA BIR MARTA — ular yuqorida (faylning boshida,
+// "1️⃣ ERROR HANDLER" bo'limida) ALLAQACHON e'lon qilingan bo'lsa ham —
+// qayta e'lon qilingan edi. Bitta <script type="module"> ichida bir xil
+// nom bilan const/class/function IKKI MARTA e'lon qilinishi JS uchun
+// SINTAKSIS XATOSI hisoblanadi ("Identifier ... has already been
+// declared") — shuning uchun BUTUN modul skripti (shu jumladan Firebase
+// bilan ulanish kodi ham) HECH QACHON ishga tushmasdi, va sahifa abadiy
+// "Firebase bilan ulanmoqda..." holatida qolib ketardi. Quyida FAQAT
+// haqiqatan YANGI (yuqorida mavjud bo'lmagan) qismlar qoldirildi;
+// takroriy e'lonlar butunlay olib tashlandi.
 
 // 2️⃣ FIREBASE INITIALIZATION FIX
 async function initializeFirebaseWithFallback() {
@@ -7025,101 +7064,6 @@ const ValidationSchema = {
     }
     
     return { valid: errors.length === 0, errors };
-  }
-};
-
-// 4️⃣ NOTIFICATION SYSTEM
-const NotificationManager = {
-  notifications: [],
-  
-  add(type, message, duration = 3000) {
-    const id = Date.now();
-    const notification = { id, type, message, timestamp: new Date() };
-    
-    this.notifications.push(notification);
-    
-    // Auto-remove after duration
-    if(duration > 0) {
-      setTimeout(() => this.remove(id), duration);
-    }
-    
-    this.render();
-    return id;
-  },
-  
-  remove(id) {
-    this.notifications = this.notifications.filter(n => n.id !== id);
-    this.render();
-  },
-  
-  render() {
-    const container = document.getElementById('notifications-container') || this.createContainer();
-    container.innerHTML = this.notifications.map(n => `
-      <div class="notification notification-${n.type}" data-id="${n.id}">
-        <span>${n.message}</span>
-        <button onclick="NotificationManager.remove(${n.id})" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px">&times;</button>
-      </div>
-    `).join('');
-  },
-  
-  createContainer() {
-    const container = document.createElement('div');
-    container.id = 'notifications-container';
-    container.style.cssText = `
-      position: fixed;
-      top: 70px;
-      right: 1rem;
-      z-index: 1000;
-      max-width: 400px;
-    `;
-    document.body.appendChild(container);
-    return container;
-  }
-};
-
-// 5️⃣ AUDIT LOG SYSTEM
-const AuditLog = {
-  logs: [],
-  
-  record(action, target, details = {}, userId = window.currentSellerName) {
-    const log = {
-      id: generateId(),
-      action,
-      target,
-      userId,
-      details,
-      timestamp: new Date().toISOString(),
-      ipHash: 'client' // Real implementationida IP hash qo'shiladi
-    };
-    
-    this.logs.push(log);
-    
-    // Agar logs array juda katta bo'lsa, eski logsni o'chirish
-    if(this.logs.length > 10000) {
-      this.logs = this.logs.slice(-5000);
-    }
-    
-    // Firebase'ga fonda saqla (optional)
-    if(window.db && window.currentRole === 'admin') {
-      saveLogs(log).catch(e => console.warn('Audit log saqlashda muammo:', e));
-    }
-    
-    return log.id;
-  },
-  
-  getByTimeRange(startDate, endDate) {
-    return this.logs.filter(log => {
-      const logDate = new Date(log.timestamp);
-      return logDate >= startDate && logDate <= endDate;
-    });
-  },
-  
-  getByUser(userId) {
-    return this.logs.filter(log => log.userId === userId);
-  },
-  
-  export() {
-    return JSON.stringify(this.logs, null, 2);
   }
 };
 
@@ -7315,55 +7259,6 @@ const BatchOperations = {
     AuditLog.record('EXPORT', 'csv', { count: data.length, filename });
   }
 };
-
-// 🔟 PERFORMANCE MONITORING
-const PerformanceMonitor = {
-  metrics: {},
-  
-  mark(name) {
-    if(!this.metrics[name]) {
-      this.metrics[name] = { times: [] };
-    }
-    this.metrics[name].startTime = performance.now();
-  },
-  
-  measure(name) {
-    if(this.metrics[name] && this.metrics[name].startTime) {
-      const duration = performance.now() - this.metrics[name].startTime;
-      this.metrics[name].times.push(duration);
-      
-      if(duration > 1000) {
-        console.warn(`⚠️ Slow operation: ${name} took ${duration.toFixed(2)}ms`);
-      }
-      
-      delete this.metrics[name].startTime;
-      return duration;
-    }
-  },
-  
-  getReport() {
-    const report = {};
-    
-    for(const [name, data] of Object.entries(this.metrics)) {
-      if(data.times.length > 0) {
-        const avg = data.times.reduce((a, b) => a + b, 0) / data.times.length;
-        report[name] = {
-          avg: avg.toFixed(2),
-          min: Math.min(...data.times).toFixed(2),
-          max: Math.max(...data.times).toFixed(2),
-          calls: data.times.length
-        };
-      }
-    }
-    
-    return report;
-  }
-};
-
-// UTILITY FUNCTION
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
 
 // INITIALIZE ON LOAD
 window.addEventListener('load', () => {
