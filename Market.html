@@ -280,12 +280,12 @@
   body.dark #receipt-content{color:#111} /* chek doim oq qog'ozda o'qilishi uchun */
   body.dark #receipt-content{background:#fff;border-radius:8px;padding:.5rem}
 
-  /* ===== CHEKNI CHOP ETISH ===== */
-  @media print{
-    body *{visibility:hidden}
-    #receipt-content, #receipt-content *{visibility:visible}
-    #receipt-content{position:fixed;top:0;left:0;width:100%;padding:1rem}
-  }
+  /* ===== CHEKNI CHOP ETISH =====
+     ESKI USUL (visibility:hidden orqali butun sahifani yashirish) OLIB TASHLANDI:
+     sahifa juda uzun bo'lgani uchun brauzer o'nlab bo'sh sahifa chiqarardi.
+     Endi chop etish alohida iframe orqali amalga oshiriladi (pastdagi
+     printTable() va printReceipt() funksiyalariga qarang), shuning uchun
+     bu yerda maxsus @media print kerak emas. */
 
   /* 🎨 YANGI STYLES VA IMPROVEMENTS */
   /* Notification Styles */
@@ -852,6 +852,7 @@ body.dark tr:hover td {
     <button class="btn sm green" onclick="exportCSV()">⬇ CSV</button>
     <button class="btn sm green" onclick="exportHistoryExcel()" title="Excel (.xlsx) formatida yuklab olish">⬇ Excel</button>
     <button class="btn sm amber" onclick="exportHistoryPDF()" title="PDF hisobot sifatida yuklab olish">📄 PDF</button>
+    <button class="btn sm" onclick="printHistoryList()" title="Ro'yxatni printerga chiqarish">🖨 Chop etish</button>
   </div>
   <div id="history-summary" style="margin-bottom:1rem"></div>
   <div class="tbl-wrap">
@@ -994,6 +995,7 @@ body.dark tr:hover td {
     <input type="text" id="debt-search" oninput="debouncedRenderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
     <button class="btn sm green" onclick="exportDebtsCSV()" title="Qarzlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
     <button class="btn sm green" onclick="exportDebtsExcel()" title="Qarzlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
+    <button class="btn sm" onclick="printDebtsList()" title="Qarzlar ro'yxatini printerga chiqarish">🖨 Chop etish</button>
   </div>
   <div id="debt-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div id="debts-list"></div>
@@ -3772,6 +3774,21 @@ window.exportHistoryPDF=function(){
   toast('✓ PDF hisobot yuklandi','green');
 }
 
+// YANGI: savdo tarixini (ekranda ko'rinayotgan, hozirgi filtrlar bo'yicha)
+// to'g'ridan-to'g'ri chop etish (printer orqali qog'ozga chiqarish).
+window.printHistoryList=function(){
+  const sales = getFilteredHistorySales();
+  if(!sales.length){ toast("Chop etish uchun ma'lumot yo'q",'red'); return; }
+  const totalRev = sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
+  const cnt = sales.filter(s=>!s.reverted).length;
+  const headers = ['Sana','Tovar','Miqdor','Narx','Jami','Sotuvchi','Holat'];
+  const rows = sales.map(s=>[timeStr(s.date), s.productName, s.qty+' ta', fmt(s.price)+" so'm", fmt(s.total)+" so'm", s.seller, s.reverted?'Qaytarilgan':'Aktiv']);
+  printTable('Savdo tarixi', [
+    `Jami savdo summasi: ${fmt(totalRev)} so'm`,
+    `Aktiv savdolar soni: ${cnt} ta`
+  ], headers, rows);
+}
+
 // YANGI: butun ombordagi tovarlar ro'yxatini (nomi, hajmi, narxi, tannarxi,
 // qoldig'i, umumiy qiymati) CSV/Excel formatida yuklab olish — inventarizatsiya
 // va buxgalteriya hisobotlari uchun qulay.
@@ -3821,6 +3838,45 @@ window.exportDebtsExcel=function(){
   if(exportToExcel(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.xlsx`,'Qarzlar',headers,rows)){
     toast(`✓ ${DB.debts.length} ta qarz yozuvi Excel formatda yuklandi`,'green');
   }
+}
+
+// YANGI: qarzlar ro'yxatini (ekranda ko'rinayotgan, hozirgi filtrlar bo'yicha)
+// to'g'ridan-to'g'ri chop etish (printer orqali qog'ozga chiqarish).
+window.printDebtsList=function(){
+  const q = (document.getElementById('debt-search')?.value||'').toLowerCase();
+  const from = document.getElementById('debt-from')?.value;
+  const to = document.getElementById('debt-to')?.value;
+  let list = [...DB.debts];
+  if(from) list = list.filter(d=>new Date(d.date)>=new Date(from));
+  if(to)   list = list.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
+  if(q) list = list.filter(d=>
+    (d.debtorName||'').toLowerCase().includes(q) ||
+    (d.org||'').toLowerCase().includes(q)
+  );
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
+  else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
+  if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
+  list = list.slice().reverse();
+
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = list.filter(d=>!d.paid).length;
+  const headers = ['Sana','Ism/Tashkilot','Turi','Telefon','Summa','Holat','Izoh'];
+  const rows = list.map(d=>[
+    timeStr(d.date),
+    d.debtorName+(d.org?' ('+d.org+')':''),
+    d.org?'Tashkilot':'Shaxs',
+    d.phone||'',
+    fmt(d.total)+" so'm",
+    d.paid?"To'langan":'Faol',
+    d.note||''
+  ]);
+  printTable("Qarzlar ro'yxati", [
+    `Jami faol qarz: ${fmt(totalActive)} so'm`,
+    `Faol qarzlar soni: ${activeCount} ta`,
+    `Jami yozuvlar: ${list.length} ta`
+  ], headers, rows);
 }
 
 // ===== FOYDA (PROFIT) =====
@@ -4189,9 +4245,18 @@ window.openReceiptModal=function(receiptData){
   document.getElementById('receipt-total').textContent = fmt(receiptData.total)+" so'm";
   openModal('modal-receipt');
 }
+// TUZATILDI: ilgari window.print() butun sahifani chop etishga urinardi va
+// faqat CSS orqali (visibility:hidden) chekdan boshqa hamma narsani
+// "yashirardi". Sahifa juda uzun bo'lgani sabab bu o'nlab bo'sh sahifa
+// chiqarib yuborardi (chek esa chiqmasdi). Endi chek alohida, mustaqil
+// iframe hujjatiga yoziladi va faqat o'sha chop etiladi — natijada doim
+// bitta toza chek sahifasi chiqadi.
 window.printReceipt=function(){
   if(!lastReceiptData){ toast('Chek topilmadi','red'); return; }
-  window.print();
+  const content = document.getElementById('receipt-content').innerHTML;
+  printHTML(content, {
+    pageStyle:'width:80mm;margin:0 auto;font-family:\'Courier New\',monospace;font-size:13px;color:#111'
+  });
 }
 // Savdo tarixidan bitta yozuv uchun chek chiqarish (masalan qayta chop etish)
 window.printSaleReceipt=function(saleId){
@@ -4247,6 +4312,63 @@ function timeStr(iso){
 function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
 function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
 function download(name,type,content){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
+
+// ===== YANGI: UMUMIY CHOP ETISH (PRINT) YORDAMCHISI =====
+// Butun ilova sahifasini chop etish (window.print()) o'rniga, chop etiladigan
+// tarkib alohida, yashirin <iframe> ichiga to'liq mustaqil HTML hujjat sifatida
+// yoziladi va faqat o'sha iframe chop etiladi. Shu tufayli asosiy sahifaning
+// uzunligi yoki boshqa elementlari chop etishga umuman ta'sir qilmaydi va
+// bo'sh sahifalar chiqmaydi.
+function printHTML(bodyHtml, opts={}){
+  let frame = document.getElementById('print-frame');
+  if(frame) frame.remove();
+  frame = document.createElement('iframe');
+  frame.id = 'print-frame';
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${opts.title||"Chop etish"}</title>
+    <style>
+      @page{margin:12mm}
+      *{box-sizing:border-box}
+      body{margin:0;padding:1rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111}
+      h1{font-size:18px;margin-bottom:2px}
+      .print-sub{font-size:12px;color:#555;margin-bottom:4px}
+      table{width:100%;border-collapse:collapse;margin-top:12px}
+      th,td{border:1px solid #999;padding:6px 8px;font-size:12px;text-align:left;vertical-align:top}
+      th{background:#eee}
+      tfoot td{font-weight:700}
+    </style></head>
+    <body>
+      <div style="${opts.pageStyle||''}">${bodyHtml}</div>
+    </body></html>`);
+  doc.close();
+  frame.onload = function(){
+    setTimeout(()=>{
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }, 150);
+  };
+}
+
+// Sarlavha, izoh qatorlari, ustun sarlavhalari va qatorlar asosida jadval
+// ko'rinishidagi hisobotni (qarzlar, savdo tarixi va h.k.) chop etadi.
+function printTable(title, subtitleLines, headers, rows){
+  if(!rows.length){ toast("Chop etish uchun ma'lumot yo'q",'red'); return; }
+  const dateStr = new Date().toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const rowsHtml = rows.map(r=>`<tr>${r.map(c=>`<td>${c ?? ''}</td>`).join('')}</tr>`).join('');
+  const subHtml = (subtitleLines||[]).map(l=>`<div class="print-sub">${l}</div>`).join('');
+  const html = `
+    <h1>🏪 Do'kon — ${title}</h1>
+    <div class="print-sub">Chop etilgan sana: ${dateStr}</div>
+    ${subHtml}
+    <table>
+      <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  printHTML(html, {title});
+}
 
 // ===== YANGI: EXCEL (.xlsx) VA PDF HISOBOT EKSPORTI =====
 // Umumiy yordamchi funksiya — headers (ustun nomlari) va rows (2 o'lchamli
