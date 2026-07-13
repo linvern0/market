@@ -3464,6 +3464,7 @@ window.renderDebts = function(){
           <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
           <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${totalCount} ta qarz</div>
+          ${g.isOrg?`<button class="btn sm" style="margin-top:.4rem" onclick="printOrgDebt('${g.org.replace(/'/g,"\\'")}')" title="Butun tashkilot qarzini chop etish">🖨 Tashkilot ro'yxati</button>`:''}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:.85rem">
@@ -3482,8 +3483,14 @@ window.renderDebts = function(){
                 ${loginInfo}
                 ${loginBtn}
               </div>
-              <div style="text-align:right;font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
-            </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>`}
+              <div style="text-align:right">
+                <div style="font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
+                <button class="btn sm" style="margin-top:.3rem" onclick="printPersonDebt('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Shu shaxsning qarzini alohida chop etish">🖨 Shaxsiy chek</button>
+              </div>
+            </div>`:`<div style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+              <div>${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>
+              <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
+            </div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
               ${p.debts.map(d=>{
                 const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
@@ -4068,6 +4075,55 @@ window.printDebtsList=function(){
     `Jami faol qarz: ${fmt(totalActive)} so'm`,
     `Faol qarzlar soni: ${activeCount} ta`,
     `Jami yozuvlar: ${list.length} ta`
+  ], headers, rows);
+}
+
+// YANGI: tashkilot ICHIDAGI bitta aniq shaxsning qarzini alohida hisoblab,
+// alohida chop etish. Tashkilot bo'lsa (org!=='') faqat o'sha org+ism bo'yicha,
+// tashkilotsiz shaxs bo'lsa (org==='') faqat o'sha ism bo'yicha yozuvlar olinadi
+// — shu sababli bir xil ismli, lekin boshqa tashkilotdagi odam aralashib
+// ketmaydi. Chekda: shaxsning barcha qarz yozuvlari (sana, tovarlar, summa,
+// holat, izoh), faol/to'langan jami summalar va telefon raqami ko'rsatiladi.
+window.printPersonDebt=function(org, debtorName){
+  const list = DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''))
+    .slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = list.filter(d=>!d.paid).length;
+  const phone = (list.find(d=>d.phone)||{}).phone || '';
+  const headers = ['Sana','Tovarlar','Summa','Holat','Izoh'];
+  const rows = list.map(d=>[
+    timeStr(d.date),
+    (d.items||[]).map(i=>`${i.productName}${i.volume?' ('+i.volume+'L)':''} x${i.qty}`).join(', '),
+    fmt(d.total)+" so'm",
+    d.paid?"To'langan":'Faol',
+    d.note||''
+  ]);
+  const subtitleLines = [
+    org ? `Tashkilot: ${org}` : "Shaxsiy qarzdor (tashkilotsiz)",
+    phone ? `Telefon: ${phone}` : '',
+    `Jami faol qarz: ${fmt(totalActive)} so'm (${activeCount} ta)`,
+    `Jami to'langan: ${fmt(totalPaid)} so'm`
+  ].filter(Boolean);
+  printTable(`Qarz — ${debtorName}`, subtitleLines, headers, rows);
+}
+
+// YANGI: bitta tashkilotning barcha qarzdor xodimlari bo'yicha umumiy
+// hisobotni chop etish (kim qancha qarzdor — jamlangan ro'yxat).
+window.printOrgDebt=function(org){
+  if(!org){ toast("Tashkilot nomi topilmadi",'red'); return; }
+  const list = DB.debts.filter(d=>d.org===org).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCount = list.filter(d=>!d.paid).length;
+  const peopleCount = new Set(list.map(d=>d.debtorName)).size;
+  const headers = ['Sana','Ism','Summa','Holat'];
+  const rows = list.map(d=>[timeStr(d.date), d.debtorName, fmt(d.total)+" so'm", d.paid?"To'langan":'Faol']);
+  printTable(`Tashkilot qarzi — ${org}`, [
+    `Jami faol qarz: ${fmt(totalActive)} so'm`,
+    `Qarzdorlar soni: ${peopleCount} kishi`,
+    `Faol yozuvlar: ${activeCount} ta`
   ], headers, rows);
 }
 
@@ -4736,16 +4792,24 @@ function printHTML(bodyHtml, opts={}){
       @page{size:58mm 210mm;margin:0}
       *{box-sizing:border-box}
       html,body{width:58mm}
-      body{margin:0;padding:5mm;font-family:'Courier New',monospace;font-size:12px;color:#000;font-weight:700}
-      h1{font-size:14px;margin:0 0 3px;text-align:center;line-height:1.3;font-weight:700}
-      .print-sub{font-size:11px;color:#000;margin-bottom:2px;text-align:center;font-weight:700}
+      /* MAKSIMAL QALINLIK: chop etilgan hujjatdagi ABSOLYUT HAR BIR element
+         (sana/vaqt, sotuvchi, badge, izoh va h.k.) — asl inline stilidan
+         qat'i nazar — eng qalin (900) shriftda chiqishi uchun umumiy '*'
+         qoidasi !important bilan qo'llanadi. Bu faqat shu chop etish
+         iframe'iga tegishli, ekrandagi asosiy ilova ko'rinishiga ta'sir
+         qilmaydi. Qo'shimcha text-shadow ba'zi termal/mexanik printerlarda
+         font-weight'ni yaxshi ajratmasligi mumkinligi uchun harflarni yana
+         ham qorayib ko'rinishiga yordam beradi. */
+      *{font-weight:900 !important;text-shadow:0 0 .3px currentColor,0 0 .3px currentColor}
+      body{margin:0;padding:5mm;font-family:'Courier New',monospace;font-size:12px;color:#000}
+      h1{font-size:14px;margin:0 0 3px;text-align:center;line-height:1.3}
+      .print-sub{font-size:11px;color:#000;margin-bottom:2px;text-align:center}
       table{width:100%;border-collapse:collapse;margin-top:6px}
-      th,td{border:1px solid #000;padding:2px 3px;font-size:10px;text-align:left;vertical-align:top;word-break:break-word;font-weight:700}
+      th,td{border:1px solid #000;padding:2px 3px;font-size:10px;text-align:left;vertical-align:top;word-break:break-word}
       th{background:#eee}
-      tfoot td{font-weight:700}
       .rt-record{border-bottom:1px dashed #000;padding:4px 0;margin-bottom:2px}
-      .rt-row{font-size:11px;line-height:1.35;word-break:break-word;font-weight:700}
-      .rt-label{font-weight:700}
+      .rt-row{font-size:11px;line-height:1.35;word-break:break-word}
+      .rt-label{}
     </style></head>
     <body>
       <div style="${opts.pageStyle||''}">${bodyHtml}</div>
