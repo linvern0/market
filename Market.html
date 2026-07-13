@@ -941,6 +941,14 @@ body.dark tr:hover td {
     <button class="btn blue" onclick="savePins()">Saqlash</button>
   </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🛒 Sotuvchi ismi</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bu ism sotuvchi paneli, chek va hisobotlarda "Sotuvchi" o'rniga ko'rsatiladi (masalan, xodimning haqiqiy ismi).</p>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <input type="text" id="seller-name-input" maxlength="40" placeholder="Masalan: Aziz" style="flex:1;min-width:150px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <button class="btn sm blue" onclick="saveSellerName()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Sotuvchi orqaga qaytarish muddati</h3>
     <div style="display:flex;gap:.75rem;align-items:center">
       <input type="number" id="revert-minutes" min="1" max="1440" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="30">
@@ -1748,7 +1756,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30, lowStockThreshold: 5 };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi' };
 window.currentRole = null;
 window.currentSellerName = 'Sotuvchi';
 window.editingProductId = null;
@@ -1836,7 +1844,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -1992,6 +2000,7 @@ function startListeners(){
       DB.pins=d.pins||DB.pins;
       DB.revertMinutes=d.revertMinutes||30;
       DB.lowStockThreshold=d.lowStockThreshold||5;
+      DB.sellerName=d.sellerName||'Sotuvchi';
     }
   });
   let prodDebounce=null;
@@ -2105,8 +2114,9 @@ async function init(){
           DB.pins=d.pins||DB.pins;
           DB.revertMinutes=d.revertMinutes||30;
           DB.lowStockThreshold=d.lowStockThreshold||5;
+          DB.sellerName=d.sellerName||'Sotuvchi';
         } else {
-          setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -2186,8 +2196,9 @@ window.doLogin = function(){
   if(role==='seller' && pin!==DB.pins.seller){ registerFailedLogin(); err.textContent="Sotuvchi PIN noto'g'ri"; return; }
   setLoginLockState({}); // muvaffaqiyatli kirish — hisoblagichni tozalash
   // TUZATILDI: endi kirishda sotuvchidan ISM SO'RALMAYDI — PIN kiritish
-  // yetarli, savdo yozuvlarida umumiy "Sotuvchi" nomi ishlatiladi.
-  const sellerName = 'Sotuvchi';
+  // yetarli. Sotuvchi nomi sozlamalarda admin tomonidan belgilangan
+  // DB.sellerName'dan olinadi (standart holatda "Sotuvchi").
+  const sellerName = DB.sellerName || 'Sotuvchi';
   currentSellerName = sellerName;
   currentRole = role;
   err.textContent='';
@@ -2251,7 +2262,7 @@ function resetInactivityTimer(){
 window.logout = function(){
   clearTimeout(_inactivityTimer);
   Object.keys(cartSerialCodes).forEach(id=>{ while(revertCartSerialCode(id)){} });
-  currentRole=null; currentSellerName='Sotuvchi'; cart={};
+  currentRole=null; currentSellerName=DB.sellerName||'Sotuvchi'; cart={};
   document.getElementById('login-page').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pin-input').value='';
@@ -2271,7 +2282,7 @@ window.showPage = function(page, role){
   if(page==='profit'){ renderProfit(); }
   if(page==='my-sales'){ setMySalesFilter('today'); }
   if(page==='sell') renderSellGrid();
-  if(page==='settings'){ document.getElementById('revert-minutes').value=DB.revertMinutes; const lst=document.getElementById('low-stock-threshold'); if(lst) lst.value=DB.lowStockThreshold; }
+  if(page==='settings'){ document.getElementById('revert-minutes').value=DB.revertMinutes; const lst=document.getElementById('low-stock-threshold'); if(lst) lst.value=DB.lowStockThreshold; const sn=document.getElementById('seller-name-input'); if(sn) sn.value=DB.sellerName||'Sotuvchi'; }
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
@@ -3193,7 +3204,7 @@ window.doDebtSell = async function(){
   const debt = {
     id: uid(), debtorId, debtorName: name, org: org||'', phone: phone||'',
     items: debtItems, total, paid: false, paidDate: null,
-    date: now, note, seller: currentRole==='admin'?'Admin':'Sotuvchi',
+    date: now, note, seller: currentRole==='admin'?'Admin':(currentSellerName||'Sotuvchi'),
     type: org ? 'organization' : 'person'
   };
 
@@ -3205,7 +3216,7 @@ window.doDebtSell = async function(){
   items.forEach(([id,qty])=>{
     const p=DB.products.find(x=>x.id===id);
     const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,
-      seller:currentRole==='admin'?'Admin':'Sotuvchi',date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
+      seller:currentRole==='admin'?'Admin':(currentSellerName||'Sotuvchi'),date:now,reverted:false,isDebt:true,debtorName:name,org:org||''};
     localUpsertSale(sale);
     p.stock = p.stock - qty; // lokal: joyida o'zgartiramiz (obyekt referensi saqlanadi)
   });
@@ -3624,7 +3635,12 @@ window.renderMySales=function(){
     label='Jami savdo';
   }
 
-  const allMySales = DB.sales.filter(s=>s.seller==='Sotuvchi');
+  // TUZATILDI: ilgari faqat seller==='Sotuvchi' (qat'iy so'z) bo'yicha
+  // filtrlanardi — sotuvchi nomi sozlamalarda o'zgartirilsa, eski/yangi
+  // yozuvlar mos kelmay qolardi. Endi shunchaki "Admin" tomonidan qilingan
+  // sotuvlar chiqarib tashlanadi, qolgani barchasi sotuvchi savdosi
+  // hisoblanadi (tizimda faqat bitta umumiy sotuvchi hisobi bor).
+  const allMySales = DB.sales.filter(s=>s.seller!=='Admin');
   const periodSales = (rangeStart && rangeEnd)
     ? allMySales.filter(s=>!s.reverted && new Date(s.date)>=rangeStart && new Date(s.date)<=rangeEnd)
     : allMySales.filter(s=>!s.reverted);
@@ -4145,6 +4161,23 @@ window.saveLowStockThreshold=function(){
   refreshProductViews();
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
+// YANGI: admin sotuvchining chek/hisobotlarda ko'rinadigan ismini
+// belgilashi mumkin (masalan, umumiy "Sotuvchi" o'rniga xodimning ismi).
+// Hozir tizimda faqat bitta umumiy sotuvchi login/PIN bo'lgani uchun, bu
+// nom shu yagona sotuvchi hisobiga tegishli va barcha qurilmalarda
+// (Firebase orqali) sinxron bo'ladi.
+window.saveSellerName=function(){
+  const v=(document.getElementById('seller-name-input').value||'').trim();
+  if(!v){ toast("Ism bo'sh bo'lishi mumkin emas",'red'); return; }
+  DB.sellerName=v;
+  if(currentRole==='seller'){
+    currentSellerName=v;
+    const badge=document.getElementById('user-badge');
+    if(badge) badge.innerHTML='<span id="sync-dot"></span>&nbsp;🛒 '+v;
+  }
+  toast('✓ Sotuvchi ismi saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
 
 // ===== ZAXIRA NUSXA (BACKUP) VA TIKLASH (RESTORE) =====
 // To'liq bazani (mahsulotlar, savdolar, kirim/chiqim, qarzlar, qarzdorlar,
@@ -4156,7 +4189,7 @@ window.exportBackupJSON=function(){
     _meta:{ exportedAt:new Date().toISOString(), app:'Do\'kon Boshqaruvi', version:1 },
     products:DB.products, sales:DB.sales, restocks:DB.restocks,
     debts:DB.debts, debtors:DB.debtors,
-    settings:{ pins:DB.pins, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold }
+    settings:{ pins:DB.pins, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold, sellerName:DB.sellerName }
   };
   download(`dokon-backup-${new Date().toISOString().slice(0,10)}.json`, 'application/json', JSON.stringify(backup, null, 2));
   toast('✓ Zaxira nusxa yuklab olindi','green');
@@ -4188,6 +4221,7 @@ window.importBackupJSON=function(input){
             DB.pins=data.settings.pins||DB.pins;
             DB.revertMinutes=data.settings.revertMinutes||DB.revertMinutes;
             DB.lowStockThreshold=data.settings.lowStockThreshold||DB.lowStockThreshold;
+            DB.sellerName=data.settings.sellerName||DB.sellerName;
             writes.push(fbSaveSettings());
           }
           await Promise.all(writes);
