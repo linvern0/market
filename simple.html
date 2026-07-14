@@ -621,6 +621,7 @@
   <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
   <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
   <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#334155;border-color:#475569;color:#94a3b8">🔎</button>
+  <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#334155;border-color:#475569;color:#94a3b8">❔</button>
   <div id="notif-bell-wrap" style="position:relative;display:none">
     <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#334155;border-color:#475569;color:#94a3b8">🔔<span id="notif-bell-count" style="display:none"></span></button>
     <div id="notif-panel" class="hidden"></div>
@@ -666,6 +667,10 @@
       <div class="card">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🏅 Top sotuvchilar</h3>
         <div id="top-sellers"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">💳 Top qarzdorlar</h3>
+        <div id="top-debtors"></div>
       </div>
       <div class="card">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
@@ -1259,6 +1264,15 @@ body.dark tr:hover td {
     </div>
   </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">⏰ Muddati o'tgan qarz chegarasi</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Qarz shu kundan ko'proq to'lanmasa, "Muddati o'tgan" deb ogohlantiriladi.</p>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="overdue-days-threshold" min="1" max="365" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="14">
+      <span style="font-size:14px;color:var(--text2)">kun</span>
+      <button class="btn sm blue" onclick="saveOverdueThreshold()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🎯 Kunlik savdo maqsadi</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bosh sahifada shu kunlik maqsadga qarab jarayon chizig'i ko'rsatiladi — jamoani rag'batlantirish uchun foydali.</p>
     <div style="display:flex;gap:.75rem;align-items:center">
@@ -1722,6 +1736,20 @@ body.dark tr:hover td {
 </div>
 
 <!-- YANGI: Mahsulot shtrix-kod yorliqlarini chop etish modali (10.4-bo'lim) -->
+<div class="modal-overlay hidden" id="modal-shortcuts">
+  <div class="modal" style="max-width:420px">
+    <h3>❔ Klaviatura yorliqlari</h3>
+    <div style="display:flex;flex-direction:column;gap:.6rem;margin:.75rem 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Global qidiruv (tovar/qarzdor)</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">Ctrl/Cmd + K</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Naqd pul / qaytim hisoblagichi</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">C</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Ushbu yordam oynasini ochish</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">?</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Ochiq oyna/panelni yopish</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">Esc</kbd></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn blue" onclick="closeModal('modal-shortcuts')">Yopish</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="modal-print-labels">
   <div class="modal" style="max-width:420px">
     <h3>🏷 Shtrix-kod yorliqlarini chop etish</h3>
@@ -2975,6 +3003,7 @@ window.showPage = function(page, role){
     const slp=document.getElementById('shop-logo-preview'), slb=document.getElementById('shop-logo-remove-btn');
     if(slp){ if(DB.shopLogo){ slp.src=DB.shopLogo; slp.style.display='inline-block'; if(slb) slb.style.display='inline-block'; } else { slp.style.display='none'; if(slb) slb.style.display='none'; } }
     const dgi=document.getElementById('daily-goal-input'); if(dgi) dgi.value = localStorage.getItem('dokon_daily_goal')||'';
+    const odt=document.getElementById('overdue-days-threshold'); if(odt) odt.value = localStorage.getItem('dokon_overdue_days')||'14';
   }
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
@@ -3083,6 +3112,26 @@ window.renderDashboard = function(){
       <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
 
+  // YANGI: "Top qarzdorlar" — hozirgi eng katta FAOL (to'lanmagan) qarzga ega
+  // 5 ta shaxs/tashkilotni ko'rsatadi, shunda admin bosh sahifadan turib
+  // kimga qo'ng'iroq qilish yoki eslatma yuborish kerakligini darhol ko'radi.
+  const debtorTotals = {};
+  (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{
+    const key = (d.org?d.org+' · ':'')+d.debtorName;
+    if(!debtorTotals[key]) debtorTotals[key] = { label:key, org:d.org||'', name:d.debtorName, total:0 };
+    debtorTotals[key].total += d.total;
+  });
+  const topDebtors = Object.values(debtorTotals).sort((a,b)=>b.total-a.total).slice(0,5);
+  const tdEl = document.getElementById('top-debtors');
+  if(tdEl) tdEl.innerHTML = topDebtors.length ? topDebtors.map((t,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;${i<topDebtors.length-1?'border-bottom:1px solid var(--border)':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#fbbf24':i===1?'#cbd5e1':i===2?'#d97706':'var(--surface2)'};color:${i<3?'#fff':'var(--text3)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.label}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--amber);white-space:nowrap">${fmt(t.total)}</div>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hozircha faol qarz yo\'q ✓</p>';
+
   // YANGI: "Bosh sahifa" navigatsiya tugmasida kam qolgan/tugagan
   // tovarlar sonini kichik qizil belgi (badge) sifatida ko'rsatamiz —
   // admin har safar "Kam qolgan tovarlar" bo'limini ochmasdan ham darhol
@@ -3147,22 +3196,11 @@ window.exportSalesCSV = function(){
   toast('✓ Savdolar CSV fayli yuklandi','green');
 };
 
-// YANGI: joriy tovarlar ro'yxatini (narx, tannarx, soni, kodlari bilan)
-// CSV formatida yuklab olish.
-window.exportProductsCSV = function(){
-  const rows = DB.products.map(p=>({
-    Nomi: p.name,
-    Hajm: p.volume||'',
-    Narx: p.price,
-    Tannarx: p.cost||0,
-    Soni: p.stock,
-    Barcode: p.barcode||'',
-    "QR/DataMatrix": p.qrCode||''
-  }));
-  if(!rows.length){ toast("Eksport uchun tovar yo'q",'amber'); return; }
-  BatchOperations.exportToCSV(rows, `tovarlar_${new Date().toISOString().slice(0,10)}.csv`);
-  toast('✓ Tovarlar CSV fayli yuklandi','green');
-};
+// (Eslatma: "Tovarlar CSV" eksporti pastroqda, "10-BO'LIM"dan oldin,
+// to'liqroq versiyada — umumiy qiymat va saralash bilan — qayta
+// aniqlangan. Bu yerdagi ilgarigi oddiyroq nusxa DUBLIKAT va HECHQACHON
+// ishlatilmasdi (JS'da bir xil nomli oxirgi funksiya g'olib chiqadi), shu
+// sabab kodni soddalashtirish uchun olib tashlandi.)
 
 // YANGI: so'nggi 7 kunlik savdo hajmini (so'mda) oddiy SVG ustunli
 // grafik sifatida chizadi. Tashqi kutubxonasiz, faqat DB.sales asosida.
@@ -4027,14 +4065,15 @@ window.renderDebts = function(){
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
-  const overdueCount = list.filter(d=>!d.paid && Math.floor((new Date()-new Date(d.date))/86400000)>=14).length;
+  const overdueDays = getOverdueDays();
+  const overdueCount = list.filter(d=>!d.paid && Math.floor((new Date()-new Date(d.date))/86400000)>=overdueDays).length;
   const orgCount = new Set(list.filter(d=>d.org).map(d=>d.org)).size;
   const personCount = new Set(list.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
   
   document.getElementById('debt-stats').innerHTML=`
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
-    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${overdueCount}</div><div class="lbl">⏰ Muddati o'tgan (14+ kun)</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${overdueCount}</div><div class="lbl">⏰ Muddati o'tgan (${overdueDays}+ kun)</div></div>
     <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
@@ -4100,15 +4139,19 @@ window.renderDebts = function(){
               <div style="text-align:right">
                 <div style="font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
                 <button class="btn sm" style="margin-top:.3rem" onclick="printPersonDebt('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Shu shaxsning qarzini alohida chop etish">🖨 Shaxsiy chek</button>
+                ${personOwed>0?`<button class="btn sm amber" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
               </div>
             </div>`:`<div style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
               <div>${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>
-              <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
+                ${personOwed>0?`<button class="btn sm amber" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+              </div>
             </div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
               ${p.debts.map(d=>{
                 const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
-                const overdue = !d.paid && daysOld>=14;
+                const overdue = !d.paid && daysOld>=overdueDays;
                 return `
                 <div style="border:1px solid ${d.paid?'var(--green-border)':overdue?'var(--red-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':overdue?'var(--red-bg)':'var(--amber-bg)'}">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
@@ -4699,8 +4742,14 @@ window.printDebtsList=function(){
 // ketmaydi. Chekda: shaxsning barcha qarz yozuvlari (sana, tovarlar, summa,
 // holat, izoh), faol/to'langan jami summalar va telefon raqami ko'rsatiladi.
 window.printPersonDebt=function(org, debtorName){
-  const list = DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''))
-    .slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  // TUZATILDI: sahifada qaysi filtr tanlangan bo'lsa (masalan "Faol qarzlar"),
+  // shaxsiy chek ham FAQAT o'sha filtrga mos yozuvlarni chiqarishi kerak.
+  // Ilgari BARCHA yozuvlar (to'langanlari ham) chekka tushib ketardi — bu
+  // "Faol qarzlar" bo'limida turib chek olganda chalkashlik tug'dirardi.
+  let list = DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''));
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
@@ -4717,8 +4766,8 @@ window.printPersonDebt=function(org, debtorName){
   const subtitleLines = [
     org ? `Tashkilot: ${org}` : "Shaxsiy qarzdor (tashkilotsiz)",
     phone ? `Telefon: ${phone}` : '',
-    `Jami faol qarz: ${fmt(totalActive)} so'm (${activeCount} ta)`,
-    `Jami to'langan: ${fmt(totalPaid)} so'm`
+    debtFilter==='paid' ? `Jami to'langan: ${fmt(totalPaid)} so'm` : `Jami faol qarz: ${fmt(totalActive)} so'm (${activeCount} ta)`,
+    (debtFilter!=='active' && debtFilter!=='paid') ? `Jami to'langan: ${fmt(totalPaid)} so'm` : null
   ].filter(Boolean);
   printTable(`Qarz — ${debtorName}`, subtitleLines, headers, rows);
 }
@@ -4727,7 +4776,13 @@ window.printPersonDebt=function(org, debtorName){
 // hisobotni chop etish (kim qancha qarzdor — jamlangan ro'yxat).
 window.printOrgDebt=function(org){
   if(!org){ toast("Tashkilot nomi topilmadi",'red'); return; }
-  const list = DB.debts.filter(d=>d.org===org).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  // TUZATILDI: printPersonDebt bilan bir xil mantiq — joriy tanlangan filtrga
+  // (Faol/To'langan) mos yozuvlarnigina chop etish, aks holda to'langan
+  // qarzlar ham "Faol qarzlar" bo'limida chiqib ketaverardi.
+  let list = DB.debts.filter(d=>d.org===org);
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
@@ -5094,6 +5149,21 @@ window.saveLowStockThreshold=function(){
   refreshProductViews();
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
+// YANGI: "Muddati o'tgan qarz" hisoblanadigan kunlar sonini sozlash imkoniyati
+// (ilgari bu 14 kun deb QATTIQ YOZILGAN edi). Kunlik maqsad kabi, bu ham
+// faqat shu qurilmada saqlanadi (localStorage), Firebase orqali sinxron
+// bo'lmaydi — chunki bu shunchaki ko'rinish/ogohlantirish sozlamasi.
+function getOverdueDays(){
+  const v = parseInt(localStorage.getItem('dokon_overdue_days')||'14', 10);
+  return (!v || v<1) ? 14 : v;
+}
+window.saveOverdueThreshold = function(){
+  const v = parseInt(document.getElementById('overdue-days-threshold').value, 10);
+  if(isNaN(v) || v<1){ toast("Noto'g'ri qiymat",'red'); return; }
+  localStorage.setItem('dokon_overdue_days', String(v));
+  toast('✓ Saqlandi','green');
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+}
 // YANGI: admin sotuvchining chek/hisobotlarda ko'rinadigan ismini
 // belgilashi mumkin (masalan, umumiy "Sotuvchi" o'rniga xodimning ismi).
 // Hozir tizimda faqat bitta umumiy sotuvchi login/PIN bo'lgani uchun, bu
@@ -5149,6 +5219,7 @@ window.exportBackupJSON=function(){
     settings:{ pins:DB.pins, sellers:DB.sellers, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold, sellerName:DB.sellerName, shopName:DB.shopName, shopLogo:DB.shopLogo }
   };
   download(`dokon-backup-${new Date().toISOString().slice(0,10)}.json`, 'application/json', JSON.stringify(backup, null, 2));
+  localStorage.setItem('dokon_last_backup', String(Date.now()));
   toast('✓ Zaxira nusxa yuklab olindi','green');
 }
 // Foydalanuvchi tanlagan JSON fayldan barcha ma'lumotlarni Firestore'ga
@@ -5302,7 +5373,45 @@ window.shareReceipt=function(){
     toast('Bu qurilmada ulashish imkoniyati yo\'q','red');
   }
 }
-// Savdo tarixidan bitta yozuv uchun chek chiqarish (masalan qayta chop etish)
+// YANGI: bitta qarzdorga (yoki tashkilot ichidagi bitta xodimga) uning FAOL
+// (to'lanmagan) qarzlari bo'yicha tayyor eslatma xabarini shakllantiradi va
+// Web Share API orqali ulashadi (Telegram/WhatsApp/SMS'ga tashlash uchun) —
+// qo'llab-quvvatlamasa, matn buferga (clipboard) nusxalanadi. shareReceipt
+// bilan bir xil uslubda ishlaydi, faqat mazmuni qarz haqida.
+window.shareDebtReminder = function(org, debtorName){
+  const list = DB.debts.filter(d=>d.debtorName===debtorName && (d.org||'')===(org||'') && !d.paid)
+    .slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(!list.length){ toast("Bu shaxsning faol qarzi yo'q",'amber'); return; }
+  const total = list.reduce((a,d)=>a+d.total,0);
+  const shopName = DB.shopName || "Do'kon";
+  const overdueDays = getOverdueDays();
+  const lines = [];
+  lines.push(`🏪 ${shopName}`);
+  lines.push(`Hurmatli ${debtorName}${org?' ('+org+')':''},`);
+  lines.push('Sizda quyidagi faol qarz(lar) mavjud:');
+  lines.push('----------------------------');
+  list.forEach(d=>{
+    const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
+    const items = (d.items||[]).map(i=>`${i.productName}${i.volume?' ('+i.volume+'L)':''} x${i.qty}`).join(', ');
+    lines.push(`${timeStr(d.date)} — ${fmt(d.total)} so'm${daysOld>=overdueDays?' ⏰ muddati o\'tgan':''}${items?' — '+items:''}`);
+  });
+  lines.push('----------------------------');
+  lines.push(`JAMI QARZ: ${fmt(total)} so'm`);
+  lines.push("Iltimos, imkon qadar tezroq to'lovni amalga oshiring. Rahmat!");
+  const text = lines.join('\n');
+  if(navigator.share){
+    navigator.share({ title:'Qarz eslatmasi', text }).catch(()=>{ /* foydalanuvchi bekor qildi — xato emas */ });
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      toast('✅ Eslatma matni nusxalandi — endi Telegram/WhatsApp/SMSga joylashtiring','green');
+    }).catch(()=>{
+      toast('Ulashib bo\'lmadi, brauzer qo\'llab-quvvatlamaydi','red');
+    });
+  } else {
+    toast('Bu qurilmada ulashish imkoniyati yo\'q','red');
+  }
+}
+
 window.printSaleReceipt=function(saleId){
   const s=DB.sales.find(x=>x.id===saleId); if(!s) return;
   const rd=buildReceiptFromItems([{name:s.productName, volume:s.volume, qty:s.qty, price:s.price, total:s.total}], s.seller, s.total);
@@ -5327,6 +5436,7 @@ window.clearAll=function(){
 // ===== UTILITY =====
 window.openModal=function(id){ document.getElementById(id).classList.remove('hidden'); }
 window.closeModal=function(id){ document.getElementById(id).classList.add('hidden'); }
+window.openShortcutsModal=function(){ openModal('modal-shortcuts'); }
 
 // ===== YANGI: GLOBAL QIDIRUV (COMMAND PALETTE) =====
 // Nav bardagi 🔎 tugmasi yoki Ctrl+K / Cmd+K orqali ochiladi. Tovarlar va
@@ -5494,7 +5604,7 @@ function printHTML(bodyHtml, opts={}){
          qilmaydi. Qo'shimcha text-shadow ba'zi termal/mexanik printerlarda
          font-weight'ni yaxshi ajratmasligi mumkinligi uchun harflarni yana
          ham qorayib ko'rinishiga yordam beradi. */
-      *{font-weight:900 !important;text-shadow:0 0 .3px currentColor,0 0 .3px currentColor}
+      *{font-weight:900 !important;color:#000 !important;-webkit-text-stroke:.35px #000;text-shadow:0 0 .4px currentColor,0 0 .4px currentColor,0 0 .4px currentColor}
       body{margin:0;padding:5mm;font-family:'Courier New',monospace;font-size:12px;color:#000}
       h1{font-size:14px;margin:0 0 3px;text-align:center;line-height:1.3}
       .print-sub{font-size:11px;color:#000;margin-bottom:2px;text-align:center}
@@ -5617,6 +5727,14 @@ document.addEventListener('keydown', e=>{
   }
   const tag = document.activeElement.tagName;
   const isTyping = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT';
+  // YANGI: "?" bosilganda klaviatura yorliqlari yordam oynasi ochiladi
+  // (matn kiritish maydonida turganda ishlamaydi, aks holda yozish
+  // jarayoniga xalaqit berardi).
+  if(e.key==='?' && !isTyping && window.currentRole){
+    e.preventDefault();
+    openShortcutsModal();
+    return;
+  }
   if(e.key==='/' && !isTyping){
     e.preventDefault();
     const sellSearch = document.getElementById('sell-search');
@@ -9077,6 +9195,21 @@ window.doImportProducts = async function(){
 // qilinadigan holatlarni ko'radi.
 function computeNotifications(){
   const list = [];
+  // YANGI: agar 7 kundan buyon (yoki umuman hech qachon) zaxira nusxa
+  // olinmagan bo'lsa va tizimda ma'lumot bo'lsa, adminga eslatma beriladi —
+  // internet/qurilma muammosi holida ma'lumot yo'qolmasligi uchun.
+  if((DB.products.length || DB.sales.length)){
+    const lastBackup = parseInt(localStorage.getItem('dokon_last_backup')||'0', 10);
+    const daysSince = lastBackup ? Math.floor((Date.now()-lastBackup)/86400000) : Infinity;
+    if(daysSince>=7){
+      list.push({
+        id:'backup_reminder',
+        icon:'💾',
+        text: lastBackup ? `So'nggi zaxira nusxa ${daysSince} kun oldin olingan — yangilash tavsiya etiladi` : "Hali birorta zaxira nusxa olinmagan — ma'lumotlaringizni saqlab qo'ying",
+        action:()=>showPage('settings','admin')
+      });
+    }
+  }
   (DB.products||[]).filter(p=>p.stock<=(DB.lowStockThreshold||5)).forEach(p=>{
     list.push({
       id:'low_'+p.id,
