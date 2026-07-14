@@ -49,12 +49,15 @@
   #sync-dot.syncing{background:#f59e0b;animation:pulse-dot .6s ease infinite}
   #sync-dot.error{background:#ef4444}
   @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
-  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
-  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
+  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:.75rem;min-height:56px;position:sticky;top:0;z-index:100;flex-wrap:nowrap}
+  nav .logo{font-weight:600;font-size:17px;color:#fff;display:flex;align-items:center;gap:.5rem;flex-shrink:0;white-space:nowrap}
   nav .logo span{color:#60a5fa}
-  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.1s}
+  #nav-admin,#nav-seller{display:flex;gap:.25rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:1;min-width:0}
+  #nav-admin::-webkit-scrollbar,#nav-seller::-webkit-scrollbar{display:none}
+  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.1s;white-space:nowrap;flex-shrink:0}
   nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
-  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center}
+  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center;flex-shrink:0;white-space:nowrap}
+  nav .nav-right-tools{display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-left:auto}
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
   .page.active{display:block}
   #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
@@ -186,7 +189,7 @@
     input:not(.pin-input),select,textarea{font-size:16px!important}
     #sticky-cart{bottom:58px}
     .page{padding-bottom:70px}
-    nav{height:52px;padding:0 .75rem}
+    nav{min-height:52px;padding:0 .75rem}
     nav .logo{font-size:15px}
     #nav-admin,#nav-seller{display:none!important}
     nav .user-badge{font-size:12px;padding:3px 10px}
@@ -471,8 +474,8 @@
   input,select,textarea,button{font-family:inherit}
   a{color:var(--accent)}
   /* Notch/status-bar bo'lgan qurilmalar (iPhone, ba'zi Android) uchun xavfsiz maydon */
-  nav{padding-top:var(--safe-t)!important;height:calc(56px + var(--safe-t))!important}
-  @media(max-width:768px){ nav{height:calc(52px + var(--safe-t))!important} }
+  nav{padding-top:var(--safe-t)!important;min-height:calc(56px + var(--safe-t))!important}
+  @media(max-width:768px){ nav{min-height:calc(52px + var(--safe-t))!important} }
   #mobile-tabbar{padding-bottom:var(--safe-b);height:calc(58px + var(--safe-b))}
   #sticky-cart{padding-bottom:calc(.85rem + var(--safe-b))}
   .modal-overlay{padding-left:calc(1rem + var(--safe-l));padding-right:calc(1rem + var(--safe-r))}
@@ -572,8 +575,39 @@
 <div id="loading-screen">
   <div class="spinner"></div>
   <h2>🏪 Do'kon Tizimi</h2>
-  <p>Firebase bilan ulanmoqda...</p>
+  <p id="loading-screen-msg">Firebase bilan ulanmoqda...</p>
 </div>
+<script>
+  // YANGI: ZAXIRA "WATCHDOG" — asosiy ilova <script type="module"> ichida
+  // ishlaydi; agar Firebase CDN fayllari (gstatic.com) tarmoq/provayder
+  // tomonidan butunlay bloklansa yoki yuklanmasa, brauzer bu module
+  // skriptni UMUMAN ishga tushirmaydi — natijada yuklash ekrani (spinner)
+  // ABADIY ekranda qolib, foydalanuvchiga "hech narsa ishlamayapti, hatto
+  // scroll ham" degan noto'g'ri taassurot beradi. Bu oddiy (module bo'lmagan)
+  // skript modul muvaffaqiyatsiz bo'lsa ham albatta ishlaydi va 12 soniyadan
+  // keyin foydalanuvchiga aniq xabar va "qayta urinish" tugmasini ko'rsatadi.
+  (function(){
+    var watchdogFired = false;
+    window.__appBooted = false; // asosiy modul yuklanib bo'lgach true bo'ladi
+    setTimeout(function(){
+      if(window.__appBooted) return;
+      watchdogFired = true;
+      var scr = document.getElementById('loading-screen');
+      var msg = document.getElementById('loading-screen-msg');
+      if(scr && !scr.classList.contains('hidden')){
+        if(msg) msg.innerHTML = "Ulanib bo'lmadi. Internet aloqasi yoki tarmoq sozlamalarini (VPN/filtr) tekshiring.";
+        var spinner = scr.querySelector('.spinner');
+        if(spinner) spinner.style.display = 'none';
+        var btn = document.createElement('button');
+        btn.textContent = '🔄 Qayta urinish';
+        btn.className = 'btn-primary';
+        btn.style.cssText = 'max-width:220px;margin-top:.5rem';
+        btn.onclick = function(){ location.reload(); };
+        scr.appendChild(btn);
+      }
+    }, 12000);
+  })();
+</script>
 
 <div id="login-page" style="display:none">
   <div class="login-card">
@@ -2332,6 +2366,8 @@ const firebaseConfig = {
   appId: "1:1024226826394:web:3a052adf83b46202c96723",
   measurementId: "G-75RXS3WVWC"
 };
+
+window.__appBooted = true; // modul muvaffaqiyatli yuklandi — watchdog endi kerak emas
 
 let db = null;
 let settingsRef = null;
