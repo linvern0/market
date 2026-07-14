@@ -23,6 +23,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Mahsulot shtrix-kod yorliqlarini chop etish uchun (faqat "Yorliq chop etish" funksiyasida ishlatiladi) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -289,7 +291,8 @@
 
   /* 🎨 YANGI STYLES VA IMPROVEMENTS */
   /* Notification Styles */
-  #notifications-container{position:fixed;top:70px;right:1rem;z-index:1000;max-width:400px;display:flex;flex-direction:column;gap:.5rem}
+  #notifications-container{display:none!important}
+  #notif-bell-wrap{display:none!important}
   .notification{padding:1rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-width:300px;animation:slideIn .3s ease;box-shadow:0 4px 12px rgba(0,0,0,.15)}
   @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
   .notification-success{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -320,6 +323,248 @@
   @media (max-width:768px){.form-row{grid-template-columns:1fr}#notifications-container{right:.5rem;left:.5rem}
   .modal{max-width:95%!important}.stat-grid{grid-template-columns:1fr 1fr}}
   @media (max-width:480px){nav{height:auto;padding:.5rem}nav button.tab{font-size:12px}.stat-grid{grid-template-columns:1fr}.login-card{width:95%;padding:1.5rem}}
+</style>
+
+<!-- ================================================================
+     ✨ QO'SHIMCHA VIZUAL POLIRUV (UX Enhancement Layer)
+     Bu blok faqat ko'rinishni yaxshilaydi — eski funksiyalarga tegmaydi
+     ================================================================ -->
+<style>
+  ::selection{background:#2563eb;color:#fff}
+  html{scroll-behavior:smooth}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#c7c4bb;border-radius:20px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:#a8a49a}
+  body.dark ::-webkit-scrollbar-thumb{background:#4a4a4a;border-color:var(--bg)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+  /* Nav — nafis gradient + faol tab ostidagi chiziq */
+  nav{background:linear-gradient(135deg,#1e293b 0%,#25324a 55%,#1e293b 100%);box-shadow:0 2px 10px rgba(0,0,0,.18);border-bottom:1px solid rgba(255,255,255,.06)}
+  nav button.tab{position:relative;overflow:hidden}
+  nav button.tab.active{background:#334155}
+  nav button.tab.active::after{content:'';position:absolute;left:12px;right:12px;bottom:2px;height:2px;border-radius:2px;background:#60a5fa;box-shadow:0 0 8px #60a5fa}
+  nav button.tab:not(.active):hover{transform:translateY(-1px)}
+  nav .logo{display:flex;align-items:center;gap:.6rem}
+  #nav-clock{font-size:11.5px;color:#7c8aa5;font-weight:500;white-space:nowrap;letter-spacing:.2px}
+  #nav-clock .greet{color:#94a3b8}
+
+  /* Kartalar — mayin ko'tarilish effekti */
+  .card,.stat,.prod-card{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+  .card:hover{box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  .stat{position:relative;overflow:hidden;isolation:isolate}
+  .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#60a5fa);opacity:.85;border-radius:12px 12px 0 0}
+  .stat.green::before{background:linear-gradient(90deg,var(--green),#4ade80)}
+  .stat.amber::before{background:linear-gradient(90deg,var(--amber),#fbbf24)}
+  .stat.red::before{background:linear-gradient(90deg,var(--red),#f87171)}
+  .stat:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.09)}
+  .prod-card:hover .img-wrap img{transform:scale(1.06)}
+  .prod-card .img-wrap img{transition:transform .25s ease}
+
+  /* Tugmalar — bosilganda mayin siqilish, gradientli asosiy tugma */
+  .btn{transition:transform .08s ease,box-shadow .12s ease,background .12s ease,border-color .12s ease}
+  .btn:active{transform:scale(.96)}
+  .btn.blue{background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 2px 8px rgba(37,99,235,.25)}
+  .btn.blue:hover{background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 4px 12px rgba(37,99,235,.35)}
+  .btn.green{background:linear-gradient(135deg,#16a34a,#22c55e)}
+  .btn.red{background:linear-gradient(135deg,#dc2626,#ef4444)}
+  .btn-primary{background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 4px 14px rgba(37,99,235,.3)}
+  .btn-primary:active{transform:scale(.98)}
+
+  /* Login sahifasi — jonli fon */
+  #login-page{position:relative;overflow:hidden}
+  #login-page::before,#login-page::after{content:'';position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none}
+  #login-page::before{width:380px;height:380px;background:#3b82f6;top:-120px;left:-100px;animation:float-orb 10s ease-in-out infinite}
+  #login-page::after{width:320px;height:320px;background:#0ea5e9;bottom:-100px;right:-80px;animation:float-orb 12s ease-in-out infinite reverse}
+  @keyframes float-orb{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,20px)}}
+  .login-card{position:relative;z-index:1;animation:bounceIn .45s ease}
+
+  /* Modal — silliq ochilish */
+  .modal-overlay{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:fadeIn .15s ease}
+  .modal{animation:modal-pop .18s cubic-bezier(.2,1.1,.4,1)}
+  @keyframes modal-pop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+  /* Sahifa almashinuvi */
+  .page.active{animation:page-fade .18s ease}
+  @keyframes page-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+  /* Badge — kam zaxira uchun mayin pulslash */
+  #dash-low-badge:not(:empty){display:inline-flex;margin-left:4px;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:11px;font-weight:700;animation:badge-pulse 1.8s ease infinite}
+  @keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 5px rgba(239,68,68,0)}}
+
+  /* PWA o'rnatish banneri */
+  #pwa-install-banner{position:fixed;left:1rem;right:1rem;bottom:1rem;max-width:420px;margin:0 auto;background:#1e293b;color:#fff;border-radius:14px;padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:500;transform:translateY(140%);transition:transform .3s cubic-bezier(.2,1,.3,1)}
+  #pwa-install-banner.show{transform:translateY(0)}
+  #pwa-install-banner .icon{font-size:26px}
+  #pwa-install-banner .txt{flex:1;font-size:12.5px;color:#cbd5e1;line-height:1.4}
+  #pwa-install-banner .txt b{color:#fff;display:block;font-size:13.5px;margin-bottom:1px}
+  #pwa-install-banner button{border:none;border-radius:8px;padding:.5rem .8rem;font-size:12px;font-weight:700;cursor:pointer}
+  #pwa-install-banner .install-btn{background:#2563eb;color:#fff}
+  #pwa-install-banner .close-btn{background:#334155;color:#94a3b8;padding:.5rem .6rem}
+
+  /* Klaviatura yorliqlari modal */
+  #shortcuts-help-modal .key{display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;font-family:monospace;color:var(--text2);min-width:22px;text-align:center}
+  #shortcuts-help-modal .row{display:flex;align-items:center;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--border)}
+  #shortcuts-help-modal .row:last-child{border-bottom:none}
+
+  /* Ovoz tugmasi */
+  #sound-toggle-btn{transition:opacity .15s}
+  #sound-toggle-btn.muted{opacity:.5}
+
+  /* Confetti canvas */
+  #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9998}
+
+  @media (max-width:480px){
+    #nav-clock{display:none}
+    #pwa-install-banner{left:.5rem;right:.5rem;bottom:.5rem}
+  }
+
+  /* YANGI (10.6): Bildirishnomalar qo'ng'irog'i */
+  #notif-bell-btn{position:relative}
+  #notif-bell-count{display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:9px;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;border:2px solid #1e293b}
+  #notif-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;max-height:400px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:150;padding:.5rem}
+  #notif-panel.hidden{display:none !important}
+  body.dark #notif-panel{background:#1e293b;border-color:#334155}
+  @media (max-width:480px){ #notif-panel{width:280px;right:-40px} }
+</style>
+
+<!-- ================================================================
+     🎨 DIZAYN 2.0 — YANGI KO'RINISH VA UNIVERSAL (Android/iOS/Windows)
+     QATLAMI. Bu blok avvalgi uslublarni ustidan yozadi (CSS o'zgaruvchilar
+     orqali), eski funksiyalarga tegmaydi, faqat KO'RINISH va QURILMALARGA
+     MOSLASHUVni yaxshilaydi. Shuningdek quyida bir nechta YANGI, xavfsiz
+     (mavjud biznes-logikaga tegmaydigan) funksiyalar uchun uslublar bor.
+     ================================================================ -->
+<style id="design-v2">
+  /* ---------- 1) Yangi rang tizimi (accent — indigo/lavanda, ---------- */
+  /* ---------- ikkinchi accent — zumrad) va yumshoqroq neytral fon ------ */
+  :root{
+    --bg:#f4f5f9;--surface:#ffffff;--surface2:#f8f8fc;
+    --border:#e6e6ef;--border2:#d7d7e3;
+    --text:#181825;--text2:#54546b;--text3:#8a8aa0;
+    --accent:#4f46e5;--accent2:#0ea5a4;--accent-bg:#eef0ff;--accent-border:#c7c9fb;
+    --green:#16a34a;--green-bg:#effdf5;--green-border:#b7f0cf;
+    --red:#e11d48;--red-bg:#fef1f4;--red-border:#fbc9d6;
+    --amber:#d97706;--amber-bg:#fff9ec;--amber-border:#fbe3b2;
+    --radius:10px;--radius-lg:16px;
+    --shadow:0 1px 2px rgba(20,20,50,.05),0 1px 6px rgba(20,20,50,.06);
+    --shadow-lg:0 10px 34px rgba(20,20,50,.14);
+    --nav-bg-1:#181330;--nav-bg-2:#241b47;--nav-bg-3:#151029;
+    --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+    --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);
+    --density:1;
+  }
+  body.dark{
+    --bg:#0f0f16;--surface:#181822;--surface2:#1f1f2c;
+    --border:#2b2b3b;--border2:#34344a;
+    --text:#f1f1f8;--text2:#b6b6c9;--text3:#82829a;
+    --accent:#818cf8;--accent2:#2dd4bf;--accent-bg:#20203a;--accent-border:#3a3a63;
+    --green:#4ade80;--green-bg:#132a1e;--green-border:#1f4a30;
+    --red:#fb7185;--red-bg:#301019;--red-border:#5c1f2a;
+    --amber:#fbbf24;--amber-bg:#2e2308;--amber-border:#5a4413;
+    --shadow:0 1px 2px rgba(0,0,0,.3);--shadow-lg:0 12px 34px rgba(0,0,0,.5);
+  }
+
+  /* ---------- 2) Universal: barcha qurilmalarga moslashuv ---------- */
+  html,body{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+  body{-webkit-tap-highlight-color:transparent;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif;letter-spacing:.1px}
+  input,select,textarea,button{font-family:inherit}
+  a{color:var(--accent)}
+  /* Notch/status-bar bo'lgan qurilmalar (iPhone, ba'zi Android) uchun xavfsiz maydon */
+  nav{padding-top:var(--safe-t)!important;height:calc(56px + var(--safe-t))!important}
+  @media(max-width:768px){ nav{height:calc(52px + var(--safe-t))!important} }
+  #mobile-tabbar{padding-bottom:var(--safe-b);height:calc(58px + var(--safe-b))}
+  #sticky-cart{padding-bottom:calc(.85rem + var(--safe-b))}
+  .modal-overlay{padding-left:calc(1rem + var(--safe-l));padding-right:calc(1rem + var(--safe-r))}
+  #pwa-install-banner{margin-bottom:var(--safe-b)}
+  /* Barcha bosiladigan elementlar kamida 40px bo'lishi — barmoq bilan aniq bosish uchun */
+  .btn,.qty-btn,nav button.tab,#mobile-tabbar button{min-height:38px}
+  .btn.sm{min-height:30px}
+  ::selection{background:var(--accent);color:#fff}
+
+  /* ---------- 3) Yangi navigatsiya ko'rinishi ---------- */
+  nav{background:linear-gradient(120deg,var(--nav-bg-1),var(--nav-bg-2) 55%,var(--nav-bg-3))!important;border-bottom:1px solid rgba(255,255,255,.07)}
+  nav .logo span{color:var(--accent2)!important}
+  nav button.tab.active{background:rgba(255,255,255,.12)!important}
+  nav button.tab.active::after{background:var(--accent2)!important;box-shadow:0 0 10px var(--accent2)!important}
+  nav .user-badge{background:rgba(255,255,255,.08)!important}
+  #mobile-tabbar{background:var(--nav-bg-1)!important;border-top:1px solid rgba(255,255,255,.08)!important;backdrop-filter:blur(14px)}
+  #mobile-tabbar button.active{color:var(--accent2)!important}
+  #mobile-tabbar button.active .tab-icon{filter:drop-shadow(0 0 6px rgba(45,212,191,.6))}
+
+  /* ---------- 4) Kartalar, statistikalar, tugmalar — yangilangan uslub ---------- */
+  .card,.stat,.prod-card,.modal,.login-card{border-radius:var(--radius-lg)!important}
+  .tbl-wrap,#notif-panel{border-radius:var(--radius-lg)!important}
+  .stat::before{background:linear-gradient(90deg,var(--accent),var(--accent2))!important}
+  .stat.green::before{background:linear-gradient(90deg,var(--green),#34d399)!important}
+  .stat.amber::before{background:linear-gradient(90deg,var(--amber),#fcd34d)!important}
+  .stat.red::before{background:linear-gradient(90deg,var(--red),#fb7185)!important}
+  .btn.blue,.btn-primary{background:linear-gradient(135deg,var(--accent),#6d28d9)!important;border-color:transparent!important;box-shadow:0 3px 10px rgba(79,70,229,.28)!important}
+  .btn.blue:hover,.btn-primary:hover{filter:brightness(1.08)}
+  .btn.green{background:linear-gradient(135deg,var(--green),#22c55e)!important;border-color:transparent!important}
+  .btn.red{background:linear-gradient(135deg,var(--red),#f43f5e)!important;border-color:transparent!important}
+  .btn.amber{background:linear-gradient(135deg,var(--amber),#f59e0b)!important;border-color:transparent!important}
+  .btn{border-radius:10px!important}
+  .badge{border-radius:8px!important;font-weight:700}
+  .qty-btn{border-radius:12px!important}
+  body:not(.dark) .card,body:not(.dark) .stat,body:not(.dark) .prod-card{box-shadow:var(--shadow)!important}
+  .card:hover{box-shadow:var(--shadow-lg)!important}
+
+  /* ---------- 5) Login ekrani — yangi "mesh" fon ---------- */
+  #login-page{background:radial-gradient(circle at 15% 20%,#312a63,transparent 45%),radial-gradient(circle at 85% 85%,#0d3b3a,transparent 45%),linear-gradient(160deg,#14102b,#1c1440 60%,#0e2530)!important}
+  .login-card{border-radius:22px!important;box-shadow:0 30px 70px rgba(0,0,0,.4)!important}
+  .role-btn.selected{border-color:var(--accent)!important;background:var(--accent-bg)!important}
+  .role-btn:hover{border-color:var(--accent)!important;background:var(--accent-bg)!important}
+  .pin-input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent-bg)!important}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),#6d28d9)!important}
+
+  /* ---------- 6) Skeleton (yuklanish) va bo'sh holat uslublari — YANGI ---------- */
+  .skel{position:relative;overflow:hidden;background:var(--surface2);border-radius:var(--radius)}
+  .skel::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:skel-shimmer 1.3s infinite}
+  body.dark .skel::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
+  @keyframes skel-shimmer{100%{transform:translateX(100%)}}
+  .empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text3)}
+  .empty-state .emoji{font-size:40px;margin-bottom:.5rem;opacity:.7}
+  .empty-state .title{font-weight:700;color:var(--text2);font-size:15px;margin-bottom:.25rem}
+  .empty-state .hint{font-size:13px}
+
+  /* ---------- 7) Zichlik (compact) rejimi — Sozlamalardan yoqiladi ---------- */
+  body.density-compact .card,body.density-compact .stat{padding:.8rem!important}
+  body.density-compact td{padding:.45rem .75rem!important}
+  body.density-compact th{padding:.5rem .75rem!important}
+  body.density-compact .page{padding:.5rem}
+
+  /* ---------- 8) Planshet (iPad va h.k.) uchun maxsus sozlamalar ---------- */
+  @media(min-width:769px) and (max-width:1100px){
+    .product-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))!important}
+    .stat-grid{grid-template-columns:repeat(3,1fr)!important}
+  }
+  @media(min-width:1400px){
+    .stat-grid{grid-template-columns:repeat(5,1fr)!important}
+  }
+
+  /* ---------- 9) Bosqichma-bosqich (a11y) fokus va harakatni kamaytirish ---------- */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  }
+  :focus-visible{outline:2px solid var(--accent2)!important;outline-offset:2px}
+
+  /* ---------- 10) Yangi: mavzu (accent rang) tanlash uchun kichik doiralar --- */
+  .theme-dot{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;display:inline-block;transition:.15s}
+  .theme-dot.active{border-color:var(--text);transform:scale(1.1)}
+  .settings-switch{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+  .settings-switch:last-child{border-bottom:none}
+  .settings-switch .lbl{font-size:14px;font-weight:600}
+  .settings-switch .sub{font-size:12px;color:var(--text3);font-weight:400;margin-top:2px}
+  .switch{position:relative;display:inline-block;width:44px;height:25px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .switch .slider{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:30px;transition:.2s}
+  .switch .slider::before{content:'';position:absolute;height:19px;width:19px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch input:checked + .slider{background:var(--accent)}
+  .switch input:checked + .slider::before{transform:translateX(19px)}
+
+  /* ---------- 11) Chop etish (print) — logotip/chek uchun tiniqroq ---------- */
+  @media print{ body{background:#fff!important} }
 </style>
 </head>
 <body>
@@ -358,7 +603,7 @@
 
 <div id="app" style="display:none">
 <nav>
-  <div class="logo">🏪 <span>Do'kon</span></div>
+  <div class="logo">🏪 <span>Do'kon</span><div id="nav-clock"></div></div>
   <div id="nav-admin" style="display:none;gap:.25rem">
     <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa<span id="dash-low-badge"></span></button>
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
@@ -366,6 +611,7 @@
     <button class="tab" onclick="showPage('profit','admin')">💹 Foyda</button>
     <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
     <button class="tab" onclick="showPage('debts','admin')">💳 Qarzlar</button>
+    <button class="tab" onclick="showPage('expenses','admin')">💰 Xarajatlar</button>
     <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
   </div>
   <div id="nav-seller" style="display:none;gap:.25rem">
@@ -376,7 +622,15 @@
   <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
   <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
   <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#334155;border-color:#475569;color:#94a3b8">🔎</button>
+  <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#334155;border-color:#475569;color:#94a3b8">❔</button>
+  <div id="notif-bell-wrap" style="position:relative;display:none">
+    <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#334155;border-color:#475569;color:#94a3b8">🔔<span id="notif-bell-count" style="display:none"></span></button>
+    <div id="notif-panel" class="hidden"></div>
+  </div>
   <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#334155;border-color:#475569;color:#94a3b8">🌙</button>
+  <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#334155;border-color:#475569;color:#94a3b8">🧮</button>
+  <button class="btn sm" onclick="window.openNotesBoard && window.openNotesBoard()" id="notes-nav-btn" title="Eslatmalar taxtasi (N)" style="background:#334155;border-color:#475569;color:#94a3b8">📝</button>
+  <button class="btn sm" onclick="window.quickLock && window.quickLock()" id="lock-nav-btn" title="Tezkor qulflash (L)" style="background:#334155;border-color:#475569;color:#94a3b8">🔒</button>
   <button class="btn sm" onclick="logout()" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
 </nav>
 
@@ -396,6 +650,7 @@
     </div>
   </div>
   <div class="stat-grid" id="stat-grid"></div>
+  <div id="daily-goal-widget" style="display:none"></div>
   <div class="card" style="margin-bottom:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">📈 So'nggi 7 kunlik savdo trendi</h3>
     <div id="sales-trend-chart"></div>
@@ -415,7 +670,14 @@
         <div id="top-sellers"></div>
       </div>
       <div class="card">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">💳 Top qarzdorlar</h3>
+        <div id="top-debtors"></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+          <h3 style="font-size:15px;font-weight:700">⚠️ Kam qolgan tovarlar</h3>
+          <button class="btn sm amber" onclick="exportReorderListCSV()" title="Yetkazib beruvchidan buyurtma qilish uchun tavsiya etilgan miqdorlar bilan xarid ro'yxatini yuklab olish">🛒 Xarid ro'yxati</button>
+        </div>
         <div id="low-stock-list"></div>
       </div>
       <div class="card">
@@ -833,7 +1095,10 @@ body.dark tr:hover td {
       <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
       <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Kamerani oching va mahsulotlarni istalgan tartibda ketma-ket skanerlang — tizim har bir koddagi GTIN orqali qaysi mahsulot ekanini avtomatik aniqlaydi va ro'yxatga oladi">🔢 Donalarni ro'yxatga olish</button>
       <button class="btn sm green" onclick="exportProductsCSV()" title="Barcha tovarlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
+      <button class="btn sm amber" onclick="exportReorderListCSV()" title="Kam qolgan tovarlar uchun tavsiya etilgan buyurtma miqdorlari bilan xarid ro'yxatini yuklab olish">🛒 Xarid ro'yxati</button>
       <button class="btn sm green" onclick="exportProductsExcel()" title="Barcha tovarlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
+      <button class="btn sm" onclick="openPrintLabelsModal()" title="Tanlangan tovar uchun shtrix-kodli yorliqlar chop etish">🏷 Yorliq</button>
+      <button class="btn sm" onclick="openModal('modal-import-products')" title="Excel/CSV fayldan bir nechta tovarni birdaniga qo'shish">📥 Import</button>
       <button class="btn blue" onclick="openAddProduct()">+ Tovar qo'shish</button>
     </div>
   </div>
@@ -900,6 +1165,7 @@ body.dark tr:hover td {
   </div>
   <div id="profit-warning" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);border-radius:10px;padding:.85rem 1rem;font-size:13px;margin-bottom:1rem;font-weight:500"></div>
   <div class="stat-grid" id="profit-stat-grid"></div>
+  <div id="profit-net-after-expenses" style="display:none"></div>
   <div class="card" style="margin-bottom:1.5rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">📊 So'nggi 6 oylik sotuv va foyda solishtiruvi</h3>
     <div id="profit-trend-chart"></div>
@@ -955,18 +1221,17 @@ body.dark tr:hover td {
       <label>Admin PIN</label>
       <input type="password" id="new-admin-pin" maxlength="4" placeholder="Yangi 4 raqamli PIN" inputmode="numeric">
     </div>
-    <div class="field" style="margin-bottom:1.25rem">
-      <label>Sotuvchi PIN</label>
-      <input type="password" id="new-seller-pin" maxlength="4" placeholder="Yangi 4 raqamli PIN" inputmode="numeric">
-    </div>
     <button class="btn blue" onclick="savePins()">Saqlash</button>
   </div>
-  <div class="card" style="max-width:420px;margin-top:1rem">
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🛒 Sotuvchi ismi</h3>
-    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bu ism sotuvchi paneli, chek va hisobotlarda "Sotuvchi" o'rniga ko'rsatiladi (masalan, xodimning haqiqiy ismi).</p>
-    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
-      <input type="text" id="seller-name-input" maxlength="40" placeholder="Masalan: Aziz" style="flex:1;min-width:150px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
-      <button class="btn sm blue" onclick="saveSellerName()">Saqlash</button>
+  <div class="card" style="max-width:480px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🛒 Sotuvchilar</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Har bir sotuvchi uchun alohida ism va 4 xonali PIN belgilang. Kirish ekranida sotuvchi faqat o'z PIN kodini kiritadi — tizim shu orqali kim ekanini avtomatik aniqlaydi va chek/hisobotlarda o'sha ismni ko'rsatadi.</p>
+    <div id="sellers-list" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.6rem"></div>
+    <button class="btn sm green" style="margin-bottom:.85rem" onclick="saveSellersList()">💾 O'zgarishlarni saqlash</button>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border2);padding-top:.85rem">
+      <input type="text" id="new-seller-name-input" placeholder="Ism (masalan: Aziz)" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <input type="password" id="new-seller-pin-input" maxlength="4" inputmode="numeric" placeholder="4 xonali PIN" style="width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <button class="btn sm blue" onclick="addSellerRow()">+ Qo'shish</button>
     </div>
   </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
@@ -1004,6 +1269,24 @@ body.dark tr:hover td {
     </div>
   </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">⏰ Muddati o'tgan qarz chegarasi</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Qarz shu kundan ko'proq to'lanmasa, "Muddati o'tgan" deb ogohlantiriladi.</p>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="overdue-days-threshold" min="1" max="365" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="14">
+      <span style="font-size:14px;color:var(--text2)">kun</span>
+      <button class="btn sm blue" onclick="saveOverdueThreshold()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🎯 Kunlik savdo maqsadi</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bosh sahifada shu kunlik maqsadga qarab jarayon chizig'i ko'rsatiladi — jamoani rag'batlantirish uchun foydali.</p>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="daily-goal-input" min="0" style="width:140px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="5000000">
+      <span style="font-size:14px;color:var(--text2)">so'm</span>
+      <button class="btn sm blue" onclick="saveDailyGoal()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">💾 Zaxira nusxa (Backup)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlarni (tovarlar, savdolar, qarzlar va h.k.) bitta faylga saqlab qo'ying — kerak bo'lganda shu fayldan tiklashingiz mumkin.</p>
     <div style="display:flex;gap:.75rem;flex-wrap:wrap">
@@ -1012,6 +1295,34 @@ body.dark tr:hover td {
       <input type="file" id="restore-file-input" accept="application/json" style="display:none" onchange="importBackupJSON(this)">
     </div>
   </div>
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-appearance-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🎨 Ko'rinish</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Ilova rangini va zichligini o'zingizga moslang.</p>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem" id="theme-dots"></div>
+    <div class="settings-switch">
+      <div><div class="lbl">Ixcham ko'rinish</div><div class="sub">Kartalar va jadvallar orasidagi bo'sh joyni kamaytiradi</div></div>
+      <label class="switch"><input type="checkbox" id="sw-density" onchange="toggleDensityMode(this.checked)"><span class="slider"></span></label>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-notif-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🔔 Bildirishnomalar</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Kam qoldiq bo'lganda, brauzer/qurilma bildirishnomasi orqali xabardor qilinasiz (ilova fonda bo'lsa ham).</p>
+    <div class="settings-switch">
+      <div><div class="lbl">Kam qoldiq haqida xabar berish</div><div class="sub" id="notif-perm-status">Ruxsat so'ralmagan</div></div>
+      <label class="switch"><input type="checkbox" id="sw-push-notif" onchange="togglePushNotifications(this.checked)"><span class="slider"></span></label>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-autolock-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🔒 Avtomatik qulflash</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Belgilangan vaqt davomida hech qanday amal bajarilmasa, xavfsizlik uchun tizimdan avtomatik chiqadi.</p>
+    <select id="autolock-select" onchange="setAutoLockMinutes(this.value)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:#fff">
+      <option value="0">O'chirilgan</option>
+      <option value="2">2 daqiqadan so'ng</option>
+      <option value="5">5 daqiqadan so'ng</option>
+      <option value="10">10 daqiqadan so'ng</option>
+      <option value="30">30 daqiqadan so'ng</option>
+    </select>
+  </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Ma'lumotlar</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.</p>
@@ -1019,6 +1330,41 @@ body.dark tr:hover td {
       <button class="btn green" onclick="exportCSV()">⬇ CSV yuklab olish</button>
       <button class="btn red" onclick="clearAll()">🗑 Hammasini o'chirish</button>
     </div>
+  </div>
+
+  <!-- ============ YANGI (12.x-bo'lim): QO'SHIMCHA SOZLAMALAR ============ -->
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-fontsize-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🅰️ Matn o'lchami</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Ilovadagi yozuvlar o'lchamini o'zingizga qulay darajaga sozlang.</p>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <button class="btn sm" onclick="window.adjustFontSize && window.adjustFontSize(-1)">A−</button>
+      <span id="fontsize-label" style="font-size:13px;color:var(--text2);min-width:70px;text-align:center">Oddiy (100%)</span>
+      <button class="btn sm" onclick="window.adjustFontSize && window.adjustFontSize(1)">A+</button>
+      <button class="btn sm" onclick="window.adjustFontSize && window.adjustFontSize(0)">↺ Asl holat</button>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:520px;margin-top:1rem" id="settings-expiry-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">⏳ Mahsulot yaroqlilik muddati</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Tovarga muddat belgilang — muddati 7 kun qolganda yoki o'tib ketganda bosh sahifada ogohlantirish chiqadi. (Bu ma'lumot faqat shu qurilmada, brauzer xotirasida saqlanadi.)</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+      <select id="expiry-product-select" style="flex:1;min-width:180px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:#fff"></select>
+      <input type="date" id="expiry-date-input" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <button class="btn sm blue" onclick="window.saveProductExpiry && window.saveProductExpiry()">Belgilash</button>
+    </div>
+    <div id="expiry-list" style="display:flex;flex-direction:column;gap:.4rem"></div>
+  </div>
+
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-zreport-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧾 Kunlik yopilish (Z) hisoboti</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bugungi savdo, xarajat va sof natijani bitta hisobotda chop eting — smena yopilishida foydalaning.</p>
+    <button class="btn amber" onclick="window.printZReport && window.printZReport()">🖨 Bugungi Z-hisobotni chop etish</button>
+  </div>
+
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-auditlog-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🕵️ Amallar jurnali (joriy sessiya)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Ushbu qurilmada joriy sessiya davomida bajarilgan amallar ro'yxati (sahifa yangilansa tozalanadi).</p>
+    <button class="btn" onclick="window.openAuditLogViewer && window.openAuditLogViewer()">📜 Jurnalni ko'rish</button>
   </div>
 </div>
 
@@ -1048,12 +1394,54 @@ body.dark tr:hover td {
   <p id="no-debts" style="color:var(--text3);text-align:center;padding:3rem;display:none">Qarz topilmadi.</p>
 </div>
 
+<!-- ================= YANGI: XARAJATLAR (10.1-bo'lim) ================= -->
+<div class="page" id="page-expenses">
+  <div class="section-header">
+    <div><h2>💰 Xarajatlar</h2><p>Ijara, ish haqi, kommunal va boshqa do'kon xarajatlarini kuzatib boring</p></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn sm green" onclick="exportExpensesExcel()">⬇ Excel</button>
+      <button class="btn sm amber" onclick="exportExpensesPDF()">📄 PDF</button>
+      <button class="btn blue" onclick="openAddExpense()">+ Xarajat qo'shish</button>
+    </div>
+  </div>
+  <div class="filter-bar" style="margin-bottom:1rem">
+    <button class="btn sm" id="exp-btn-today" onclick="setExpenseFilter('today')">Bugun</button>
+    <button class="btn sm" id="exp-btn-week" onclick="setExpenseFilter('week')">Bu hafta</button>
+    <button class="btn sm" id="exp-btn-month" onclick="setExpenseFilter('month')">Bu oy</button>
+    <button class="btn sm" id="exp-btn-all" onclick="setExpenseFilter('all')">Barchasi</button>
+    <select id="exp-category" onchange="renderExpenses()">
+      <option value="">Barcha toifalar</option>
+      <option value="Ijara">🏠 Ijara</option>
+      <option value="Ish haqi">👥 Ish haqi</option>
+      <option value="Kommunal">💡 Kommunal</option>
+      <option value="Transport">🚚 Transport</option>
+      <option value="Soliq">🧾 Soliq</option>
+      <option value="Ta'mirlash">🔧 Ta'mirlash</option>
+      <option value="Boshqa">📦 Boshqa</option>
+    </select>
+    <input type="text" id="exp-search" oninput="debouncedRenderExpenses()" placeholder="🔍 Izoh bo'yicha qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;outline:none;min-width:160px">
+  </div>
+  <div id="exp-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">📊 Toifalar bo'yicha taqsimot</h3>
+    <div id="exp-category-chart"></div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Sana</th><th>Nomi</th><th>Toifa</th><th>Summa</th><th>Izoh</th><th>Amal</th></tr></thead>
+      <tbody id="exp-body"></tbody>
+    </table>
+  </div>
+  <p id="no-expenses" style="color:var(--text3);text-align:center;padding:3rem;display:none">Xarajat topilmadi.</p>
+</div>
+
 <div class="page" id="page-sell">
   <div class="section-header">
     <div><h2>Sotish</h2><p>Tovarlarni tanlang va savat orqali soting</p></div>
   </div>
-  <div style="margin-bottom:1rem">
-    <input type="text" id="sell-search" onkeyup="handleSellSearchKey(event)" placeholder="🔍 Tovar nomi bo'yicha qidirish... (Enter — birinchisini savatga qo'shadi)" style="width:100%;max-width:400px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem 1rem;font-size:14px;outline:none">
+  <div style="margin-bottom:1rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+    <input type="text" id="sell-search" onkeyup="handleSellSearchKey(event)" placeholder="🔍 Tovar nomi bo'yicha qidirish... (Enter — birinchisini savatga qo'shadi)" style="flex:1;min-width:220px;max-width:400px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem 1rem;font-size:14px;outline:none">
+    <button class="btn sm" id="fav-filter-btn" onclick="window.toggleFavFilter && window.toggleFavFilter()" title="Faqat sevimli tovarlarni ko'rsatish">⭐ Sevimlilar</button>
   </div>
   <div class="product-grid" id="sell-grid"></div>
   <p id="no-sell" style="color:var(--text3);text-align:center;padding:3rem;display:none">Tovar topilmadi yoki ombor bo'sh.</p>
@@ -1311,6 +1699,104 @@ body.dark tr:hover td {
   </div>
 </div>
 
+<!-- YANGI: Xarajat qo'shish/tahrirlash modali (10.1-bo'lim) -->
+<div class="modal-overlay hidden" id="modal-expense">
+  <div class="modal" style="max-width:420px">
+    <h3 id="expense-modal-title">💰 Xarajat qo'shish</h3>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Nomi *</label>
+      <input id="exp-name" placeholder="Masalan: Do'kon ijarasi (iyul)" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Summa (so'm) *</label>
+        <input id="exp-amount" type="number" min="0" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Toifa</label>
+        <select id="exp-modal-category">
+          <option value="Ijara">🏠 Ijara</option>
+          <option value="Ish haqi">👥 Ish haqi</option>
+          <option value="Kommunal">💡 Kommunal</option>
+          <option value="Transport">🚚 Transport</option>
+          <option value="Soliq">🧾 Soliq</option>
+          <option value="Ta'mirlash">🔧 Ta'mirlash</option>
+          <option value="Boshqa">📦 Boshqa</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Sana</label>
+      <input id="exp-date" type="date">
+    </div>
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Izoh <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <textarea id="exp-note" placeholder="Qo'shimcha ma'lumot"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-expense')">Bekor qilish</button>
+      <button class="btn blue" onclick="saveExpense()">💾 Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: Mahsulot shtrix-kod yorliqlarini chop etish modali (10.4-bo'lim) -->
+<div class="modal-overlay hidden" id="modal-shortcuts">
+  <div class="modal" style="max-width:420px">
+    <h3>❔ Klaviatura yorliqlari</h3>
+    <div style="display:flex;flex-direction:column;gap:.6rem;margin:.75rem 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Global qidiruv (tovar/qarzdor)</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">Ctrl/Cmd + K</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Naqd pul / qaytim hisoblagichi</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">C</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Ushbu yordam oynasini ochish</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">?</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Ochiq oyna/panelni yopish</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">Esc</kbd></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn blue" onclick="closeModal('modal-shortcuts')">Yopish</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay hidden" id="modal-print-labels">
+  <div class="modal" style="max-width:420px">
+    <h3>🏷 Shtrix-kod yorliqlarini chop etish</h3>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Tovar</label>
+      <select id="label-product-select"></select>
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Nechta yorliq chop etilsin?</label>
+      <input id="label-qty" type="number" min="1" max="200" value="1">
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi. Yorliqda tovar nomi, narxi va shtrix-kod tasviri chop etiladi.</p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-print-labels')">Bekor qilish</button>
+      <button class="btn blue" onclick="doPrintLabels()">🖨 Chop etish</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: Excel/CSV orqali ommaviy tovar import qilish modali (10.5-bo'lim) -->
+<div class="modal-overlay hidden" id="modal-import-products">
+  <div class="modal" style="max-width:480px">
+    <h3>📥 Tovarlarni Excel/CSV'dan import qilish</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Fayl quyidagi ustunlarga ega bo'lishi kerak (birinchi qator — sarlavha):</p>
+    <div class="tbl-wrap" style="margin-bottom:1rem">
+      <table style="font-size:12px">
+        <thead><tr><th>Nomi</th><th>Narx</th><th>Tannarx</th><th>Miqdor</th><th>Barcode</th></tr></thead>
+        <tbody><tr><td>Coca-Cola 1.5L</td><td>18000</td><td>14000</td><td>50</td><td>4870...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Excel yoki CSV fayl tanlang</label>
+      <input type="file" id="import-products-file" accept=".xlsx,.xls,.csv">
+    </div>
+    <p id="import-products-preview" style="font-size:13px;color:var(--text2);margin-top:.5rem"></p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-import-products')">Bekor qilish</button>
+      <button class="btn green" onclick="doImportProducts()">📥 Import qilish</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="modal-confirm">
   <div class="modal" style="max-width:380px">
     <h3 id="confirm-title">Tasdiqlash</h3>
@@ -1406,6 +1892,9 @@ body.dark tr:hover td {
   </button>
   <button id="mtab-stock-history" onclick="showPage('stock-history','admin')" style="display:none">
     <span class="tab-icon">🚚</span>Kirim
+  </button>
+  <button id="mtab-expenses" onclick="showPage('expenses','admin')" style="display:none">
+    <span class="tab-icon">💰</span>Xarajat
   </button>
   <button id="mtab-debts" onclick="showPage('debts', currentRole)" style="display:none">
     <span class="tab-icon">💳</span>Qarzlar
@@ -1624,6 +2113,58 @@ body.dark tr:hover td {
   </div>
 </div>
 
+<!-- ============ YANGI (12.x-bo'lim): QO'SHIMCHA MODALLAR ============ -->
+<div class="modal-overlay hidden" id="modal-calc">
+  <div class="modal" style="max-width:340px">
+    <h3>🧮 Naqd pul / qaytim hisoblagichi</h3>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Umumiy summa (so'm)</label>
+      <input type="number" id="calc-total" inputmode="decimal" placeholder="0" oninput="window.calcChange && window.calcChange()">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Mijozdan olingan naqd (so'm)</label>
+      <input type="number" id="calc-given" inputmode="decimal" placeholder="0" oninput="window.calcChange && window.calcChange()">
+    </div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.85rem" id="calc-quick-notes"></div>
+    <div class="card" style="background:var(--accent-bg);border-color:var(--accent-border);text-align:center;padding:1rem">
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:.25rem">QAYTIM</div>
+      <div id="calc-result" style="font-size:26px;font-weight:800;color:var(--accent)">0 so'm</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="window.calcClear && window.calcClear()">Tozalash</button>
+      <button class="btn blue" onclick="closeModal('modal-calc')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-notes">
+  <div class="modal" style="max-width:460px">
+    <h3>📝 Eslatmalar taxtasi</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.9rem;margin-bottom:1rem">Eslatmalar faqat shu qurilmada saqlanadi (bulutga yuborilmaydi).</p>
+    <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+      <input type="text" id="new-note-input" placeholder="Yangi eslatma yozing..." style="flex:1;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .85rem;font-size:14px;outline:none" onkeydown="if(event.key==='Enter'){window.addNote && window.addNote();}">
+      <button class="btn sm blue" onclick="window.addNote && window.addNote()">+ Qo'shish</button>
+    </div>
+    <div id="notes-list" style="display:flex;flex-direction:column;gap:.5rem;max-height:50vh;overflow-y:auto"></div>
+    <p id="notes-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Hozircha eslatma yo'q.</p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-notes')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-auditlog">
+  <div class="modal" style="max-width:560px">
+    <h3>🕵️ Amallar jurnali (joriy sessiya)</h3>
+    <div id="auditlog-list" style="display:flex;flex-direction:column;gap:.35rem;max-height:55vh;overflow-y:auto;font-size:13px"></div>
+    <p id="auditlog-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Jurnal bo'sh.</p>
+    <div class="modal-footer">
+      <button class="btn green" onclick="window.exportAuditLog && window.exportAuditLog()">⬇ Eksport (JSON)</button>
+      <button class="btn" onclick="closeModal('modal-auditlog')">Yopish</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -1833,9 +2374,42 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], pins: { admin:'1234', seller:'5678' }, revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '' };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '' };
+// YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
+// (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
+function migrateSellersFromLegacy(d){
+  if(d && Array.isArray(d.sellers) && d.sellers.length) return d.sellers;
+  const legacyPin = (d && d.pins && d.pins.seller) || (DB.pins && DB.pins.seller) || '5678';
+  const legacyName = (d && d.sellerName) || DB.sellerName || 'Sotuvchi';
+  return [{id:'s_default', name:legacyName, pin:legacyPin}];
+}
 window.currentRole = null;
 window.currentSellerName = 'Sotuvchi';
+window.currentSellerId = null;
+
+// ===== KUN DAVOMIDA AVTOMATIK KIRISH (PAROLSIZ) =====
+// Bir marta PIN kiritib tizimga kirilgach, shu brauzerda (shu qurilmada)
+// kun oxirigacha (23:59:59) qayta PIN so'ralmaydi — brauzer/tab yopib
+// qayta ochilsa ham avtomatik o'sha rol (admin/sotuvchi) bilan kiritiladi.
+// Faqat: (1) "Chiqish" tugmasi bosilsa, yoki (2) 20 daqiqa harakatsizlik
+// tufayli avtomatik chiqarilsa — seans tozalanadi va qayta PIN so'raladi.
+const SESSION_KEY = 'dokon_session_v1';
+function saveSession(role, sellerName, sellerId){
+  try{
+    const end = new Date(); end.setHours(23,59,59,999);
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ role, sellerName, sellerId: sellerId||null, expiresAt: end.getTime() }));
+  }catch(e){}
+}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function getValidSession(){
+  try{
+    const raw = localStorage.getItem(SESSION_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.role || !s.expiresAt || Date.now() > s.expiresAt){ localStorage.removeItem(SESSION_KEY); return null; }
+    return s;
+  }catch(e){ return null; }
+}
 window.editingProductId = null;
 window.restockId = null;
 window.cart = {};
@@ -1921,7 +2495,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -2094,11 +2668,13 @@ function startListeners(){
     if(snap.exists()){
       const d=snap.data();
       DB.pins=d.pins||DB.pins;
+      DB.sellers=migrateSellersFromLegacy(d);
       DB.revertMinutes=d.revertMinutes||30;
       DB.lowStockThreshold=d.lowStockThreshold||5;
       DB.sellerName=d.sellerName||'Sotuvchi';
       DB.shopName=d.shopName||"Do'kon";
       DB.shopLogo=d.shopLogo||'';
+      if(document.getElementById('page-settings')?.classList.contains('active')) renderSellersManager();
     }
   });
   let prodDebounce=null;
@@ -2155,6 +2731,17 @@ function startListeners(){
   onSnapshot(collection(db,'debtors'), snap=>{
     DB.debtors = snap.docs.map(d=>d.data());
   });
+  // YANGI: Xarajatlar (10.1-bo'lim) — real-vaqtda sinxronlash
+  let expDebounce=null;
+  onSnapshot(collection(db,'expenses'), snap=>{
+    DB.expenses = snap.docs.map(d=>d.data());
+    DB.expenses.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    clearTimeout(expDebounce);
+    expDebounce=setTimeout(()=>{
+      if(document.getElementById('page-expenses')?.classList.contains('active')) renderExpenses();
+      if(document.getElementById('page-profit')?.classList.contains('active')) renderProfit();
+    },120);
+  });
 }
 
 // TUZATILDI ("Firebase bilan ulanmayapti" xatosi): ilgari BARCHA 6 ta
@@ -2179,7 +2766,6 @@ function startListeners(){
 async function init(){
   function proceedToLogin(){
     document.getElementById('loading-screen').classList.add('hidden');
-    document.getElementById('login-page').style.display='flex';
     updateOfflineBanner();
     document.getElementById('today-date').textContent = new Date().toLocaleDateString('uz-UZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     document.querySelectorAll('.role-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -2188,6 +2774,17 @@ async function init(){
       document.getElementById('pin-input').placeholder = b.dataset.role==='admin'?'Admin PIN':'Sotuvchi PIN';
     }));
     document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
+
+    // YANGI: kun davomida parolsiz kirish — agar shu brauzerda bugungi
+    // amal qiluvchi seans mavjud bo'lsa, login sahifasini umuman
+    // ko'rsatmasdan avtomatik tizimga kiritamiz.
+    const session = getValidSession();
+    if(session){
+      document.getElementById('login-page').style.display='none';
+      completeLogin(session.role, session.sellerName, session.sellerId);
+    } else {
+      document.getElementById('login-page').style.display='flex';
+    }
   }
 
   try{
@@ -2210,13 +2807,14 @@ async function init(){
         if(settingsR.value.exists()){
           const d=settingsR.value.data();
           DB.pins=d.pins||DB.pins;
+          DB.sellers=migrateSellersFromLegacy(d);
           DB.revertMinutes=d.revertMinutes||30;
           DB.lowStockThreshold=d.lowStockThreshold||5;
           DB.sellerName=d.sellerName||'Sotuvchi';
           DB.shopName=d.shopName||"Do'kon";
           DB.shopLogo=d.shopLogo||'';
         } else {
-          setDoc(settingsRef,{pins:DB.pins,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -2292,29 +2890,47 @@ window.doLogin = function(){
 
   if(!role){ err.textContent='Rolni tanlang'; return; }
   if(!pin){ err.textContent='PIN kiriting'; return; }
-  if(role==='admin' && pin!==DB.pins.admin){ registerFailedLogin(); err.textContent="Admin PIN noto'g'ri"; return; }
-  if(role==='seller' && pin!==DB.pins.seller){ registerFailedLogin(); err.textContent="Sotuvchi PIN noto'g'ri"; return; }
+
+  let sellerName = DB.sellerName || 'Sotuvchi';
+  let sellerId = null;
+  if(role==='admin'){
+    if(pin!==DB.pins.admin){ registerFailedLogin(); err.textContent="Admin PIN noto'g'ri"; return; }
+  } else if(role==='seller'){
+    // YANGI: bir nechta sotuvchi qo'llab-quvvatlanadi — PIN ro'yxatdagi
+    // sotuvchilardan biriga mos kelsa, o'sha kishining ismi bilan kiradi.
+    const matched = (DB.sellers||[]).find(s=>s.pin===pin);
+    if(!matched){ registerFailedLogin(); err.textContent="Sotuvchi PIN noto'g'ri"; return; }
+    sellerName = matched.name || 'Sotuvchi';
+    sellerId = matched.id;
+  }
   setLoginLockState({}); // muvaffaqiyatli kirish — hisoblagichni tozalash
-  // TUZATILDI: endi kirishda sotuvchidan ISM SO'RALMAYDI — PIN kiritish
-  // yetarli. Sotuvchi nomi sozlamalarda admin tomonidan belgilangan
-  // DB.sellerName'dan olinadi (standart holatda "Sotuvchi").
-  const sellerName = DB.sellerName || 'Sotuvchi';
-  currentSellerName = sellerName;
-  currentRole = role;
   err.textContent='';
+  completeLogin(role, sellerName, sellerId);
+}
+
+// YANGI: kirishdan keyingi barcha ekran/holat sozlash bitta joyga
+// chiqarildi — shu funksiya PIN tekshiruvidan keyin (doLogin) HAM,
+// kun davomida saqlangan seansdan avtomatik kirishda (proceedToLogin) HAM
+// chaqiriladi.
+window.completeLogin = function(role, sellerName, sellerId){
+  currentSellerName = sellerName || DB.sellerName || 'Sotuvchi';
+  currentSellerId = sellerId || null;
+  currentRole = role;
+  saveSession(role, currentSellerName, currentSellerId);
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
   resetInactivityTimer();
-  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 '+sellerName);
+  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 '+currentSellerName);
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
-    ['dashboard','products','history','profit','stock-history','debts','settings'].forEach(t=>{
+    ['dashboard','products','history','profit','stock-history','debts','expenses','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
     ['sell','my-sales'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
     });
+    const bellWrap=document.getElementById('notif-bell-wrap'); if(bellWrap) bellWrap.style.display='inline-block';
     showPage('dashboard','admin');
     renderDashboard();
     // YANGI: admin kirganda, agar kam qolgan yoki tugagan tovarlar bo'lsa,
@@ -2332,9 +2948,10 @@ window.doLogin = function(){
     ['sell','my-sales','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
-    ['dashboard','products','history','profit','stock-history','settings'].forEach(t=>{
+    ['dashboard','products','history','profit','stock-history','expenses','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
     });
+    const bellWrap=document.getElementById('notif-bell-wrap'); if(bellWrap) bellWrap.style.display='none';
     showPage('sell','seller');
     renderSellGrid();
   }
@@ -2362,7 +2979,8 @@ function resetInactivityTimer(){
 window.logout = function(){
   clearTimeout(_inactivityTimer);
   Object.keys(cartSerialCodes).forEach(id=>{ while(revertCartSerialCode(id)){} });
-  currentRole=null; currentSellerName=DB.sellerName||'Sotuvchi'; cart={};
+  currentRole=null; currentSellerName=DB.sellerName||'Sotuvchi'; currentSellerId=null; cart={};
+  clearSession(); // qo'lda chiqishda yoki harakatsizlik tufayli — kun davomidagi avtomatik kirish bekor qilinadi
   document.getElementById('login-page').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pin-input').value='';
@@ -2385,14 +3003,17 @@ window.showPage = function(page, role){
   if(page==='settings'){
     document.getElementById('revert-minutes').value=DB.revertMinutes;
     const lst=document.getElementById('low-stock-threshold'); if(lst) lst.value=DB.lowStockThreshold;
-    const sn=document.getElementById('seller-name-input'); if(sn) sn.value=DB.sellerName||'Sotuvchi';
+    renderSellersManager();
     const shn=document.getElementById('shop-name-input'); if(shn) shn.value=DB.shopName||"Do'kon";
     const slp=document.getElementById('shop-logo-preview'), slb=document.getElementById('shop-logo-remove-btn');
     if(slp){ if(DB.shopLogo){ slp.src=DB.shopLogo; slp.style.display='inline-block'; if(slb) slb.style.display='inline-block'; } else { slp.style.display='none'; if(slb) slb.style.display='none'; } }
+    const dgi=document.getElementById('daily-goal-input'); if(dgi) dgi.value = localStorage.getItem('dokon_daily_goal')||'';
+    const odt=document.getElementById('overdue-days-threshold'); if(odt) odt.value = localStorage.getItem('dokon_overdue_days')||'14';
   }
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
+  if(page==='expenses'){ setExpenseFilter('month'); }
   updateScanFab(page);
 }
 
@@ -2418,6 +3039,33 @@ window.renderDashboard = function(){
     <div class="stat amber"><div class="val">${totalQty}</div><div class="lbl">📦 Sotilgan miqdor</div></div>
     <div class="stat red"><div class="val">${outStock}</div><div class="lbl">⚠️ Tugagan tovarlar</div></div>
     <div class="stat blue"><div class="val">${fmt(invValue)}</div><div class="lbl">🏬 Ombordagi tovar qiymati</div></div>`;
+
+  // YANGI (10.3): Kunlik savdo maqsadi — Sozlamalarda belgilangan maqsadga
+  // nisbatan BUGUNGI savdo qanchaga yetganini progress-bar orqali ko'rsatadi.
+  // Maqsad belgilanmagan bo'lsa, widget butunlay yashiriladi.
+  const goalWidget = document.getElementById('daily-goal-widget');
+  if(goalWidget){
+    const goal = parseFloat(localStorage.getItem('dokon_daily_goal')||'0');
+    if(!goal || goal<=0){
+      goalWidget.style.display='none';
+    } else {
+      const todayTotal = DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), now)).reduce((a,s)=>a+s.total,0);
+      const pct = Math.min(100, (todayTotal/goal*100));
+      const reached = todayTotal>=goal;
+      goalWidget.style.display='block';
+      goalWidget.innerHTML = `
+        <div class="card" style="margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
+            <h3 style="font-size:15px;font-weight:700">🎯 Kunlik savdo maqsadi</h3>
+            <span style="font-size:13px;font-weight:600;color:${reached?'var(--green)':'var(--text2)'}">${fmt(todayTotal)} / ${fmt(goal)} so'm ${reached?'✅':''}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:20px;height:14px;overflow:hidden;border:1px solid var(--border)">
+            <div style="height:100%;width:${pct}%;background:${reached?'linear-gradient(90deg,#16a34a,#22c55e)':'linear-gradient(90deg,#2563eb,#60a5fa)'};transition:width .3s ease;border-radius:20px"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:.35rem">${pct.toFixed(0)}% bajarildi ${reached?'— maqsadga yetdingiz, tabriklaymiz! 🎉':''}</div>
+        </div>`;
+    }
+  }
   const recent = DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), now)).slice().reverse();
   document.getElementById('recent-sales').innerHTML = recent.length ? `
     <div class="tbl-wrap"><table>
@@ -2468,6 +3116,26 @@ window.renderDashboard = function(){
       <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
       <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
+
+  // YANGI: "Top qarzdorlar" — hozirgi eng katta FAOL (to'lanmagan) qarzga ega
+  // 5 ta shaxs/tashkilotni ko'rsatadi, shunda admin bosh sahifadan turib
+  // kimga qo'ng'iroq qilish yoki eslatma yuborish kerakligini darhol ko'radi.
+  const debtorTotals = {};
+  (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{
+    const key = (d.org?d.org+' · ':'')+d.debtorName;
+    if(!debtorTotals[key]) debtorTotals[key] = { label:key, org:d.org||'', name:d.debtorName, total:0 };
+    debtorTotals[key].total += d.total;
+  });
+  const topDebtors = Object.values(debtorTotals).sort((a,b)=>b.total-a.total).slice(0,5);
+  const tdEl = document.getElementById('top-debtors');
+  if(tdEl) tdEl.innerHTML = topDebtors.length ? topDebtors.map((t,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;${i<topDebtors.length-1?'border-bottom:1px solid var(--border)':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#fbbf24':i===1?'#cbd5e1':i===2?'#d97706':'var(--surface2)'};color:${i<3?'#fff':'var(--text3)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.label}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--amber);white-space:nowrap">${fmt(t.total)}</div>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hozircha faol qarz yo\'q ✓</p>';
 
   // YANGI: "Bosh sahifa" navigatsiya tugmasida kam qolgan/tugagan
   // tovarlar sonini kichik qizil belgi (badge) sifatida ko'rsatamiz —
@@ -2533,22 +3201,11 @@ window.exportSalesCSV = function(){
   toast('✓ Savdolar CSV fayli yuklandi','green');
 };
 
-// YANGI: joriy tovarlar ro'yxatini (narx, tannarx, soni, kodlari bilan)
-// CSV formatida yuklab olish.
-window.exportProductsCSV = function(){
-  const rows = DB.products.map(p=>({
-    Nomi: p.name,
-    Hajm: p.volume||'',
-    Narx: p.price,
-    Tannarx: p.cost||0,
-    Soni: p.stock,
-    Barcode: p.barcode||'',
-    "QR/DataMatrix": p.qrCode||''
-  }));
-  if(!rows.length){ toast("Eksport uchun tovar yo'q",'amber'); return; }
-  BatchOperations.exportToCSV(rows, `tovarlar_${new Date().toISOString().slice(0,10)}.csv`);
-  toast('✓ Tovarlar CSV fayli yuklandi','green');
-};
+// (Eslatma: "Tovarlar CSV" eksporti pastroqda, "10-BO'LIM"dan oldin,
+// to'liqroq versiyada — umumiy qiymat va saralash bilan — qayta
+// aniqlangan. Bu yerdagi ilgarigi oddiyroq nusxa DUBLIKAT va HECHQACHON
+// ishlatilmasdi (JS'da bir xil nomli oxirgi funksiya g'olib chiqadi), shu
+// sabab kodni soddalashtirish uchun olib tashlandi.)
 
 // YANGI: so'nggi 7 kunlik savdo hajmini (so'mda) oddiy SVG ustunli
 // grafik sifatida chizadi. Tashqi kutubxonasiz, faqat DB.sales asosida.
@@ -3413,14 +4070,15 @@ window.renderDebts = function(){
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
-  const overdueCount = list.filter(d=>!d.paid && Math.floor((new Date()-new Date(d.date))/86400000)>=14).length;
+  const overdueDays = getOverdueDays();
+  const overdueCount = list.filter(d=>!d.paid && Math.floor((new Date()-new Date(d.date))/86400000)>=overdueDays).length;
   const orgCount = new Set(list.filter(d=>d.org).map(d=>d.org)).size;
   const personCount = new Set(list.filter(d=>!d.org || d.org==='').map(d=>d.debtorName)).size;
   
   document.getElementById('debt-stats').innerHTML=`
     <div class="stat amber" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalActive)}</div><div class="lbl">💳 Faol qarz</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${activeCount}</div><div class="lbl">📋 Faol qarzlar</div></div>
-    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${overdueCount}</div><div class="lbl">⏰ Muddati o'tgan (14+ kun)</div></div>
+    <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${overdueCount}</div><div class="lbl">⏰ Muddati o'tgan (${overdueDays}+ kun)</div></div>
     <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${orgCount}</div><div class="lbl">🏢 Tashkilotlar</div></div>
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:120px"><div class="val" style="font-size:20px">${personCount}</div><div class="lbl">👤 Shaxslar</div></div>
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:140px"><div class="val" style="font-size:20px">${fmt(totalPaid)}</div><div class="lbl">✅ To'langan</div></div>`;
@@ -3479,22 +4137,28 @@ window.renderDebts = function(){
             ${g.isOrg?`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
               <div>
                 <div style="font-weight:700;font-size:14px">👤 ${p.debtorName}</div>
-                ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${p.phone}</div>`:''}
+                ${p.phone?`<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${p.phone}</a></div>`:''}
                 ${loginInfo}
                 ${loginBtn}
               </div>
               <div style="text-align:right">
                 <div style="font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
                 <button class="btn sm" style="margin-top:.3rem" onclick="printPersonDebt('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Shu shaxsning qarzini alohida chop etish">🖨 Shaxsiy chek</button>
+                ${personOwed>0?`<button class="btn sm amber" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+                ${personOwed>0&&p.phone?`<button class="btn sm green" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
               </div>
             </div>`:`<div style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
-              <div>${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>
-              <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
+              <div>${p.phone?`<div style="font-size:13px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${p.phone}</a></div>`:''}${loginInfo}${loginBtn}</div>
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
+                ${personOwed>0?`<button class="btn sm amber" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+                ${personOwed>0&&p.phone?`<button class="btn sm green" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
+              </div>
             </div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
               ${p.debts.map(d=>{
                 const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
-                const overdue = !d.paid && daysOld>=14;
+                const overdue = !d.paid && daysOld>=overdueDays;
                 return `
                 <div style="border:1px solid ${d.paid?'var(--green-border)':overdue?'var(--red-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':overdue?'var(--red-bg)':'var(--amber-bg)'}">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
@@ -4001,6 +4665,26 @@ window.exportProductsCSV=function(){
   toast(`✓ ${DB.products.length} ta tovar CSV formatda yuklandi`,'green');
 }
 
+// YANGI: kam qolgan (yoki tugagan) tovarlar uchun "Xarid ro'yxati" — yetkazib
+// beruvchidan buyurtma qilish uchun tavsiya etilgan miqdor bilan CSV.
+// Tavsiya etilgan miqdor = (chegara qiymati x 2) - hozirgi qoldiq, minimal 1 ta.
+window.exportReorderListCSV=function(){
+  const threshold = DB.lowStockThreshold || 5;
+  const low = DB.products.filter(p=>p.stock<=threshold).sort((a,b)=>a.stock-b.stock);
+  if(!low.length){ toast("Hozircha kam qolgan tovar yo'q",'green'); return; }
+  let csv="Nomi,Hajmi (L),Hozirgi qoldiq,Chegara,Tavsiya etilgan buyurtma miqdori,Tannarxi,Taxminiy xarid summasi\n";
+  let totalCost = 0;
+  low.forEach(p=>{
+    const suggested = Math.max(1, threshold*2 - p.stock);
+    const estCost = suggested * (p.cost||0);
+    totalCost += estCost;
+    csv+=`"${p.name}",${p.volume||''},${p.stock},${threshold},${suggested},${p.cost||0},${estCost}\n`;
+  });
+  csv+=`\n,,,,,"JAMI (taxminiy)",${totalCost}\n`;
+  download(`xarid_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
+  toast(`✓ ${low.length} ta tovar uchun xarid ro'yxati yuklandi`,'green');
+}
+
 // YANGI: tovarlar ro'yxatini Excel (.xlsx) formatida yuklab olish —
 // inventarizatsiya va buxgalteriya uchun CSV'ga qaraganda qulayroq.
 window.exportProductsExcel=function(){
@@ -4085,8 +4769,14 @@ window.printDebtsList=function(){
 // ketmaydi. Chekda: shaxsning barcha qarz yozuvlari (sana, tovarlar, summa,
 // holat, izoh), faol/to'langan jami summalar va telefon raqami ko'rsatiladi.
 window.printPersonDebt=function(org, debtorName){
-  const list = DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''))
-    .slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  // TUZATILDI: sahifada qaysi filtr tanlangan bo'lsa (masalan "Faol qarzlar"),
+  // shaxsiy chek ham FAQAT o'sha filtrga mos yozuvlarni chiqarishi kerak.
+  // Ilgari BARCHA yozuvlar (to'langanlari ham) chekka tushib ketardi — bu
+  // "Faol qarzlar" bo'limida turib chek olganda chalkashlik tug'dirardi.
+  let list = DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''));
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
@@ -4103,8 +4793,8 @@ window.printPersonDebt=function(org, debtorName){
   const subtitleLines = [
     org ? `Tashkilot: ${org}` : "Shaxsiy qarzdor (tashkilotsiz)",
     phone ? `Telefon: ${phone}` : '',
-    `Jami faol qarz: ${fmt(totalActive)} so'm (${activeCount} ta)`,
-    `Jami to'langan: ${fmt(totalPaid)} so'm`
+    debtFilter==='paid' ? `Jami to'langan: ${fmt(totalPaid)} so'm` : `Jami faol qarz: ${fmt(totalActive)} so'm (${activeCount} ta)`,
+    (debtFilter!=='active' && debtFilter!=='paid') ? `Jami to'langan: ${fmt(totalPaid)} so'm` : null
   ].filter(Boolean);
   printTable(`Qarz — ${debtorName}`, subtitleLines, headers, rows);
 }
@@ -4113,7 +4803,13 @@ window.printPersonDebt=function(org, debtorName){
 // hisobotni chop etish (kim qancha qarzdor — jamlangan ro'yxat).
 window.printOrgDebt=function(org){
   if(!org){ toast("Tashkilot nomi topilmadi",'red'); return; }
-  const list = DB.debts.filter(d=>d.org===org).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  // TUZATILDI: printPersonDebt bilan bir xil mantiq — joriy tanlangan filtrga
+  // (Faol/To'langan) mos yozuvlarnigina chop etish, aks holda to'langan
+  // qarzlar ham "Faol qarzlar" bo'limida chiqib ketaverardi.
+  let list = DB.debts.filter(d=>d.org===org);
+  if(debtFilter==='active') list = list.filter(d=>!d.paid);
+  else if(debtFilter==='paid') list = list.filter(d=>d.paid);
+  list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
@@ -4177,6 +4873,37 @@ window.renderProfit = function(){
     warnEl.textContent = `⚠️ ${missingCostCount} ta sotuvda tovarning tannarxi kiritilmagan (0 deb hisoblangan) — shu sotuvlar uchun foyda haqiqatdan ko'ra YUQORIROQ ko'rsatilgan bo'lishi mumkin. Aniq hisob uchun "Tovarlar" bo'limida har bir tovarga "Tannarx" kiriting.`;
   } else {
     warnEl.style.display='none';
+  }
+
+  // YANGI (10.2): shu davrdagi Xarajatlar (ijara, ish haqi va h.k.) asosida
+  // "Sof foyda" — ya'ni tovar foydasidan joriy xarajatlar ayirilgan holda
+  // haqiqiy natijani ko'rsatadi. Xarajatlar bo'limi bo'sh bo'lsa, blok
+  // ko'rsatilmaydi (eski hisobotga hech narsa qo'shilmaydi).
+  const netBox = document.getElementById('profit-net-after-expenses');
+  if(netBox){
+    const periodExpenses = (DB.expenses||[]).filter(e=>{
+      const d=new Date(e.date);
+      if(period==='today') return isSameDay(d, now);
+      if(period==='week') return isThisWeek(d, now);
+      if(period==='month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+      return true;
+    });
+    if(!periodExpenses.length){
+      netBox.style.display='none';
+    } else {
+      const totalExp = periodExpenses.reduce((a,e)=>a+(e.amount||0),0);
+      const net = totalProfit - totalExp;
+      netBox.style.display='block';
+      netBox.innerHTML = `
+        <div class="card" style="margin-bottom:1.5rem;border-color:${net>=0?'var(--green-border)':'var(--red-border)'}">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:.85rem">🧮 Sof foyda (xarajatlar ayirilgan holda)</h3>
+          <div class="stat-grid" style="margin-bottom:0">
+            <div class="stat ${totalProfit>=0?'green':'red'}"><div class="val">${totalProfit>=0?'+':''}${fmt(totalProfit)}</div><div class="lbl">📈 Tovar foydasi</div></div>
+            <div class="stat amber"><div class="val">-${fmt(totalExp)}</div><div class="lbl">💰 Shu davr xarajatlari (${periodExpenses.length} ta)</div></div>
+            <div class="stat ${net>=0?'green':'red'}"><div class="val">${net>=0?'+':''}${fmt(net)}</div><div class="lbl">${net>=0?'✅ Sof foyda':'⚠️ Sof zarar'} (so\'m)</div></div>
+          </div>
+        </div>`;
+    }
   }
 
   const rows = Object.values(prodMap).sort((a,b)=>(b.rev-b.cost)-(a.rev-a.cost));
@@ -4369,13 +5096,69 @@ window.exportStockExcel=function(){
 
 // ===== SETTINGS =====
 window.savePins=function(){
-  const ap=document.getElementById('new-admin-pin').value, sp=document.getElementById('new-seller-pin').value;
+  const ap=document.getElementById('new-admin-pin').value;
   if(ap&&ap.length!==4){ toast("Admin PIN 4 raqam bo'lishi kerak",'red'); return; }
-  if(sp&&sp.length!==4){ toast("Sotuvchi PIN 4 raqam bo'lishi kerak",'red'); return; }
   if(ap) DB.pins.admin=ap;
-  if(sp) DB.pins.seller=sp;
-  toast('PIN kodlar saqlandi','green');
-  document.getElementById('new-admin-pin').value=''; document.getElementById('new-seller-pin').value='';
+  toast('Admin PIN saqlandi','green');
+  document.getElementById('new-admin-pin').value='';
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+
+// ===== SOTUVCHILARNI BOSHQARISH (bir nechta sotuvchi, har birida o'z PIN) =====
+window.renderSellersManager=function(){
+  const wrap=document.getElementById('sellers-list'); if(!wrap) return;
+  const sellers = DB.sellers && DB.sellers.length ? DB.sellers : [];
+  if(!sellers.length){
+    wrap.innerHTML = '<p style="font-size:13px;color:var(--text3)">Hali sotuvchi qo\'shilmagan.</p>';
+    return;
+  }
+  wrap.innerHTML = sellers.map(s=>`
+    <div class="seller-row" data-id="${s.id}" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .6rem">
+      <input type="text" value="${(s.name||'').replace(/"/g,'&quot;')}" maxlength="40" style="flex:1;min-width:110px;border:1.5px solid var(--border2);border-radius:6px;padding:.4rem .6rem;font-size:14px;outline:none" data-field="name">
+      <input type="password" value="${s.pin||''}" maxlength="4" inputmode="numeric" style="width:100px;border:1.5px solid var(--border2);border-radius:6px;padding:.4rem .6rem;font-size:14px;outline:none" data-field="pin">
+      <button class="btn sm" onclick="showSellerPin(this)" title="PIN'ni ko'rsatish/yashirish">👁</button>
+      <button class="btn sm red" onclick="deleteSellerRow('${s.id}')" title="O'chirish">🗑</button>
+    </div>`).join('');
+}
+window.showSellerPin=function(btn){
+  const inp = btn.parentElement.querySelector('input[data-field="pin"]');
+  if(!inp) return;
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+window.addSellerRow=function(){
+  const nameInp=document.getElementById('new-seller-name-input'), pinInp=document.getElementById('new-seller-pin-input');
+  const name=(nameInp.value||'').trim(), pin=(pinInp.value||'').trim();
+  if(!name){ toast("Sotuvchi ismini kiriting",'red'); return; }
+  if(!/^\d{4}$/.test(pin)){ toast("PIN 4 xonali raqam bo'lishi kerak",'red'); return; }
+  if((DB.sellers||[]).some(s=>s.pin===pin)){ toast("Bu PIN allaqachon boshqa sotuvchida band",'red'); return; }
+  if(!DB.sellers) DB.sellers=[];
+  DB.sellers.push({ id: uid(), name, pin });
+  nameInp.value=''; pinInp.value='';
+  renderSellersManager();
+  fbSaveSettings().then(()=>toast('✓ Sotuvchi qo\'shildi','green')).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+window.deleteSellerRow=function(id){
+  confirm2("Sotuvchini o'chirish", "Bu sotuvchi endi tizimga kira olmaydi. Uning oldingi savdo tarixi saqlanib qoladi. Davom etilsinmi?", ()=>{
+    DB.sellers = (DB.sellers||[]).filter(s=>s.id!==id);
+    renderSellersManager();
+    fbSaveSettings().then(()=>toast("✓ Sotuvchi o'chirildi",'green')).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  });
+}
+window.saveSellersList=function(){
+  const rows=[...document.querySelectorAll('#sellers-list .seller-row')];
+  const seen={};
+  for(const row of rows){
+    const id=row.dataset.id;
+    const name=(row.querySelector('input[data-field="name"]').value||'').trim();
+    const pin=(row.querySelector('input[data-field="pin"]').value||'').trim();
+    if(!name){ toast("Sotuvchi ismi bo'sh bo'lishi mumkin emas",'red'); return; }
+    if(!/^\d{4}$/.test(pin)){ toast(`"${name}" uchun PIN 4 xonali bo'lishi kerak`,'red'); return; }
+    if(seen[pin]){ toast('Ikki sotuvchida bir xil PIN bo\'lishi mumkin emas','red'); return; }
+    seen[pin]=true;
+    const s=DB.sellers.find(x=>x.id===id);
+    if(s){ s.name=name; s.pin=pin; }
+  }
+  toast('✓ Sotuvchilar ro\'yxati saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 window.saveRevertTime=function(){
@@ -4392,6 +5175,21 @@ window.saveLowStockThreshold=function(){
   toast('Chegara saqlandi','green');
   refreshProductViews();
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+// YANGI: "Muddati o'tgan qarz" hisoblanadigan kunlar sonini sozlash imkoniyati
+// (ilgari bu 14 kun deb QATTIQ YOZILGAN edi). Kunlik maqsad kabi, bu ham
+// faqat shu qurilmada saqlanadi (localStorage), Firebase orqali sinxron
+// bo'lmaydi — chunki bu shunchaki ko'rinish/ogohlantirish sozlamasi.
+function getOverdueDays(){
+  const v = parseInt(localStorage.getItem('dokon_overdue_days')||'14', 10);
+  return (!v || v<1) ? 14 : v;
+}
+window.saveOverdueThreshold = function(){
+  const v = parseInt(document.getElementById('overdue-days-threshold').value, 10);
+  if(isNaN(v) || v<1){ toast("Noto'g'ri qiymat",'red'); return; }
+  localStorage.setItem('dokon_overdue_days', String(v));
+  toast('✓ Saqlandi','green');
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
 }
 // YANGI: admin sotuvchining chek/hisobotlarda ko'rinadigan ismini
 // belgilashi mumkin (masalan, umumiy "Sotuvchi" o'rniga xodimning ismi).
@@ -4431,18 +5229,9 @@ window.saveShopSettings=function(){
   toast('✓ Saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
-window.saveSellerName=function(){
-  const v=(document.getElementById('seller-name-input').value||'').trim();
-  if(!v){ toast("Ism bo'sh bo'lishi mumkin emas",'red'); return; }
-  DB.sellerName=v;
-  if(currentRole==='seller'){
-    currentSellerName=v;
-    const badge=document.getElementById('user-badge');
-    if(badge) badge.innerHTML='<span id="sync-dot"></span>&nbsp;🛒 '+v;
-  }
-  toast('✓ Sotuvchi ismi saqlandi','green');
-  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
-}
+// (Eslatma: yakka "sotuvchi ismi" sozlamasi endi kerak emas — chunki har bir
+// sotuvchi endi Sozlamalar > Sotuvchilar bo'limida o'z ismi bilan alohida
+// qo'shiladi va login vaqtida PIN orqali avtomatik aniqlanadi.)
 
 // ===== ZAXIRA NUSXA (BACKUP) VA TIKLASH (RESTORE) =====
 // To'liq bazani (mahsulotlar, savdolar, kirim/chiqim, qarzlar, qarzdorlar,
@@ -4453,10 +5242,11 @@ window.exportBackupJSON=function(){
   const backup={
     _meta:{ exportedAt:new Date().toISOString(), app:'Do\'kon Boshqaruvi', version:1 },
     products:DB.products, sales:DB.sales, restocks:DB.restocks,
-    debts:DB.debts, debtors:DB.debtors,
-    settings:{ pins:DB.pins, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold, sellerName:DB.sellerName, shopName:DB.shopName, shopLogo:DB.shopLogo }
+    debts:DB.debts, debtors:DB.debtors, expenses:DB.expenses,
+    settings:{ pins:DB.pins, sellers:DB.sellers, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold, sellerName:DB.sellerName, shopName:DB.shopName, shopLogo:DB.shopLogo }
   };
   download(`dokon-backup-${new Date().toISOString().slice(0,10)}.json`, 'application/json', JSON.stringify(backup, null, 2));
+  localStorage.setItem('dokon_last_backup', String(Date.now()));
   toast('✓ Zaxira nusxa yuklab olindi','green');
 }
 // Foydalanuvchi tanlagan JSON fayldan barcha ma'lumotlarni Firestore'ga
@@ -4482,8 +5272,10 @@ window.importBackupJSON=function(input){
           (data.restocks||[]).forEach(r=>writes.push(withRetry(()=>setDoc(doc(db,'restocks',r.id),r))));
           (data.debts||[]).forEach(d=>writes.push(withRetry(()=>setDoc(doc(db,'debts',d.id),d))));
           (data.debtors||[]).forEach(d=>writes.push(withRetry(()=>setDoc(doc(db,'debtors',d.id),d))));
+          (data.expenses||[]).forEach(x=>writes.push(withRetry(()=>setDoc(doc(db,'expenses',x.id),x))));
           if(data.settings){
             DB.pins=data.settings.pins||DB.pins;
+            DB.sellers=(data.settings.sellers&&data.settings.sellers.length)?data.settings.sellers:DB.sellers;
             DB.revertMinutes=data.settings.revertMinutes||DB.revertMinutes;
             DB.lowStockThreshold=data.settings.lowStockThreshold||DB.lowStockThreshold;
             DB.sellerName=data.settings.sellerName||DB.sellerName;
@@ -4608,7 +5400,55 @@ window.shareReceipt=function(){
     toast('Bu qurilmada ulashish imkoniyati yo\'q','red');
   }
 }
-// Savdo tarixidan bitta yozuv uchun chek chiqarish (masalan qayta chop etish)
+// YANGI: bitta qarzdorga (yoki tashkilot ichidagi bitta xodimga) uning FAOL
+// (to'lanmagan) qarzlari bo'yicha tayyor eslatma xabarini shakllantiradi va
+// Web Share API orqali ulashadi (Telegram/WhatsApp/SMS'ga tashlash uchun) —
+// qo'llab-quvvatlamasa, matn buferga (clipboard) nusxalanadi. shareReceipt
+// bilan bir xil uslubda ishlaydi, faqat mazmuni qarz haqida.
+window.shareDebtReminder = function(org, debtorName, viaWhatsapp){
+  const list = DB.debts.filter(d=>d.debtorName===debtorName && (d.org||'')===(org||'') && !d.paid)
+    .slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(!list.length){ toast("Bu shaxsning faol qarzi yo'q",'amber'); return; }
+  const total = list.reduce((a,d)=>a+d.total,0);
+  const shopName = DB.shopName || "Do'kon";
+  const overdueDays = getOverdueDays();
+  const lines = [];
+  lines.push(`🏪 ${shopName}`);
+  lines.push(`Hurmatli ${debtorName}${org?' ('+org+')':''},`);
+  lines.push('Sizda quyidagi faol qarz(lar) mavjud:');
+  lines.push('----------------------------');
+  list.forEach(d=>{
+    const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
+    const items = (d.items||[]).map(i=>`${i.productName}${i.volume?' ('+i.volume+'L)':''} x${i.qty}`).join(', ');
+    lines.push(`${timeStr(d.date)} — ${fmt(d.total)} so'm${daysOld>=overdueDays?' ⏰ muddati o\'tgan':''}${items?' — '+items:''}`);
+  });
+  lines.push('----------------------------');
+  lines.push(`JAMI QARZ: ${fmt(total)} so'm`);
+  lines.push("Iltimos, imkon qadar tezroq to'lovni amalga oshiring. Rahmat!");
+  const text = lines.join('\n');
+  if(viaWhatsapp){
+    const debtor = DB.debtors.find(dd=>dd.name===debtorName && (dd.org||'')===(org||''));
+    const rawPhone = (debtor?.phone||'').replace(/[^\d+]/g,'');
+    if(!rawPhone){ toast("Bu qarzdorning telefon raqami kiritilmagan",'red'); return; }
+    // Uzbekiston raqamlari uchun: agar +998 bilan boshlanmasa va 9 xonali bo'lsa, 998 qo'shamiz.
+    let waPhone = rawPhone.replace(/^\+/,'');
+    if(waPhone.length===9) waPhone = '998'+waPhone;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`, '_blank');
+    return;
+  }
+  if(navigator.share){
+    navigator.share({ title:'Qarz eslatmasi', text }).catch(()=>{ /* foydalanuvchi bekor qildi — xato emas */ });
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      toast('✅ Eslatma matni nusxalandi — endi Telegram/WhatsApp/SMSga joylashtiring','green');
+    }).catch(()=>{
+      toast('Ulashib bo\'lmadi, brauzer qo\'llab-quvvatlamaydi','red');
+    });
+  } else {
+    toast('Bu qurilmada ulashish imkoniyati yo\'q','red');
+  }
+}
+
 window.printSaleReceipt=function(saleId){
   const s=DB.sales.find(x=>x.id===saleId); if(!s) return;
   const rd=buildReceiptFromItems([{name:s.productName, volume:s.volume, qty:s.qty, price:s.price, total:s.total}], s.seller, s.total);
@@ -4633,6 +5473,7 @@ window.clearAll=function(){
 // ===== UTILITY =====
 window.openModal=function(id){ document.getElementById(id).classList.remove('hidden'); }
 window.closeModal=function(id){ document.getElementById(id).classList.add('hidden'); }
+window.openShortcutsModal=function(){ openModal('modal-shortcuts'); }
 
 // ===== YANGI: GLOBAL QIDIRUV (COMMAND PALETTE) =====
 // Nav bardagi 🔎 tugmasi yoki Ctrl+K / Cmd+K orqali ochiladi. Tovarlar va
@@ -4800,7 +5641,7 @@ function printHTML(bodyHtml, opts={}){
          qilmaydi. Qo'shimcha text-shadow ba'zi termal/mexanik printerlarda
          font-weight'ni yaxshi ajratmasligi mumkinligi uchun harflarni yana
          ham qorayib ko'rinishiga yordam beradi. */
-      *{font-weight:900 !important;text-shadow:0 0 .3px currentColor,0 0 .3px currentColor}
+      *{font-weight:900 !important;color:#000 !important;-webkit-text-stroke:.35px #000;text-shadow:0 0 .4px currentColor,0 0 .4px currentColor,0 0 .4px currentColor}
       body{margin:0;padding:5mm;font-family:'Courier New',monospace;font-size:12px;color:#000}
       h1{font-size:14px;margin:0 0 3px;text-align:center;line-height:1.3}
       .print-sub{font-size:11px;color:#000;margin-bottom:2px;text-align:center}
@@ -4923,6 +5764,14 @@ document.addEventListener('keydown', e=>{
   }
   const tag = document.activeElement.tagName;
   const isTyping = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT';
+  // YANGI: "?" bosilganda klaviatura yorliqlari yordam oynasi ochiladi
+  // (matn kiritish maydonida turganda ishlamaydi, aks holda yozish
+  // jarayoniga xalaqit berardi).
+  if(e.key==='?' && !isTyping && window.currentRole){
+    e.preventDefault();
+    openShortcutsModal();
+    return;
+  }
   if(e.key==='/' && !isTyping){
     e.preventDefault();
     const sellSearch = document.getElementById('sell-search');
@@ -8099,6 +8948,1163 @@ window.SyncQueue = SyncQueue;
 window.BatchOperations = BatchOperations;
 window.PerformanceMonitor = PerformanceMonitor;
 
+// ================================================================
+// 🆕 10-BO'LIM: YANGI FUNKSIYALAR (foydalanuvchi so'rovi bo'yicha qo'shildi)
+// Bu blok mavjud kodning HECH BIR joyini o'chirmaydi yoki buzmaydi —
+// faqat yangi, mustaqil imkoniyatlar qo'shadi:
+//  10.1 Xarajatlar (Expenses) — to'liq CRUD + Firebase sinxronizatsiya
+//  10.2 Sof foyda (Foyda sahifasida, renderProfit ichida yuqorida qo'shildi)
+//  10.3 Kunlik savdo maqsadi (Dashboard progress-bar)
+//  10.4 Mahsulot shtrix-kod yorliqlarini chop etish
+//  10.5 Excel/CSV orqali ommaviy tovar import qilish
+//  10.6 Bildirishnomalar markazi (nav'dagi qo'ng'iroq belgisi)
+// ================================================================
+
+// ---------- 10.1 XARAJATLAR (EXPENSES) ----------
+let expenseFilter = 'month';
+let editingExpenseId = null;
+
+window.setExpenseFilter = function(f){
+  expenseFilter = f;
+  ['today','week','month','all'].forEach(k=>{
+    const b = document.getElementById('exp-btn-'+k);
+    if(b) b.classList.toggle('active', k===f);
+  });
+  renderExpenses();
+}
+
+function getFilteredExpenses(){
+  const now = new Date();
+  const cat = document.getElementById('exp-category')?.value || '';
+  const q = (document.getElementById('exp-search')?.value||'').toLowerCase().trim();
+  return (DB.expenses||[]).filter(e=>{
+    const d = new Date(e.date);
+    if(expenseFilter==='today' && !isSameDay(d, now)) return false;
+    if(expenseFilter==='week' && !isThisWeek(d, now)) return false;
+    if(expenseFilter==='month' && !(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear())) return false;
+    if(cat && e.category!==cat) return false;
+    if(q && !(e.name||'').toLowerCase().includes(q) && !(e.note||'').toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+
+window.renderExpenses = function(){
+  const rows = getFilteredExpenses();
+  const tbody = document.getElementById('exp-body');
+  const none = document.getElementById('no-expenses');
+  if(!tbody) return;
+  if(!rows.length){ tbody.innerHTML=''; if(none) none.style.display='block'; }
+  else {
+    if(none) none.style.display='none';
+    tbody.innerHTML = rows.map(e=>`<tr>
+      <td style="font-size:13px;color:var(--text3)">${new Date(e.date).toLocaleDateString('uz-UZ')}</td>
+      <td><strong>${e.name}</strong></td>
+      <td><span class="badge blue">${e.category||'Boshqa'}</span></td>
+      <td style="font-weight:700;color:var(--red)">-${fmt(e.amount)} so'm</td>
+      <td style="font-size:13px;color:var(--text3);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note||''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn sm" onclick="openEditExpense('${e.id}')" title="Tahrirlash">✎</button>
+        <button class="btn sm red" onclick="deleteExpense('${e.id}')" title="O'chirish">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  const total = rows.reduce((a,e)=>a+(e.amount||0),0);
+  const byCat = {};
+  rows.forEach(e=>{ const c=e.category||'Boshqa'; byCat[c]=(byCat[c]||0)+(e.amount||0); });
+  const topCat = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+  const statsEl = document.getElementById('exp-stats');
+  if(statsEl) statsEl.innerHTML = `
+    <div class="stat red"><div class="val">${fmt(total)}</div><div class="lbl">💰 Jami xarajat (so'm)</div></div>
+    <div class="stat blue"><div class="val">${rows.length}</div><div class="lbl">📋 Yozuvlar soni</div></div>
+    <div class="stat amber"><div class="val" style="font-size:16px">${topCat?topCat[0]:'—'}</div><div class="lbl">🏆 Eng katta toifa${topCat?' ('+fmt(topCat[1])+" so'm)":''}</div></div>`;
+
+  const chartEl = document.getElementById('exp-category-chart');
+  if(chartEl){
+    const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    if(!entries.length){ chartEl.innerHTML = '<p style="color:var(--text3);font-size:13px">Bu davrda xarajat yo\'q.</p>'; }
+    else{
+      const max = Math.max(...entries.map(e=>e[1]));
+      chartEl.innerHTML = entries.map(([cat,amt])=>`
+        <div style="margin-bottom:.6rem">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${cat}</span><span>${fmt(amt)} so'm</span></div>
+          <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:${max?(amt/max*100):0}%;background:linear-gradient(90deg,#f59e0b,#d97706);border-radius:6px"></div></div>
+        </div>`).join('');
+    }
+  }
+}
+window.debouncedRenderExpenses = debounce(()=>renderExpenses(), 200);
+
+window.openAddExpense = function(){
+  editingExpenseId = null;
+  document.getElementById('expense-modal-title').textContent = "💰 Xarajat qo'shish";
+  document.getElementById('exp-name').value='';
+  document.getElementById('exp-amount').value='';
+  document.getElementById('exp-modal-category').value='Boshqa';
+  document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('exp-note').value='';
+  openModal('modal-expense');
+}
+window.openEditExpense = function(id){
+  const e = (DB.expenses||[]).find(x=>x.id===id);
+  if(!e) return;
+  editingExpenseId = id;
+  document.getElementById('expense-modal-title').textContent = '✎ Xarajatni tahrirlash';
+  document.getElementById('exp-name').value = e.name;
+  document.getElementById('exp-amount').value = e.amount;
+  document.getElementById('exp-modal-category').value = e.category||'Boshqa';
+  document.getElementById('exp-date').value = new Date(e.date).toISOString().slice(0,10);
+  document.getElementById('exp-note').value = e.note||'';
+  openModal('modal-expense');
+}
+window.saveExpense = function(){
+  const name = document.getElementById('exp-name').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const category = document.getElementById('exp-modal-category').value;
+  const dateVal = document.getElementById('exp-date').value;
+  const note = document.getElementById('exp-note').value.trim();
+  if(!name || isNaN(amount) || amount<=0){ toast("Nomi va summani to'g'ri kiriting",'red'); return; }
+  const date = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
+  DB.expenses = DB.expenses||[];
+  if(editingExpenseId){
+    const idx = DB.expenses.findIndex(x=>x.id===editingExpenseId);
+    const updated = {...(DB.expenses[idx]||{id:editingExpenseId, createdAt:new Date().toISOString()}), name, amount, category, date, note};
+    if(idx>-1) DB.expenses[idx]=updated; else DB.expenses.unshift(updated);
+    fbSaveExpense(updated);
+    toast('✓ Xarajat yangilandi','green');
+  } else {
+    const exp = {id:uid(), name, amount, category, date, note, createdAt:new Date().toISOString()};
+    DB.expenses.unshift(exp);
+    fbSaveExpense(exp);
+    toast("✓ Xarajat qo'shildi",'green');
+  }
+  closeModal('modal-expense');
+  renderExpenses();
+  if(document.getElementById('page-profit')?.classList.contains('active')) renderProfit();
+}
+window.deleteExpense = function(id){
+  const e = (DB.expenses||[]).find(x=>x.id===id);
+  if(!e) return;
+  confirm2("Xarajatni o'chirish", `"${e.name}" — ${fmt(e.amount)} so'm xarajat yozuvi butunlay o'chirilsinmi?`, ()=>{
+    DB.expenses = (DB.expenses||[]).filter(x=>x.id!==id);
+    fbDeleteExpense(id);
+    renderExpenses();
+    toast("O'chirildi",'green');
+    if(document.getElementById('page-profit')?.classList.contains('active')) renderProfit();
+  });
+}
+async function fbSaveExpense(e){
+  setSyncing(true);
+  withRetry(()=>setDoc(doc(db,'expenses',e.id),e))
+    .catch(err=>{ setSyncError(); console.error(err); toast('Saqlashda xatolik','red'); })
+    .finally(()=>setSyncing(false));
+}
+async function fbDeleteExpense(id){
+  setSyncing(true);
+  withRetry(()=>deleteDoc(doc(db,'expenses',id)))
+    .catch(err=>{ setSyncError(); console.error(err); })
+    .finally(()=>setSyncing(false));
+}
+window.exportExpensesExcel = function(){
+  const rows = getFilteredExpenses();
+  if(!rows.length){ toast("Eksport uchun ma'lumot yo'q",'red'); return; }
+  exportToExcel(`xarajatlar-${new Date().toISOString().slice(0,10)}.xlsx`, 'Xarajatlar',
+    ['Sana','Nomi','Toifa','Summa','Izoh'],
+    rows.map(e=>[new Date(e.date).toLocaleDateString('uz-UZ'), e.name, e.category||'', e.amount, e.note||'']));
+}
+window.exportExpensesPDF = function(){
+  const rows = getFilteredExpenses();
+  if(!rows.length){ toast("Eksport uchun ma'lumot yo'q",'red'); return; }
+  const total = rows.reduce((a,e)=>a+e.amount,0);
+  exportToPDF({
+    filename:`xarajatlar-${new Date().toISOString().slice(0,10)}.pdf`,
+    title:'Xarajatlar hisoboti',
+    summaryLines:[`Jami xarajat: ${fmt(total)} so'm`, `Yozuvlar soni: ${rows.length}`],
+    headers:['Sana','Nomi','Toifa','Summa','Izoh'],
+    rows: rows.map(e=>[new Date(e.date).toLocaleDateString('uz-UZ'), e.name, e.category||'', fmt(e.amount)+" so'm", e.note||''])
+  });
+}
+
+// ---------- 10.3 KUNLIK SAVDO MAQSADI ----------
+window.saveDailyGoal = function(){
+  const v = document.getElementById('daily-goal-input').value;
+  const num = parseFloat(v);
+  if(v==='' || isNaN(num) || num<=0){
+    localStorage.removeItem('dokon_daily_goal');
+    toast("Kunlik maqsad o'chirildi",'green');
+  } else {
+    localStorage.setItem('dokon_daily_goal', String(num));
+    toast('✓ Kunlik maqsad saqlandi','green');
+  }
+  if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+}
+
+// ---------- 10.4 MAHSULOT SHTRIX-KOD YORLIQLARINI CHOP ETISH ----------
+window.openPrintLabelsModal = function(){
+  const sel = document.getElementById('label-product-select');
+  const withBarcode = (DB.products||[]).filter(p=>p.barcode);
+  if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
+  sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
+  document.getElementById('label-qty').value = 1;
+  openModal('modal-print-labels');
+}
+window.doPrintLabels = function(){
+  const id = document.getElementById('label-product-select').value;
+  const qty = Math.max(1, Math.min(200, parseInt(document.getElementById('label-qty').value)||1));
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if(!p){ toast('Tovar topilmadi','red'); return; }
+  if(typeof JsBarcode === 'undefined'){ toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
+  const canvas = document.createElement('canvas');
+  try{
+    JsBarcode(canvas, p.barcode, {format:'CODE128', displayValue:true, fontSize:14, height:40, margin:4});
+  }catch(e){
+    console.error(e);
+    toast("Bu shtrix-kod formatini chop etib bo'lmadi",'red');
+    return;
+  }
+  const imgData = canvas.toDataURL('image/png');
+  const shopName = DB.shopName || "Do'kon";
+  const oneLabel = `
+    <div style="border:1px dashed #000;padding:6px;margin-bottom:6px;text-align:center;page-break-inside:avoid">
+      <div style="font-size:11px">${shopName}</div>
+      <div style="font-size:12px;margin:2px 0">${p.name}${p.volume?' · '+p.volume+'L':''}</div>
+      <img src="${imgData}" style="max-width:100%;height:auto">
+      <div style="font-size:13px;margin-top:2px">${fmt(p.price)} so'm</div>
+    </div>`;
+  const html = Array.from({length:qty}).map(()=>oneLabel).join('');
+  closeModal('modal-print-labels');
+  printHTML(html, {title:'Shtrix-kod yorliqlari'});
+}
+
+// ---------- 10.5 EXCEL/CSV ORQALI OMMAVIY TOVAR IMPORT QILISH ----------
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id==='import-products-file'){
+    const f = e.target.files[0];
+    const prev = document.getElementById('import-products-preview');
+    if(f && prev) prev.textContent = `Tanlangan fayl: ${f.name}`;
+  }
+});
+window.doImportProducts = async function(){
+  const fileInput = document.getElementById('import-products-file');
+  const file = fileInput.files[0];
+  if(!file){ toast('Avval fayl tanlang','red'); return; }
+  if(typeof XLSX === 'undefined'){ toast("Excel kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
+  try{
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+    if(!rows.length){ toast("Faylda ma'lumot topilmadi",'red'); return; }
+    let count = 0;
+    const writes = [];
+    rows.forEach(r=>{
+      const name = String(r['Nomi']||r['nomi']||r['Name']||r['name']||'').trim();
+      const price = parseFloat(r['Narx']||r['narx']||r['Price']||r['price']||0);
+      const cost = parseFloat(r['Tannarx']||r['tannarx']||r['Cost']||r['cost']||0)||0;
+      const stock = parseInt(r['Miqdor']||r['miqdor']||r['Stock']||r['stock']||0)||0;
+      const barcodeRaw = String(r['Barcode']||r['barcode']||r["Shtrix-kod"]||'').trim();
+      if(!name || isNaN(price) || price<=0) return;
+      const newProd = {
+        id: uid(), name, price, cost, stock, img:'', note:'', volume:'',
+        barcode: barcodeRaw ? normalizeScanCode(barcodeRaw) : '',
+        qrCode:'', serialCodes:{}, soldCodes:{}, createdAt:new Date().toISOString()
+      };
+      writes.push(fbSaveProduct(newProd));
+      if(stock>0){
+        writes.push(fbSaveRestock({id:uid(), productId:newProd.id, productName:name, volume:'', type:'in', qty:stock, stockBefore:0, stockAfter:stock, reason:"Excel/CSV import orqali qo'shildi", date:new Date().toISOString()}));
+      }
+      count++;
+    });
+    if(!count){ toast("Faylda to'g'ri formatdagi qator topilmadi (Nomi/Narx ustunlarini tekshiring)",'red'); return; }
+    await Promise.all(writes);
+    toast(`✓ ${count} ta tovar muvaffaqiyatli import qilindi`,'green');
+    closeModal('modal-import-products');
+    fileInput.value='';
+    const prev=document.getElementById('import-products-preview'); if(prev) prev.textContent='';
+  }catch(err){
+    console.error(err);
+    toast("Faylni o'qishda xatolik yuz berdi. Format to'g'riligini tekshiring.",'red');
+  }
+}
+
+// ---------- 10.6 BILDIRISHNOMALAR MARKAZI (nav qo'ng'iroq belgisi) ----------
+// Kam qolgan/tugagan tovarlar va faol qarzlarni bitta joyda ko'rsatadi —
+// admin har safar sahifalarni qidirib yurmasdan darhol e'tibor talab
+// qilinadigan holatlarni ko'radi.
+function computeNotifications(){
+  const list = [];
+  // YANGI: agar 7 kundan buyon (yoki umuman hech qachon) zaxira nusxa
+  // olinmagan bo'lsa va tizimda ma'lumot bo'lsa, adminga eslatma beriladi —
+  // internet/qurilma muammosi holida ma'lumot yo'qolmasligi uchun.
+  if((DB.products.length || DB.sales.length)){
+    const lastBackup = parseInt(localStorage.getItem('dokon_last_backup')||'0', 10);
+    const daysSince = lastBackup ? Math.floor((Date.now()-lastBackup)/86400000) : Infinity;
+    if(daysSince>=7){
+      list.push({
+        id:'backup_reminder',
+        icon:'💾',
+        text: lastBackup ? `So'nggi zaxira nusxa ${daysSince} kun oldin olingan — yangilash tavsiya etiladi` : "Hali birorta zaxira nusxa olinmagan — ma'lumotlaringizni saqlab qo'ying",
+        action:()=>showPage('settings','admin')
+      });
+    }
+  }
+  (DB.products||[]).filter(p=>p.stock<=(DB.lowStockThreshold||5)).forEach(p=>{
+    list.push({
+      id:'low_'+p.id,
+      icon: p.stock===0?'⛔':'⚠️',
+      text:`${p.name}${p.volume?' · '+p.volume+'L':''} — ${p.stock===0?'tovar tugagan':'zaxira kam qoldi ('+p.stock+' ta)'}`,
+      action:()=>showPage('products','admin')
+    });
+  });
+  (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{
+    list.push({
+      id:'debt_'+d.id,
+      icon:'💳',
+      text:`${d.debtorName||d.org||'Qarzdor'} — ${fmt(d.total||0)} so'm qarzi bor`,
+      action:()=>showPage('debts','admin')
+    });
+  });
+  return list;
+}
+function updateNotifBadge(){
+  if(currentRole!=='admin') return;
+  const items = computeNotifications();
+  const badge = document.getElementById('notif-bell-count');
+  if(!badge) return;
+  if(items.length>0){
+    badge.style.display='flex';
+    badge.textContent = items.length>99?'99+':items.length;
+  } else {
+    badge.style.display='none';
+  }
+}
+function renderNotifPanel(){
+  const panel = document.getElementById('notif-panel');
+  if(!panel) return;
+  panel.innerHTML = '';
+  const items = computeNotifications();
+  const label = document.createElement('div');
+  label.className = 'cmdk-group-label';
+  label.textContent = `🔔 Bildirishnomalar (${items.length})`;
+  panel.appendChild(label);
+  if(!items.length){
+    const p = document.createElement('p');
+    p.style.cssText = 'padding:1.5rem 1rem;color:var(--text3);font-size:13px;text-align:center';
+    p.textContent = "Hozircha muhim bildirishnoma yo'q ✓";
+    panel.appendChild(p);
+  } else {
+    items.slice(0,40).forEach(n=>{
+      const row = document.createElement('div');
+      row.className = 'cmdk-item';
+      row.innerHTML = `<span style="font-size:16px">${n.icon}</span><span class="cmdk-item-name" style="flex:1;white-space:normal;font-weight:500">${n.text}</span>`;
+      row.onclick = ()=>{ try{ n.action(); }catch(e){} toggleNotifPanel(); };
+      panel.appendChild(row);
+    });
+  }
+}
+window.toggleNotifPanel = function(){
+  const panel = document.getElementById('notif-panel');
+  if(!panel) return;
+  const willOpen = panel.classList.contains('hidden');
+  if(willOpen){ renderNotifPanel(); panel.classList.remove('hidden'); panel.style.display='block'; }
+  else { panel.classList.add('hidden'); }
+}
+document.addEventListener('click', (e)=>{
+  const wrap = document.getElementById('notif-bell-wrap');
+  const panel = document.getElementById('notif-panel');
+  if(wrap && panel && !panel.classList.contains('hidden') && !wrap.contains(e.target)){
+    panel.classList.add('hidden');
+  }
+});
+setInterval(()=>{ try{ updateNotifBadge(); }catch(e){} }, 15000);
+setTimeout(()=>{ try{ updateNotifBadge(); }catch(e){} }, 3000);
+// renderDashboard chaqirilganda ham darhol yangilanadi (mavjud funksiyani
+// o'chirmasdan, ustiga o'rab kengaytiramiz — kod bazasida allaqachon shu
+// uslub qo'llanilgan, masalan openReceiptModal bilan).
+if(typeof window.renderDashboard === 'function'){
+  const _origRenderDashboard10 = window.renderDashboard;
+  window.renderDashboard = function(...args){
+    const r = _origRenderDashboard10.apply(this, args);
+    try{ updateNotifBadge(); }catch(e){}
+    return r;
+  };
+}
+
+</script>
+
+<!-- ================================================================
+     9️⃣ UX ENHANCEMENTS — qo'shimcha, eski kodga tegmaydigan modullar
+     ================================================================ -->
+<script>
+(function(){
+  'use strict';
+
+  // ---------- 9.1 JONLI SOAT + SALOMLASHUV (nav) ----------
+  function greetWord(h){
+    if(h>=5 && h<11) return 'Xayrli tong';
+    if(h>=11 && h<17) return 'Xayrli kun';
+    if(h>=17 && h<22) return 'Xayrli kech';
+    return 'Xayrli tun';
+  }
+  function tickClock(){
+    const el = document.getElementById('nav-clock');
+    if(!el) return;
+    const d = new Date();
+    const time = d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
+    const date = d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit'});
+    el.innerHTML = `<span class="greet">${greetWord(d.getHours())}</span> · ${date} · ${time}`;
+  }
+  tickClock();
+  setInterval(tickClock, 1000*30);
+
+  // ---------- 9.2 OVOZLI TASDIQLASH (Web Audio, fayl kerak emas) ----------
+  let audioCtx = null;
+  function getCtx(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; }
+    }
+    return audioCtx;
+  }
+  function isSoundOn(){ return localStorage.getItem('soundEnabled') !== 'off'; }
+  function beep(freqStart, freqEnd, dur, vol){
+    if(!isSoundOn()) return;
+    const ctx = getCtx();
+    if(!ctx) return;
+    try{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freqStart, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd,40), ctx.currentTime + dur);
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + dur);
+    }catch(e){}
+  }
+  window.playSuccessSound = () => beep(760, 1080, .16, .07);
+  window.playErrorSound   = () => beep(320, 160, .22, .07);
+
+  // Mavjud NotificationManager'ga ovoz ulash (eski logikaga tegmasdan)
+  if(window.NotificationManager && typeof window.NotificationManager.add === 'function'){
+    const origAdd = window.NotificationManager.add.bind(window.NotificationManager);
+    window.NotificationManager.add = function(type, message, duration){
+      if(type === 'success') window.playSuccessSound();
+      else if(type === 'error') window.playErrorSound();
+      return origAdd(type, message, duration);
+    };
+  }
+
+  // Ovozni yoqish/o'chirish tugmasi (nav'ga qo'shiladi)
+  function initSoundToggle(){
+    const nav = document.querySelector('nav');
+    if(!nav || document.getElementById('sound-toggle-btn')) return;
+    const cmdkBtn = document.getElementById('cmdk-btn');
+    const btn = document.createElement('button');
+    btn.className = 'btn sm' + (isSoundOn() ? '' : ' muted');
+    btn.id = 'sound-toggle-btn';
+    btn.title = 'Ovozli signal';
+    btn.style.cssText = 'background:#334155;border-color:#475569;color:#94a3b8';
+    btn.textContent = isSoundOn() ? '🔊' : '🔇';
+    btn.onclick = function(){
+      const nowOn = !isSoundOn();
+      localStorage.setItem('soundEnabled', nowOn ? 'on' : 'off');
+      btn.textContent = nowOn ? '🔊' : '🔇';
+      btn.classList.toggle('muted', !nowOn);
+      if(nowOn) window.playSuccessSound();
+    };
+    if(cmdkBtn) nav.insertBefore(btn, cmdkBtn);
+    else nav.appendChild(btn);
+  }
+
+  // ---------- 9.3 KONFETTI — savdo yakunlanganda tabriklash ----------
+  function fireConfetti(){
+    let canvas = document.getElementById('confetti-canvas');
+    if(!canvas){
+      canvas = document.createElement('canvas');
+      canvas.id = 'confetti-canvas';
+      document.body.appendChild(canvas);
+    }
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const colors = ['#2563eb','#16a34a','#f59e0b','#ef4444','#a855f7','#06b6d4'];
+    const pieces = Array.from({length:70}, () => ({
+      x: Math.random()*canvas.width,
+      y: -20 - Math.random()*canvas.height*0.3,
+      w: 6+Math.random()*5,
+      h: 8+Math.random()*6,
+      rot: Math.random()*Math.PI*2,
+      vRot: (Math.random()-.5)*0.3,
+      vy: 2+Math.random()*3,
+      vx: (Math.random()-.5)*2,
+      color: colors[Math.floor(Math.random()*colors.length)]
+    }));
+    let frame = 0;
+    const maxFrames = 110;
+    function draw(){
+      frame++;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      pieces.forEach(p=>{
+        p.x += p.vx; p.y += p.vy; p.rot += p.vRot;
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = frame > maxFrames-25 ? Math.max(0,(maxFrames-frame)/25) : 1;
+        ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        ctx.restore();
+      });
+      if(frame < maxFrames) requestAnimationFrame(draw);
+      else ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+    draw();
+  }
+  window.celebrateSale = fireConfetti;
+
+  // openReceiptModal mavjud bo'lsa — yakunlangan sotuvda konfetti chiqadi
+  if(typeof window.openReceiptModal === 'function'){
+    const origOpenReceipt = window.openReceiptModal;
+    window.openReceiptModal = function(...args){
+      const r = origOpenReceipt.apply(this, args);
+      try{ fireConfetti(); }catch(e){}
+      return r;
+    };
+  }
+
+  // ---------- 9.4 PWA O'RNATISH TAKLIFI ----------
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if(localStorage.getItem('pwaInstallDismissed') === '1') return;
+    showInstallBanner();
+  });
+  function showInstallBanner(){
+    if(document.getElementById('pwa-install-banner')) return;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isStandalone) return;
+    const banner = document.createElement('div');
+    banner.id = 'pwa-install-banner';
+    banner.innerHTML = `
+      <span class="icon">🏪</span>
+      <div class="txt"><b>Ilovani o'rnating</b>Tezroq ishlash uchun "Do'kon" ilovasini qurilmangizga o'rnating</div>
+      <button class="install-btn" id="pwa-install-yes">O'rnatish</button>
+      <button class="close-btn" id="pwa-install-no">✕</button>
+    `;
+    document.body.appendChild(banner);
+    requestAnimationFrame(()=>banner.classList.add('show'));
+    document.getElementById('pwa-install-yes').onclick = async () => {
+      banner.classList.remove('show');
+      setTimeout(()=>banner.remove(), 300);
+      if(deferredInstallPrompt){
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+      }
+    };
+    document.getElementById('pwa-install-no').onclick = () => {
+      localStorage.setItem('pwaInstallDismissed','1');
+      banner.classList.remove('show');
+      setTimeout(()=>banner.remove(), 300);
+    };
+  }
+
+  // ---------- 9.5 KLAVIATURA YORLIQLARI YORDAM OYNASI ("?" tugmasi) ----------
+  function buildShortcutsModal(){
+    if(document.getElementById('shortcuts-help-modal')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay hidden';
+    overlay.id = 'shortcuts-help-modal';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:380px">
+        <h3>⌨️ Klaviatura yorliqlari</h3>
+        <div class="row"><span>Global qidiruv</span><span class="key">Ctrl</span> + <span class="key">K</span></div>
+        <div class="row"><span>Tungi rejim</span><span class="key">Ctrl</span> + <span class="key">D</span></div>
+        <div class="row"><span>Ushbu yordam oynasi</span><span class="key">?</span></div>
+        <div class="row"><span>Oynani yopish</span><span class="key">Esc</span></div>
+        <div class="modal-footer"><button class="btn" onclick="document.getElementById('shortcuts-help-modal').classList.add('hidden')">Yopish</button></div>
+      </div>`;
+    overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.classList.add('hidden'); });
+    document.body.appendChild(overlay);
+  }
+  document.addEventListener('keydown', (e)=>{
+    const tag = (e.target && e.target.tagName) || '';
+    if(['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+    if(e.key === '?' ){
+      buildShortcutsModal();
+      document.getElementById('shortcuts-help-modal').classList.remove('hidden');
+    }
+    if(e.key === 'Escape'){
+      const m = document.getElementById('shortcuts-help-modal');
+      if(m && !m.classList.contains('hidden')) m.classList.add('hidden');
+    }
+    // Ctrl+D — tungi rejim (brauzerning "bookmark" yorlig'i bilan to'qnashmasligi uchun faqat shu ilova ichida)
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'd' && typeof window.toggleDarkMode === 'function'){
+      e.preventDefault();
+      window.toggleDarkMode();
+    }
+  });
+
+  // ---------- 9.6 KAM ZAXIRA — BROWSER TAB SARLAVHASIDA KO'RSATISH ----------
+  const baseTitle = document.title;
+  function updateTitleBadge(){
+    const badgeEl = document.getElementById('dash-low-badge');
+    const n = badgeEl ? parseInt((badgeEl.textContent||'').replace(/\D/g,''),10) : 0;
+    document.title = (n && n > 0) ? `(${n}) ${baseTitle}` : baseTitle;
+  }
+  const lowBadgeObserver = new MutationObserver(updateTitleBadge);
+  function watchLowStockBadge(){
+    const el = document.getElementById('dash-low-badge');
+    if(el){ lowBadgeObserver.observe(el, {childList:true, characterData:true, subtree:true}); updateTitleBadge(); }
+  }
+
+  // ---------- INIT ----------
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      initSoundToggle();
+      watchLowStockBadge();
+    }, 600);
+  });
+
+})();
+</script>
+
+<!-- ================================================================
+     🚀 YANGI FUNKSIYALAR BLOKI (11.x) — mavjud biznes-logikaga
+     (savdo, zaxira, qarz hisob-kitoblariga) TEGMAYDI. Faqat qo'shimcha,
+     xavfsiz, o'z-o'zicha ishlaydigan imkoniyatlar.
+     ================================================================ -->
+<script>
+(function(){
+  'use strict';
+
+  // ---------- 11.1 MAVZU (ACCENT RANG) TANLAGICH ----------
+  const THEMES = [
+    {id:'indigo', name:'Indigo',  a:'#4f46e5', a2:'#0ea5a4'},
+    {id:'blue',   name:"Ko'k",    a:'#2563eb', a2:'#0ea5e9'},
+    {id:'emerald',name:'Zumrad',  a:'#059669', a2:'#84cc16'},
+    {id:'rose',   name:'Nafis pushti', a:'#e11d48', a2:'#f97316'},
+    {id:'amber',  name:'Kahrabo', a:'#b45309', a2:'#0891b2'},
+  ];
+  function applyTheme(id){
+    const t = THEMES.find(x=>x.id===id) || THEMES[0];
+    document.documentElement.style.setProperty('--accent', t.a);
+    document.documentElement.style.setProperty('--accent2', t.a2);
+    localStorage.setItem('dokon_theme', t.id);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.classList.toggle('active', d.dataset.theme===t.id));
+  }
+  function buildThemeDots(){
+    const wrap = document.getElementById('theme-dots');
+    if(!wrap || wrap.dataset.built) return;
+    wrap.dataset.built = '1';
+    const saved = localStorage.getItem('dokon_theme') || 'indigo';
+    THEMES.forEach(t=>{
+      const dot = document.createElement('span');
+      dot.className = 'theme-dot' + (t.id===saved ? ' active' : '');
+      dot.dataset.theme = t.id;
+      dot.title = t.name;
+      dot.style.background = `linear-gradient(135deg,${t.a},${t.a2})`;
+      dot.onclick = () => applyTheme(t.id);
+      wrap.appendChild(dot);
+    });
+  }
+  window.addEventListener('load', () => {
+    applyTheme(localStorage.getItem('dokon_theme') || 'indigo');
+    setTimeout(buildThemeDots, 400);
+  });
+
+  // ---------- 11.2 IXCHAM (COMPACT) KO'RINISH REJIMI ----------
+  window.toggleDensityMode = function(on){
+    document.body.classList.toggle('density-compact', !!on);
+    localStorage.setItem('dokon_density', on ? '1' : '0');
+  };
+  window.addEventListener('load', () => {
+    const on = localStorage.getItem('dokon_density') === '1';
+    document.body.classList.toggle('density-compact', on);
+    const sw = document.getElementById('sw-density');
+    if(sw) sw.checked = on;
+  });
+
+  // ---------- 11.3 KAM QOLDIQ HAQIDA BRAUZER BILDIRISHNOMASI ----------
+  // Diqqat: faqat "Notification" ruxsati beriladi, mavjud tovar/savdo
+  // ma'lumotlariga hech narsa yozmaydi — faqat #dash-low-badge sonini kuzatadi.
+  function notifPermLabel(){
+    if(!('Notification' in window)) return "Brauzeringiz qo'llamaydi";
+    if(Notification.permission === 'granted') return 'Ruxsat berilgan ✓';
+    if(Notification.permission === 'denied') return 'Ruxsat rad etilgan (brauzer sozlamasidan yoqing)';
+    return 'Ruxsat so\'ralmagan';
+  }
+  function refreshNotifUI(){
+    const st = document.getElementById('notif-perm-status');
+    if(st) st.textContent = notifPermLabel();
+    const sw = document.getElementById('sw-push-notif');
+    if(sw) sw.checked = ('Notification' in window) && Notification.permission === 'granted' && localStorage.getItem('dokon_push_notif') === '1';
+  }
+  window.togglePushNotifications = async function(on){
+    if(!on){ localStorage.setItem('dokon_push_notif','0'); refreshNotifUI(); return; }
+    if(!('Notification' in window)){ toast && toast("Brauzeringiz bildirishnomani qo'llamaydi",'red'); refreshNotifUI(); return; }
+    try{
+      const perm = await Notification.requestPermission();
+      if(perm === 'granted'){
+        localStorage.setItem('dokon_push_notif','1');
+        toast && toast('✓ Bildirishnomalar yoqildi','green');
+        new Notification('Do\'kon tizimi', {body:"Kam qoldiq bo'lganda shu yerdan xabar beriladi", icon:'./icon-192.png'});
+      } else {
+        localStorage.setItem('dokon_push_notif','0');
+        toast && toast('Ruxsat berilmadi','amber');
+      }
+    }catch(e){ console.error(e); }
+    refreshNotifUI();
+  };
+  let lastNotifiedLowCount = 0;
+  function watchLowStockForNotif(){
+    const el = document.getElementById('dash-low-badge');
+    if(!el) return;
+    const obs = new MutationObserver(() => {
+      if(localStorage.getItem('dokon_push_notif') !== '1') return;
+      if(!('Notification' in window) || Notification.permission !== 'granted') return;
+      const n = parseInt((el.textContent||'').replace(/\D/g,''),10) || 0;
+      if(n > 0 && n !== lastNotifiedLowCount){
+        lastNotifiedLowCount = n;
+        try{ new Notification('⚠️ Kam qoldiq', {body:`${n} ta tovar zaxirasi kam qoldi. Tekshiring.`, icon:'./icon-192.png'}); }catch(e){}
+      } else if(n === 0){ lastNotifiedLowCount = 0; }
+    });
+    obs.observe(el, {childList:true, characterData:true, subtree:true});
+  }
+  window.addEventListener('load', () => setTimeout(() => { refreshNotifUI(); watchLowStockForNotif(); }, 700));
+
+  // ---------- 11.4 AVTOMATIK QULFLASH (IDLE AUTO-LOCK) ----------
+  let idleTimer = null, idleMinutes = 0;
+  function resetIdleTimer(){
+    if(idleTimer) clearTimeout(idleTimer);
+    if(!idleMinutes) return;
+    idleTimer = setTimeout(() => {
+      const loginPage = document.getElementById('login-page');
+      const alreadyOnLogin = loginPage && loginPage.style.display !== 'none';
+      if(!alreadyOnLogin && typeof window.logout === 'function'){
+        try{ window.logout(); toast && toast('🔒 Uzoq vaqt harakatsizlik tufayli tizimdan chiqildi','amber'); }catch(e){}
+      }
+    }, idleMinutes * 60000);
+  }
+  window.setAutoLockMinutes = function(mins){
+    idleMinutes = parseInt(mins,10) || 0;
+    localStorage.setItem('dokon_autolock', String(idleMinutes));
+    resetIdleTimer();
+  };
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(evt => {
+    document.addEventListener(evt, () => { if(idleMinutes) resetIdleTimer(); }, {passive:true});
+  });
+  window.addEventListener('load', () => {
+    const saved = parseInt(localStorage.getItem('dokon_autolock'),10) || 0;
+    idleMinutes = saved;
+    const sel = document.getElementById('autolock-select');
+    if(sel) sel.value = String(saved);
+    resetIdleTimer();
+  });
+
+})();
+</script>
+
+<!-- ================================================================
+     🚀 YANGI FUNKSIYALAR BLOKI (12.x) — mavjud biznes-logikaga
+     (savdo, zaxira, qarz, xarajat hisob-kitoblariga) TEGMAYDI.
+     Faqat qo'shimcha, xavfsiz, o'z-o'zicha ishlaydigan imkoniyatlar:
+       12.1 Sevimli tovarlar (sell gridda yulduzcha + filtr)
+       12.2 Naqd pul / qaytim hisoblagichi
+       12.3 Eslatmalar taxtasi (mahalliy, faqat shu qurilmada)
+       12.4 Mahsulot yaroqlilik muddati kuzatuvi (mahalliy)
+       12.5 Kunlik yopilish (Z) hisoboti (mavjud print/eksport
+            yordamchilaridan foydalanadi, faqat O'QIYDI, yozmaydi)
+       12.6 Amallar jurnali ko'rgichi (mavjud AuditLog'ni o'qiydi)
+       12.7 Matn o'lchamini sozlash (accessibility)
+       12.8 Tezkor qulflash tugmasi (mavjud logout()ni chaqiradi)
+       12.9 Qo'shimcha klaviatura yorliqlari (C/N/L)
+     ================================================================ -->
+<script>
+(function(){
+  'use strict';
+
+  function safeToast(msg, type){ try{ if(typeof toast === 'function') toast(msg, type); }catch(e){} }
+
+  // ================== 12.1 SEVIMLI TOVARLAR ==================
+  const FAV_KEY = 'dokon_fav_products';
+  function getFavs(){
+    try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
+  }
+  function isFav(id){ return getFavs().includes(id); }
+  function toggleFav(id){
+    let favs = getFavs();
+    if(favs.includes(id)) favs = favs.filter(x=>x!==id);
+    else favs.push(id);
+    localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+    decorateFavStars();
+  }
+  let favFilterOn = false;
+  window.toggleFavFilter = function(){
+    favFilterOn = !favFilterOn;
+    const btn = document.getElementById('fav-filter-btn');
+    if(btn){ btn.classList.toggle('blue', favFilterOn); btn.style.color = favFilterOn ? '#fff' : ''; }
+    applyFavFilterToGrid();
+  };
+  function applyFavFilterToGrid(){
+    const grid = document.getElementById('sell-grid');
+    if(!grid) return;
+    const favs = getFavs();
+    for(const card of grid.children){
+      if(!favFilterOn) { card.style.display = ''; continue; }
+      card.style.display = favs.includes(card.dataset.id) ? '' : 'none';
+    }
+  }
+  // Har bir sell-card ustiga yulduzcha qo'yamiz (mavjud renderSellGrid'ga tegmasdan,
+  // faqat DOM'ni sotishdan keyin "bezaymiz")
+  function decorateFavStars(){
+    const grid = document.getElementById('sell-grid');
+    if(!grid) return;
+    const favs = getFavs();
+    for(const card of grid.children){
+      const id = card.dataset.id;
+      if(!id) continue;
+      let star = card.querySelector('.fav-star-btn');
+      if(!star){
+        star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'fav-star-btn';
+        star.style.cssText = 'position:absolute;top:6px;left:6px;z-index:5;background:rgba(0,0,0,.35);border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:1;color:#fff';
+        star.onclick = function(e){ e.stopPropagation(); toggleFav(id); };
+        const imgWrap = card.querySelector('.img-wrap');
+        if(imgWrap){ imgWrap.style.position = imgWrap.style.position || 'relative'; imgWrap.appendChild(star); }
+        else card.appendChild(star);
+      }
+      const fav = favs.includes(id);
+      star.textContent = fav ? '⭐' : '☆';
+      star.title = fav ? "Sevimlilardan chiqarish" : "Sevimlilarga qo'shish";
+    }
+    applyFavFilterToGrid();
+  }
+  if(typeof window.renderSellGrid === 'function'){
+    const _origRenderSellGrid = window.renderSellGrid;
+    window.renderSellGrid = function(...args){
+      const r = _origRenderSellGrid.apply(this, args);
+      try{ decorateFavStars(); }catch(e){}
+      return r;
+    };
+  }
+
+  // ================== 12.2 NAQD PUL / QAYTIM HISOBLAGICHI ==================
+  window.openCashCalc = function(){
+    const totalEl = document.getElementById('calc-total');
+    const givenEl = document.getElementById('calc-given');
+    // Agar savatda tovar bo'lsa, umumiy summani avtomatik to'ldiramiz (faqat o'qiymiz, o'zgartirmaymiz)
+    try{
+      if(typeof window.cart === 'object' && typeof cartTotal === 'function' && Object.keys(window.cart||{}).length){
+        totalEl.value = Math.round(cartTotal());
+      }
+    }catch(e){}
+    givenEl.value = '';
+    buildCalcQuickNotes();
+    window.calcChange();
+    if(typeof openModal === 'function') openModal('modal-calc');
+    setTimeout(()=>givenEl.focus(), 50);
+  };
+  function buildCalcQuickNotes(){
+    const wrap = document.getElementById('calc-quick-notes');
+    if(!wrap || wrap.dataset.built) return;
+    wrap.dataset.built = '1';
+    [5000,10000,20000,50000,100000].forEach(v=>{
+      const b = document.createElement('button');
+      b.className = 'btn sm';
+      b.textContent = (v/1000)+"k";
+      b.onclick = () => {
+        const el = document.getElementById('calc-given');
+        el.value = (parseFloat(el.value)||0) + v;
+        window.calcChange();
+      };
+      wrap.appendChild(b);
+    });
+  }
+  window.calcChange = function(){
+    const total = parseFloat(document.getElementById('calc-total').value) || 0;
+    const given = parseFloat(document.getElementById('calc-given').value) || 0;
+    const diff = given - total;
+    const el = document.getElementById('calc-result');
+    if(!el) return;
+    el.textContent = (diff<0?'−':'') + Math.abs(Math.round(diff)).toLocaleString('uz-UZ') + " so'm";
+    el.style.color = diff < 0 ? 'var(--red)' : 'var(--accent)';
+  };
+  window.calcClear = function(){
+    document.getElementById('calc-total').value = '';
+    document.getElementById('calc-given').value = '';
+    window.calcChange();
+  };
+
+  // ================== 12.3 ESLATMALAR TAXTASI ==================
+  const NOTES_KEY = 'dokon_sticky_notes';
+  function getNotes(){ try{ return JSON.parse(localStorage.getItem(NOTES_KEY)||'[]'); }catch(e){ return []; } }
+  function setNotes(list){ localStorage.setItem(NOTES_KEY, JSON.stringify(list)); }
+  window.openNotesBoard = function(){
+    renderNotesList();
+    if(typeof openModal === 'function') openModal('modal-notes');
+    setTimeout(()=>document.getElementById('new-note-input')?.focus(), 50);
+  };
+  window.addNote = function(){
+    const input = document.getElementById('new-note-input');
+    const text = (input.value||'').trim();
+    if(!text) return;
+    const notes = getNotes();
+    notes.unshift({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), text, done:false, ts: new Date().toISOString() });
+    setNotes(notes);
+    input.value = '';
+    renderNotesList();
+  };
+  window.toggleNoteDone = function(id){
+    const notes = getNotes().map(n => n.id===id ? {...n, done:!n.done} : n);
+    setNotes(notes);
+    renderNotesList();
+  };
+  window.deleteNote = function(id){
+    setNotes(getNotes().filter(n=>n.id!==id));
+    renderNotesList();
+  };
+  function esc(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
+  function renderNotesList(){
+    const wrap = document.getElementById('notes-list');
+    const empty = document.getElementById('notes-empty');
+    if(!wrap) return;
+    const notes = getNotes();
+    if(!notes.length){ wrap.innerHTML=''; if(empty) empty.style.display='block'; return; }
+    if(empty) empty.style.display='none';
+    wrap.innerHTML = notes.map(n => `
+      <div style="display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .75rem;border:1px solid var(--border);border-radius:10px;${n.done?'opacity:.55':''}">
+        <input type="checkbox" ${n.done?'checked':''} onchange="window.toggleNoteDone('${n.id}')" style="margin-top:3px">
+        <div style="flex:1;font-size:14px;${n.done?'text-decoration:line-through':''}">${esc(n.text)}</div>
+        <button class="btn sm red" onclick="window.deleteNote('${n.id}')" title="O'chirish">✕</button>
+      </div>`).join('');
+  }
+
+  // ================== 12.4 MAHSULOT YAROQLILIK MUDDATI ==================
+  const EXPIRY_KEY = 'dokon_product_expiry';
+  function getExpiryMap(){ try{ return JSON.parse(localStorage.getItem(EXPIRY_KEY)||'{}'); }catch(e){ return {}; } }
+  function setExpiryMap(m){ localStorage.setItem(EXPIRY_KEY, JSON.stringify(m)); }
+  function populateExpirySelect(){
+    const sel = document.getElementById('expiry-product-select');
+    if(!sel || !window.DB || !Array.isArray(DB.products)) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Tovarni tanlang —</option>' +
+      DB.products.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    if(cur) sel.value = cur;
+  }
+  window.saveProductExpiry = function(){
+    const sel = document.getElementById('expiry-product-select');
+    const dateInput = document.getElementById('expiry-date-input');
+    if(!sel.value){ safeToast("Avval tovarni tanlang",'amber'); return; }
+    if(!dateInput.value){ safeToast("Sanani kiriting",'amber'); return; }
+    const m = getExpiryMap();
+    m[sel.value] = dateInput.value;
+    setExpiryMap(m);
+    dateInput.value = '';
+    safeToast('✓ Muddat belgilandi','green');
+    renderExpiryList();
+  };
+  window.removeProductExpiry = function(id){
+    const m = getExpiryMap();
+    delete m[id];
+    setExpiryMap(m);
+    renderExpiryList();
+  };
+  function daysUntil(dateStr){
+    const d = new Date(dateStr+'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((d-now)/86400000);
+  }
+  function renderExpiryList(){
+    const wrap = document.getElementById('expiry-list');
+    if(!wrap || !window.DB) return;
+    const m = getExpiryMap();
+    const entries = Object.keys(m).map(id => {
+      const p = DB.products.find(x=>x.id===id);
+      return p ? { id, name: p.name, date: m[id], days: daysUntil(m[id]) } : null;
+    }).filter(Boolean).sort((a,b)=>a.days-b.days);
+    if(!entries.length){ wrap.innerHTML = '<p style="color:var(--text3);font-size:13px">Hozircha muddat belgilangan tovar yo\'q.</p>'; return; }
+    wrap.innerHTML = entries.map(e => {
+      const cls = e.days < 0 ? 'red' : e.days <= 7 ? 'amber' : 'green';
+      const lbl = e.days < 0 ? `${Math.abs(e.days)} kun oldin o'tgan` : e.days === 0 ? 'Bugun tugaydi' : `${e.days} kun qoldi`;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:13px"><b>${esc(e.name)}</b> <span style="color:var(--text3)">(${e.date})</span></div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span class="badge ${cls}">${lbl}</span>
+          <button class="btn sm" onclick="window.removeProductExpiry('${e.id}')" title="O'chirish">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function getExpiringSoonCount(){
+    const m = getExpiryMap();
+    return Object.values(m).filter(d => daysUntil(d) <= 7).length;
+  }
+  // Bosh sahifada "Muddati yaqinlashayotgan tovarlar" kartasini qo'shamiz
+  // (faqat DOM'ga qo'shish — dash-grid mavjud statistikalarga tegmaydi)
+  function ensureExpiryDashCard(){
+    const dashGrid = document.getElementById('dash-grid');
+    if(!dashGrid || document.getElementById('expiry-dash-card')) return;
+    const col = dashGrid.children[1]; // o'ng ustun
+    if(!col) return;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'expiry-dash-card';
+    card.innerHTML = `<h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⏳ Muddati yaqinlashgan tovarlar</h3><div id="expiry-dash-list" style="font-size:13px;color:var(--text3)"></div>`;
+    col.appendChild(card);
+  }
+  function renderExpiryDashList(){
+    const wrap = document.getElementById('expiry-dash-list');
+    if(!wrap || !window.DB) return;
+    const m = getExpiryMap();
+    const entries = Object.keys(m).map(id => {
+      const p = DB.products.find(x=>x.id===id);
+      return p ? { name: p.name, date: m[id], days: daysUntil(m[id]) } : null;
+    }).filter(e => e && e.days <= 7).sort((a,b)=>a.days-b.days);
+    if(!entries.length){ wrap.innerHTML = "Muddati yaqinlashgan tovar yo'q."; return; }
+    wrap.innerHTML = entries.map(e => {
+      const cls = e.days < 0 ? 'red' : 'amber';
+      const lbl = e.days < 0 ? `${Math.abs(e.days)} kun o'tgan` : e.days === 0 ? 'Bugun' : `${e.days} kun`;
+      return `<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px dashed var(--border)"><span>${esc(e.name)}</span><span class="badge ${cls}">${lbl}</span></div>`;
+    }).join('');
+  }
+  function refreshExpiryUI(){
+    populateExpirySelect();
+    renderExpiryList();
+    ensureExpiryDashCard();
+    renderExpiryDashList();
+  }
+  if(typeof window.renderDashboard === 'function'){
+    const _origRenderDashboard12 = window.renderDashboard;
+    window.renderDashboard = function(...args){
+      const r = _origRenderDashboard12.apply(this, args);
+      try{ ensureExpiryDashCard(); renderExpiryDashList(); }catch(e){}
+      return r;
+    };
+  }
+
+  // ================== 12.5 KUNLIK YOPILISH (Z) HISOBOTI ==================
+  // Faqat mavjud DB.sales / DB.expenses ma'lumotlarini O'QIYDI, hech narsa yozmaydi.
+  window.printZReport = function(){
+    if(!window.DB || !Array.isArray(DB.sales)){ safeToast("Ma'lumot topilmadi",'red'); return; }
+    const now = new Date();
+    const todaySales = DB.sales.filter(s => { try{ return isSameDay(new Date(s.date||s.createdAt||s.timestamp), now); }catch(e){ return false; } });
+    const totalRevenue = todaySales.reduce((sum,s)=> sum + (Number(s.total)||0), 0);
+    const totalCost = todaySales.reduce((sum,s)=> sum + ((typeof s.cost==='number'?s.cost:0)), 0);
+    const todayExpenses = (Array.isArray(DB.expenses)?DB.expenses:[]).filter(x => { try{ return isSameDay(new Date(x.date||x.createdAt), now); }catch(e){ return false; } });
+    const totalExpenses = todayExpenses.reduce((sum,e)=> sum + (Number(e.amount)||0), 0);
+    const netProfit = totalRevenue - totalCost - totalExpenses;
+    const bySeller = {};
+    todaySales.forEach(s => { const nm = s.seller || "Noma'lum"; bySeller[nm] = (bySeller[nm]||0) + (Number(s.total)||0); });
+
+    const dateStr = now.toLocaleDateString('uz-UZ');
+    let body = `<h2 style="margin-bottom:4px">Kunlik yopilish (Z) hisoboti</h2><p style="color:#555;margin-bottom:16px">${dateStr} — ${window.DB.shopName||"Do'kon"}</p>`;
+    body += `<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tbody>`;
+    body += `<tr><td style="padding:6px 0">Jami savdo (chekilar soni)</td><td style="text-align:right;font-weight:700">${todaySales.length} ta</td></tr>`;
+    body += `<tr><td style="padding:6px 0">Umumiy tushum</td><td style="text-align:right;font-weight:700">${fmt(totalRevenue)} so'm</td></tr>`;
+    body += `<tr><td style="padding:6px 0">Tovar tannarxi</td><td style="text-align:right">${fmt(totalCost)} so'm</td></tr>`;
+    body += `<tr><td style="padding:6px 0">Bugungi xarajatlar</td><td style="text-align:right">${fmt(totalExpenses)} so'm</td></tr>`;
+    body += `<tr><td style="padding:8px 0;font-weight:800;border-top:2px solid #333">Sof natija</td><td style="text-align:right;font-weight:800;border-top:2px solid #333">${fmt(netProfit)} so'm</td></tr>`;
+    body += `</tbody></table>`;
+    if(Object.keys(bySeller).length){
+      body += `<h3 style="margin-bottom:8px">Sotuvchilar bo'yicha</h3><table style="width:100%;border-collapse:collapse"><tbody>`;
+      Object.entries(bySeller).sort((a,b)=>b[1]-a[1]).forEach(([nm,val])=>{
+        body += `<tr><td style="padding:4px 0;border-bottom:1px solid #eee">${nm}</td><td style="text-align:right;border-bottom:1px solid #eee">${fmt(val)} so'm</td></tr>`;
+      });
+      body += `</tbody></table>`;
+    }
+    if(typeof printHTML === 'function') printHTML(body, {title:'Z-hisobot'});
+    else { safeToast("Chop etish moduli topilmadi",'red'); return; }
+    safeToast('✓ Z-hisobot tayyorlandi','green');
+  };
+
+  // ================== 12.6 AMALLAR JURNALI KO'RGICHI ==================
+  window.openAuditLogViewer = function(){
+    const wrap = document.getElementById('auditlog-list');
+    const empty = document.getElementById('auditlog-empty');
+    const logs = (window.AuditLog && Array.isArray(AuditLog.logs)) ? AuditLog.logs.slice().reverse() : [];
+    if(!logs.length){ if(wrap) wrap.innerHTML=''; if(empty) empty.style.display='block'; }
+    else {
+      if(empty) empty.style.display='none';
+      if(wrap) wrap.innerHTML = logs.slice(0,300).map(l => {
+        const t = new Date(l.timestamp).toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        return `<div style="display:flex;justify-content:space-between;gap:.5rem;padding:.35rem .5rem;border-bottom:1px solid var(--border)">
+          <span style="color:var(--text3)">${t}</span>
+          <span style="flex:1;font-weight:600">${esc(l.action)}</span>
+          <span style="color:var(--text3)">${esc(l.target||'')}</span>
+          <span style="color:var(--text3)">${esc(l.user||l.userId||'')}</span>
+        </div>`;
+      }).join('');
+    }
+    if(typeof openModal === 'function') openModal('modal-auditlog');
+  };
+  window.exportAuditLog = function(){
+    if(!window.AuditLog || typeof AuditLog.export !== 'function'){ safeToast("Jurnal moduli topilmadi",'red'); return; }
+    const data = AuditLog.export();
+    if(typeof download === 'function') download(`amallar-jurnali-${Date.now()}.json`, 'application/json', data);
+    safeToast('✓ Jurnal eksport qilindi','green');
+  };
+
+  // ================== 12.7 MATN O'LCHAMINI SOZLASH ==================
+  const FONT_KEY = 'dokon_font_scale';
+  const FONT_STEPS = [90,100,110,120,130];
+  const FONT_LABELS = {90:'Kichik (90%)',100:'Oddiy (100%)',110:'Katta (110%)',120:'Kattaroq (120%)',130:'Eng katta (130%)'};
+  function applyFontScale(pct){
+    document.documentElement.style.fontSize = (pct/100*16) + 'px';
+    localStorage.setItem(FONT_KEY, String(pct));
+    const lbl = document.getElementById('fontsize-label');
+    if(lbl) lbl.textContent = FONT_LABELS[pct] || (pct+'%');
+  }
+  window.adjustFontSize = function(dir){
+    if(dir === 0){ applyFontScale(100); return; }
+    const cur = parseInt(localStorage.getItem(FONT_KEY),10) || 100;
+    let idx = FONT_STEPS.indexOf(cur);
+    if(idx === -1) idx = 1;
+    idx = Math.min(FONT_STEPS.length-1, Math.max(0, idx + dir));
+    applyFontScale(FONT_STEPS[idx]);
+  };
+  window.addEventListener('load', () => {
+    const saved = parseInt(localStorage.getItem(FONT_KEY),10) || 100;
+    applyFontScale(saved);
+  });
+
+  // ================== 12.8 TEZKOR QULFLASH ==================
+  window.quickLock = function(){
+    if(typeof window.logout === 'function'){
+      window.logout();
+      safeToast('🔒 Tizim qulflandi','amber');
+    }
+  };
+
+  // ================== 12.9 QO'SHIMCHA KLAVIATURA YORLIQLARI ==================
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    if(['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const appVisible = document.getElementById('app') && document.getElementById('app').style.display !== 'none';
+    if(!appVisible) return;
+    const k = e.key.toLowerCase();
+    if(k === 'c'){ window.openCashCalc && window.openCashCalc(); }
+    else if(k === 'n'){ window.openNotesBoard && window.openNotesBoard(); }
+    else if(k === 'l'){ window.quickLock && window.quickLock(); }
+  });
+
+  // ================== INIT ==================
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      try{ decorateFavStars(); }catch(e){}
+      try{ refreshExpiryUI(); }catch(e){}
+    }, 900);
+  });
+  // DB Firebase'dan kelganda tovarlar ro'yxati yangilanadi — tanlov ro'yxatini ham yangilaymiz
+  const _expirySelectInterval = setInterval(() => {
+    if(window.DB && Array.isArray(DB.products) && DB.products.length){
+      populateExpirySelect();
+    }
+  }, 3000);
+
+})();
 </script>
 </body>
 </html>
