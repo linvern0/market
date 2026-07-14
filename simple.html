@@ -291,7 +291,8 @@
 
   /* 🎨 YANGI STYLES VA IMPROVEMENTS */
   /* Notification Styles */
-  #notifications-container{position:fixed;top:70px;right:1rem;z-index:1000;max-width:400px;display:flex;flex-direction:column;gap:.5rem}
+  #notifications-container{display:none!important}
+  #notif-bell-wrap{display:none!important}
   .notification{padding:1rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-width:300px;animation:slideIn .3s ease;box-shadow:0 4px 12px rgba(0,0,0,.15)}
   @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
   .notification-success{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -673,7 +674,10 @@
         <div id="top-debtors"></div>
       </div>
       <div class="card">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">⚠️ Kam qolgan tovarlar</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+          <h3 style="font-size:15px;font-weight:700">⚠️ Kam qolgan tovarlar</h3>
+          <button class="btn sm amber" onclick="exportReorderListCSV()" title="Yetkazib beruvchidan buyurtma qilish uchun tavsiya etilgan miqdorlar bilan xarid ro'yxatini yuklab olish">🛒 Xarid ro'yxati</button>
+        </div>
         <div id="low-stock-list"></div>
       </div>
       <div class="card">
@@ -1091,6 +1095,7 @@ body.dark tr:hover td {
       <button class="btn amber" id="btn-assign-queue" onclick="startBarcodeAssignQueue()" title="Omborda kod biriktirilmagan barcha tovarlarni birma-bir, navbat bilan skanerlab belgilash">📷 Kodsiz tovarlarni belgilash</button>
       <button class="btn amber" id="btn-serial-queue" onclick="startSerialRegisterQueue()" title="Kamerani oching va mahsulotlarni istalgan tartibda ketma-ket skanerlang — tizim har bir koddagi GTIN orqali qaysi mahsulot ekanini avtomatik aniqlaydi va ro'yxatga oladi">🔢 Donalarni ro'yxatga olish</button>
       <button class="btn sm green" onclick="exportProductsCSV()" title="Barcha tovarlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
+      <button class="btn sm amber" onclick="exportReorderListCSV()" title="Kam qolgan tovarlar uchun tavsiya etilgan buyurtma miqdorlari bilan xarid ro'yxatini yuklab olish">🛒 Xarid ro'yxati</button>
       <button class="btn sm green" onclick="exportProductsExcel()" title="Barcha tovarlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
       <button class="btn sm" onclick="openPrintLabelsModal()" title="Tanlangan tovar uchun shtrix-kodli yorliqlar chop etish">🏷 Yorliq</button>
       <button class="btn sm" onclick="openModal('modal-import-products')" title="Excel/CSV fayldan bir nechta tovarni birdaniga qo'shish">📥 Import</button>
@@ -4132,7 +4137,7 @@ window.renderDebts = function(){
             ${g.isOrg?`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
               <div>
                 <div style="font-weight:700;font-size:14px">👤 ${p.debtorName}</div>
-                ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${p.phone}</div>`:''}
+                ${p.phone?`<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${p.phone}</a></div>`:''}
                 ${loginInfo}
                 ${loginBtn}
               </div>
@@ -4140,12 +4145,14 @@ window.renderDebts = function(){
                 <div style="font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
                 <button class="btn sm" style="margin-top:.3rem" onclick="printPersonDebt('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Shu shaxsning qarzini alohida chop etish">🖨 Shaxsiy chek</button>
                 ${personOwed>0?`<button class="btn sm amber" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+                ${personOwed>0&&p.phone?`<button class="btn sm green" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
               </div>
             </div>`:`<div style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
-              <div>${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}${loginBtn}</div>
+              <div>${p.phone?`<div style="font-size:13px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${p.phone}</a></div>`:''}${loginInfo}${loginBtn}</div>
               <div style="display:flex;gap:.4rem;flex-wrap:wrap">
                 <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
                 ${personOwed>0?`<button class="btn sm amber" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+                ${personOwed>0&&p.phone?`<button class="btn sm green" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
               </div>
             </div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
@@ -4656,6 +4663,26 @@ window.exportProductsCSV=function(){
   });
   download(`tovarlar_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
   toast(`✓ ${DB.products.length} ta tovar CSV formatda yuklandi`,'green');
+}
+
+// YANGI: kam qolgan (yoki tugagan) tovarlar uchun "Xarid ro'yxati" — yetkazib
+// beruvchidan buyurtma qilish uchun tavsiya etilgan miqdor bilan CSV.
+// Tavsiya etilgan miqdor = (chegara qiymati x 2) - hozirgi qoldiq, minimal 1 ta.
+window.exportReorderListCSV=function(){
+  const threshold = DB.lowStockThreshold || 5;
+  const low = DB.products.filter(p=>p.stock<=threshold).sort((a,b)=>a.stock-b.stock);
+  if(!low.length){ toast("Hozircha kam qolgan tovar yo'q",'green'); return; }
+  let csv="Nomi,Hajmi (L),Hozirgi qoldiq,Chegara,Tavsiya etilgan buyurtma miqdori,Tannarxi,Taxminiy xarid summasi\n";
+  let totalCost = 0;
+  low.forEach(p=>{
+    const suggested = Math.max(1, threshold*2 - p.stock);
+    const estCost = suggested * (p.cost||0);
+    totalCost += estCost;
+    csv+=`"${p.name}",${p.volume||''},${p.stock},${threshold},${suggested},${p.cost||0},${estCost}\n`;
+  });
+  csv+=`\n,,,,,"JAMI (taxminiy)",${totalCost}\n`;
+  download(`xarid_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
+  toast(`✓ ${low.length} ta tovar uchun xarid ro'yxati yuklandi`,'green');
 }
 
 // YANGI: tovarlar ro'yxatini Excel (.xlsx) formatida yuklab olish —
@@ -5378,7 +5405,7 @@ window.shareReceipt=function(){
 // Web Share API orqali ulashadi (Telegram/WhatsApp/SMS'ga tashlash uchun) —
 // qo'llab-quvvatlamasa, matn buferga (clipboard) nusxalanadi. shareReceipt
 // bilan bir xil uslubda ishlaydi, faqat mazmuni qarz haqida.
-window.shareDebtReminder = function(org, debtorName){
+window.shareDebtReminder = function(org, debtorName, viaWhatsapp){
   const list = DB.debts.filter(d=>d.debtorName===debtorName && (d.org||'')===(org||'') && !d.paid)
     .slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
   if(!list.length){ toast("Bu shaxsning faol qarzi yo'q",'amber'); return; }
@@ -5399,6 +5426,16 @@ window.shareDebtReminder = function(org, debtorName){
   lines.push(`JAMI QARZ: ${fmt(total)} so'm`);
   lines.push("Iltimos, imkon qadar tezroq to'lovni amalga oshiring. Rahmat!");
   const text = lines.join('\n');
+  if(viaWhatsapp){
+    const debtor = DB.debtors.find(dd=>dd.name===debtorName && (dd.org||'')===(org||''));
+    const rawPhone = (debtor?.phone||'').replace(/[^\d+]/g,'');
+    if(!rawPhone){ toast("Bu qarzdorning telefon raqami kiritilmagan",'red'); return; }
+    // Uzbekiston raqamlari uchun: agar +998 bilan boshlanmasa va 9 xonali bo'lsa, 998 qo'shamiz.
+    let waPhone = rawPhone.replace(/^\+/,'');
+    if(waPhone.length===9) waPhone = '998'+waPhone;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`, '_blank');
+    return;
+  }
   if(navigator.share){
     navigator.share({ title:'Qarz eslatmasi', text }).catch(()=>{ /* foydalanuvchi bekor qildi — xato emas */ });
   } else if(navigator.clipboard && navigator.clipboard.writeText){
