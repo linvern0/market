@@ -388,7 +388,6 @@
   /* 🎨 YANGI STYLES VA IMPROVEMENTS */
   /* Notification Styles */
   #notifications-container{display:none!important}
-  #notif-bell-wrap{display:none!important}
   .notification{padding:1rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-width:300px;animation:slideIn .075s ease;box-shadow:0 4px 12px rgba(0,0,0,.15)}
   @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
   .notification-success{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -518,10 +517,11 @@
   /* YANGI (10.6): Bildirishnomalar qo'ng'irog'i */
   #notif-bell-btn{position:relative}
   #notif-bell-count{display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:9px;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;border:2px solid #1e293b}
-  #notif-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;max-height:400px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:150;padding:.5rem}
+  #notif-panel{display:none;position:fixed;top:calc(56px + var(--safe-t,0px) + 8px);right:.75rem;width:320px;max-height:60vh;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:210;padding:.5rem}
   #notif-panel.hidden{display:none !important}
   body.dark #notif-panel{background:#1e293b;border-color:#334155}
-  @media (max-width:480px){ #notif-panel{width:280px;right:-40px} }
+  @media (max-width:768px){ nav ~ #notif-panel, body.nav-compact #notif-panel{ top:calc(52px + var(--safe-t,0px) + 8px) } }
+  @media (max-width:480px){ #notif-panel{width:calc(100vw - 1.5rem);right:.75rem;left:.75rem} }
 </style>
 
 <!-- ================================================================
@@ -756,7 +756,6 @@
     <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#334155;border-color:#475569;color:#94a3b8">❔</button>
     <div id="notif-bell-wrap" style="position:relative;display:none">
       <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#334155;border-color:#475569;color:#94a3b8">🔔<span id="notif-bell-count" style="display:none"></span></button>
-      <div id="notif-panel" class="hidden"></div>
     </div>
     <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#334155;border-color:#475569;color:#94a3b8">🌙</button>
     <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#334155;border-color:#475569;color:#94a3b8">🧮</button>
@@ -769,8 +768,10 @@
   <button class="btn sm" id="nav-more-btn" onclick="toggleNavMoreMenu()" title="Ko'proq" style="background:#334155;border-color:#475569;color:#fff;display:none;font-weight:700;font-size:18px;line-height:1;padding:6px 12px">⋮</button>
 </nav>
 
+<div id="notif-panel" class="hidden"></div>
 <div id="nav-more-overlay" class="hidden" onclick="closeNavMoreMenu()"></div>
 <div id="nav-more-menu" class="hidden">
+  <button onclick="toggleNotifPanel();closeNavMoreMenu()" id="nav-more-notif-btn" style="display:none">🔔 <span>Bildirishnomalar</span><span id="nav-more-notif-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;border-radius:9px;min-width:18px;height:18px;align-items:center;justify-content:center;padding:0 4px"></span></button>
   <button onclick="openCommandPalette();closeNavMoreMenu()">🔎 <span>Qidiruv</span></button>
   <button onclick="openShortcutsModal();closeNavMoreMenu()">❔ <span>Yorliqlar</span></button>
   <button onclick="toggleDarkMode();closeNavMoreMenu()">🌙 <span>Tungi rejim</span></button>
@@ -3271,6 +3272,7 @@ window.completeLogin = function(role, sellerName, sellerId){
     });
     const moreBtn=document.getElementById('mtab-more-btn'); if(moreBtn) moreBtn.style.display='none';
     const bellWrap=document.getElementById('notif-bell-wrap'); if(bellWrap) bellWrap.style.display='none';
+    const moreNotifBtn=document.getElementById('nav-more-notif-btn'); if(moreNotifBtn) moreNotifBtn.style.display='none';
     showPage('sell','seller');
     renderSellGrid();
     checkNavOverflow();
@@ -9595,12 +9597,24 @@ function updateNotifBadge(){
   if(currentRole!=='admin') return;
   const items = computeNotifications();
   const badge = document.getElementById('notif-bell-count');
-  if(!badge) return;
-  if(items.length>0){
-    badge.style.display='flex';
-    badge.textContent = items.length>99?'99+':items.length;
-  } else {
-    badge.style.display='none';
+  const moreBtn = document.getElementById('nav-more-notif-btn');
+  const moreBadge = document.getElementById('nav-more-notif-badge');
+  if(moreBtn) moreBtn.style.display='flex';
+  if(badge){
+    if(items.length>0){
+      badge.style.display='flex';
+      badge.textContent = items.length>99?'99+':items.length;
+    } else {
+      badge.style.display='none';
+    }
+  }
+  if(moreBadge){
+    if(items.length>0){
+      moreBadge.style.display='flex';
+      moreBadge.textContent = items.length>99?'99+':items.length;
+    } else {
+      moreBadge.style.display='none';
+    }
   }
 }
 function renderNotifPanel(){
@@ -9636,8 +9650,11 @@ window.toggleNotifPanel = function(){
 }
 document.addEventListener('click', (e)=>{
   const wrap = document.getElementById('notif-bell-wrap');
+  const moreBtn = document.getElementById('nav-more-notif-btn');
   const panel = document.getElementById('notif-panel');
-  if(wrap && panel && !panel.classList.contains('hidden') && !wrap.contains(e.target)){
+  if(!panel || panel.classList.contains('hidden')) return;
+  const clickedTrigger = (wrap && wrap.contains(e.target)) || (moreBtn && moreBtn.contains(e.target));
+  if(!panel.contains(e.target) && !clickedTrigger){
     panel.classList.add('hidden');
   }
 });
