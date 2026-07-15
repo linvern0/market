@@ -66,6 +66,38 @@
   #nav-more-menu button{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left;background:none;border:none;color:#e2e8f0;padding:.65rem .75rem;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}
   #nav-more-menu button:active,#nav-more-menu button:hover{background:#334155}
   #nav-more-menu .nav-more-sep{height:1px;background:#334155;margin:.3rem .25rem}
+  /* YANGI: NAV-COMPACT — nav.js runtime'da nav-admin/nav-seller tablari
+     o'z konteyneriga sig'masligini o'lchaydi (scrollWidth>clientWidth) va
+     shunday holatda <body>'ga "nav-compact" klassini qo'shadi. Bu orqali
+     planshet/noutbuk kengliklarida (masalan 1024-1400px) tablar "ko'rinmas
+     holda" ichki scroll bo'lib qolib, foydalanuvchiga hech qanday belgisiz
+     yashirinib qolishining oldi olinadi — ular o'rniga pastki tab-panel
+     (#mobile-tabbar) va "..." menyu ko'rsatiladi, xuddi mobil rejimdagidek.
+     Bu klass har qanday ekran kengligida ishlaydi — faqat aniq @media
+     nuqtalariga bog'liq emas. */
+  body.nav-compact nav{min-height:52px}
+  body.nav-compact #nav-admin,body.nav-compact #nav-seller{display:none!important}
+  body.nav-compact .nav-right-tools{display:none!important}
+  body.nav-compact #nav-more-btn{display:flex!important;align-items:center;justify-content:center}
+  body.nav-compact #nav-more-menu{top:calc(52px + var(--safe-t,0px) + 6px)}
+  body.nav-compact #mobile-tabbar{display:flex}
+  body.nav-compact .page{padding-bottom:70px}
+  /* YANGI: pastki tab-panelda ("Bosh","Tovarlar","Tarix","Qarzlar") dan
+     tashqari qolgan sahifalar ("Foyda","Analitika","Kirim/Chiqim",
+     "Xarajatlar","AI Tahlilchi","Sozlamalar") uchun "Ko'proq" menyusi —
+     avval bularning barchasi bitta qatorga (9 ta tugma) sig'dirilgan edi,
+     natijada matnlar bir-birining ustiga chiqib, o'qib bo'lmas darajada
+     torayib ketardi. Endi asosiy qatorda faqat 4 ta eng ko'p ishlatiladigan
+     bo'lim + "Ko'proq" tugmasi bor, qolganlari shu menyuda. */
+  #mobile-tabbar button#mtab-more-btn{display:none}
+  #mobile-more-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:119}
+  #mobile-more-overlay.hidden{display:none}
+  #mobile-more-menu{position:fixed;left:50%;transform:translateX(-50%);width:min(94vw,360px);bottom:calc(58px + var(--safe-b,0px) + 8px);z-index:121;background:#1e293b;border:1px solid #334155;border-radius:14px;padding:.4rem;display:flex;flex-direction:column;gap:2px;box-shadow:0 -10px 32px rgba(0,0,0,.4)}
+  #mobile-more-menu.hidden{display:none}
+  #mobile-more-menu button{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;background:none;border:none;color:#e2e8f0;padding:.8rem .85rem;border-radius:9px;font-size:15px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #mobile-more-menu button .tab-icon{font-size:18px;line-height:1}
+  #mobile-more-menu button:active,#mobile-more-menu button:hover,#mobile-more-menu button.active{background:#334155}
+  #mobile-more-menu button.active{color:#60a5fa}
   #nav-more-menu .nav-more-logout{color:#fca5a5}
   #nav-more-menu .nav-more-logout:active,#nav-more-menu .nav-more-logout:hover{background:#7f1d1d33}
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
@@ -231,6 +263,12 @@
   .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
   .sort-bar span{font-size:13px;color:var(--text2);font-weight:600;margin-right:.25rem}
   #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:58px}
+  @media(min-width:641px){
+    /* Kengroq (planshet/noutbuk) ekranlarda nav-compact ishga tushganda
+       pastki panel devor-devorga cho'zilib ketmasin — markazga
+       joylashtirib, "dok" ko'rinishini beramiz. */
+    body.nav-compact #mobile-tabbar{max-width:640px;margin:0 auto;left:0;right:0;border-left:1px solid #334155;border-right:1px solid #334155;border-radius:14px 14px 0 0}
+  }
   #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.0375s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
   #mobile-tabbar button .tab-icon{font-size:20px;line-height:1}
   #mobile-tabbar button.active{color:#60a5fa}
@@ -2102,6 +2140,11 @@ body.dark tr:hover td {
 </div>
 
 <!-- MOBIL PASTKI TAB-BAR -->
+<!-- YANGI: pastki tab-panel qayta ishlandi — avval admin uchun 9 ta tugma
+     bitta qatorga zich joylashtirilgan edi (har biri ~41px, matnlar
+     bir-biriga tegib, o'qib bo'lmas holga kelardi). Endi faqat eng ko'p
+     ishlatiladigan 4 ta bo'lim + "Ko'proq" tugmasi qatorda, qolganlari
+     "Ko'proq" bosilganda ochiladigan menyuda (pastda, #mobile-more-menu). -->
 <div id="mobile-tabbar">
   <button id="mtab-dashboard" onclick="showPage('dashboard','admin')" style="display:none">
     <span class="tab-icon">📊</span>Bosh
@@ -2112,29 +2155,38 @@ body.dark tr:hover td {
   <button id="mtab-history" onclick="showPage('history','admin')" style="display:none">
     <span class="tab-icon">📋</span>Tarix
   </button>
-  <button id="mtab-profit" onclick="showPage('profit','admin')" style="display:none">
-    <span class="tab-icon">💹</span>Foyda
-  </button>
-  <button id="mtab-stock-history" onclick="showPage('stock-history','admin')" style="display:none">
-    <span class="tab-icon">🚚</span>Kirim
-  </button>
-  <button id="mtab-expenses" onclick="showPage('expenses','admin')" style="display:none">
-    <span class="tab-icon">💰</span>Xarajat
-  </button>
   <button id="mtab-debts" onclick="showPage('debts', currentRole)" style="display:none">
     <span class="tab-icon">💳</span>Qarzlar
   </button>
-  <button id="mtab-ai-assistant" onclick="showPage('ai-assistant','admin')" style="display:none">
-    <span class="tab-icon">🤖</span>AI
-  </button>
-  <button id="mtab-settings" onclick="showPage('settings','admin')" style="display:none">
-    <span class="tab-icon">⚙️</span>Sozlama
+  <button id="mtab-more-btn" onclick="toggleMobileMoreMenu()" style="display:none">
+    <span class="tab-icon">⋯</span>Ko'proq
   </button>
   <button id="mtab-sell" onclick="showPage('sell','seller')" style="display:none">
     <span class="tab-icon">🛒</span>Sotish
   </button>
   <button id="mtab-my-sales" onclick="showPage('my-sales','seller')" style="display:none">
     <span class="tab-icon">📋</span>Mening
+  </button>
+</div>
+<div id="mobile-more-overlay" class="hidden" onclick="closeMobileMoreMenu()"></div>
+<div id="mobile-more-menu" class="hidden">
+  <button id="mtab-profit" onclick="showPage('profit','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">💹</span>Foyda
+  </button>
+  <button id="mtab-analytics" onclick="showPage('analytics','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">📈</span>Analitika
+  </button>
+  <button id="mtab-stock-history" onclick="showPage('stock-history','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">🚚</span>Kirim/Chiqim
+  </button>
+  <button id="mtab-expenses" onclick="showPage('expenses','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">💰</span>Xarajatlar
+  </button>
+  <button id="mtab-ai-assistant" onclick="showPage('ai-assistant','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">🤖</span>AI Tahlilchi
+  </button>
+  <button id="mtab-settings" onclick="showPage('settings','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">⚙️</span>Sozlamalar
   </button>
 </div>
 
@@ -3188,15 +3240,17 @@ window.completeLogin = function(role, sellerName, sellerId){
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
-    ['dashboard','products','history','profit','stock-history','debts','expenses','ai-assistant','settings'].forEach(t=>{
+    ['dashboard','products','history','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
+    const moreBtn=document.getElementById('mtab-more-btn'); if(moreBtn) moreBtn.style.display='flex';
     ['sell','my-sales'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
     });
     const bellWrap=document.getElementById('notif-bell-wrap'); if(bellWrap) bellWrap.style.display='inline-block';
     showPage('dashboard','admin');
     renderDashboard();
+    checkNavOverflow();
     // YANGI: admin kirganda, agar kam qolgan yoki tugagan tovarlar bo'lsa,
     // shu haqda darhol ogohlantiramiz — sahifani qidirib yurishga hojat qolmaydi.
     setTimeout(()=>{
@@ -3212,12 +3266,14 @@ window.completeLogin = function(role, sellerName, sellerId){
     ['sell','my-sales','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
-    ['dashboard','products','history','profit','stock-history','expenses','settings'].forEach(t=>{
+    ['dashboard','products','history'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='none';
     });
+    const moreBtn=document.getElementById('mtab-more-btn'); if(moreBtn) moreBtn.style.display='none';
     const bellWrap=document.getElementById('notif-bell-wrap'); if(bellWrap) bellWrap.style.display='none';
     showPage('sell','seller');
     renderSellGrid();
+    checkNavOverflow();
   }
 }
 
@@ -3257,9 +3313,14 @@ window.showPage = function(page, role){
   const navId = role==='admin'?'nav-admin':'nav-seller';
   document.querySelectorAll('#'+navId+' .tab').forEach(t=>t.classList.remove('active'));
   window.event?.target?.classList.add('active');
-  document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#mobile-tabbar button, #mobile-more-menu button').forEach(b=>b.classList.remove('active'));
   const mtab = document.getElementById('mtab-'+page);
   if(mtab) mtab.classList.add('active');
+  const moreBtn = document.getElementById('mtab-more-btn');
+  if(moreBtn){
+    const morePages = ['profit','analytics','stock-history','expenses','ai-assistant','settings'];
+    moreBtn.classList.toggle('active', morePages.includes(page));
+  }
   if(page==='history'){ initHistory(); renderHistory(); }
   if(page==='profit'){ renderProfit(); }
   if(page==='my-sales'){ setMySalesFilter('today'); }
@@ -10440,7 +10501,7 @@ window.renderAiAssistant = function(){
       btn.classList.toggle('muted', !nowOn);
       if(nowOn) window.playSuccessSound();
     };
-    if(cmdkBtn) nav.insertBefore(btn, cmdkBtn);
+    if(cmdkBtn && cmdkBtn.parentNode) cmdkBtn.parentNode.insertBefore(btn, cmdkBtn);
     else nav.appendChild(btn);
   }
 
@@ -11171,6 +11232,69 @@ document.addEventListener('keydown', function(e){
 });
 window.addEventListener('resize', function(){
   if(window.innerWidth > 768) window.closeNavMoreMenu();
+});
+
+// ===== NAV-COMPACT — YUQORIDAGI TAB'LAR SIG'MASA AVTOMATIK KICHRAYTIRISH =====
+// Muammo: nav-admin/nav-seller tablari (masalan admin uchun 10 ta bo'lim)
+// faqat mobil kenglikda (<=768px) pastki panelga almashtirilardi. Lekin
+// planshet va ko'plab noutbuk/Windows ekranlarida (masalan 1024-1400px)
+// bu tablar o'zining torgina konteyneriga sig'may, foydalanuvchiga hech
+// qanday belgisiz "ko'rinmas" holda ichkarida gorizontal scroll bo'lib
+// qolar edi (masalan 1440px kenglikda ham oxirgi 4-5 ta bo'lim — Qarzlar,
+// Xarajatlar, AI Tahlilchi, Sozlamalar — butunlay ko'rinmas edi).
+// Bu funksiya real vaqtda o'lchab, sig'masa <body>'ga "nav-compact"
+// klassini qo'shadi — shunda pastki tab-panel + "..." menyu ko'rsatiladi,
+// har qanday ekran kengligida ishlaydi (faqat qattiq @media nuqtasiga
+// emas, haqiqiy o'lchamga qarab).
+window.checkNavOverflow = function(){
+  if(!window.currentRole) return;
+  const body = document.body;
+  const wasCompact = body.classList.contains('nav-compact');
+  // Avval klassni vaqtincha olib tashlab, tabiiy (siqilmagan) kenglikni o'lchaymiz
+  if(wasCompact) body.classList.remove('nav-compact');
+  let needsCompact = window.innerWidth <= 768; // haqiqiy mobil — har doim compact
+  if(!needsCompact){
+    const navId = window.currentRole === 'admin' ? 'nav-admin' : 'nav-seller';
+    const activeNav = document.getElementById(navId);
+    if(activeNav && activeNav.style.display !== 'none'){
+      needsCompact = activeNav.scrollWidth > activeNav.clientWidth + 2;
+    }
+  }
+  body.classList.toggle('nav-compact', needsCompact);
+};
+let _navOverflowResizeTimer = null;
+window.addEventListener('resize', function(){
+  clearTimeout(_navOverflowResizeTimer);
+  _navOverflowResizeTimer = setTimeout(()=>window.checkNavOverflow(), 150);
+});
+window.addEventListener('orientationchange', function(){ setTimeout(()=>window.checkNavOverflow(), 300); });
+
+// ===== MOBIL PASTKI PANEL — "KO'PROQ" MENYUSI =====
+// Pastki tab-panelda faqat 4 ta asosiy bo'lim (Bosh, Tovarlar, Tarix,
+// Qarzlar) doim ko'rinadi; qolganlari (Foyda, Analitika, Kirim/Chiqim,
+// Xarajatlar, AI Tahlilchi, Sozlamalar) shu menyuda — avvalgidek 9 ta
+// tugma bitta qatorga zichlanib, matnlar ustma-ust chiqib qolmaydi.
+window.toggleMobileMoreMenu = function(){
+  const menu = document.getElementById('mobile-more-menu');
+  const overlay = document.getElementById('mobile-more-overlay');
+  if(!menu || !overlay) return;
+  const isHidden = menu.classList.contains('hidden');
+  if(isHidden){
+    menu.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+  } else {
+    menu.classList.add('hidden');
+    overlay.classList.add('hidden');
+  }
+};
+window.closeMobileMoreMenu = function(){
+  const menu = document.getElementById('mobile-more-menu');
+  const overlay = document.getElementById('mobile-more-overlay');
+  if(menu) menu.classList.add('hidden');
+  if(overlay) overlay.classList.add('hidden');
+};
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') window.closeMobileMoreMenu();
 });
 </script>
 
