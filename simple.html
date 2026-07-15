@@ -37,8 +37,8 @@
     --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
     --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
   }
-  html{overflow-x:hidden}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden}
+  html{overflow-x:hidden;overflow-y:auto}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden;overflow-y:auto}
   #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
   #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .6s linear infinite}
   #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
@@ -49,12 +49,25 @@
   #sync-dot.syncing{background:#f59e0b;animation:pulse-dot .6s ease infinite}
   #sync-dot.error{background:#ef4444}
   @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
-  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
-  nav .logo{font-weight:600;font-size:17px;color:#fff;flex:1}
+  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:.75rem;min-height:56px;position:sticky;top:0;z-index:100;flex-wrap:nowrap}
+  nav .logo{font-weight:600;font-size:17px;color:#fff;display:flex;align-items:center;gap:.5rem;flex-shrink:0;white-space:nowrap}
   nav .logo span{color:#60a5fa}
-  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.1s}
+  #nav-admin,#nav-seller{display:flex;gap:.25rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:1;min-width:0}
+  #nav-admin::-webkit-scrollbar,#nav-seller::-webkit-scrollbar{display:none}
+  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.025s;white-space:nowrap;flex-shrink:0}
   nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
-  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center}
+  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center;flex-shrink:0;white-space:nowrap}
+  nav .nav-right-tools{display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-left:auto}
+  #nav-more-btn{flex-shrink:0;margin-left:auto}
+  #nav-more-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:199}
+  #nav-more-overlay.hidden{display:none}
+  #nav-more-menu{position:fixed;top:calc(56px + var(--safe-t,0px) + 6px);right:.75rem;z-index:200;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:.4rem;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:2px}
+  #nav-more-menu.hidden{display:none}
+  #nav-more-menu button{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left;background:none;border:none;color:#e2e8f0;padding:.65rem .75rem;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #nav-more-menu button:active,#nav-more-menu button:hover{background:#334155}
+  #nav-more-menu .nav-more-sep{height:1px;background:#334155;margin:.3rem .25rem}
+  #nav-more-menu .nav-more-logout{color:#fca5a5}
+  #nav-more-menu .nav-more-logout:active,#nav-more-menu .nav-more-logout:hover{background:#7f1d1d33}
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
   .page.active{display:block}
   #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
@@ -62,7 +75,7 @@
   .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b}
   .login-card p{color:#64748b;font-size:14px;margin-bottom:2rem}
   .role-btns{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
-  .role-btn{border:2px solid var(--border2);background:#fff;border-radius:var(--radius);padding:1rem;cursor:pointer;transition:.15s;text-align:center}
+  .role-btn{border:2px solid var(--border2);background:#fff;border-radius:var(--radius);padding:1rem;cursor:pointer;transition:.0375s;text-align:center}
   .role-btn:hover{border-color:#2563eb;background:#eff6ff}
   .role-btn.selected{border-color:#2563eb;background:#eff6ff}
   .role-btn .icon{font-size:28px;margin-bottom:.5rem}
@@ -70,9 +83,9 @@
   .role-btn .desc{font-size:12px;color:#64748b;margin-top:2px}
   .pin-section{margin-top:1rem}
   .pin-section label{display:block;font-size:13px;color:#64748b;margin-bottom:.5rem;font-weight:500}
-  .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.1s}
+  .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.025s}
   .pin-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
-  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.1s}
+  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.025s}
   .btn-primary:hover{background:#1d4ed8}
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
@@ -94,10 +107,10 @@
   .form-row.full{grid-template-columns:1fr}
   .field{display:flex;flex-direction:column;gap:.35rem}
   .field label{font-size:13px;font-weight:600;color:var(--text2)}
-  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;width:100%}
+  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.0375s;font-family:inherit;background:#fff;width:100%}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
   .field textarea{resize:vertical;min-height:70px}
-  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.0375s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
   .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn.blue:hover{background:#1d4ed8;border-color:#1d4ed8}
@@ -121,15 +134,55 @@
   .modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
   .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
   .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
+  /* ===== AI TAHLILCHI (Aqlli Yordamchi) — YANGI FUNKSIYA ===== */
+  .ai-hero{display:grid;grid-template-columns:220px 1fr;gap:1.5rem;align-items:center}
+  @media(max-width:820px){.ai-hero{grid-template-columns:1fr;justify-items:center;text-align:center}#ai-two-col{grid-template-columns:1fr!important}}
+  .health-gauge{width:190px;height:190px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;transition:background 0.4s ease}
+  .health-gauge::before{content:'';position:absolute;inset:14px;background:var(--surface);border-radius:50%;box-shadow:inset 0 1px 4px rgba(0,0,0,.08)}
+  .health-gauge-inner{position:relative;z-index:1;text-align:center}
+  .health-gauge-inner .val{font-size:40px;font-weight:800;line-height:1}
+  .health-gauge-inner .lbl{font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.5px;margin-top:2px}
+  .health-gauge-inner .grade{font-size:13px;font-weight:700;margin-top:6px;padding:2px 10px;border-radius:20px;display:inline-block}
+  .health-factor{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--border)}
+  .health-factor:last-child{border-bottom:none}
+  .health-factor .hf-label{flex:1;font-size:13px;font-weight:600}
+  .health-factor .hf-bar-wrap{flex:1;background:var(--surface2);border-radius:10px;height:8px;overflow:hidden;border:1px solid var(--border)}
+  .health-factor .hf-bar{height:100%;border-radius:10px;transition:width .3s ease}
+  .health-factor .hf-pct{width:42px;text-align:right;font-size:12px;font-weight:700;color:var(--text2)}
+  .insight-card{display:flex;gap:.75rem;padding:.9rem 1rem;border-radius:10px;border:1px solid var(--border);margin-bottom:.6rem;align-items:flex-start}
+  .insight-card.good{background:var(--green-bg);border-color:var(--green-border)}
+  .insight-card.warn{background:var(--amber-bg);border-color:var(--amber-border)}
+  .insight-card.bad{background:var(--red-bg);border-color:var(--red-border)}
+  .insight-card.info{background:var(--accent-bg);border-color:var(--accent-border)}
+  .insight-card .ic-icon{font-size:20px;flex-shrink:0;line-height:1.3}
+  .insight-card .ic-title{font-weight:700;font-size:13.5px;margin-bottom:2px}
+  .insight-card .ic-text{font-size:12.5px;color:var(--text2);line-height:1.45}
+  #ai-chat-box{display:flex;flex-direction:column;height:420px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);overflow:hidden}
+  #ai-chat-messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
+  .ai-msg{max-width:82%;padding:.6rem .85rem;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-line}
+  .ai-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:3px}
+  .ai-msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:3px}
+  .ai-chat-input-row{display:flex;gap:.5rem;padding:.65rem;border-top:1px solid var(--border);background:var(--surface)}
+  .ai-chat-input-row input{flex:1;border:1.5px solid var(--border2);border-radius:20px;padding:.6rem 1rem;font-size:13.5px;outline:none}
+  .ai-chat-input-row input:focus{border-color:var(--accent)}
+  .ai-suggest-chip{display:inline-block;background:var(--surface);border:1.5px solid var(--border2);border-radius:20px;padding:.3rem .75rem;font-size:12px;font-weight:600;cursor:pointer;margin:2px}
+  .ai-suggest-chip:hover{border-color:var(--accent);color:var(--accent)}
+  .whatif-slider-wrap{display:flex;align-items:center;gap:1rem;margin:.75rem 0}
+  .whatif-slider-wrap input[type=range]{flex:1;accent-color:var(--accent)}
+  .whatif-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-top:1rem}
+  .whatif-cell{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.75rem}
+  .whatif-cell .wc-lbl{font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+  .whatif-cell .wc-val{font-size:18px;font-weight:800;margin-top:2px}
+  .whatif-cell .wc-delta{font-size:12px;font-weight:700;margin-top:1px}
   .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.6rem}
-  .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.08s;cursor:pointer}
+  .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;transition:.02s;cursor:pointer}
   .prod-card:hover{border-color:#aaa;box-shadow:0 4px 16px rgba(0,0,0,.1)}
   .prod-card:active{transform:scale(.97)}
 
   /* Sotish gridi uchun maxsus */
   .sell-card{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
   .sell-card:active{transform:scale(.96);opacity:.9}
-  .sell-card.cart-added{animation:cart-pulse .1s ease}
+  .sell-card.cart-added{animation:cart-pulse .025s ease}
   @keyframes cart-pulse{
     0%{transform:scale(1)}
     50%{transform:scale(.93);box-shadow:0 0 0 3px rgba(37,99,235,.4)}
@@ -141,8 +194,8 @@
     0%{box-shadow:0 0 0 0 rgba(34,197,94,.85)}
     100%{box-shadow:0 0 0 16px rgba(34,197,94,0)}
   }
-  #scan-video-wrap.flash-added{animation:flash-added .1s ease-out}
-  #assign-video-wrap.flash-added{animation:flash-added .1s ease-out}
+  #scan-video-wrap.flash-added{animation:flash-added .025s ease-out}
+  #assign-video-wrap.flash-added{animation:flash-added .025s ease-out}
 
   /* Savatdagi tovar ko'rsatgichi */
   .cart-badge-overlay{position:absolute;top:7px;left:7px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25)}
@@ -158,11 +211,11 @@
   .prod-card .prod-stock{font-size:13px;color:var(--text3);margin-top:.25rem}
   .prod-card .prod-actions{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.45rem}
   .prod-card .prod-actions .btn{flex:1 1 calc(50% - .35rem);justify-content:center;min-width:0}
-  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.1s}
+  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.025s}
   .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
   .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:.06s;pointer-events:none;max-width:320px}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:.015s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
   .toast.green{background:#166534}
   .toast.red{background:#991b1b}
@@ -178,7 +231,7 @@
   .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
   .sort-bar span{font-size:13px;color:var(--text2);font-weight:600;margin-right:.25rem}
   #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:58px}
-  #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.15s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
+  #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.0375s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
   #mobile-tabbar button .tab-icon{font-size:20px;line-height:1}
   #mobile-tabbar button.active{color:#60a5fa}
   #mobile-tabbar button.active .tab-icon{transform:translateY(-1px)}
@@ -186,10 +239,14 @@
     input:not(.pin-input),select,textarea{font-size:16px!important}
     #sticky-cart{bottom:58px}
     .page{padding-bottom:70px}
-    nav{height:52px;padding:0 .75rem}
+    nav{min-height:52px;padding:0 .75rem}
     nav .logo{font-size:15px}
     #nav-admin,#nav-seller{display:none!important}
     nav .user-badge{font-size:12px;padding:3px 10px}
+    nav .logo #nav-clock{display:none}
+    .nav-right-tools{display:none!important}
+    #nav-more-btn{display:flex!important;align-items:center;justify-content:center}
+    #nav-more-menu{top:calc(52px + var(--safe-t,0px) + 6px)}
     #mobile-tabbar{display:flex}
     .page{padding:.65rem .65rem 70px}
     .page.active{display:block}
@@ -201,8 +258,9 @@
     .prod-card .body{padding:.5rem .6rem}
     .prod-card .prod-name{font-size:13px}
     .prod-card .prod-price{font-size:14px}
-    .prod-card .prod-actions{flex-wrap:wrap;gap:.25rem}
-    .prod-card .prod-actions .btn{flex:1;justify-content:center;min-width:0;font-size:11px;padding:.3rem .25rem}
+    .prod-card .prod-actions{flex-wrap:nowrap;gap:.3rem}
+    .prod-card .prod-actions .btn{flex:1;justify-content:center;min-width:0;font-size:16px;padding:.5rem .2rem}
+    .prod-card .prod-actions .act-label{display:none}
     .login-card{width:calc(100% - 2rem);max-width:380px;padding:2rem 1.5rem}
     .tbl-wrap{border-radius:8px}
     table thead{display:none}
@@ -257,7 +315,7 @@
   #scan-result-box{display:none;margin-top:.75rem;background:var(--green-bg);border:1.5px solid var(--green-border);border-radius:10px;padding:.9rem 1rem}
   #scan-result-box.show{display:block}
   /* FAB scanner button */
-  .scan-fab{position:fixed;right:1.25rem;z-index:110;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;box-shadow:0 4px 16px rgba(245,158,11,.45);font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .scan-fab{position:fixed;right:1.25rem;z-index:110;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;box-shadow:0 4px 16px rgba(245,158,11,.45);font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:.0375s;-webkit-tap-highlight-color:transparent}
   .scan-fab:active{transform:scale(.88)}
   .scan-fab.visible{display:flex}
   @media(max-width:768px){.scan-fab{bottom:70px}}
@@ -293,7 +351,7 @@
   /* Notification Styles */
   #notifications-container{display:none!important}
   #notif-bell-wrap{display:none!important}
-  .notification{padding:1rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-width:300px;animation:slideIn .3s ease;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  .notification{padding:1rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-width:300px;animation:slideIn .075s ease;box-shadow:0 4px 12px rgba(0,0,0,.15)}
   @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
   .notification-success{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
   .notification-error{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
@@ -305,7 +363,7 @@
   @keyframes loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
   
   /* Analytics Card */
-  .analytics-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;transition:all .3s ease}
+  .analytics-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;transition:all .075s ease}
   .analytics-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px)}
   .analytics-card .title{font-size:13px;color:var(--text3);font-weight:600;margin-bottom:.5rem}
   .analytics-card .value{font-size:28px;font-weight:700;color:var(--accent);margin-bottom:.5rem}
@@ -350,7 +408,7 @@
   #nav-clock .greet{color:#94a3b8}
 
   /* Kartalar — mayin ko'tarilish effekti */
-  .card,.stat,.prod-card{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+  .card,.stat,.prod-card{transition:transform .0375s ease,box-shadow .0375s ease,border-color .0375s ease}
   .card:hover{box-shadow:0 6px 20px rgba(0,0,0,.08)}
   .stat{position:relative;overflow:hidden;isolation:isolate}
   .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#60a5fa);opacity:.85;border-radius:12px 12px 0 0}
@@ -359,10 +417,10 @@
   .stat.red::before{background:linear-gradient(90deg,var(--red),#f87171)}
   .stat:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.09)}
   .prod-card:hover .img-wrap img{transform:scale(1.06)}
-  .prod-card .img-wrap img{transition:transform .25s ease}
+  .prod-card .img-wrap img{transition:transform .0625s ease}
 
   /* Tugmalar — bosilganda mayin siqilish, gradientli asosiy tugma */
-  .btn{transition:transform .08s ease,box-shadow .12s ease,background .12s ease,border-color .12s ease}
+  .btn{transition:transform .02s ease,box-shadow .03s ease,background .03s ease,border-color .03s ease}
   .btn:active{transform:scale(.96)}
   .btn.blue{background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 2px 8px rgba(37,99,235,.25)}
   .btn.blue:hover{background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 4px 12px rgba(37,99,235,.35)}
@@ -377,15 +435,15 @@
   #login-page::before{width:380px;height:380px;background:#3b82f6;top:-120px;left:-100px;animation:float-orb 10s ease-in-out infinite}
   #login-page::after{width:320px;height:320px;background:#0ea5e9;bottom:-100px;right:-80px;animation:float-orb 12s ease-in-out infinite reverse}
   @keyframes float-orb{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,20px)}}
-  .login-card{position:relative;z-index:1;animation:bounceIn .45s ease}
+  .login-card{position:relative;z-index:1;animation:bounceIn .1125s ease}
 
   /* Modal — silliq ochilish */
-  .modal-overlay{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:fadeIn .15s ease}
-  .modal{animation:modal-pop .18s cubic-bezier(.2,1.1,.4,1)}
+  .modal-overlay{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:fadeIn .0375s ease}
+  .modal{animation:modal-pop .045s cubic-bezier(.2,1.1,.4,1)}
   @keyframes modal-pop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
 
   /* Sahifa almashinuvi */
-  .page.active{animation:page-fade .18s ease}
+  .page.active{animation:page-fade .045s ease}
   @keyframes page-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
   /* Badge — kam zaxira uchun mayin pulslash */
@@ -393,7 +451,7 @@
   @keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 5px rgba(239,68,68,0)}}
 
   /* PWA o'rnatish banneri */
-  #pwa-install-banner{position:fixed;left:1rem;right:1rem;bottom:1rem;max-width:420px;margin:0 auto;background:#1e293b;color:#fff;border-radius:14px;padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:500;transform:translateY(140%);transition:transform .3s cubic-bezier(.2,1,.3,1)}
+  #pwa-install-banner{position:fixed;left:1rem;right:1rem;bottom:1rem;max-width:420px;margin:0 auto;background:#1e293b;color:#fff;border-radius:14px;padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:500;transform:translateY(140%);transition:transform .075s cubic-bezier(.2,1,.3,1)}
   #pwa-install-banner.show{transform:translateY(0)}
   #pwa-install-banner .icon{font-size:26px}
   #pwa-install-banner .txt{flex:1;font-size:12.5px;color:#cbd5e1;line-height:1.4}
@@ -408,7 +466,7 @@
   #shortcuts-help-modal .row:last-child{border-bottom:none}
 
   /* Ovoz tugmasi */
-  #sound-toggle-btn{transition:opacity .15s}
+  #sound-toggle-btn{transition:opacity .0375s}
   #sound-toggle-btn.muted{opacity:.5}
 
   /* Confetti canvas */
@@ -466,13 +524,13 @@
   }
 
   /* ---------- 2) Universal: barcha qurilmalarga moslashuv ---------- */
-  html,body{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+  html,body{-webkit-text-size-adjust:100%;overscroll-behavior-x:contain}
   body{-webkit-tap-highlight-color:transparent;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif;letter-spacing:.1px}
   input,select,textarea,button{font-family:inherit}
   a{color:var(--accent)}
   /* Notch/status-bar bo'lgan qurilmalar (iPhone, ba'zi Android) uchun xavfsiz maydon */
-  nav{padding-top:var(--safe-t)!important;height:calc(56px + var(--safe-t))!important}
-  @media(max-width:768px){ nav{height:calc(52px + var(--safe-t))!important} }
+  nav{padding-top:var(--safe-t)!important;min-height:calc(56px + var(--safe-t))!important}
+  @media(max-width:768px){ nav{min-height:calc(52px + var(--safe-t))!important} }
   #mobile-tabbar{padding-bottom:var(--safe-b);height:calc(58px + var(--safe-b))}
   #sticky-cart{padding-bottom:calc(.85rem + var(--safe-b))}
   .modal-overlay{padding-left:calc(1rem + var(--safe-l));padding-right:calc(1rem + var(--safe-r))}
@@ -550,7 +608,7 @@
   :focus-visible{outline:2px solid var(--accent2)!important;outline-offset:2px}
 
   /* ---------- 10) Yangi: mavzu (accent rang) tanlash uchun kichik doiralar --- */
-  .theme-dot{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;display:inline-block;transition:.15s}
+  .theme-dot{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;display:inline-block;transition:.0375s}
   .theme-dot.active{border-color:var(--text);transform:scale(1.1)}
   .settings-switch{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
   .settings-switch:last-child{border-bottom:none}
@@ -558,8 +616,8 @@
   .settings-switch .sub{font-size:12px;color:var(--text3);font-weight:400;margin-top:2px}
   .switch{position:relative;display:inline-block;width:44px;height:25px;flex-shrink:0}
   .switch input{opacity:0;width:0;height:0}
-  .switch .slider{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:30px;transition:.2s}
-  .switch .slider::before{content:'';position:absolute;height:19px;width:19px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch .slider{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:30px;transition:.05s}
+  .switch .slider::before{content:'';position:absolute;height:19px;width:19px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.05s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
   .switch input:checked + .slider{background:var(--accent)}
   .switch input:checked + .slider::before{transform:translateX(19px)}
 
@@ -572,8 +630,39 @@
 <div id="loading-screen">
   <div class="spinner"></div>
   <h2>🏪 Do'kon Tizimi</h2>
-  <p>Firebase bilan ulanmoqda...</p>
+  <p id="loading-screen-msg">Firebase bilan ulanmoqda...</p>
 </div>
+<script>
+  // YANGI: ZAXIRA "WATCHDOG" — asosiy ilova <script type="module"> ichida
+  // ishlaydi; agar Firebase CDN fayllari (gstatic.com) tarmoq/provayder
+  // tomonidan butunlay bloklansa yoki yuklanmasa, brauzer bu module
+  // skriptni UMUMAN ishga tushirmaydi — natijada yuklash ekrani (spinner)
+  // ABADIY ekranda qolib, foydalanuvchiga "hech narsa ishlamayapti, hatto
+  // scroll ham" degan noto'g'ri taassurot beradi. Bu oddiy (module bo'lmagan)
+  // skript modul muvaffaqiyatsiz bo'lsa ham albatta ishlaydi va 12 soniyadan
+  // keyin foydalanuvchiga aniq xabar va "qayta urinish" tugmasini ko'rsatadi.
+  (function(){
+    var watchdogFired = false;
+    window.__appBooted = false; // asosiy modul yuklanib bo'lgach true bo'ladi
+    setTimeout(function(){
+      if(window.__appBooted) return;
+      watchdogFired = true;
+      var scr = document.getElementById('loading-screen');
+      var msg = document.getElementById('loading-screen-msg');
+      if(scr && !scr.classList.contains('hidden')){
+        if(msg) msg.innerHTML = "Ulanib bo'lmadi. Internet aloqasi yoki tarmoq sozlamalarini (VPN/filtr) tekshiring.";
+        var spinner = scr.querySelector('.spinner');
+        if(spinner) spinner.style.display = 'none';
+        var btn = document.createElement('button');
+        btn.textContent = '🔄 Qayta urinish';
+        btn.className = 'btn-primary';
+        btn.style.cssText = 'max-width:220px;margin-top:.5rem';
+        btn.onclick = function(){ location.reload(); };
+        scr.appendChild(btn);
+      }
+    }, 12000);
+  })();
+</script>
 
 <div id="login-page" style="display:none">
   <div class="login-card">
@@ -609,9 +698,11 @@
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
     <button class="tab" onclick="showPage('history','admin')">📋 Savdo tarixi</button>
     <button class="tab" onclick="showPage('profit','admin')">💹 Foyda</button>
+    <button class="tab" onclick="showPage('analytics','admin')">📈 Analitika</button>
     <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
     <button class="tab" onclick="showPage('debts','admin')">💳 Qarzlar</button>
     <button class="tab" onclick="showPage('expenses','admin')">💰 Xarajatlar</button>
+    <button class="tab" onclick="showPage('ai-assistant','admin')">🤖 AI Tahlilchi</button>
     <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
   </div>
   <div id="nav-seller" style="display:none;gap:.25rem">
@@ -621,18 +712,38 @@
   </div>
   <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
   <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
-  <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#334155;border-color:#475569;color:#94a3b8">🔎</button>
-  <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#334155;border-color:#475569;color:#94a3b8">❔</button>
-  <div id="notif-bell-wrap" style="position:relative;display:none">
-    <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#334155;border-color:#475569;color:#94a3b8">🔔<span id="notif-bell-count" style="display:none"></span></button>
-    <div id="notif-panel" class="hidden"></div>
+  <div class="nav-right-tools" id="nav-right-tools">
+    <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#334155;border-color:#475569;color:#94a3b8">🔎</button>
+    <button class="btn sm" onclick="window.startVoiceSearch && window.startVoiceSearch()" id="voice-search-btn" title="Ovozli qidiruv — mikrofon orqali tovar qidiring" style="background:#334155;border-color:#475569;color:#94a3b8;display:none">🎤</button>
+    <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#334155;border-color:#475569;color:#94a3b8">❔</button>
+    <div id="notif-bell-wrap" style="position:relative;display:none">
+      <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#334155;border-color:#475569;color:#94a3b8">🔔<span id="notif-bell-count" style="display:none"></span></button>
+      <div id="notif-panel" class="hidden"></div>
+    </div>
+    <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#334155;border-color:#475569;color:#94a3b8">🌙</button>
+    <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#334155;border-color:#475569;color:#94a3b8">🧮</button>
+    <button class="btn sm" onclick="window.openNotesBoard && window.openNotesBoard()" id="notes-nav-btn" title="Eslatmalar taxtasi (N)" style="background:#334155;border-color:#475569;color:#94a3b8">📝</button>
+    <button class="btn sm" onclick="window.openShiftModal && window.openShiftModal()" id="shift-nav-btn" title="Kassa smena (K)" style="background:#334155;border-color:#475569;color:#94a3b8">🧾</button>
+    <button class="btn sm" onclick="window.openTasksModal && window.openTasksModal()" id="tasks-nav-btn" title="Vazifalar rejasi (T)" style="background:#334155;border-color:#475569;color:#94a3b8">✅<span id="tasks-due-badge" style="display:none"></span></button>
+    <button class="btn sm" onclick="window.quickLock && window.quickLock()" id="lock-nav-btn" title="Tezkor qulflash (L)" style="background:#334155;border-color:#475569;color:#94a3b8">🔒</button>
+    <button class="btn sm" onclick="logout()" id="logout-btn-desktop" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
   </div>
-  <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#334155;border-color:#475569;color:#94a3b8">🌙</button>
-  <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#334155;border-color:#475569;color:#94a3b8">🧮</button>
-  <button class="btn sm" onclick="window.openNotesBoard && window.openNotesBoard()" id="notes-nav-btn" title="Eslatmalar taxtasi (N)" style="background:#334155;border-color:#475569;color:#94a3b8">📝</button>
-  <button class="btn sm" onclick="window.quickLock && window.quickLock()" id="lock-nav-btn" title="Tezkor qulflash (L)" style="background:#334155;border-color:#475569;color:#94a3b8">🔒</button>
-  <button class="btn sm" onclick="logout()" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
+  <button class="btn sm" id="nav-more-btn" onclick="toggleNavMoreMenu()" title="Ko'proq" style="background:#334155;border-color:#475569;color:#fff;display:none;font-weight:700;font-size:18px;line-height:1;padding:6px 12px">⋮</button>
 </nav>
+
+<div id="nav-more-overlay" class="hidden" onclick="closeNavMoreMenu()"></div>
+<div id="nav-more-menu" class="hidden">
+  <button onclick="openCommandPalette();closeNavMoreMenu()">🔎 <span>Qidiruv</span></button>
+  <button onclick="openShortcutsModal();closeNavMoreMenu()">❔ <span>Yorliqlar</span></button>
+  <button onclick="toggleDarkMode();closeNavMoreMenu()">🌙 <span>Tungi rejim</span></button>
+  <button onclick="window.openCashCalc && window.openCashCalc();closeNavMoreMenu()">🧮 <span>Kalkulyator</span></button>
+  <button onclick="window.openNotesBoard && window.openNotesBoard();closeNavMoreMenu()">📝 <span>Eslatmalar</span></button>
+  <button onclick="window.openShiftModal && window.openShiftModal();closeNavMoreMenu()">🧾 <span>Kassa smena</span></button>
+  <button onclick="window.openTasksModal && window.openTasksModal();closeNavMoreMenu()">✅ <span>Vazifalar</span></button>
+  <button onclick="window.quickLock && window.quickLock();closeNavMoreMenu()">🔒 <span>Tezkor qulflash</span></button>
+  <div class="nav-more-sep"></div>
+  <button class="nav-more-logout" onclick="logout()">🚪 <span>Chiqish</span></button>
+</div>
 
 <div class="page active" id="page-dashboard">
   <div class="section-header">
@@ -644,6 +755,7 @@
         <option value="month">Bu oy</option>
         <option value="all">Hammasi</option>
       </select>
+      <button class="btn sm blue" onclick="showPage('analytics','admin')" title="Bashorat, eng faol soatlar va sotuvchilar taqqoslash">📈 Analitika</button>
       <button class="btn sm amber" onclick="exportDashboardPDF()" title="Umumiy holat hisobotini PDF qilib yuklab olish">📄 Umumiy hisobot (PDF)</button>
       <button class="btn sm blue" onclick="exportSalesCSV()" title="Barcha savdolar tarixini Excel/CSV formatida yuklab olish">📊 Savdolar (CSV)</button>
       <button class="btn sm blue" onclick="exportProductsCSV()" title="Tovarlar ro'yxatini Excel/CSV formatida yuklab olish">📦 Tovarlar (CSV)</button>
@@ -711,7 +823,7 @@
   align-items: center;
   gap: 1rem;
   min-width: 300px;
-  animation: slideIn 0.3s ease;
+  animation: slideIn 0.075s ease;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
@@ -782,7 +894,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem;
-  transition: all 0.3s ease;
+  transition: all 0.075s ease;
 }
 
 .analytics-card:hover {
@@ -841,7 +953,7 @@
   font-size: 24px;
   cursor: pointer;
   color: var(--text3);
-  transition: color 0.2s;
+  transition: color 0.05s;
 }
 
 .modal-close-btn:hover {
@@ -864,7 +976,7 @@
   font-weight: 600;
   color: var(--text3);
   border-bottom: 3px solid transparent;
-  transition: all 0.2s;
+  transition: all 0.05s;
 }
 
 .tab-button.active {
@@ -903,7 +1015,7 @@ tr.selected td {
   100% { background: transparent; }
 }
 tr.row-flash td {
-  animation: row-flash-anim 2.2s ease-out;
+  animation: row-flash-anim 0.55s ease-out;
 }
 
 /* Status Badges */
@@ -1042,7 +1154,7 @@ body.dark tr:hover td {
 
 /* Animation Classes */
 .fade-in {
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.075s ease;
 }
 
 @keyframes fadeIn {
@@ -1055,7 +1167,7 @@ body.dark tr:hover td {
 }
 
 .bounce-in {
-  animation: bounceIn 0.5s ease;
+  animation: bounceIn 0.125s ease;
 }
 
 @keyframes bounceIn {
@@ -1181,6 +1293,32 @@ body.dark tr:hover td {
     <p id="no-profit" style="color:var(--text3);text-align:center;padding:2rem;display:none">Bu davrda savdo yo'q.</p>
   </div>
 </div>
+
+<!-- ============ YANGI (13-BO'LIM): ANALITIKA VA BASHORAT SAHIFASI ============ -->
+<div class="page" id="page-analytics">
+  <div class="section-header">
+    <div><h2>📈 Analitika</h2><p>Bashorat, eng faol soatlar va taqqoslashlar</p></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+      <button class="btn sm amber" onclick="exportAnalyticsPDF()" title="To'liq analitika hisobotini PDF qilib yuklab olish">📄 Analitika (PDF)</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:1.25rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">🔮 Savdo bashorati (keyingi 7 kun)</h3>
+    <div id="analytics-forecast-chart"></div>
+  </div>
+  <div id="analytics-month-compare" style="margin-bottom:1.25rem"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem" id="analytics-grid-2col">
+    <div class="card">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">🕐 Eng faol soatlar (30 kun)</h3>
+      <div id="analytics-peak-hours"></div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">🏅 Sotuvchilar taqqoslash (30 kun)</h3>
+      <div id="analytics-seller-compare"></div>
+    </div>
+  </div>
+</div>
+<style>@media(max-width:900px){ #analytics-grid-2col{grid-template-columns:1fr!important} }</style>
 
 <div class="page" id="page-stock-history">
   <div class="section-header">
@@ -1433,6 +1571,90 @@ body.dark tr:hover td {
     </table>
   </div>
   <p id="no-expenses" style="color:var(--text3);text-align:center;padding:3rem;display:none">Xarajat topilmadi.</p>
+</div>
+
+<!-- ================= YANGI FUNKSIYA: AI TAHLILCHI (Aqlli Yordamchi) =================
+     Uch qismdan iborat:
+     1) Do'kon Salomatligi (Business Health Score) — savdo, ombor, qarz va xarajat
+        ma'lumotlari asosida hisoblanadigan yagona "sog'liq balli" va tavsiyalar.
+     2) Aqlli fikrlar tasmasi (Insights) — avtomatik aniqlanadigan tendentsiya,
+        anomaliya va ogohlantirishlar (odam qidirmasdan, o'zi topib beradi).
+     3) Suhbat orqali savol-javob — o'z ma'lumotlaringiz bo'yicha oddiy o'zbek
+        tilida savol bering ("bugun eng ko'p nima sotildi?", "eng qarzdor kim?"),
+        tizim mahalliy (hech qanday tashqi AI xizmatisiz) hisoblab javob beradi.
+     4) "Vaqt mashinasi" — narx o'zgartirish simulyatori: bir tovar narxini
+        virtual oshirib/tushirib, bashorat qilingan daromad/foyda ta'sirini
+        oldindan ko'rish (real narx o'zgarmaydi, faqat bashorat). -->
+<div class="page" id="page-ai-assistant">
+  <div class="section-header">
+    <div><h2>🤖 AI Tahlilchi</h2><p>Do'koningiz haqida aqlli tahlillar, ogohlantirishlar va bashoratlar</p></div>
+    <button class="btn sm" onclick="window.renderAiAssistant && window.renderAiAssistant()" title="Tahlillarni yangilash">🔄 Yangilash</button>
+  </div>
+
+  <!-- 1) SALOMATLIK BALLI -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="ai-hero">
+      <div class="health-gauge" id="health-gauge">
+        <div class="health-gauge-inner">
+          <div class="val" id="health-score-val">—</div>
+          <div class="lbl">SALOMATLIK BALLI</div>
+          <div class="grade" id="health-grade">—</div>
+        </div>
+      </div>
+      <div style="width:100%">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">📊 Ballga ta'sir qiluvchi omillar</h3>
+        <div id="health-factors"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:1.25rem;align-items:start" id="ai-two-col">
+    <!-- 2) AQLLI FIKRLAR TASMASI -->
+    <div class="card">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:1rem">💡 Aqlli fikrlar va ogohlantirishlar</h3>
+      <div id="ai-insights-feed"></div>
+    </div>
+
+    <!-- 3) SUHBAT ORQALI SAVOL-JAVOB -->
+    <div class="card">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">💬 Do'koningizdan so'rang</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:.75rem">Hech qanday internetga ulanmasdan, faqat SIZNING ma'lumotlaringiz asosida javob beradi.</p>
+      <div id="ai-chat-box">
+        <div id="ai-chat-messages"></div>
+        <div class="ai-chat-input-row">
+          <input type="text" id="ai-chat-input" placeholder="Masalan: bugun eng ko'p nima sotildi?" onkeydown="if(event.key==='Enter') window.sendAiChat()">
+          <button class="btn blue sm" onclick="window.sendAiChat()">➤</button>
+        </div>
+      </div>
+      <div id="ai-suggest-chips" style="margin-top:.6rem"></div>
+    </div>
+  </div>
+
+  <!-- 4) VAQT MASHINASI — NARX SIMULYATORI -->
+  <div class="card" style="margin-top:1.25rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.25rem">🕰️ Vaqt mashinasi — narx o'zgarishi simulyatori</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:1rem">Tovar narxini virtual o'zgartirib, kunlik/oylik daromad va foydaga bashorat qilingan ta'sirini oldindan ko'ring. Haqiqiy narx o'zgarmaydi.</p>
+    <div class="form-row">
+      <div class="field">
+        <label>Tovarni tanlang</label>
+        <select id="whatif-product" onchange="window.runWhatIf && window.runWhatIf()"></select>
+      </div>
+      <div class="field">
+        <label>Talab moslashuvchanligi (elastiklik) <span style="font-weight:400;color:var(--text3)">— narx 1% o'zgarsa, talab necha % o'zgaradi</span></label>
+        <select id="whatif-elasticity" onchange="window.runWhatIf && window.runWhatIf()">
+          <option value="-0.5">Past (-0.5) — zaruriy tovar</option>
+          <option value="-1.2" selected>O'rtacha (-1.2) — odatiy tovar</option>
+          <option value="-2.2">Yuqori (-2.2) — o'rinbosari ko'p tovar</option>
+        </select>
+      </div>
+    </div>
+    <div class="whatif-slider-wrap">
+      <span style="font-size:13px;font-weight:600;min-width:110px">Narx o'zgarishi:</span>
+      <input type="range" id="whatif-price-pct" min="-50" max="50" step="5" value="0" oninput="window.runWhatIf && window.runWhatIf()">
+      <span style="font-size:16px;font-weight:800;min-width:60px;text-align:right" id="whatif-pct-label">0%</span>
+    </div>
+    <div id="whatif-results"></div>
+  </div>
 </div>
 
 <div class="page" id="page-sell">
@@ -1747,6 +1969,8 @@ body.dark tr:hover td {
     <div style="display:flex;flex-direction:column;gap:.6rem;margin:.75rem 0">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Global qidiruv (tovar/qarzdor)</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">Ctrl/Cmd + K</kbd></div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Naqd pul / qaytim hisoblagichi</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">C</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Kassa smena (ochish/yopish)</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">K</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Vazifalar rejasi</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">T</kbd></div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Ushbu yordam oynasini ochish</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">?</kbd></div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem"><span style="font-size:13px;color:var(--text2)">Ochiq oyna/panelni yopish</span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.2rem .5rem;font-size:12px;font-family:monospace">Esc</kbd></div>
     </div>
@@ -1835,6 +2059,7 @@ body.dark tr:hover td {
       </div>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('modal-receipt')">Yopish</button>
+      <button class="btn" onclick="window.announceReceipt && window.announceReceipt()" id="receipt-voice-btn" title="Jami summani ovoz orqali aytish" style="display:none">🔊 Aytish</button>
       <button class="btn" onclick="shareReceipt()">📤 Ulashish</button>
       <button class="btn blue" onclick="printReceipt()">🖨 Chop etish</button>
     </div>
@@ -1898,6 +2123,9 @@ body.dark tr:hover td {
   </button>
   <button id="mtab-debts" onclick="showPage('debts', currentRole)" style="display:none">
     <span class="tab-icon">💳</span>Qarzlar
+  </button>
+  <button id="mtab-ai-assistant" onclick="showPage('ai-assistant','admin')" style="display:none">
+    <span class="tab-icon">🤖</span>AI
   </button>
   <button id="mtab-settings" onclick="showPage('settings','admin')" style="display:none">
     <span class="tab-icon">⚙️</span>Sozlama
@@ -2105,6 +2333,7 @@ body.dark tr:hover td {
     <div style="display:flex;align-items:center;gap:.5rem;border:1.5px solid var(--border2);border-radius:10px;padding:.15rem .75rem;margin-bottom:.5rem">
       <span style="font-size:16px;color:var(--text3)">🔎</span>
       <input id="cmdk-input" type="text" placeholder="Tovar, qarzdor yoki tashkilot qidirish..." oninput="renderCmdkResults()" style="flex:1;border:none;outline:none;padding:.65rem 0;font-size:15px;background:transparent;color:var(--text)">
+      <button id="cmdk-voice-btn" onclick="window.startVoiceSearch && window.startVoiceSearch()" title="Ovozli qidiruv" style="display:none;background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0 .2rem">🎤</button>
       <span style="font-size:11px;color:var(--text3);border:1px solid var(--border2);border-radius:4px;padding:1px 5px">Esc</span>
     </div>
     <div id="cmdk-results" style="max-height:50vh;overflow-y:auto"></div>
@@ -2161,6 +2390,39 @@ body.dark tr:hover td {
     <div class="modal-footer">
       <button class="btn green" onclick="window.exportAuditLog && window.exportAuditLog()">⬇ Eksport (JSON)</button>
       <button class="btn" onclick="closeModal('modal-auditlog')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ YANGI (14-bo'lim): KASSA SMENA VA VAZIFALAR MODALLARI ============ -->
+<div class="modal-overlay hidden" id="modal-shift">
+  <div class="modal" style="max-width:460px">
+    <h3>🧾 Kassa smena</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.9rem;margin-bottom:1rem">Smena ma'lumotlari faqat shu qurilmada saqlanadi. Naqd oqimi taxminiy hisoblanadi (barcha savdolar naqd deb olinadi).</p>
+    <div id="shift-content"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-shift')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-tasks">
+  <div class="modal" style="max-width:480px">
+    <h3>✅ Vazifalar rejasi</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.9rem;margin-bottom:1rem">Muddatli vazifalar — faqat shu qurilmada saqlanadi (bulutga yuborilmaydi).</p>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+      <input type="text" id="new-task-input" placeholder="Yangi vazifa yozing..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .85rem;font-size:14px;outline:none" onkeydown="if(event.key==='Enter'){document.getElementById('new-task-due').focus();}">
+      <div style="display:flex;gap:.5rem">
+        <input type="date" id="new-task-due" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .6rem;font-size:13px;outline:none">
+        <input type="time" id="new-task-due-time" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .6rem;font-size:13px;outline:none">
+        <button class="btn sm blue" onclick="window.addTask && window.addTask()">+ Qo'shish</button>
+      </div>
+    </div>
+    <div id="tasks-list" style="display:flex;flex-direction:column;gap:.5rem;max-height:45vh;overflow-y:auto"></div>
+    <p id="tasks-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Hozircha vazifa yo'q.</p>
+    <div class="modal-footer">
+      <button class="btn" onclick="window.clearDoneTasks && window.clearDoneTasks()">Bajarilganlarni tozalash</button>
+      <button class="btn blue" onclick="closeModal('modal-tasks')">Yopish</button>
     </div>
   </div>
 </div>
@@ -2332,6 +2594,8 @@ const firebaseConfig = {
   appId: "1:1024226826394:web:3a052adf83b46202c96723",
   measurementId: "G-75RXS3WVWC"
 };
+
+window.__appBooted = true; // modul muvaffaqiyatli yuklandi — watchdog endi kerak emas
 
 let db = null;
 let settingsRef = null;
@@ -2924,7 +3188,7 @@ window.completeLogin = function(role, sellerName, sellerId){
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
-    ['dashboard','products','history','profit','stock-history','debts','expenses','settings'].forEach(t=>{
+    ['dashboard','products','history','profit','stock-history','debts','expenses','ai-assistant','settings'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
     ['sell','my-sales'].forEach(t=>{
@@ -3014,6 +3278,7 @@ window.showPage = function(page, role){
   if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
   if(page==='expenses'){ setExpenseFilter('month'); }
+  if(page==='ai-assistant'){ window.renderAiAssistant && window.renderAiAssistant(); }
   updateScanFab(page);
 }
 
@@ -3060,7 +3325,7 @@ window.renderDashboard = function(){
             <span style="font-size:13px;font-weight:600;color:${reached?'var(--green)':'var(--text2)'}">${fmt(todayTotal)} / ${fmt(goal)} so'm ${reached?'✅':''}</span>
           </div>
           <div style="background:var(--surface2);border-radius:20px;height:14px;overflow:hidden;border:1px solid var(--border)">
-            <div style="height:100%;width:${pct}%;background:${reached?'linear-gradient(90deg,#16a34a,#22c55e)':'linear-gradient(90deg,#2563eb,#60a5fa)'};transition:width .3s ease;border-radius:20px"></div>
+            <div style="height:100%;width:${pct}%;background:${reached?'linear-gradient(90deg,#16a34a,#22c55e)':'linear-gradient(90deg,#2563eb,#60a5fa)'};transition:width .075s ease;border-radius:20px"></div>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:.35rem">${pct.toFixed(0)}% bajarildi ${reached?'— maqsadga yetdingiz, tabriklaymiz! 🎉':''}</div>
         </div>`;
@@ -3383,10 +3648,10 @@ window.renderProducts = function(){
           }
         </div>
         <div class="prod-actions">
-          <button class="btn sm green" onclick="openRestock('${p.id}')">📦 Kirim</button>
-          <button class="btn sm amber" onclick="openReturnStock('${p.id}')">↩ Chiqim</button>
-          <button class="btn sm" onclick="openEditProduct('${p.id}')">✏️ Tahrirlash</button>
-          <button class="btn sm red" onclick="deleteProduct('${p.id}')">🗑 O'chirish</button>
+          <button class="btn sm green" onclick="openRestock('${p.id}')" title="Kirim" aria-label="Kirim">📦<span class="act-label"> Kirim</span></button>
+          <button class="btn sm amber" onclick="openReturnStock('${p.id}')" title="Chiqim" aria-label="Chiqim">↩<span class="act-label"> Chiqim</span></button>
+          <button class="btn sm" onclick="openEditProduct('${p.id}')" title="Tahrirlash" aria-label="Tahrirlash">✏️<span class="act-label"> Tahrirlash</span></button>
+          <button class="btn sm red" onclick="deleteProduct('${p.id}')" title="O'chirish" aria-label="O'chirish">🗑<span class="act-label"> O'chirish</span></button>
         </div>
       </div>`;
     }
@@ -3727,7 +3992,7 @@ window.addToCartWithFeedback = function(id, cardEl){
   // Visual feedback on card
   if(cardEl){
     cardEl.classList.add('cart-added');
-    setTimeout(()=>cardEl.classList.remove('cart-added'),300);
+    setTimeout(()=>cardEl.classList.remove('cart-added'),75);
   }
   updateCartBtn();
   // Only update this specific card's data attributes (no full re-render)
@@ -4509,7 +4774,7 @@ function renderMySalesInner(){
       return '';
     }
   }).join('');
-  if(flashId){ window._lastSaleFlashId=null; setTimeout(()=>{ document.querySelectorAll('#my-sales-body tr.row-flash').forEach(r=>r.classList.remove('row-flash')); },2500); }
+  if(flashId){ window._lastSaleFlashId=null; setTimeout(()=>{ document.querySelectorAll('#my-sales-body tr.row-flash').forEach(r=>r.classList.remove('row-flash')); },625); }
 }
 window.revertSale=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
@@ -5591,7 +5856,7 @@ window.toast=function(msg,type=''){
   el.textContent=msg; el.className='toast '+(type||'');
   requestAnimationFrame(()=>el.classList.add('show'));
   clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>el.classList.remove('show'), 1200); // 2600 → 1200
+  _toastTimer=setTimeout(()=>el.classList.remove('show'), 300); // 2600 → 1200
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -7084,7 +7349,7 @@ function processBatchCodes(rawCodes){
 
     // ✅ AI tavsiya qilgan o'zgarish
     if(isAutoScanMode()){
-      setTimeout(() => resetScanForNext(), 300);
+      setTimeout(() => resetScanForNext(), 75);
     }
 
   } else {
@@ -7108,7 +7373,7 @@ function processBatchCodes(rawCodes){
 
     // ✅ AI tavsiya qilgan o'zgarish
     if(isAutoScanMode()){
-      setTimeout(() => resetScanForNext(), 300);
+      setTimeout(() => resetScanForNext(), 75);
     }
   }
 
@@ -7422,7 +7687,7 @@ window.processCode = function(code){
     
     showScanProduct(prod, true, result.type);
     if(!isAutoScanMode()){
-      setTimeout(() => resetScanForNext(), 300);
+      setTimeout(() => resetScanForNext(), 75);
     }
   } else {
     _scannedProductId = null;
@@ -8245,7 +8510,7 @@ window.doAssignBarcode = async function(code, format){
     document.getElementById('assign-status').textContent = `✅ Kod maydonga yozildi: ${code}`;
     document.getElementById('assign-status').style.color = 'var(--green)';
     toast('✅ Kod maydonga yozildi','green');
-    setTimeout(()=>{ closeAssignBarcode(); }, 500);
+    setTimeout(()=>{ closeAssignBarcode(); }, 125);
     return;
   }
 
@@ -9329,6 +9594,769 @@ if(typeof window.renderDashboard === 'function'){
   };
 }
 
+
+// ================================================================
+// 🆕 13-BO'LIM: ANALITIKA/BASHORAT SAHIFASI + TEXNIK/UX YAXSHILANISHLAR
+// Bu blok ilgari yozilgan HECH BIR narsani o'chirmaydi yoki qayta
+// yozmaydi — faqat yangi, mustaqil imkoniyatlar qo'shadi (10-BO'LIM va
+// 12.x bo'limlaridagi "mavjud funksiyani o'rab kengaytirish" uslubiga
+// mos ravishda):
+//  13.1 Savdo bashorati — keyingi 7 kun uchun oddiy chiziqli trend (regressiya)
+//  13.2 Eng faol soatlar (peak hours) tahlili — so'nggi 30 kun
+//  13.3 Oylik solishtiruv — bu oy vs o'tgan oy, o'sish/pasayish %
+//  13.4 Sotuvchilar taqqoslash grafigi — so'nggi 30 kun
+//  13.5 To'liq Analitika sahifasini PDF qilib yuklash
+//  13.6 Klaviatura yorliqlari yordam oynasi ('?' tugmasi)
+//  13.7 Offline holatni yaxshilash — oxirgi sinxronizatsiya vaqti + qayta urinish
+// ================================================================
+
+function esc13(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
+
+// ---------- 13.1 SAVDO BASHORATI (oddiy chiziqli regressiya) ----------
+function computeSalesForecast13(){
+  const now = new Date();
+  const days = [];
+  for(let i=29;i>=0;i--){ const d=new Date(now); d.setDate(now.getDate()-i); d.setHours(0,0,0,0); days.push(d); }
+  const totals = days.map(d => DB.sales.filter(s=>!s.reverted && isSameDay(new Date(s.date), d)).reduce((a,s)=>a+(Number(s.total)||0),0));
+  const n = totals.length;
+  const xs = totals.map((_,i)=>i);
+  const sumX = xs.reduce((a,b)=>a+b,0);
+  const sumY = totals.reduce((a,b)=>a+b,0);
+  const sumXY = xs.reduce((a,x,i)=>a+x*totals[i],0);
+  const sumX2 = xs.reduce((a,x)=>a+x*x,0);
+  const denom = (n*sumX2 - sumX*sumX) || 1;
+  const b = (n*sumXY - sumX*sumY) / denom;
+  const a = (sumY - b*sumX) / n;
+  const avg = n ? sumY/n : 0;
+  const forecast = [];
+  for(let i=0;i<7;i++){
+    const x = n + i;
+    let val = a + b*x;
+    if(!isFinite(val) || val < 0) val = avg;
+    forecast.push(Math.round(val));
+  }
+  return { history: totals.slice(-14), historyDays: days.slice(-14), forecast, avg };
+}
+
+function renderForecastChart13(){
+  const el = document.getElementById('analytics-forecast-chart');
+  if(!el) return;
+  const { history, historyDays, forecast } = computeSalesForecast13();
+  const all = history.concat(forecast);
+  const max = Math.max(...all, 1);
+  const w = 720, h = 190, padB = 26, padT = 14, barGap = 5;
+  const total = all.length;
+  const barW = (w - barGap*(total+1)) / total;
+  const dayNames = ['Yak','Dush','Sesh','Chor','Pay','Jum','Shan'];
+  let bars = '';
+  all.forEach((v,i)=>{
+    const isForecast = i >= history.length;
+    const barH = Math.max(2, (v/max) * (h - padB - padT));
+    const x = barGap + i*(barW+barGap);
+    const y = h - padB - barH;
+    const color = isForecast ? 'var(--amber)' : 'var(--accent)';
+    const opacity = isForecast ? .55 : .9;
+    bars += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${color}" opacity="${opacity}"${isForecast?' stroke="var(--amber)" stroke-dasharray="2,2" stroke-width="1"':''}></rect>`;
+    let lbl = '';
+    if(isForecast){
+      const fd = new Date(); fd.setDate(fd.getDate() + (i - history.length + 1));
+      lbl = dayNames[fd.getDay()];
+    } else {
+      lbl = dayNames[historyDays[i].getDay()];
+    }
+    if(barW > 12) bars += `<text x="${x+barW/2}" y="${h-padB+15}" text-anchor="middle" font-size="9" fill="var(--text3)">${lbl}</text>`;
+  });
+  // ajratuvchi chiziq — tarix va bashorat orasida
+  const splitX = barGap + history.length*(barW+barGap) - barGap/2;
+  bars += `<line x1="${splitX}" y1="${padT}" x2="${splitX}" y2="${h-padB}" stroke="var(--border2)" stroke-dasharray="3,3" stroke-width="1"></line>`;
+  const forecastTotal = forecast.reduce((a,b)=>a+b,0);
+  el.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:210px;display:block">${bars}</svg>
+    <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:.35rem">
+      <span style="color:var(--accent);font-weight:700">■</span> so'nggi 14 kun (haqiqiy) &nbsp;
+      <span style="color:var(--amber);font-weight:700">■</span> keyingi 7 kun (bashorat) &nbsp;·&nbsp;
+      Bashorat qilingan haftalik jami: <strong style="color:var(--amber)">${fmt(forecastTotal)} so'm</strong>
+    </p>`;
+}
+
+// ---------- 13.2 ENG FAOL SOATLAR (PEAK HOURS) ----------
+function renderPeakHoursChart13(){
+  const el = document.getElementById('analytics-peak-hours');
+  if(!el) return;
+  const now = new Date();
+  const cutoff = new Date(now); cutoff.setDate(now.getDate()-30);
+  const hours = new Array(24).fill(0);
+  (DB.sales||[]).forEach(s=>{
+    if(s.reverted) return;
+    const d = new Date(s.date);
+    if(isNaN(d.getTime()) || d < cutoff) return;
+    hours[d.getHours()] += (Number(s.total)||0);
+  });
+  const max = Math.max(...hours, 1);
+  const w = 720, h = 170, padB = 22, barGap = 2.5;
+  const barW = (w - barGap*25) / 24;
+  let bars = '';
+  hours.forEach((v,hh)=>{
+    const barH = Math.max(1, (v/max) * (h - padB - 8));
+    const x = barGap + hh*(barW+barGap);
+    const y = h - padB - barH;
+    const isPeak = v === max && v > 0;
+    bars += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${isPeak?'var(--accent)':'var(--green)'}" opacity="${isPeak?1:.65}"></rect>`;
+    if(hh % 3 === 0) bars += `<text x="${x+barW/2}" y="${h-padB+13}" text-anchor="middle" font-size="9" fill="var(--text3)">${hh}</text>`;
+  });
+  const totalSum = hours.reduce((a,b)=>a+b,0);
+  const peakHour = hours.indexOf(max);
+  el.innerHTML = totalSum > 0 ? `
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:190px;display:block">${bars}</svg>
+    <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:.35rem">Eng faol soat: <strong style="color:var(--accent)">${peakHour}:00–${(peakHour+1)%24}:00</strong> (so'nggi 30 kun ma'lumoti asosida)</p>
+  ` : '<p style="color:var(--text3);text-align:center;padding:1.5rem;font-size:13px">So\'nggi 30 kunda savdo yo\'q.</p>';
+}
+
+// ---------- 13.3 OYLIK SOLISHTIRUV ----------
+function renderMonthComparison13(){
+  const el = document.getElementById('analytics-month-compare');
+  if(!el) return;
+  const now = new Date();
+  const curM = now.getMonth(), curY = now.getFullYear();
+  const prevRef = new Date(curY, curM-1, 1);
+  const prevM = prevRef.getMonth(), prevY = prevRef.getFullYear();
+  function sumMonth(m,y){
+    return (DB.sales||[]).filter(s=>{
+      if(s.reverted) return false;
+      const d = new Date(s.date);
+      return !isNaN(d.getTime()) && d.getMonth()===m && d.getFullYear()===y;
+    }).reduce((acc,s)=>{ acc.rev += (Number(s.total)||0); acc.cost += (typeof s.cost==='number'?s.cost:0); return acc; }, {rev:0,cost:0});
+  }
+  const cur = sumMonth(curM,curY), prev = sumMonth(prevM,prevY);
+  const curProfit = cur.rev - cur.cost, prevProfit = prev.rev - prev.cost;
+  function pctChange(a,b){ if(!b) return a>0 ? 100 : 0; return ((a-b)/b*100); }
+  const revChange = pctChange(cur.rev, prev.rev);
+  const profitChange = pctChange(curProfit, prevProfit);
+  function badge(v){
+    const up = v >= 0;
+    return `<span style="font-size:12px;font-weight:700;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(v).toFixed(1)}%</span>`;
+  }
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="analytics-card">
+        <div class="title">💰 Tushum (bu oy)</div>
+        <div class="value">${fmt(cur.rev)}</div>
+        <div class="change">${badge(revChange)} <span style="color:var(--text3);font-weight:400">o'tgan oy: ${fmt(prev.rev)} so'm</span></div>
+      </div>
+      <div class="analytics-card">
+        <div class="title">💹 Sof foyda (bu oy)</div>
+        <div class="value" style="color:var(--green)">${fmt(curProfit)}</div>
+        <div class="change">${badge(profitChange)} <span style="color:var(--text3);font-weight:400">o'tgan oy: ${fmt(prevProfit)} so'm</span></div>
+      </div>
+    </div>`;
+}
+
+// ---------- 13.4 SOTUVCHILAR TAQQOSLASH (so'nggi 30 kun) ----------
+function renderSellerComparisonChart13(){
+  const el = document.getElementById('analytics-seller-compare');
+  if(!el) return;
+  const now = new Date(); const cutoff = new Date(now); cutoff.setDate(now.getDate()-30);
+  const bySeller = {};
+  (DB.sales||[]).forEach(s=>{
+    if(s.reverted) return;
+    const d = new Date(s.date);
+    if(isNaN(d.getTime()) || d < cutoff) return;
+    const nm = s.seller || "Noma'lum";
+    if(!bySeller[nm]) bySeller[nm] = {rev:0, count:0};
+    bySeller[nm].rev += (Number(s.total)||0);
+    bySeller[nm].count += 1;
+  });
+  const entries = Object.entries(bySeller).sort((a,b)=>b[1].rev-a[1].rev);
+  if(!entries.length){ el.innerHTML = '<p style="color:var(--text3);font-size:13px;text-align:center;padding:1rem">So\'nggi 30 kunda savdo yo\'q.</p>'; return; }
+  const max = Math.max(...entries.map(e=>e[1].rev));
+  el.innerHTML = entries.map(([nm,d],i)=>`
+    <div style="margin-bottom:.7rem">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+        <span style="font-weight:600">${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}${esc13(nm)}</span>
+        <span>${fmt(d.rev)} so'm · ${d.count} ta chek</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;height:12px;overflow:hidden">
+        <div style="height:100%;width:${max?(d.rev/max*100):0}%;background:linear-gradient(90deg,#2563eb,#60a5fa);border-radius:6px"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ---------- ANALITIKA SAHIFASINI TO'LIQ CHIZISH ----------
+window.renderAnalyticsPage13 = function(){
+  try{ renderForecastChart13(); }catch(e){ console.error(e); }
+  try{ renderPeakHoursChart13(); }catch(e){ console.error(e); }
+  try{ renderMonthComparison13(); }catch(e){ console.error(e); }
+  try{ renderSellerComparisonChart13(); }catch(e){ console.error(e); }
+};
+
+// showPage'ni mavjud kodni buzmasdan o'rab kengaytiramiz (10-BO'LIM/12.x'da
+// qo'llanilgan xuddi shu uslub — renderDashboard, openReceiptModal va h.k.)
+if(typeof window.showPage === 'function'){
+  const _origShowPage13 = window.showPage;
+  window.showPage = function(page, role){
+    const r = _origShowPage13.apply(this, arguments);
+    if(page === 'analytics'){ try{ window.renderAnalyticsPage13(); }catch(e){ console.error(e); } }
+    return r;
+  };
+}
+
+// ---------- 13.5 ANALITIKA SAHIFASINI PDF QILIB YUKLASH ----------
+window.exportAnalyticsPDF = function(){
+  if(typeof window.jspdf === 'undefined'){ toast("PDF kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'pt' });
+  const fc = computeSalesForecast13();
+  const forecastTotal = fc.forecast.reduce((a,b)=>a+b,0);
+
+  doc.setFontSize(16); doc.setTextColor(30);
+  doc.text("📈 Analitika va bashorat hisoboti", 40, 40);
+  doc.setFontSize(10); doc.setTextColor(120);
+  doc.text(`Yaratildi: ${new Date().toLocaleString('uz-UZ')}  ·  ${window.DB.shopName||"Do'kon"}`, 40, 58);
+  doc.setFontSize(11); doc.setTextColor(30);
+  doc.text(`Keyingi 7 kunlik taxminiy savdo hajmi: ${fmt(forecastTotal)} so'm`, 40, 82);
+
+  const now = new Date(); const cutoff = new Date(now); cutoff.setDate(now.getDate()-30);
+  const bySeller = {};
+  (DB.sales||[]).forEach(s=>{
+    if(s.reverted) return;
+    const d = new Date(s.date);
+    if(isNaN(d.getTime()) || d < cutoff) return;
+    const nm = s.seller || "Noma'lum";
+    bySeller[nm] = (bySeller[nm]||0) + (Number(s.total)||0);
+  });
+  const sellerRows = Object.entries(bySeller).sort((a,b)=>b[1]-a[1]).map(([nm,v],i)=>[String(i+1), nm, fmt(v)+" so'm"]);
+
+  let y = 100;
+  if(sellerRows.length){
+    doc.autoTable({
+      startY:y, head:[['#','Sotuvchi',"So'nggi 30 kun tushumi"]], body: sellerRows,
+      styles:{fontSize:9, cellPadding:5}, headStyles:{fillColor:[37,99,235], textColor:255, fontStyle:'bold'}, margin:{left:40,right:40}
+    });
+    y = doc.lastAutoTable.finalY + 25;
+  }
+  doc.autoTable({
+    startY:y, head:[['Kun (bashorat)', "Taxminiy savdo (so'm)"]],
+    body: fc.forecast.map((v,i)=>{ const d = new Date(); d.setDate(d.getDate()+i+1); return [d.toLocaleDateString('uz-UZ'), fmt(v)]; }),
+    styles:{fontSize:9, cellPadding:5}, headStyles:{fillColor:[217,119,6], textColor:255, fontStyle:'bold'}, margin:{left:40,right:40}
+  });
+  doc.save(`analitika_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('✓ Analitika PDF yuklandi','green');
+};
+
+// ---------- 13.6 KLAVIATURA YORLIQLARI YORDAM OYNASI ('?') ----------
+function ensureShortcutsHelpEl13(){
+  let el = document.getElementById('shortcuts-help-overlay-13');
+  if(el) return el;
+  el = document.createElement('div');
+  el.id = 'shortcuts-help-overlay-13';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:none;align-items:center;justify-content:center;padding:1rem';
+  el.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:1.5rem;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <h3 style="font-size:17px;font-weight:700;margin-bottom:1rem">⌨️ Klaviatura yorliqlari</h3>
+    <div style="display:flex;flex-direction:column;gap:.6rem;font-size:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span>Naqd pul kalkulyatori</span><kbd style="background:var(--surface2);padding:2px 9px;border-radius:5px;font-weight:700;border:1px solid var(--border2)">C</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span>Eslatmalar taxtasi</span><kbd style="background:var(--surface2);padding:2px 9px;border-radius:5px;font-weight:700;border:1px solid var(--border2)">N</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span>Tezkor qulflash</span><kbd style="background:var(--surface2);padding:2px 9px;border-radius:5px;font-weight:700;border:1px solid var(--border2)">L</kbd></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span>Ushbu ro'yxatni ko'rsatish</span><kbd style="background:var(--surface2);padding:2px 9px;border-radius:5px;font-weight:700;border:1px solid var(--border2)">?</kbd></div>
+    </div>
+    <button class="btn blue" style="width:100%;margin-top:1.25rem" onclick="toggleShortcutsHelp13()">Yopish</button>
+  </div>`;
+  el.addEventListener('click', (e)=>{ if(e.target===el) toggleShortcutsHelp13(); });
+  document.body.appendChild(el);
+  return el;
+}
+window.toggleShortcutsHelp13 = function(){
+  const el = ensureShortcutsHelpEl13();
+  const willOpen = el.style.display === 'none' || !el.style.display;
+  el.style.display = willOpen ? 'flex' : 'none';
+};
+document.addEventListener('keydown', (e)=>{
+  const tag = (e.target && e.target.tagName) || '';
+  if(['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const appVisible = document.getElementById('app') && document.getElementById('app').style.display !== 'none';
+  if(!appVisible) return;
+  if(e.key === '?'){ window.toggleShortcutsHelp13(); }
+  else if(e.key === 'Escape'){ const el = document.getElementById('shortcuts-help-overlay-13'); if(el && el.style.display==='flex') el.style.display='none'; }
+});
+// Kichik "?" yordam tugmasi — sozlamalar bo'limiga (agar mavjud bo'lsa)
+// bezovta qilmasdan, faqat nav'ning o'ng tomoniga qo'shiladi.
+(function addShortcutsHelpButton13(){
+  const tryAdd = () => {
+    const wrap = document.querySelector('.nav-right-tools');
+    if(!wrap || document.getElementById('shortcuts-help-btn-13')) return;
+    const btn = document.createElement('button');
+    btn.id = 'shortcuts-help-btn-13';
+    btn.title = "Klaviatura yorliqlari (? tugmasi)";
+    btn.style.cssText = 'background:#334155;border:none;color:#94a3b8;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;font-weight:700';
+    btn.textContent = '?';
+    btn.onclick = () => window.toggleShortcutsHelp13();
+    wrap.appendChild(btn);
+  };
+  window.addEventListener('load', () => setTimeout(tryAdd, 500));
+})();
+
+// ---------- 13.7 OFFLINE HOLATNI YAXSHILASH ----------
+// Mavjud #offline-banner elementini o'chirmasdan, uning yoniga oxirgi
+// sinxronizatsiya vaqtini va "qayta urinish" tugmasini qo'shamiz.
+// updateOfflineBanner() alohida <script type="module"> ichida bo'lgani
+// uchun uni to'g'ridan-to'g'ri chaqira olmaymiz — shuning uchun mustaqil,
+// o'zining online/offline tinglovchisi orqali ishlaydi.
+function ensureSyncInfoEl13(){
+  let el = document.getElementById('sync-info-13');
+  if(el) return el;
+  const banner = document.getElementById('offline-banner');
+  if(!banner || !banner.parentElement) return null;
+  el = document.createElement('span');
+  el.id = 'sync-info-13';
+  el.style.cssText = 'display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;align-items:center;gap:6px;margin-left:4px';
+  el.innerHTML = `<span id="sync-info-13-text"></span><button onclick="location.reload()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;cursor:pointer">🔄 Qayta urinish</button>`;
+  banner.parentElement.insertBefore(el, banner.nextSibling);
+  return el;
+}
+function updateSyncInfo13(){
+  const el = ensureSyncInfoEl13();
+  if(!el) return;
+  const txt = document.getElementById('sync-info-13-text');
+  if(navigator.onLine){
+    el.style.display = 'none';
+  } else {
+    el.style.display = 'inline-flex';
+    const last = parseInt(localStorage.getItem('dokon_last_sync_ok')||'0', 10);
+    if(txt) txt.textContent = last ? `Oxirgi sink: ${new Date(last).toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})}` : "Hali sinxronlanmagan";
+  }
+}
+window.addEventListener('online', ()=>{ localStorage.setItem('dokon_last_sync_ok', String(Date.now())); setTimeout(updateSyncInfo13, 300); });
+window.addEventListener('offline', ()=> setTimeout(updateSyncInfo13, 300));
+window.addEventListener('load', ()=> setTimeout(updateSyncInfo13, 1200));
+setInterval(()=>{ try{ if(navigator.onLine) localStorage.setItem('dokon_last_sync_ok', String(Date.now())); updateSyncInfo13(); }catch(e){} }, 30000);
+
+// =====================================================================
+// ===== YANGI FUNKSIYA (14-bo'lim): AI TAHLILCHI — AQLLI YORDAMCHI =====
+// =====================================================================
+// Bu blok to'rtta yangi imkoniyatni ta'minlaydi:
+//  14.1  computeHealthScore()   — Do'kon Salomatligi balli (0-100)
+//  14.2  generateAiInsights()   — avtomatik aniqlangan fikrlar tasmasi
+//  14.3  askAiQuestion()/sendAiChat() — mahalliy (offline) savol-javob
+//  14.4  runWhatIf()            — narx o'zgarishi simulyatori ("Vaqt mashinasi")
+// Barchasi FAQAT allaqachon xotirada mavjud bo'lgan DB.* massivlaridan
+// o'qiydi — hech qanday Firebase yozuvi yoki tashqi tarmoq so'rovi talab
+// qilinmaydi, shuning uchun offlayn holatda ham to'liq ishlaydi.
+
+const AI_DAY_MS = 24*60*60*1000;
+let aiChatHistory = []; // {role:'user'|'bot', text}
+
+function aiSalesInRange(days){
+  const since = Date.now() - days*AI_DAY_MS;
+  return (DB.sales||[]).filter(s=>!s.reverted && new Date(s.date).getTime()>=since);
+}
+function aiSum(arr, fn){ return arr.reduce((a,x)=>a+fn(x),0); }
+
+// ---------- 14.1 DO'KON SALOMATLIGI BALLI ----------
+function computeHealthScore(){
+  const products = DB.products||[];
+  const last30 = aiSalesInRange(30);
+  const prev30 = (DB.sales||[]).filter(s=>{
+    if(s.reverted) return false;
+    const t = new Date(s.date).getTime();
+    return t < Date.now()-30*AI_DAY_MS && t >= Date.now()-60*AI_DAY_MS;
+  });
+  const revenue30 = aiSum(last30, s=>s.total);
+  const profit30 = aiSum(last30, s=>(s.price - (s.cost||0))*s.qty);
+  const revenuePrev30 = aiSum(prev30, s=>s.total);
+
+  // a) Foyda marjasi (foyda/daromad)
+  const marginPct = revenue30>0 ? (profit30/revenue30*100) : 0;
+  const marginScore = Math.max(0, Math.min(100, marginPct/30*100)); // 30%+ marja = 100 ball
+
+  // b) Ombor holati (kam/tugagan tovarlar ulushi)
+  const lowTh = DB.lowStockThreshold||5;
+  const lowCount = products.filter(p=>p.stock<=lowTh).length;
+  const stockScore = products.length ? Math.max(0, 100 - (lowCount/products.length*100)) : 100;
+
+  // c) Qarz nisbati (faol qarz / oxirgi 30 kunlik daromad)
+  const activeDebt = aiSum((DB.debts||[]).filter(d=>!d.paid), d=>d.total);
+  const debtRatio = revenue30>0 ? (activeDebt/revenue30*100) : (activeDebt>0?100:0);
+  const debtScore = Math.max(0, 100 - Math.min(100, debtRatio));
+
+  // d) Xarajat nisbati (oxirgi 30 kunlik xarajat / daromad)
+  const sinceExp = Date.now()-30*AI_DAY_MS;
+  const expenses30 = aiSum((DB.expenses||[]).filter(e=>new Date(e.date).getTime()>=sinceExp), e=>e.amount);
+  const expRatio = revenue30>0 ? (expenses30/revenue30*100) : 0;
+  const expScore = Math.max(0, 100 - Math.min(100, expRatio*1.3));
+
+  // e) Savdo dinamikasi (shu oyning avvalgi oyga nisbatan o'sishi)
+  let momentumScore = 50;
+  if(revenuePrev30>0){
+    const growth = (revenue30-revenuePrev30)/revenuePrev30*100;
+    momentumScore = Math.max(0, Math.min(100, 50+growth));
+  } else if(revenue30>0){ momentumScore = 70; }
+
+  const factors = [
+    {label:'💹 Foyda marjasi', value:marginScore, weight:.28, raw:marginPct.toFixed(1)+'%'},
+    {label:'📦 Ombor holati', value:stockScore, weight:.22, raw:lowCount+' ta tovar kam/tugagan'},
+    {label:'💳 Qarz nisbati', value:debtScore, weight:.2, raw:fmt(activeDebt)+" so'm faol qarz"},
+    {label:'💰 Xarajat nisbati', value:expScore, weight:.15, raw:expRatio.toFixed(0)+'% daromaddan'},
+    {label:'📈 Savdo dinamikasi', value:momentumScore, weight:.15, raw:revenuePrev30>0?((revenue30-revenuePrev30)/revenuePrev30*100).toFixed(0)+'%':'yetarli tarix yo\'q'},
+  ];
+  const score = Math.round(factors.reduce((a,f)=>a+f.value*f.weight,0));
+  let grade, gradeColor;
+  if(score>=80){ grade="A'lo"; gradeColor='var(--green)'; }
+  else if(score>=60){ grade='Yaxshi'; gradeColor='var(--accent)'; }
+  else if(score>=40){ grade="O'rtacha"; gradeColor='var(--amber)'; }
+  else { grade='Xavfli'; gradeColor='var(--red)'; }
+  return {score, grade, gradeColor, factors};
+}
+
+function renderHealthScore(){
+  const h = computeHealthScore();
+  const gauge = document.getElementById('health-gauge');
+  const valEl = document.getElementById('health-score-val');
+  const gradeEl = document.getElementById('health-grade');
+  if(!gauge) return;
+  const pct = Math.max(0, Math.min(100, h.score));
+  gauge.style.background = `conic-gradient(${h.gradeColor} ${pct*3.6}deg, var(--border) ${pct*3.6}deg)`;
+  valEl.textContent = h.score;
+  valEl.style.color = h.gradeColor;
+  gradeEl.textContent = h.grade;
+  gradeEl.style.background = h.gradeColor+'22';
+  gradeEl.style.color = h.gradeColor;
+  document.getElementById('health-factors').innerHTML = h.factors.map(f=>`
+    <div class="health-factor">
+      <span class="hf-label">${f.label}</span>
+      <div class="hf-bar-wrap"><div class="hf-bar" style="width:${Math.round(f.value)}%;background:${f.value>=60?'var(--green)':f.value>=35?'var(--amber)':'var(--red)'}"></div></div>
+      <span class="hf-pct">${Math.round(f.value)}%</span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin:-4px 0 6px 0">${f.raw}</div>
+  `).join('');
+}
+
+// ---------- 14.2 AQLLI FIKRLAR TASMASI ----------
+function generateAiInsights(){
+  const insights = [];
+  const products = DB.products||[];
+  const today = aiSalesInRange(1);
+  const last7 = aiSalesInRange(7);
+  const prev7 = (DB.sales||[]).filter(s=>{
+    if(s.reverted) return false;
+    const t=new Date(s.date).getTime();
+    return t<Date.now()-7*AI_DAY_MS && t>=Date.now()-14*AI_DAY_MS;
+  });
+  const todayRev = aiSum(today, s=>s.total);
+  const avgDailyLast7 = aiSum(last7, s=>s.total)/7;
+
+  // Bugungi savdo anomaliyasi
+  if(avgDailyLast7>0){
+    const diffPct = (todayRev-avgDailyLast7)/avgDailyLast7*100;
+    if(diffPct<=-40){
+      insights.push({type:'bad', icon:'📉', title:'Bugungi savdo sezilarli pasaygan', text:`Bugungi savdo (${fmt(todayRev)} so'm) so'nggi 7 kunlik o'rtachadan ${Math.abs(diffPct).toFixed(0)}% past. Sababini tekshiring: tovar yetishmovchiligi, sotuvchi yo'qligi yoki tashqi omillar bo'lishi mumkin.`});
+    } else if(diffPct>=40){
+      insights.push({type:'good', icon:'📈', title:'Bugungi savdo o\'rtachadan yuqori', text:`Bugungi savdo (${fmt(todayRev)} so'm) o'rtachadan ${diffPct.toFixed(0)}% yuqori. Ajoyib natija — sababini aniqlab, uni takrorlashga harakat qiling.`});
+    }
+  }
+
+  // Haftalik momentum
+  const rev7 = aiSum(last7, s=>s.total), revPrev7 = aiSum(prev7, s=>s.total);
+  if(revPrev7>0){
+    const g = (rev7-revPrev7)/revPrev7*100;
+    if(g<=-20) insights.push({type:'warn', icon:'⚠️', title:"Haftalik savdo pasaymoqda", text:`So'nggi 7 kunlik savdo oldingi haftaga nisbatan ${Math.abs(g).toFixed(0)}% kamaydi (${fmt(rev7)} so'm vs ${fmt(revPrev7)} so'm).`});
+    else if(g>=20) insights.push({type:'good', icon:'🚀', title:"Haftalik savdo o'smoqda", text:`So'nggi 7 kunlik savdo oldingi haftaga nisbatan ${g.toFixed(0)}% o'sdi (${fmt(rev7)} so'm vs ${fmt(revPrev7)} so'm).`});
+  }
+
+  // Sekin sotiladigan (dead stock) tovarlar
+  const soldProductIds14 = new Set(aiSalesInRange(14).map(s=>s.productId));
+  const deadStock = products.filter(p=>p.stock>0 && !soldProductIds14.has(p.id));
+  if(deadStock.length){
+    const topDead = deadStock.slice().sort((a,b)=>(b.price*b.stock)-(a.price*a.stock)).slice(0,5);
+    insights.push({type:'warn', icon:'🐌', title:`${deadStock.length} ta tovar 14 kundan beri sotilmagan`, text:`Eng qimmat turganlari: ${topDead.map(p=>p.name).join(', ')}. Chegirma yoki reklama qilib, aylanmaga kiritishni o'ylab ko'ring.`});
+  }
+
+  // Zaxira tugagan/kam qolgan, lekin talab yuqori bo'lganlar
+  const qtyByProduct = {};
+  last7.forEach(s=>{ qtyByProduct[s.productId]=(qtyByProduct[s.productId]||0)+s.qty; });
+  const hotLowStock = products.filter(p=>p.stock<=(DB.lowStockThreshold||5) && (qtyByProduct[p.id]||0)>0)
+    .sort((a,b)=>(qtyByProduct[b.id]||0)-(qtyByProduct[a.id]||0)).slice(0,5);
+  if(hotLowStock.length){
+    insights.push({type:'bad', icon:'🔥', title:'Talab yuqori, lekin zaxira kam', text:`${hotLowStock.map(p=>`${p.name} (${p.stock} ta qoldi, hafta ichida ${qtyByProduct[p.id]} ta sotilgan)`).join('; ')}. Iloji boricha tezroq kirim qiling — bu tovarlar sotuvni to'xtatishi mumkin.`});
+  }
+
+  // Marja past yoki zararli sotuvlar
+  const thinMargin = last7.filter(s=>{ const m = s.price-(s.cost||0); return m<=0; });
+  if(thinMargin.length){
+    const lostAmt = aiSum(thinMargin, s=>Math.abs(s.price-(s.cost||0))*s.qty);
+    insights.push({type:'bad', icon:'🧯', title:"Tannarxdan past yoki foydasiz sotuvlar aniqlandi", text:`So'nggi 7 kunda ${thinMargin.length} ta savdoda foyda nol yoki manfiy bo'lgan (taxminan ${fmt(lostAmt)} so'm yo'qotish/nol foyda). Narx yoki tannarxni tekshiring.`});
+  }
+
+  // Qarzlar muddati o'tgan
+  const overdueDays = parseInt(localStorage.getItem('dokon_overdue_days')||'14',10);
+  const overdue = (DB.debts||[]).filter(d=>!d.paid && (Date.now()-new Date(d.date).getTime())>overdueDays*AI_DAY_MS);
+  if(overdue.length){
+    const overdueSum = aiSum(overdue, d=>d.total);
+    insights.push({type:'warn', icon:'⏰', title:`${overdue.length} ta qarz ${overdueDays} kundan ortiq to'lanmagan`, text:`Jami ${fmt(overdueSum)} so'm muddati o'tgan qarz. Qarzdorlar bilan bog'lanib, to'lovni eslatish tavsiya etiladi.`});
+  }
+
+  // Xarajat sakrashi
+  const expThisMonth = aiSum((DB.expenses||[]).filter(e=>{ const d=new Date(e.date); const n=new Date(); return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }), e=>e.amount);
+  const now = new Date(); const lastMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const expLastMonth = aiSum((DB.expenses||[]).filter(e=>{ const d=new Date(e.date); return d.getMonth()===lastMonthDate.getMonth()&&d.getFullYear()===lastMonthDate.getFullYear(); }), e=>e.amount);
+  if(expLastMonth>0 && expThisMonth > expLastMonth*1.3){
+    insights.push({type:'warn', icon:'💸', title:'Xarajatlar sezilarli oshgan', text:`Bu oy xarajat (${fmt(expThisMonth)} so'm) o'tgan oyga nisbatan ${(((expThisMonth-expLastMonth)/expLastMonth)*100).toFixed(0)}% ko'p. Toifalar bo'yicha taqsimotni "Xarajatlar" sahifasida tekshiring.`});
+  }
+
+  // Eng yaxshi sotuvchi (jamoaviy tan olish uchun ijobiy fikr)
+  const bySeller = {};
+  last7.forEach(s=>{ bySeller[s.seller]=(bySeller[s.seller]||0)+s.total; });
+  const sellerEntries = Object.entries(bySeller).sort((a,b)=>b[1]-a[1]);
+  if(sellerEntries.length>1){
+    insights.push({type:'info', icon:'🏆', title:`Haftaning yetakchisi: ${sellerEntries[0][0]}`, text:`${sellerEntries[0][0]} so'nggi 7 kunda ${fmt(sellerEntries[0][1])} so'm savdo qildi — jamoada eng yuqori ko'rsatkich.`});
+  }
+
+  if(!insights.length){
+    insights.push({type:'good', icon:'✅', title:'Hozircha muhim ogohlantirish yo\'q', text:'Do\'kon ko\'rsatkichlari barqaror ko\'rinmoqda. Yangi tahlillar ma\'lumot to\'planishi bilan paydo bo\'ladi.'});
+  }
+  return insights;
+}
+
+function renderAiInsights(){
+  const feed = document.getElementById('ai-insights-feed');
+  if(!feed) return;
+  const insights = generateAiInsights();
+  feed.innerHTML = insights.map(i=>`
+    <div class="insight-card ${i.type}">
+      <div class="ic-icon">${i.icon}</div>
+      <div><div class="ic-title">${i.title}</div><div class="ic-text">${i.text}</div></div>
+    </div>`).join('');
+}
+
+// ---------- 14.3 SUHBAT ORQALI SAVOL-JAVOB (mahalliy, offlayn NLU) ----------
+const AI_SUGGESTED_QUESTIONS = [
+  "Bugun eng ko'p nima sotildi?",
+  'Eng foydali tovar qaysi?',
+  "Bugungi foyda qancha?",
+  "Qaysi tovarlar kam qolgan?",
+  "Eng qarzdor kim?",
+  "Jami qarz qancha?",
+  "Bu oy xarajat qancha?",
+  "Eng faol sotuvchi kim?",
+  "Qaysi soatda savdo eng ko'p bo'ladi?",
+  "Do'konim holati qanday?"
+];
+
+function aiTopProductByQty(days){
+  const sales = aiSalesInRange(days);
+  const map = {};
+  sales.forEach(s=>{ const k=s.productId; if(!map[k]) map[k]={name:s.productName,qty:0,total:0}; map[k].qty+=s.qty; map[k].total+=s.total; });
+  return Object.values(map).sort((a,b)=>b.qty-a.qty)[0]||null;
+}
+function aiTopProductByProfit(days){
+  const sales = aiSalesInRange(days);
+  const map = {};
+  sales.forEach(s=>{ const k=s.productId; if(!map[k]) map[k]={name:s.productName,profit:0}; map[k].profit+=(s.price-(s.cost||0))*s.qty; });
+  return Object.values(map).sort((a,b)=>b.profit-a.profit)[0]||null;
+}
+function aiPeakHour(){
+  const sales = aiSalesInRange(30);
+  const buckets = Array(24).fill(0);
+  sales.forEach(s=>{ buckets[new Date(s.date).getHours()] += s.total; });
+  let best=0; buckets.forEach((v,i)=>{ if(v>buckets[best]) best=i; });
+  return {hour:best, total:buckets[best]};
+}
+
+function askAiQuestion(qRaw){
+  const q = (qRaw||'').toLowerCase().trim();
+  if(!q) return "Savol yozing — masalan, \"bugun eng ko'p nima sotildi?\"";
+
+  const has = (...words)=>words.some(w=>q.includes(w));
+
+  if(has('salom','assalom','hi','salomlashamiz')){
+    return "Salom! Men do'koningiz ma'lumotlari bo'yicha savollaringizga javob bera olaman. Pastdagi taklif qilingan savollardan birini tanlashingiz mumkin.";
+  }
+
+  if(has('holat','salomat','sog\'lig','sog\'lom')){
+    const h = computeHealthScore();
+    return `Do'kon salomatlik balli: ${h.score}/100 (${h.grade}). Eng zaif tomon: ${h.factors.slice().sort((a,b)=>a.value-b.value)[0].label}.`;
+  }
+
+  if(has('eng ko\'p sotilgan','ko\'p sotilgan','top sotilgan','eng ko\'p nima sotildi')){
+    const days = has('bugun') ? 1 : (has('hafta') ? 7 : 30);
+    const p = aiTopProductByQty(days);
+    if(!p) return `So'nggi ${days} kunda savdo topilmadi.`;
+    return `So'nggi ${days} kun ichida eng ko'p sotilgan tovar: "${p.name}" — ${p.qty} dona, jami ${fmt(p.total)} so'm.`;
+  }
+
+  if(has('eng foydali','ko\'p foyda','eng foyda')){
+    const days = has('bugun') ? 1 : (has('hafta') ? 7 : 30);
+    const p = aiTopProductByProfit(days);
+    if(!p) return `So'nggi ${days} kunda foyda ma'lumoti topilmadi.`;
+    return `So'nggi ${days} kun ichida eng ko'p foyda keltirgan tovar: "${p.name}" — taxminan ${fmt(p.profit)} so'm foyda.`;
+  }
+
+  if(has('bugungi foyda','bugun foyda')){
+    const today = aiSalesInRange(1);
+    const profit = aiSum(today, s=>(s.price-(s.cost||0))*s.qty);
+    return `Bugungi foyda: ${fmt(profit)} so'm (${today.length} ta savdo asosida).`;
+  }
+
+  if(has('bugungi savdo','bugun savdo','bugungi daromad')){
+    const today = aiSalesInRange(1);
+    const rev = aiSum(today, s=>s.total);
+    return `Bugungi savdo: ${fmt(rev)} so'm, ${today.length} ta chek, ${aiSum(today,s=>s.qty)} dona tovar.`;
+  }
+
+  if(has('kam qolgan','zaxira kam','tugab qolayotgan')){
+    const low = (DB.products||[]).filter(p=>p.stock>0 && p.stock<=(DB.lowStockThreshold||5));
+    if(!low.length) return "Hozircha kam qolgan tovarlar yo'q.";
+    return `${low.length} ta tovarda zaxira kam: ${low.slice(0,8).map(p=>`${p.name} (${p.stock} ta)`).join(', ')}${low.length>8?' va boshqalar...':''}.`;
+  }
+
+  if(has('tugagan')){
+    const out = (DB.products||[]).filter(p=>p.stock===0);
+    if(!out.length) return "Hozircha tugagan tovarlar yo'q.";
+    return `${out.length} ta tovar tugagan: ${out.slice(0,8).map(p=>p.name).join(', ')}${out.length>8?' va boshqalar...':''}.`;
+  }
+
+  if(has('eng qarzdor','katta qarz')){
+    const byDebtor = {};
+    (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{ byDebtor[d.debtorName]=(byDebtor[d.debtorName]||0)+d.total; });
+    const top = Object.entries(byDebtor).sort((a,b)=>b[1]-a[1])[0];
+    if(!top) return "Hozircha faol qarzlar yo'q.";
+    return `Eng katta faol qarz: ${top[0]} — ${fmt(top[1])} so'm.`;
+  }
+
+  if(has('jami qarz','umumiy qarz')){
+    const total = aiSum((DB.debts||[]).filter(d=>!d.paid), d=>d.total);
+    const count = (DB.debts||[]).filter(d=>!d.paid).length;
+    return `Jami faol qarz: ${fmt(total)} so'm, ${count} ta qarzdorda.`;
+  }
+
+  if(has('xarajat')){
+    const period = has('bu hafta','hafta') ? 7 : 30;
+    const since = Date.now()-period*AI_DAY_MS;
+    const total = aiSum((DB.expenses||[]).filter(e=>new Date(e.date).getTime()>=since), e=>e.amount);
+    return `So'nggi ${period} kunlik xarajatlar: ${fmt(total)} so'm.`;
+  }
+
+  if(has('eng faol sotuvchi','eng yaxshi sotuvchi','kim ko\'p sotdi')){
+    const bySeller = {};
+    aiSalesInRange(7).forEach(s=>{ bySeller[s.seller]=(bySeller[s.seller]||0)+s.total; });
+    const top = Object.entries(bySeller).sort((a,b)=>b[1]-a[1])[0];
+    if(!top) return "So'nggi 7 kunda savdo topilmadi.";
+    return `So'nggi 7 kunda eng faol sotuvchi: ${top[0]} — ${fmt(top[1])} so'm savdo bilan.`;
+  }
+
+  if(has('qaysi soat','soatda savdo','eng faol soat','peak')){
+    const p = aiPeakHour();
+    if(p.total===0) return "Yetarli ma'lumot yo'q.";
+    return `So'nggi 30 kunda eng ko'p savdo soat ${p.hour}:00–${p.hour+1}:00 oralig'ida bo'lgan (jami ${fmt(p.total)} so'm).`;
+  }
+
+  return "Bu savolni to'liq tushunmadim. Quyidagi taklif qilingan savollardan birini sinab ko'ring, yoki \"eng ko'p sotilgan\", \"kam qolgan\", \"qarz\", \"xarajat\", \"foyda\" kabi kalit so'zlar bilan qayta yozing.";
+}
+
+function aiAppendChatMsg(role, text){
+  aiChatHistory.push({role, text});
+  const box = document.getElementById('ai-chat-messages');
+  if(!box) return;
+  const div = document.createElement('div');
+  div.className = 'ai-msg '+(role==='user'?'user':'bot');
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+window.sendAiChat = function(){
+  const input = document.getElementById('ai-chat-input');
+  if(!input) return;
+  const q = input.value.trim();
+  if(!q) return;
+  aiAppendChatMsg('user', q);
+  input.value = '';
+  setTimeout(()=>{ aiAppendChatMsg('bot', askAiQuestion(q)); }, 150);
+}
+window.askAiSuggested = function(text){
+  const input = document.getElementById('ai-chat-input');
+  if(input){ input.value = text; }
+  window.sendAiChat();
+}
+function renderAiChatShell(){
+  const msgBox = document.getElementById('ai-chat-messages');
+  if(msgBox && !msgBox.dataset.inited){
+    msgBox.dataset.inited = '1';
+    aiChatHistory = [];
+    aiAppendChatMsg('bot', "Salom! Men do'koningiz ma'lumotlari bo'yicha savollaringizga mahalliy tarzda (internetsiz) javob bera olaman. Pastdagi savollardan birini sinab ko'ring 👇");
+  }
+  const chips = document.getElementById('ai-suggest-chips');
+  if(chips) chips.innerHTML = AI_SUGGESTED_QUESTIONS.map(q=>`<span class="ai-suggest-chip" onclick="window.askAiSuggested('${q.replace(/'/g,"\\'")}')">${q}</span>`).join('');
+}
+
+// ---------- 14.4 "VAQT MASHINASI" — NARX O'ZGARISHI SIMULYATORI ----------
+function populateWhatIfProducts(){
+  const sel = document.getElementById('whatif-product');
+  if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = (DB.products||[]).slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume:''}</option>`).join('');
+  if(cur && (DB.products||[]).some(p=>p.id===cur)) sel.value = cur;
+}
+
+window.runWhatIf = function(){
+  const sel = document.getElementById('whatif-product');
+  const elSel = document.getElementById('whatif-elasticity');
+  const priceRange = document.getElementById('whatif-price-pct');
+  const resultsEl = document.getElementById('whatif-results');
+  const pctLabelEl = document.getElementById('whatif-pct-label');
+  if(!sel || !resultsEl || !sel.value) { if(resultsEl) resultsEl.innerHTML='<p style="color:var(--text3);text-align:center;padding:1rem">Avval tovar qo\'shing.</p>'; return; }
+  const product = (DB.products||[]).find(p=>p.id===sel.value);
+  if(!product){ resultsEl.innerHTML=''; return; }
+
+  const elasticity = parseFloat(elSel.value);
+  const pricePct = parseFloat(priceRange.value);
+  pctLabelEl.textContent = (pricePct>0?'+':'')+pricePct+'%';
+  pctLabelEl.style.color = pricePct>0?'var(--green)':(pricePct<0?'var(--red)':'var(--text)');
+
+  const days = 30;
+  const sales = aiSalesInRange(days).filter(s=>s.productId===product.id);
+  const totalQty = aiSum(sales, s=>s.qty);
+  const avgDailyQty = totalQty/days;
+
+  const cost = product.cost||0;
+  const curPrice = product.price;
+  const newPrice = curPrice*(1+pricePct/100);
+  const qtyChangePct = elasticity*pricePct; // elastiklik modeliga ko'ra talab o'zgarishi
+  const newDailyQty = Math.max(0, avgDailyQty*(1+qtyChangePct/100));
+
+  const curDailyRev = avgDailyQty*curPrice;
+  const newDailyRev = newDailyQty*newPrice;
+  const curDailyProfit = avgDailyQty*(curPrice-cost);
+  const newDailyProfit = newDailyQty*(newPrice-cost);
+
+  const revDeltaPct = curDailyRev>0 ? ((newDailyRev-curDailyRev)/curDailyRev*100) : 0;
+  const profitDeltaPct = curDailyProfit>0 ? ((newDailyProfit-curDailyProfit)/curDailyProfit*100) : (newDailyProfit>0?100:0);
+
+  const deltaColor = (v)=> v>0.5?'var(--green)':(v<-0.5?'var(--red)':'var(--text3)');
+  const fmt1 = (v)=> (v>=0?'+':'')+v.toFixed(1)+'%';
+
+  resultsEl.innerHTML = `
+    ${avgDailyQty===0?`<p style="font-size:12px;color:var(--amber);margin-bottom:.6rem">⚠️ So'nggi ${days} kunda bu tovar sotilmagan — bashorat taxminiy, ehtiyot bo'ling.</p>`:''}
+    <div class="whatif-result-grid">
+      <div class="whatif-cell"><div class="wc-lbl">Yangi narx</div><div class="wc-val">${fmt(newPrice)} so'm</div><div class="wc-delta" style="color:${deltaColor(pricePct)}">${fmt1(pricePct)} (${fmt(curPrice)} → ${fmt(newPrice)})</div></div>
+      <div class="whatif-cell"><div class="wc-lbl">Kunlik miqdor (bashorat)</div><div class="wc-val">${newDailyQty.toFixed(1)} dona</div><div class="wc-delta" style="color:${deltaColor(qtyChangePct)}">${fmt1(qtyChangePct)}</div></div>
+      <div class="whatif-cell"><div class="wc-lbl">Kunlik daromad (bashorat)</div><div class="wc-val">${fmt(newDailyRev)} so'm</div><div class="wc-delta" style="color:${deltaColor(revDeltaPct)}">${fmt1(revDeltaPct)}</div></div>
+      <div class="whatif-cell"><div class="wc-lbl">Kunlik foyda (bashorat)</div><div class="wc-val">${fmt(newDailyProfit)} so'm</div><div class="wc-delta" style="color:${deltaColor(profitDeltaPct)}">${fmt1(profitDeltaPct)}</div></div>
+      <div class="whatif-cell"><div class="wc-lbl">Oylik foyda farqi</div><div class="wc-val" style="color:${deltaColor(newDailyProfit-curDailyProfit)}">${(newDailyProfit-curDailyProfit)*30>=0?'+':''}${fmt((newDailyProfit-curDailyProfit)*30)} so'm</div><div class="wc-delta" style="color:var(--text3)">30 kunlik proyeksiya</div></div>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:.85rem">* Bashorat so'nggi ${days} kunlik o'rtacha sotuv va tanlangan elastiklik koeffitsienti asosida hisoblanadi — bu real bozor tadqiqoti emas, faqat yo'naltiruvchi taxmin.</p>
+  `;
+}
+
+// ---------- 14.5 SAHIFANI ISHGA TUSHIRISH ----------
+window.renderAiAssistant = function(){
+  renderHealthScore();
+  renderAiInsights();
+  renderAiChatShell();
+  populateWhatIfProducts();
+  window.runWhatIf && window.runWhatIf();
+}
+
 </script>
 
 <!-- ================================================================
@@ -9495,7 +10523,7 @@ if(typeof window.renderDashboard === 'function'){
     requestAnimationFrame(()=>banner.classList.add('show'));
     document.getElementById('pwa-install-yes').onclick = async () => {
       banner.classList.remove('show');
-      setTimeout(()=>banner.remove(), 300);
+      setTimeout(()=>banner.remove(), 75);
       if(deferredInstallPrompt){
         deferredInstallPrompt.prompt();
         await deferredInstallPrompt.userChoice;
@@ -9505,7 +10533,7 @@ if(typeof window.renderDashboard === 'function'){
     document.getElementById('pwa-install-no').onclick = () => {
       localStorage.setItem('pwaInstallDismissed','1');
       banner.classList.remove('show');
-      setTimeout(()=>banner.remove(), 300);
+      setTimeout(()=>banner.remove(), 75);
     };
   }
 
@@ -9725,6 +10753,14 @@ if(typeof window.renderDashboard === 'function'){
   'use strict';
 
   function safeToast(msg, type){ try{ if(typeof toast === 'function') toast(msg, type); }catch(e){} }
+  // TUZATILDI: fmt() va isSameDay() asosiy <script type="module"> ichida
+  // e'lon qilingan bo'lib, shu (module bo'lmagan) skript ichidan umuman
+  // ko'rinmas edi — natijada "Kunlik yopilish (Z) hisoboti" tugmasi
+  // bosilganda isSameDay() doim false qaytarardi (xatolik try/catch bilan
+  // yutilib ketardi) va fmt() esa but butun funksiyani xatolik bilan
+  // to'xtatib qo'yardi. Endi mahalliy (local) ekvivalentlar qo'shildi.
+  if(typeof fmt !== 'function'){ var fmt = function(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }; }
+  if(typeof isSameDay !== 'function'){ var isSameDay = function(a,b){ return a.toDateString()===b.toDateString(); }; }
 
   // ================== 12.1 SEVIMLI TOVARLAR ==================
   const FAV_KEY = 'dokon_fav_products';
@@ -10103,6 +11139,390 @@ if(typeof window.renderDashboard === 'function'){
       populateExpirySelect();
     }
   }, 3000);
+
+})();
+</script>
+<script>
+// ===== MOBIL NAV "KO'PROQ" MENYUSI (⋮) =====
+// Kichik ekranlarda nav ichidagi ortiqcha tugmalar (qidiruv, tungi rejim,
+// kalkulyator, eslatmalar, qulflash, CHIQISH) shu menyuga yig'iladi,
+// shunda ular ekrandan tashqarida qolib, bosib bo'lmay qolmaydi.
+window.toggleNavMoreMenu = function(){
+  const menu = document.getElementById('nav-more-menu');
+  const overlay = document.getElementById('nav-more-overlay');
+  if(!menu || !overlay) return;
+  const isHidden = menu.classList.contains('hidden');
+  if(isHidden){
+    menu.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+  } else {
+    menu.classList.add('hidden');
+    overlay.classList.add('hidden');
+  }
+};
+window.closeNavMoreMenu = function(){
+  const menu = document.getElementById('nav-more-menu');
+  const overlay = document.getElementById('nav-more-overlay');
+  if(menu) menu.classList.add('hidden');
+  if(overlay) overlay.classList.add('hidden');
+};
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') window.closeNavMoreMenu();
+});
+window.addEventListener('resize', function(){
+  if(window.innerWidth > 768) window.closeNavMoreMenu();
+});
+</script>
+
+<!-- ================================================================
+     🆕 14-BO'LIM: YANGI IMKONIYATLAR — Kassa smena, Vazifalar rejasi,
+     Ovozli qidiruv. Bu blok avvalgi hech qanday
+     kodni o'zgartirmaydi yoki ustidan yozmaydi — faqat mustaqil, xavfsiz
+     qo'shimchalar kiritadi (12.x/13-bo'lim uslubiga mos). Barcha
+     ma'lumotlar faqat shu qurilmada (localStorage) saqlanadi.
+     ================================================================ -->
+<script>
+(function(){
+  'use strict';
+
+  function fmt(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function esc(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
+  function safeToast(msg, type){ try{ if(typeof window.toast === 'function') window.toast(msg, type); }catch(e){} }
+
+  // ================== 14.1 KASSA SMENA (naqd pul hisob-kitobi) ==================
+  const SHIFT_CUR_KEY = 'dokon_shift_current';
+  const SHIFT_HIST_KEY = 'dokon_shift_history';
+  function getCurrentShift(){ try{ return JSON.parse(localStorage.getItem(SHIFT_CUR_KEY)||'null'); }catch(e){ return null; } }
+  function setCurrentShift(s){ if(s) localStorage.setItem(SHIFT_CUR_KEY, JSON.stringify(s)); else localStorage.removeItem(SHIFT_CUR_KEY); }
+  function getShiftHistory(){ try{ return JSON.parse(localStorage.getItem(SHIFT_HIST_KEY)||'[]'); }catch(e){ return []; } }
+  function setShiftHistory(list){ localStorage.setItem(SHIFT_HIST_KEY, JSON.stringify(list.slice(0,200))); }
+
+  function shiftSalesAndExpenses(startIso){
+    const start = new Date(startIso);
+    const sales = (window.DB && Array.isArray(DB.sales)) ? DB.sales.filter(s=>!s.reverted && new Date(s.date) >= start) : [];
+    const expenses = (window.DB && Array.isArray(DB.expenses)) ? DB.expenses.filter(e=> new Date(e.date||e.createdAt) >= start) : [];
+    return { sales, expenses, salesTotal: sales.reduce((a,s)=>a+(Number(s.total)||0),0), expensesTotal: expenses.reduce((a,e)=>a+(Number(e.amount)||0),0) };
+  }
+
+  window.openShiftModal = function(){
+    if(typeof window.openModal !== 'function') return;
+    renderShiftUI();
+    window.openModal('modal-shift');
+  };
+
+  function renderShiftHistoryHTML(){
+    const hist = getShiftHistory();
+    if(!hist.length) return '';
+    const rows = hist.slice(0,8).map(h=>{
+      const diffColor = h.diff===0 ? 'var(--text2)' : (h.diff>0 ? 'var(--green)' : 'var(--red)');
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px dashed var(--border);font-size:12px">
+        <span style="color:var(--text3)">${new Date(h.endTime).toLocaleDateString('uz-UZ')}</span>
+        <span>${fmt(h.salesTotal)} so'm savdo</span>
+        <span style="color:${diffColor};font-weight:700">${h.diff>0?'+':''}${fmt(h.diff)} so'm</span>
+      </div>`;
+    }).join('');
+    return `<div style="margin-top:1rem"><h4 style="font-size:13px;font-weight:700;margin-bottom:.4rem;color:var(--text2)">So'nggi smenalar</h4>${rows}</div>`;
+  }
+
+  function renderShiftUI(){
+    const wrap = document.getElementById('shift-content');
+    if(!wrap) return;
+    const cur = getCurrentShift();
+    if(!cur){
+      wrap.innerHTML = `
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Boshlang'ich naqd summa (so'm)</label>
+          <input type="number" id="shift-start-cash" min="0" placeholder="0" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .85rem;font-size:14px;outline:none">
+        </div>
+        <button class="btn blue" style="width:100%" onclick="window.startShift()">▶ Smenani boshlash</button>
+        ${renderShiftHistoryHTML()}`;
+      return;
+    }
+    const { sales, salesTotal, expensesTotal } = shiftSalesAndExpenses(cur.startTime);
+    const expected = (Number(cur.startCash)||0) + salesTotal - expensesTotal;
+    wrap.innerHTML = `
+      <div class="card" style="background:var(--accent-bg);border-color:var(--accent-border);margin-bottom:1rem;padding:.75rem 1rem">
+        <div style="font-size:12px;color:var(--text3)">Smena boshlangan</div>
+        <div style="font-weight:700">${new Date(cur.startTime).toLocaleString('uz-UZ')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1rem;font-size:14px">
+        <div style="display:flex;justify-content:space-between"><span>Boshlang'ich naqd</span><b>${fmt(cur.startCash)} so'm</b></div>
+        <div style="display:flex;justify-content:space-between"><span>Smena davomidagi savdo (${sales.length} ta)</span><b style="color:var(--green)">+${fmt(salesTotal)} so'm</b></div>
+        <div style="display:flex;justify-content:space-between"><span>Smena davomidagi xarajat</span><b style="color:var(--red)">−${fmt(expensesTotal)} so'm</b></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:.5rem"><span>Kutilayotgan naqd</span><b>${fmt(expected)} so'm</b></div>
+      </div>
+      <div class="field" style="margin-bottom:.85rem">
+        <label>Kassadagi haqiqiy (sanalgan) naqd summa</label>
+        <input type="number" id="shift-counted-cash" min="0" placeholder="0" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .85rem;font-size:14px;outline:none">
+      </div>
+      <button class="btn red" style="width:100%" onclick="window.finalizeShift()">⏹ Smenani yopish</button>
+      ${renderShiftHistoryHTML()}`;
+  }
+
+  window.startShift = function(){
+    const el = document.getElementById('shift-start-cash');
+    const v = parseFloat(el && el.value) || 0;
+    setCurrentShift({ startTime: new Date().toISOString(), startCash: v, seller: window.currentSellerName || (window.DB && DB.sellerName) || '' });
+    safeToast('✓ Smena boshlandi', 'green');
+    renderShiftUI();
+  };
+
+  window.finalizeShift = function(){
+    const cur = getCurrentShift();
+    if(!cur) return;
+    const el = document.getElementById('shift-counted-cash');
+    const counted = parseFloat(el && el.value);
+    if(el === null || isNaN(counted)){ safeToast("Sanalgan naqd summani kiriting", 'amber'); return; }
+    const { salesTotal, expensesTotal } = shiftSalesAndExpenses(cur.startTime);
+    const expected = (Number(cur.startCash)||0) + salesTotal - expensesTotal;
+    const diff = counted - expected;
+    const record = { id: uid(), startTime: cur.startTime, endTime: new Date().toISOString(), startCash: cur.startCash, salesTotal, expensesTotal, expected, counted, diff, seller: cur.seller };
+    const hist = getShiftHistory();
+    hist.unshift(record);
+    setShiftHistory(hist);
+    setCurrentShift(null);
+    const msg = diff===0 ? "✓ Smena yopildi, farq yo'q" : (diff>0 ? `✓ Smena yopildi, ortiqcha ${fmt(diff)} so'm` : `⚠️ Smena yopildi, kamomad ${fmt(Math.abs(diff))} so'm`);
+    safeToast(msg, diff<0 ? 'amber' : 'green');
+    renderShiftUI();
+  };
+
+  // ================== 14.2 VAZIFALAR REJASI (muddatli eslatmalar) ==================
+  const TASKS_KEY = 'dokon_tasks';
+  function getTasks(){ try{ return JSON.parse(localStorage.getItem(TASKS_KEY)||'[]'); }catch(e){ return []; } }
+  function setTasks(list){ localStorage.setItem(TASKS_KEY, JSON.stringify(list)); }
+
+  window.openTasksModal = function(){
+    renderTasksList();
+    if(typeof window.openModal === 'function') window.openModal('modal-tasks');
+    setTimeout(()=>{ const i=document.getElementById('new-task-input'); if(i) i.focus(); }, 50);
+  };
+
+  window.addTask = function(){
+    const input = document.getElementById('new-task-input');
+    const text = (input && input.value || '').trim();
+    if(!text) return;
+    const dueEl = document.getElementById('new-task-due');
+    const dueTimeEl = document.getElementById('new-task-due-time');
+    const tasks = getTasks();
+    tasks.unshift({ id: uid(), text, due: (dueEl&&dueEl.value)||'', dueTime: (dueTimeEl&&dueTimeEl.value)||'', done:false, ts: new Date().toISOString() });
+    setTasks(tasks);
+    input.value=''; if(dueEl) dueEl.value=''; if(dueTimeEl) dueTimeEl.value='';
+    renderTasksList();
+  };
+  window.toggleTaskDone = function(id){ setTasks(getTasks().map(t=>t.id===id?Object.assign({},t,{done:!t.done}):t)); renderTasksList(); };
+  window.deleteTask = function(id){ setTasks(getTasks().filter(t=>t.id!==id)); renderTasksList(); };
+  window.clearDoneTasks = function(){ setTasks(getTasks().filter(t=>!t.done)); renderTasksList(); };
+
+  function isTaskOverdue(t){
+    if(!t.due || t.done) return false;
+    return new Date(t.due+'T'+(t.dueTime||'23:59')) < new Date();
+  }
+  function renderTasksList(){
+    const wrap = document.getElementById('tasks-list');
+    const empty = document.getElementById('tasks-empty');
+    if(!wrap) return;
+    let tasks = getTasks().slice().sort((a,b)=>{
+      if(a.done!==b.done) return a.done?1:-1;
+      const ak=(a.due||'')+(a.dueTime||''), bk=(b.due||'')+(b.dueTime||'');
+      if(ak && bk) return ak<bk?-1:1;
+      if(ak) return -1; if(bk) return 1;
+      return 0;
+    });
+    if(!tasks.length){ wrap.innerHTML=''; if(empty) empty.style.display='block'; updateTasksBadge(); return; }
+    if(empty) empty.style.display='none';
+    wrap.innerHTML = tasks.map(t=>{
+      const overdue = isTaskOverdue(t);
+      const dueLabel = t.due ? `<span class="badge ${overdue?'red':'amber'}" style="margin-top:.3rem;display:inline-block">${overdue?"⏰ Muddati o'tdi: ":'📅 '}${t.due}${t.dueTime?' '+t.dueTime:''}</span>` : '';
+      return `<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .75rem;border:1px solid var(--border);border-radius:10px;${t.done?'opacity:.55':''}">
+        <input type="checkbox" ${t.done?'checked':''} onchange="window.toggleTaskDone('${t.id}')" style="margin-top:3px">
+        <div style="flex:1"><div style="font-size:14px;${t.done?'text-decoration:line-through':''}">${esc(t.text)}</div>${dueLabel}</div>
+        <button class="btn sm red" onclick="window.deleteTask('${t.id}')" title="O'chirish">✕</button>
+      </div>`;
+    }).join('');
+    updateTasksBadge();
+  }
+  function updateTasksBadge(){
+    const badge = document.getElementById('tasks-due-badge');
+    if(!badge) return;
+    const urgent = getTasks().filter(t=>!t.done && t.due && (new Date(t.due+'T'+(t.dueTime||'23:59')) - new Date()) < 86400000);
+    if(urgent.length){ badge.style.cssText='display:inline-block;background:var(--red);color:#fff;border-radius:10px;padding:0 5px;font-size:10px;margin-left:3px;vertical-align:top'; badge.textContent=urgent.length; }
+    else { badge.style.display='none'; }
+  }
+  const _notifiedTaskIds = new Set();
+  function checkTaskReminders(){
+    getTasks().forEach(t=>{
+      if(t.done || !t.due || _notifiedTaskIds.has(t.id)) return;
+      if(new Date(t.due+'T'+(t.dueTime||'09:00')) <= new Date()){
+        _notifiedTaskIds.add(t.id);
+        safeToast(`⏰ Vazifa muddati keldi: ${t.text}`, 'amber');
+      }
+    });
+    updateTasksBadge();
+  }
+  setInterval(checkTaskReminders, 60000);
+  window.addEventListener('load', ()=> setTimeout(checkTaskReminders, 1500));
+
+  // ================== 14.3 YUTUQLAR VA KETMA-KET KUNLAR (STREAK) ==================
+  // Kunlik savdo maqsadiga (Sozlamalar > "Kunlik savdo maqsadi") necha kun
+  // ketma-ket erishilganini hisoblab, o'yinlashtirilgan (gamified) motivatsiya
+  // kartochkasini bosh sahifaga qo'shadi. Faqat mavjud DB.sales ma'lumotini
+  // O'QIYDI — hech narsa yozmaydi, hech qanday eski funksiyaga tegmaydi.
+  const STREAK_BADGES = [
+    {days:3,  emoji:'🔥', label:"3 kun ketma-ket"},
+    {days:7,  emoji:'🥉', label:"7 kun ketma-ket"},
+    {days:14, emoji:'🥈', label:"14 kun ketma-ket"},
+    {days:30, emoji:'🥇', label:"30 kun ketma-ket"},
+    {days:100,emoji:'🏆', label:"100 kun ketma-ket"}
+  ];
+  function dateKey(d){ const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+  function computeDailyTotals(){
+    const map = {};
+    if(window.DB && Array.isArray(DB.sales)){
+      DB.sales.forEach(s=>{
+        if(s.reverted) return;
+        try{ const k = dateKey(s.date); map[k] = (map[k]||0) + (Number(s.total)||0); }catch(e){}
+      });
+    }
+    return map;
+  }
+  function computeStreaks(goal){
+    const totals = computeDailyTotals();
+    const dates = Object.keys(totals).sort();
+    if(!dates.length) return { current:0, best:0, todayMet:false };
+    const first = new Date(dates[0]);
+    const today = new Date(); today.setHours(0,0,0,0);
+    let cursor = new Date(first);
+    let run = 0, best = 0, current = 0;
+    const todayKey = dateKey(today);
+    const todayMet = (totals[todayKey]||0) >= goal;
+    while(cursor <= today){
+      const k = dateKey(cursor);
+      const met = (totals[k]||0) >= goal;
+      if(k === todayKey){ break; } // bugunni alohida hisoblaymiz, kun hali tugamagan
+      if(met){ run++; best = Math.max(best, run); } else { run = 0; }
+      cursor.setDate(cursor.getDate()+1);
+    }
+    current = run + (todayMet ? 1 : 0);
+    best = Math.max(best, current);
+    return { current, best, todayMet };
+  }
+  function ensureStreakDashCard(){
+    const dashGrid = document.getElementById('dash-grid');
+    if(!dashGrid || document.getElementById('streak-dash-card')) return;
+    const col = dashGrid.children[1];
+    if(!col) return;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'streak-dash-card';
+    card.innerHTML = `<h3 style="font-size:15px;font-weight:700;margin-bottom:.75rem">🔥 Yutuqlar va ketma-ket kunlar</h3><div id="streak-dash-body" style="font-size:13px;color:var(--text3)"></div>`;
+    col.appendChild(card);
+  }
+  function renderStreakDashBody(){
+    const wrap = document.getElementById('streak-dash-body');
+    if(!wrap) return;
+    const goal = parseFloat(localStorage.getItem('dokon_daily_goal')||'0');
+    if(!goal || goal<=0){
+      wrap.innerHTML = `Ketma-ket kunlar hisoblanishi uchun avval <b>Sozlamalar</b> bo'limida "Kunlik savdo maqsadi"ni belgilang.<br><button class="btn sm blue" style="margin-top:.5rem" onclick="window.showPage && window.showPage('settings','admin')">⚙️ Sozlamalarga o'tish</button>`;
+      return;
+    }
+    const { current, best, todayMet } = computeStreaks(goal);
+    const unlocked = STREAK_BADGES.filter(b=>best>=b.days);
+    const next = STREAK_BADGES.find(b=>current<b.days);
+    const badgesHTML = STREAK_BADGES.map(b=>{
+      const on = best>=b.days;
+      return `<span title="${esc(b.label)}" style="font-size:20px;opacity:${on?1:.25};filter:${on?'none':'grayscale(1)'}">${b.emoji}</span>`;
+    }).join(' ');
+    let progressHTML = '';
+    if(next){
+      const pct = Math.min(100, (current/next.days*100));
+      progressHTML = `<div style="margin-top:.6rem">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:.25rem"><span>Keyingi: ${next.emoji} ${next.label}</span><span>${current}/${next.days}</span></div>
+        <div style="background:var(--surface2);border-radius:20px;height:10px;overflow:hidden;border:1px solid var(--border)">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f59e0b,#f97316);border-radius:20px"></div>
+        </div></div>`;
+    } else {
+      progressHTML = `<div style="margin-top:.6rem;font-size:12px;color:var(--green);font-weight:700">🎉 Barcha yutuqlar qo'lga kiritildi!</div>`;
+    }
+    wrap.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <div><b style="font-size:22px;color:var(--text)">${current}</b> <span>kun ketma-ket</span>${todayMet?' <span class="badge green">bugun ✓</span>':''}</div>
+        <div style="font-size:11px;color:var(--text3)">Rekord: ${best} kun</div>
+      </div>
+      <div style="margin-bottom:.4rem">${badgesHTML}</div>
+      ${progressHTML}`;
+  }
+  if(typeof window.renderDashboard === 'function'){
+    const _origRenderDashboard14 = window.renderDashboard;
+    window.renderDashboard = function(...args){
+      const r = _origRenderDashboard14.apply(this, args);
+      try{ ensureStreakDashCard(); renderStreakDashBody(); }catch(e){}
+      return r;
+    };
+  }
+
+  // ================== 14.3b OVOZLI CHEK E'LONI (Speech Synthesis) ==================
+  // Sotuv yakunlanganda chek summasini ovoz orqali o'qib berish — shovqinli
+  // do'konlarda yoki qo'llar band bo'lganda foydali. Faqat O'QIYDI (lastReceiptData),
+  // hech narsa yozmaydi.
+  window.announceReceipt = function(){
+    if(!window.speechSynthesis){ safeToast("Bu qurilma ovozli o'qishni qo'llab-quvvatlamaydi", 'red'); return; }
+    let total = 0, sellerName = '';
+    try{ total = window.lastReceiptData ? window.lastReceiptData.total : 0; sellerName = window.lastReceiptData ? window.lastReceiptData.sellerName : ''; }catch(e){}
+    if(!total){ safeToast('Chek topilmadi', 'red'); return; }
+    try{
+      const utter = new SpeechSynthesisUtterance(`Jami summa: ${Math.round(total).toLocaleString('uz-UZ')} so'm`);
+      utter.lang = 'ru-RU';
+      utter.rate = 0.95;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    }catch(e){ safeToast("Ovozli o'qishda xatolik", 'red'); }
+  };
+  window.addEventListener('load', function(){
+    if(window.speechSynthesis){
+      const b = document.getElementById('receipt-voice-btn');
+      if(b) b.style.display = 'inline-block';
+    }
+  });
+
+  // ================== 14.4 OVOZLI QIDIRUV (Web Speech API) ==================
+  window.startVoiceSearch = function(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ safeToast("Bu brauzer ovozli qidiruvni qo'llab-quvvatlamaydi", 'red'); return; }
+    if(typeof window.openCommandPalette === 'function') window.openCommandPalette();
+    try{
+      const rec = new SR();
+      rec.lang = 'ru-RU';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      safeToast('🎤 Gapiring...', 'blue');
+      rec.onresult = function(e){
+        const text = e.results[0][0].transcript;
+        const input = document.getElementById('cmdk-input');
+        if(input){ input.value = text; if(typeof window.renderCmdkResults==='function') window.renderCmdkResults(); }
+      };
+      rec.onerror = function(e){ safeToast("Ovozli qidiruvda xatolik yuz berdi", 'red'); };
+      rec.start();
+    }catch(e){ safeToast("Ovozli qidiruv ishga tushmadi", 'red'); }
+  };
+  window.addEventListener('load', function(){
+    if(window.SpeechRecognition || window.webkitSpeechRecognition){
+      const b1=document.getElementById('voice-search-btn'); if(b1) b1.style.display='inline-flex';
+      const b2=document.getElementById('cmdk-voice-btn'); if(b2) b2.style.display='inline-block';
+    }
+  });
+
+  // ================== 14.5 KLAVIATURA YORLIQLARI (K, T) ==================
+  document.addEventListener('keydown', function(e){
+    const tag = (e.target && e.target.tagName) || '';
+    if(['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const appVisible = document.getElementById('app') && document.getElementById('app').style.display !== 'none';
+    if(!appVisible) return;
+    const k = e.key.toLowerCase();
+    if(k === 'k'){ window.openShiftModal && window.openShiftModal(); }
+    else if(k === 't'){ window.openTasksModal && window.openTasksModal(); }
+  });
 
 })();
 </script>
