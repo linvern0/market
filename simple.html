@@ -2281,7 +2281,6 @@ body.dark tr:hover td {
       <div style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
       <div id="receipt-qr" style="text-align:center;margin-top:.6rem">
         <img id="receipt-qr-img" src="" alt="QR" style="width:110px;height:110px;display:none;margin:0 auto">
-        <div style="font-size:10px;color:#999;margin-top:2px">Xarid tafsilotlari uchun skanerlang</div>
       </div>
     </div>
     <div class="modal-footer" style="flex-wrap:wrap">
@@ -4994,6 +4993,11 @@ window.doCartSell=async function(){
   const total=cartTotal();
   const writes=[];
   const receiptItems=[];
+  // YANGI: savatdagi barcha tovarlar (bir nechta xil bo'lsa ham) BITTA
+  // umumiy receiptId bilan belgilanadi — shu orqali "Mening sotuvlarim"
+  // va "Savdo tarixi"da bitta xariddagi bir nechta tovar bitta qator
+  // (bitta chek) sifatida ko'rsatiladi, alohida-alohida emas.
+  const saleGroupId = uid();
   // TUZATILDI (2026-07): ilgari shu forEach ichida BIRORTA tovarda kutilmagan
   // xatolik (masalan noto'g'ri/eskirgan mahsulot ma'lumoti) yuz bersa, JS
   // xatoligi BUTUN funksiyani sekundida to'xtatib qo'yardi — shu sababli pastdagi
@@ -5010,7 +5014,7 @@ window.doCartSell=async function(){
       try{
         const p=DB.products.find(x=>x.id===id);
         if(!p) throw new Error('Tovar topilmadi: '+id);
-        const sale={id:uid(),productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
+        const sale={id:uid(),receiptId:saleGroupId,productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
         receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty});
         writes.push(fbSaveSale(sale));
         window._lastSaleFlashId = sale.id; // YANGI: oxirgi qo'shilgan savdoni "Mening sotuvlarim"da yoritish uchun
@@ -5044,7 +5048,7 @@ window.doCartSell=async function(){
     toast(`✓ Savdo yakunlandi — ${fmt(total)} so'm`,'green');
     // Butun savat (bir nechta tovar bo'lsa ham) BITTA umumiy receiptId
     // bilan chek sifatida saqlanadi — QR shu ID'ga ishora qiladi.
-    openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total, uid()));
+    openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total, saleGroupId));
   }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
@@ -5155,6 +5159,72 @@ window.setMySalesFilter = function(type){
   if(type==='all') document.getElementById('ms-btn-all').classList.add('blue');
   renderMySales();
 }
+// YANGI: bitta xariddagi (bitta chekdagi) bir nechta xil tovar
+// alohida-alohida qatorlar sifatida emas, BITTA qator sifatida
+// ko'rsatilishi uchun — savdolarni receiptId bo'yicha guruhlaymiz.
+// Eski (receiptId'siz) yozuvlar o'zining alohida id'si bo'yicha
+// guruhlanadi, ya'ni avvalgidek bittalab ko'rsatiladi.
+function groupSalesByReceipt(salesArr){
+  const map = new Map();
+  const order = [];
+  salesArr.forEach(s=>{
+    const key = s.receiptId || s.id;
+    let g = map.get(key);
+    if(!g){
+      g = { receiptId:key, date:s.date, seller:s.seller, items:[], ids:[], total:0, qty:0, allReverted:true, anyReverted:false };
+      map.set(key, g);
+      order.push(key);
+    }
+    g.items.push(s);
+    g.ids.push(s.id);
+    g.total += s.total;
+    g.qty += s.qty;
+    if(!s.reverted) g.allReverted=false;
+    if(s.reverted) g.anyReverted=true;
+  });
+  return order.map(k=>map.get(k));
+}
+// Guruhdagi tovarlar nomini bitta katakda o'qilishi qulay qilib chiqaradi:
+// bitta tovar bo'lsa — nomi, bir nechta bo'lsa — "2x Fuse Tea, 1x Suv..."
+function groupItemsLabel(g){
+  if(g.items.length===1) return `<strong>${g.items[0].productName}</strong>`;
+  return g.items.map(it=>`${it.qty}x ${it.productName}`).join(', ');
+}
+window.printGroupReceipt=function(receiptId){
+  const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId);
+  if(!items.length) return;
+  const total = items.reduce((a,s)=>a+s.total,0);
+  const rd=buildReceiptFromItems(items.map(s=>({name:s.productName, volume:s.volume, qty:s.qty, price:s.price, total:s.total})), items[0].seller, total, receiptId);
+  rd.date = new Date(items[0].date);
+  openReceiptModal(rd);
+}
+window.revertSaleGroup=function(receiptId){
+  const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
+  if(!items.length) return;
+  toast('Savdo qaytarildi','amber');
+  const writes=[];
+  items.forEach(s=>{
+    const p=DB.products.find(x=>x.id===s.productId);
+    writes.push(fbUpdateSale(s.id,{reverted:true}));
+    if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
+  });
+  Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+window.adminRevertGroup=function(receiptId){
+  const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
+  if(!items.length) return;
+  const label = items.length===1 ? `"${items[0].productName}" ni ${items[0].qty} ta` : `${items.length} xil tovarni`;
+  confirm2('Savdoni qaytarish', `${label} qaytarilsinmi?`, ()=>{
+    toast('Savdo qaytarildi','amber');
+    const writes=[];
+    items.forEach(s=>{
+      const p=DB.products.find(x=>x.id===s.productId);
+      writes.push(fbUpdateSale(s.id,{reverted:true}));
+      if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
+    });
+    Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  });
+}
 window.renderMySales=function(){
   try{
     renderMySalesInner();
@@ -5231,14 +5301,18 @@ function renderMySalesInner(){
   // ko'rgazmali tasdiqlaydi (ayniqsa oxirgi sotuv "ko'rinmayapti" degan
   // shubhaning oldini olish uchun).
   const flashId = window._lastSaleFlashId || null;
-  tbody.innerHTML=sales.map(s=>{
+  const groups = groupSalesByReceipt(sales);
+  tbody.innerHTML=groups.map(g=>{
     try{
-      const saleTime=new Date(s.date).getTime();
-      const canRevert=!s.reverted && !isNaN(saleTime) && (now-saleTime)/60000<=revertMins;
-      const flashCls = (flashId && s.id===flashId) ? ' row-flash' : '';
-      return `<tr class="${flashCls}"><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Hajm">${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(s.total)} so'm</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Sotilgan'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSale('${s.id}')">↩ Qaytarish</button>`:''}</td></tr>`;
+      const saleTime=new Date(g.date).getTime();
+      const canRevert=!g.allReverted && !isNaN(saleTime) && (now-saleTime)/60000<=revertMins;
+      const flashCls = (flashId && g.ids.includes(flashId)) ? ' row-flash' : '';
+      const volume = g.items.length===1 && g.items[0].volume ? `<span class="badge blue">${g.items[0].volume} L</span>` : '—';
+      const statusLabel = g.allReverted ? 'Qaytarilgan' : (g.anyReverted ? "Qisman qaytarilgan" : 'Sotilgan');
+      const statusCls = g.allReverted ? 'red' : (g.anyReverted ? 'amber' : 'green');
+      return `<tr class="${flashCls}"><td data-label="Vaqt" style="font-size:13px;color:var(--text3)">${timeStr(g.date)}</td><td data-label="Tovar">${groupItemsLabel(g)}</td><td data-label="Hajm">${volume}</td><td>${g.qty} ta</td><td style="font-weight:700;color:var(--green)">${fmt(g.total)} so'm</td><td><span class="badge ${statusCls}">${statusLabel}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printGroupReceipt('${g.receiptId}')" title="Chek">🖨</button>${canRevert?`<button class="btn sm amber" onclick="revertSaleGroup('${g.receiptId}')">↩ Qaytarish</button>`:''}</td></tr>`;
     }catch(rowErr){
-      console.error('Savdo qatorini chizishda xatolik:', s?.id, rowErr);
+      console.error('Savdo qatorini chizishda xatolik:', g?.receiptId, rowErr);
       return '';
     }
   }).join('');
@@ -5297,7 +5371,13 @@ window.renderHistory=function(){
   const totalRev=sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
   const cnt=sales.filter(s=>!s.reverted).length;
   sumEl.innerHTML=`<div style="display:flex;gap:.75rem;flex-wrap:wrap"><span class="badge green">Jami: ${fmt(totalRev)} so'm</span><span class="badge blue">Savdolar: ${cnt} ta</span></div>`;
-  tbody.innerHTML=sales.map(s=>`<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(s.date)}</td><td data-label="Tovar"><strong>${s.productName}</strong></td><td data-label="Miqdor">${s.qty} ta</td><td data-label="Narx">${fmt(s.price)} so'm</td><td data-label="Jami" style="font-weight:700;color:${s.reverted?'var(--text3)':'var(--green)'}">${fmt(s.total)} so'm</td><td>${s.seller}</td><td><span class="badge ${s.reverted?'red':'green'}">${s.reverted?'Qaytarilgan':'Aktiv'}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printSaleReceipt('${s.id}')" title="Chek">🖨</button>${!s.reverted?`<button class="btn sm red" onclick="adminRevert('${s.id}')">↩</button>`:''}</td></tr>`).join('');
+  const groups = groupSalesByReceipt(sales);
+  tbody.innerHTML=groups.map(g=>{
+    const statusLabel = g.allReverted ? 'Qaytarilgan' : (g.anyReverted ? "Qisman qaytarilgan" : 'Aktiv');
+    const statusCls = g.allReverted ? 'red' : (g.anyReverted ? 'amber' : 'green');
+    const priceCell = g.items.length===1 ? fmt(g.items[0].price)+" so'm" : '—';
+    return `<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(g.date)}</td><td data-label="Tovar">${groupItemsLabel(g)}</td><td data-label="Miqdor">${g.qty} ta</td><td data-label="Narx">${priceCell}</td><td data-label="Jami" style="font-weight:700;color:${g.allReverted?'var(--text3)':'var(--green)'}">${fmt(g.total)} so'm</td><td>${g.seller}</td><td><span class="badge ${statusCls}">${statusLabel}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printGroupReceipt('${g.receiptId}')" title="Chek">🖨</button>${!g.allReverted?`<button class="btn sm red" onclick="adminRevertGroup('${g.receiptId}')">↩</button>`:''}</td></tr>`;
+  }).join('');
 }
 window.adminRevert=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
