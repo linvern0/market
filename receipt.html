@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chek — Xarid ma'lumoti</title>
+<style>
+  :root{
+    --paper:#fbfaf6;
+    --ink:#1e1d1a;
+    --ink-soft:#6b6558;
+    --line:#d8d2c2;
+    --accent:#a8462f;
+    --bg:#e9e4d8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(0,0,0,.03) 0, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(0,0,0,.03) 0, transparent 40%);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 60px;
+    font-family:'Courier New', ui-monospace, monospace;
+    color:var(--ink);
+  }
+  .receipt{
+    width:100%;
+    max-width:380px;
+    background:var(--paper);
+    padding:28px 22px 24px;
+    position:relative;
+    box-shadow:0 18px 40px -12px rgba(30,29,26,.35), 0 2px 6px rgba(30,29,26,.15);
+    /* tishli (perforatsiya) chek chetlari effekti */
+    -webkit-mask-image: radial-gradient(circle 6px at 12px 0, transparent 99%, #000 100%),
+                         radial-gradient(circle 6px at 12px 100%, transparent 99%, #000 100%);
+  }
+  .receipt::before, .receipt::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; height:10px;
+    background:
+      radial-gradient(circle 6px, var(--bg) 6px, transparent 6.5px) 0 0 / 16px 16px repeat-x;
+  }
+  .receipt::before{ top:-1px; }
+  .receipt::after{ bottom:-1px; transform:rotate(180deg); }
+
+  .eyebrow{
+    text-align:center;
+    font-size:10px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .shopname{
+    text-align:center;
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:2px;
+  }
+  .meta{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:2px;
+  }
+  .divider{
+    border-top:1px dashed var(--line);
+    margin:14px 0;
+  }
+  .items{ margin-bottom:4px; }
+  .item-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    font-size:13px;
+    padding:6px 0;
+    border-bottom:1px dotted var(--line);
+  }
+  .item-row:last-child{ border-bottom:none; }
+  .item-name{ flex:1; }
+  .item-qty{ color:var(--ink-soft); font-size:11px; display:block; margin-top:2px; }
+  .item-sum{ white-space:nowrap; font-weight:700; }
+
+  .total-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:17px;
+    font-weight:700;
+    margin-top:6px;
+  }
+  .total-row .label{ font-size:12px; font-weight:400; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+  .total-row .value{ color:var(--accent); }
+
+  .thanks{
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:16px;
+  }
+  .stamp{
+    display:inline-block;
+    margin:14px auto 0;
+    padding:4px 12px;
+    border:1px solid var(--accent);
+    color:var(--accent);
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    transform:rotate(-3deg);
+  }
+  .stamp-wrap{ text-align:center; }
+
+  .state{
+    max-width:380px;
+    width:100%;
+    text-align:center;
+    color:var(--ink-soft);
+    font-family:'Courier New', ui-monospace, monospace;
+    padding:40px 20px;
+  }
+  .state .icon{ font-size:34px; margin-bottom:10px; }
+  .state h1{ font-size:16px; margin:0 0 6px; color:var(--ink); font-weight:700; }
+  .state p{ font-size:13px; margin:0; line-height:1.5; }
+
+  .skeleton .item-row span{
+    display:inline-block;
+    height:12px;
+    border-radius:3px;
+    background:linear-gradient(90deg,#e6e1d3 25%,#f1eee3 37%,#e6e1d3 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.4s ease infinite;
+    color:transparent;
+  }
+  @keyframes shimmer{ 0%{background-position:100% 0} 100%{background-position:0 0} }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="state">
+    <div class="icon">⏳</div>
+    <h1>Yuklanmoqda…</h1>
+    <p>Xarid ma'lumotlari olinmoqda</p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // Asosiy Do'kon Boshqaruvi ilovasi bilan BIR XIL Firebase loyihasi
+  const firebaseConfig = {
+    apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
+    authDomain: "dokon-ce38b.firebaseapp.com",
+    projectId: "dokon-ce38b",
+    storageBucket: "dokon-ce38b.firebasestorage.app",
+    messagingSenderId: "1024226826394",
+    appId: "1:1024226826394:web:3a052adf83b46202c96723",
+    measurementId: "G-75RXS3WVWC"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const appEl = document.getElementById('app');
+
+  function fmt(n){
+    return Math.round(n||0).toLocaleString('uz-UZ').replace(/,/g,' ');
+  }
+
+  function renderError(title, text){
+    appEl.innerHTML = `
+      <div class="state">
+        <div class="icon">⚠️</div>
+        <h1>${title}</h1>
+        <p>${text}</p>
+      </div>`;
+  }
+
+  function renderReceipt(r){
+    const dateStr = r.date ? new Date(r.date).toLocaleString('uz-UZ') : '';
+    const itemsHtml = (r.items||[]).map(i => `
+      <div class="item-row">
+        <div class="item-name">
+          ${i.name || ''}${i.volume ? ' ('+i.volume+'L)' : ''}
+          <span class="item-qty">x${i.qty}${i.price ? '  ·  '+fmt(i.price)+" so'm/dona" : ''}</span>
+        </div>
+        <div class="item-sum">${fmt(i.total)}</div>
+      </div>`).join('');
+
+    appEl.innerHTML = `
+      <div class="receipt">
+        <div class="eyebrow">Xarid tasdig'i</div>
+        <div class="shopname">🏪 ${r.shopName || "Do'kon"}</div>
+        <div class="meta">${dateStr}</div>
+        <div class="meta">Sotuvchi: ${r.sellerName || '—'}</div>
+        <div class="divider"></div>
+        <div class="items">${itemsHtml || '<div class="item-row"><div class="item-name">Tovar topilmadi</div></div>'}</div>
+        <div class="divider"></div>
+        <div class="total-row">
+          <span class="label">Jami to'lov</span>
+          <span class="value">${fmt(r.total)} so'm</span>
+        </div>
+        <div class="thanks">Xaridingiz uchun rahmat!</div>
+        <div class="stamp-wrap"><span class="stamp">✓ Tasdiqlangan</span></div>
+      </div>`;
+  }
+
+  async function init(){
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+
+    if(!id){
+      renderError("Chek topilmadi", "Havolada chek raqami ko'rsatilmagan. QR kodni qaytadan skanerlang.");
+      return;
+    }
+
+    try{
+      const snap = await getDoc(doc(db, 'receipts', id));
+      if(!snap.exists()){
+        renderError("Chek topilmadi", "Bu chek bazada mavjud emas yoki muddati o'tgan bo'lishi mumkin.");
+        return;
+      }
+      renderReceipt(snap.data());
+    }catch(e){
+      console.error(e);
+      renderError("Xatolik yuz berdi", "Ma'lumotni yuklab bo'lmadi. Internet aloqasini tekshirib, qaytadan urinib ko'ring.");
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
