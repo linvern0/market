@@ -2,7 +2,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -12,7 +11,7 @@
 
 <!-- PWA: ilovani Android/iOS/Windows'da "o'rnatiladigan" qilish uchun -->
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#1e293b">
+<meta name="theme-color" content="#10302b">
 <link rel="icon" href="./icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -25,23 +24,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <!-- Mahsulot shtrix-kod yorliqlarini chop etish uchun (faqat "Yorliq chop etish" funksiyasida ishlatiladi) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#f5f5f0;--surface:#fff;--surface2:#fafaf8;
-    --border:#e0ddd6;--border2:#ccc;
-    --text:#1a1a17;--text2:#555;--text3:#888;
-    --accent:#2563eb;--accent-bg:#eff6ff;--accent-border:#bfdbfe;
+    /* "Ledger" palette — ink-teal + brass, tuned for a shop/kassa bookkeeping tool */
+    --bg:#f2f6f4;--surface:#fff;--surface2:#f7faf8;
+    --border:#dde6e1;--border2:#c2d0c9;
+    --text:#16221c;--text2:#4d5b54;--text3:#7c8c83;
+    --accent:#0f6e5e;--accent-bg:#e8f5f1;--accent-border:#bfe3d9;
+    --accent-dark:#0b5449;--gold:#c99a3a;--gold-dark:#a67c26;
     --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
     --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
     --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
-    --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
+    --radius:8px;--shadow:0 1px 2px rgba(15,40,33,.05),0 3px 10px rgba(15,40,33,.06);
+    --font-display:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   }
   html{overflow-x:hidden;overflow-y:auto}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden;overflow-y:auto}
-  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
-  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .6s linear infinite}
-  #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
+  body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden;overflow-y:auto;font-variant-numeric:tabular-nums}
+  h1,h2,h3,.section-header h2,nav .logo,.login-card h1,.stat .val,.modal h3{font-family:var(--font-display)}
+  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#10302b,#1b4a40);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
+  #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#d9b25c;border-radius:50%;animation:spin .6s linear infinite}
+  #loading-screen p{color:#9fb3ac;font-size:15px;text-align:center;padding:0 1rem}
   #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
   @keyframes spin{to{transform:rotate(360deg)}}
   #loading-screen.hidden{display:none}
@@ -49,23 +56,23 @@
   #sync-dot.syncing{background:#f59e0b;animation:pulse-dot .6s ease infinite}
   #sync-dot.error{background:#ef4444}
   @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
-  nav{background:#1e293b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:.75rem;min-height:56px;position:sticky;top:0;z-index:100;flex-wrap:nowrap}
+  nav{background:#10302b;color:#fff;padding:0 1rem;display:flex;align-items:center;gap:.75rem;min-height:56px;position:sticky;top:0;z-index:100;flex-wrap:nowrap}
   nav .logo{font-weight:600;font-size:17px;color:#fff;display:flex;align-items:center;gap:.5rem;flex-shrink:0;white-space:nowrap}
-  nav .logo span{color:#60a5fa}
+  nav .logo span{color:#d9b25c}
   #nav-admin,#nav-seller{display:flex;gap:.25rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:1;min-width:0}
   #nav-admin::-webkit-scrollbar,#nav-seller::-webkit-scrollbar{display:none}
-  nav button.tab{background:none;border:none;color:#94a3b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.025s;white-space:nowrap;flex-shrink:0}
-  nav button.tab.active,nav button.tab:hover{background:#334155;color:#fff}
-  nav .user-badge{background:#334155;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8;display:flex;align-items:center;flex-shrink:0;white-space:nowrap}
+  nav button.tab{background:none;border:none;color:#9fb3ac;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.025s;white-space:nowrap;flex-shrink:0}
+  nav button.tab.active,nav button.tab:hover{background:#1b4a40;color:#fff}
+  nav .user-badge{background:#1b4a40;border-radius:20px;padding:4px 12px;font-size:13px;color:#9fb3ac;display:flex;align-items:center;flex-shrink:0;white-space:nowrap}
   nav .nav-right-tools{display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-left:auto}
   #nav-more-btn{flex-shrink:0;margin-left:auto}
   #nav-more-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:199}
   #nav-more-overlay.hidden{display:none}
-  #nav-more-menu{position:fixed;top:calc(56px + var(--safe-t,0px) + 6px);right:.75rem;z-index:200;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:.4rem;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:2px}
+  #nav-more-menu{position:fixed;top:calc(56px + var(--safe-t,0px) + 6px);right:.75rem;z-index:200;background:#10302b;border:1px solid #1b4a40;border-radius:12px;padding:.4rem;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:2px}
   #nav-more-menu.hidden{display:none}
   #nav-more-menu button{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left;background:none;border:none;color:#e2e8f0;padding:.65rem .75rem;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  #nav-more-menu button:active,#nav-more-menu button:hover{background:#334155}
-  #nav-more-menu .nav-more-sep{height:1px;background:#334155;margin:.3rem .25rem}
+  #nav-more-menu button:active,#nav-more-menu button:hover{background:#1b4a40}
+  #nav-more-menu .nav-more-sep{height:1px;background:#1b4a40;margin:.3rem .25rem}
   /* YANGI: NAV-COMPACT — nav.js runtime'da nav-admin/nav-seller tablari
      o'z konteyneriga sig'masligini o'lchaydi (scrollWidth>clientWidth) va
      shunday holatda <body>'ga "nav-compact" klassini qo'shadi. Bu orqali
@@ -92,33 +99,33 @@
   #mobile-tabbar button#mtab-more-btn{display:none}
   #mobile-more-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:119}
   #mobile-more-overlay.hidden{display:none}
-  #mobile-more-menu{position:fixed;left:50%;transform:translateX(-50%);width:min(94vw,360px);bottom:calc(58px + var(--safe-b,0px) + 8px);z-index:121;background:#1e293b;border:1px solid #334155;border-radius:14px;padding:.4rem;display:flex;flex-direction:column;gap:2px;box-shadow:0 -10px 32px rgba(0,0,0,.4)}
+  #mobile-more-menu{position:fixed;left:50%;transform:translateX(-50%);width:min(94vw,360px);bottom:calc(58px + var(--safe-b,0px) + 8px);z-index:121;background:#10302b;border:1px solid #1b4a40;border-radius:14px;padding:.4rem;display:flex;flex-direction:column;gap:2px;box-shadow:0 -10px 32px rgba(0,0,0,.4)}
   #mobile-more-menu.hidden{display:none}
   #mobile-more-menu button{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;background:none;border:none;color:#e2e8f0;padding:.8rem .85rem;border-radius:9px;font-size:15px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}
   #mobile-more-menu button .tab-icon{font-size:18px;line-height:1}
-  #mobile-more-menu button:active,#mobile-more-menu button:hover,#mobile-more-menu button.active{background:#334155}
-  #mobile-more-menu button.active{color:#60a5fa}
+  #mobile-more-menu button:active,#mobile-more-menu button:hover,#mobile-more-menu button.active{background:#1b4a40}
+  #mobile-more-menu button.active{color:#d9b25c}
   #nav-more-menu .nav-more-logout{color:#fca5a5}
   #nav-more-menu .nav-more-logout:active,#nav-more-menu .nav-more-logout:hover{background:#7f1d1d33}
   .page{display:none;padding:0.8rem;max-width:1700px;width:100%;margin:0 auto}
   .page.active{display:block}
-  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
+  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#10302b 0%,#1b4a40 100%)}
   .login-card{background:#fff;border-radius:16px;padding:2.5rem;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b}
+  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#10302b}
   .login-card p{color:#64748b;font-size:14px;margin-bottom:2rem}
   .role-btns{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
   .role-btn{border:2px solid var(--border2);background:#fff;border-radius:var(--radius);padding:1rem;cursor:pointer;transition:.0375s;text-align:center}
-  .role-btn:hover{border-color:#2563eb;background:#eff6ff}
-  .role-btn.selected{border-color:#2563eb;background:#eff6ff}
+  .role-btn:hover{border-color:#0f6e5e;background:#e8f5f1}
+  .role-btn.selected{border-color:#0f6e5e;background:#e8f5f1}
   .role-btn .icon{font-size:28px;margin-bottom:.5rem}
-  .role-btn .name{font-weight:600;font-size:15px;color:#1e293b}
+  .role-btn .name{font-weight:600;font-size:15px;color:#10302b}
   .role-btn .desc{font-size:12px;color:#64748b;margin-top:2px}
   .pin-section{margin-top:1rem}
   .pin-section label{display:block;font-size:13px;color:#64748b;margin-bottom:.5rem;font-weight:500}
   .pin-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.75rem 1rem;font-size:18px;letter-spacing:.5rem;text-align:center;outline:none;transition:.025s}
-  .pin-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
-  .btn-primary{width:100%;background:#2563eb;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.025s}
-  .btn-primary:hover{background:#1d4ed8}
+  .pin-input:focus{border-color:#0f6e5e;box-shadow:0 0 0 3px rgba(15,110,94,.15)}
+  .btn-primary{width:100%;background:#0f6e5e;color:#fff;border:none;border-radius:var(--radius);padding:.85rem;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem;transition:.025s}
+  .btn-primary:hover{background:#0b5449}
   .err-msg{color:#dc2626;font-size:13px;text-align:center;margin-top:.75rem;min-height:20px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:var(--shadow)}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
@@ -140,12 +147,12 @@
   .field{display:flex;flex-direction:column;gap:.35rem}
   .field label{font-size:13px;font-weight:600;color:var(--text2)}
   .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.0375s;font-family:inherit;background:#fff;width:100%}
-  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,110,94,.12)}
   .field textarea{resize:vertical;min-height:70px}
-  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.0375s;color:var(--text)}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:var(--surface2);font-size:13px;font-weight:600;cursor:pointer;transition:.0375s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
   .btn.blue{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .btn.blue:hover{background:#1d4ed8;border-color:#1d4ed8}
+  .btn.blue:hover{background:#0b5449;border-color:#0b5449}
   .btn.green{background:var(--green);color:#fff;border-color:var(--green)}
   .btn.green:hover{background:#15803d}
   .btn.red{background:var(--red);color:#fff;border-color:var(--red)}
@@ -217,7 +224,7 @@
   .sell-card.cart-added{animation:cart-pulse .025s ease}
   @keyframes cart-pulse{
     0%{transform:scale(1)}
-    50%{transform:scale(.93);box-shadow:0 0 0 3px rgba(37,99,235,.4)}
+    50%{transform:scale(.93);box-shadow:0 0 0 3px rgba(15,110,94,.4)}
     100%{transform:scale(1)}
   }
   /* "Qo'shildi/sotildi" kabi barcha tezkor tasdiqlash animatsiyalari — izchil,
@@ -250,35 +257,39 @@
      tooltip sifatida qoladi — barcha ekran o'lchamlarida bir xil, ixcham
      ko'rinish. */
   .prod-card .prod-actions .act-label{display:none}
-  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.025s}
+  .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface2);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.025s}
   .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
-  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff}
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:.015s;pointer-events:none;max-width:320px}
+  .filter-bar{display:flex;gap:.6rem;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:1.25rem;align-items:center;padding-bottom:.2rem}
+  .filter-bar::-webkit-scrollbar{display:none}
+  .filter-bar>*{flex-shrink:0}
+  .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:var(--surface2)}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#10302b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:.015s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
   .toast.green{background:#166534}
   .toast.red{background:#991b1b}
   .toast.amber{background:#92400e}
   .revert-info{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius);padding:.75rem 1rem;font-size:13px;color:#92400e;margin-bottom:1rem}
-  #sticky-cart{position:fixed;bottom:0;left:0;right:0;z-index:150;background:#1e293b;color:#fff;padding:.85rem 1.25rem;display:none;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,.25);flex-wrap:wrap}
+  #sticky-cart{position:fixed;bottom:0;left:0;right:0;z-index:150;background:#10302b;color:#fff;padding:.85rem 1.25rem;display:none;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,.25);flex-wrap:wrap}
   #sticky-cart.show{display:flex}
   #sticky-cart .cart-info{font-size:15px;font-weight:600}
-  #sticky-cart .cart-info span{color:#60a5fa}
+  #sticky-cart .cart-info span{color:#d9b25c}
   .prod-card.dragging{opacity:.4;border:2px dashed var(--accent)}
   .prod-card.drag-over{border:2px solid var(--accent);background:var(--accent-bg)}
   .drag-handle{cursor:grab;color:#bbb;font-size:18px;padding:2px 6px;border-radius:4px;user-select:none}
-  .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
+  .sort-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.65rem 1rem}
+  .sort-bar::-webkit-scrollbar{display:none}
+  .sort-bar>*{flex-shrink:0}
   .sort-bar span{font-size:13px;color:var(--text2);font-weight:600;margin-right:.25rem}
-  #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#1e293b;border-top:1px solid #334155;flex-direction:row;align-items:stretch;height:58px}
+  #mobile-tabbar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:120;background:#10302b;border-top:1px solid #1b4a40;flex-direction:row;align-items:stretch;height:58px}
   @media(min-width:641px){
     /* Kengroq (planshet/noutbuk) ekranlarda nav-compact ishga tushganda
        pastki panel devor-devorga cho'zilib ketmasin — markazga
        joylashtirib, "dok" ko'rinishini beramiz. */
-    body.nav-compact #mobile-tabbar{max-width:640px;margin:0 auto;left:0;right:0;border-left:1px solid #334155;border-right:1px solid #334155;border-radius:14px 14px 0 0}
+    body.nav-compact #mobile-tabbar{max-width:640px;margin:0 auto;left:0;right:0;border-left:1px solid #1b4a40;border-right:1px solid #1b4a40;border-radius:14px 14px 0 0}
   }
   #mobile-tabbar button{flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.0375s;padding:4px 2px;-webkit-tap-highlight-color:transparent}
   #mobile-tabbar button .tab-icon{font-size:20px;line-height:1}
-  #mobile-tabbar button.active{color:#60a5fa}
+  #mobile-tabbar button.active{color:#d9b25c}
   #mobile-tabbar button.active .tab-icon{transform:translateY(-1px)}
   @media(max-width:768px){
     input:not(.pin-input),select,textarea{font-size:16px!important}
@@ -309,7 +320,7 @@
     .login-card{width:calc(100% - 2rem);max-width:380px;padding:2rem 1.5rem}
     .tbl-wrap{border-radius:8px}
     table thead{display:none}
-    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:#fff;box-shadow:var(--shadow)}
+    table tbody tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:.6rem;padding:.75rem;background:var(--surface2);box-shadow:var(--shadow)}
     table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border:none;font-size:13px}
     table tbody td:before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:12px;flex-shrink:0;margin-right:.5rem}
     table tbody tr:hover td{background:transparent}
@@ -372,7 +383,7 @@
     --bg:#0f1419;--surface:#1a2129;--surface2:#212a34;
     --border:#2d3742;--border2:#3a4652;
     --text:#e5e9ee;--text2:#b0bac4;--text3:#7c8794;
-    --accent:#3b82f6;--accent-bg:#1e293b;--accent-border:#3b5578;
+    --accent:#3b82f6;--accent-bg:#10302b;--accent-border:#3b5578;
     --green:#22c55e;--green-bg:#132a1c;--green-border:#22492f;
     --red:#f87171;--red-bg:#301a1a;--red-border:#552626;
     --amber:#fbbf24;--amber-bg:#332208;--amber-border:#5a4413;
@@ -432,7 +443,7 @@
      Bu blok faqat ko'rinishni yaxshilaydi — eski funksiyalarga tegmaydi
      ================================================================ -->
 <style>
-  ::selection{background:#2563eb;color:#fff}
+  ::selection{background:#0f6e5e;color:#fff}
   html{scroll-behavior:smooth}
   ::-webkit-scrollbar{width:10px;height:10px}
   ::-webkit-scrollbar-track{background:transparent}
@@ -442,20 +453,20 @@
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 
   /* Nav — nafis gradient + faol tab ostidagi chiziq */
-  nav{background:linear-gradient(135deg,#1e293b 0%,#25324a 55%,#1e293b 100%);box-shadow:0 2px 10px rgba(0,0,0,.18);border-bottom:1px solid rgba(255,255,255,.06)}
+  nav{background:linear-gradient(135deg,#10302b 0%,#25324a 55%,#10302b 100%);box-shadow:0 2px 10px rgba(0,0,0,.18);border-bottom:1px solid rgba(255,255,255,.06)}
   nav button.tab{position:relative;overflow:hidden}
-  nav button.tab.active{background:#334155}
-  nav button.tab.active::after{content:'';position:absolute;left:12px;right:12px;bottom:2px;height:2px;border-radius:2px;background:#60a5fa;box-shadow:0 0 8px #60a5fa}
+  nav button.tab.active{background:#1b4a40}
+  nav button.tab.active::after{content:'';position:absolute;left:12px;right:12px;bottom:2px;height:2px;border-radius:2px;background:#d9b25c;box-shadow:0 0 8px #d9b25c}
   nav button.tab:not(.active):hover{transform:translateY(-1px)}
   nav .logo{display:flex;align-items:center;gap:.6rem}
   #nav-clock{font-size:11.5px;color:#7c8aa5;font-weight:500;white-space:nowrap;letter-spacing:.2px}
-  #nav-clock .greet{color:#94a3b8}
+  #nav-clock .greet{color:#9fb3ac}
 
   /* Kartalar — mayin ko'tarilish effekti */
   .card,.stat,.prod-card{transition:transform .0375s ease,box-shadow .0375s ease,border-color .0375s ease}
   .card:hover{box-shadow:0 6px 20px rgba(0,0,0,.08)}
   .stat{position:relative;overflow:hidden;isolation:isolate}
-  .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#60a5fa);opacity:.85;border-radius:12px 12px 0 0}
+  .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#d9b25c);opacity:.85;border-radius:12px 12px 0 0}
   .stat.green::before{background:linear-gradient(90deg,var(--green),#4ade80)}
   .stat.amber::before{background:linear-gradient(90deg,var(--amber),#fbbf24)}
   .stat.red::before{background:linear-gradient(90deg,var(--red),#f87171)}
@@ -466,18 +477,18 @@
   /* Tugmalar — bosilganda mayin siqilish, gradientli asosiy tugma */
   .btn{transition:transform .02s ease,box-shadow .03s ease,background .03s ease,border-color .03s ease}
   .btn:active{transform:scale(.96)}
-  .btn.blue{background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 2px 8px rgba(37,99,235,.25)}
-  .btn.blue:hover{background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 4px 12px rgba(37,99,235,.35)}
+  .btn.blue{background:linear-gradient(135deg,#0f6e5e,#0b5449);box-shadow:0 2px 8px rgba(15,110,94,.25)}
+  .btn.blue:hover{background:linear-gradient(135deg,#0b5449,#083f37);box-shadow:0 4px 12px rgba(15,110,94,.35)}
   .btn.green{background:linear-gradient(135deg,#16a34a,#22c55e)}
   .btn.red{background:linear-gradient(135deg,#dc2626,#ef4444)}
-  .btn-primary{background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 4px 14px rgba(37,99,235,.3)}
+  .btn-primary{background:linear-gradient(135deg,#0f6e5e,#0b5449);box-shadow:0 4px 14px rgba(15,110,94,.3)}
   .btn-primary:active{transform:scale(.98)}
 
   /* Login sahifasi — jonli fon */
   #login-page{position:relative;overflow:hidden}
   #login-page::before,#login-page::after{content:'';position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none}
-  #login-page::before{width:380px;height:380px;background:#3b82f6;top:-120px;left:-100px;animation:float-orb 10s ease-in-out infinite}
-  #login-page::after{width:320px;height:320px;background:#0ea5e9;bottom:-100px;right:-80px;animation:float-orb 12s ease-in-out infinite reverse}
+  #login-page::before{width:380px;height:380px;background:#0f6e5e;top:-120px;left:-100px;animation:float-orb 10s ease-in-out infinite}
+  #login-page::after{width:320px;height:320px;background:#d9b25c;bottom:-100px;right:-80px;animation:float-orb 12s ease-in-out infinite reverse}
   @keyframes float-orb{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,20px)}}
   .login-card{position:relative;z-index:1;animation:bounceIn .1125s ease}
 
@@ -495,14 +506,14 @@
   @keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 5px rgba(239,68,68,0)}}
 
   /* PWA o'rnatish banneri */
-  #pwa-install-banner{position:fixed;left:1rem;right:1rem;bottom:1rem;max-width:420px;margin:0 auto;background:#1e293b;color:#fff;border-radius:14px;padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:500;transform:translateY(140%);transition:transform .075s cubic-bezier(.2,1,.3,1)}
+  #pwa-install-banner{position:fixed;left:1rem;right:1rem;bottom:1rem;max-width:420px;margin:0 auto;background:#10302b;color:#fff;border-radius:14px;padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:500;transform:translateY(140%);transition:transform .075s cubic-bezier(.2,1,.3,1)}
   #pwa-install-banner.show{transform:translateY(0)}
   #pwa-install-banner .icon{font-size:26px}
   #pwa-install-banner .txt{flex:1;font-size:12.5px;color:#cbd5e1;line-height:1.4}
   #pwa-install-banner .txt b{color:#fff;display:block;font-size:13.5px;margin-bottom:1px}
   #pwa-install-banner button{border:none;border-radius:8px;padding:.5rem .8rem;font-size:12px;font-weight:700;cursor:pointer}
-  #pwa-install-banner .install-btn{background:#2563eb;color:#fff}
-  #pwa-install-banner .close-btn{background:#334155;color:#94a3b8;padding:.5rem .6rem}
+  #pwa-install-banner .install-btn{background:#0f6e5e;color:#fff}
+  #pwa-install-banner .close-btn{background:#1b4a40;color:#9fb3ac;padding:.5rem .6rem}
 
   /* Klaviatura yorliqlari modal */
   #shortcuts-help-modal .key{display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;font-family:monospace;color:var(--text2);min-width:22px;text-align:center}
@@ -523,10 +534,10 @@
 
   /* YANGI (10.6): Bildirishnomalar qo'ng'irog'i */
   #notif-bell-btn{position:relative}
-  #notif-bell-count{display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:9px;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;border:2px solid #1e293b}
+  #notif-bell-count{display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:9px;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;border:2px solid #10302b}
   #notif-panel{display:none;position:fixed;top:calc(56px + var(--safe-t,0px) + 8px);right:.75rem;width:320px;max-height:60vh;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:210;padding:.5rem}
   #notif-panel.hidden{display:none !important}
-  body.dark #notif-panel{background:#1e293b;border-color:#334155}
+  body.dark #notif-panel{background:#10302b;border-color:#1b4a40}
   @media (max-width:768px){ nav ~ #notif-panel, body.nav-compact #notif-panel{ top:calc(52px + var(--safe-t,0px) + 8px) } }
   @media (max-width:480px){ #notif-panel{width:calc(100vw - 1.5rem);right:.75rem;left:.75rem} }
 </style>
@@ -542,26 +553,27 @@
   /* ---------- 1) Yangi rang tizimi (accent — indigo/lavanda, ---------- */
   /* ---------- ikkinchi accent — zumrad) va yumshoqroq neytral fon ------ */
   :root{
-    --bg:#f4f5f9;--surface:#ffffff;--surface2:#f8f8fc;
-    --border:#e6e6ef;--border2:#d7d7e3;
-    --text:#181825;--text2:#54546b;--text3:#8a8aa0;
-    --accent:#4f46e5;--accent2:#0ea5a4;--accent-bg:#eef0ff;--accent-border:#c7c9fb;
+    /* "Daftar" (ledger) identity — ink-teal + brass gold, tuned for a shop/kassa tool */
+    --bg:#f2f6f4;--surface:#ffffff;--surface2:#f7faf8;
+    --border:#dde6e1;--border2:#c2d0c9;
+    --text:#16221c;--text2:#4d5b54;--text3:#7c8c83;
+    --accent:#0f6e5e;--accent2:#c99a3a;--accent-bg:#e8f5f1;--accent-border:#bfe3d9;
     --green:#16a34a;--green-bg:#effdf5;--green-border:#b7f0cf;
-    --red:#e11d48;--red-bg:#fef1f4;--red-border:#fbc9d6;
+    --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
     --amber:#d97706;--amber-bg:#fff9ec;--amber-border:#fbe3b2;
     --radius:10px;--radius-lg:16px;
-    --shadow:0 1px 2px rgba(20,20,50,.05),0 1px 6px rgba(20,20,50,.06);
-    --shadow-lg:0 10px 34px rgba(20,20,50,.14);
-    --nav-bg-1:#181330;--nav-bg-2:#241b47;--nav-bg-3:#151029;
+    --shadow:0 1px 2px rgba(15,40,33,.05),0 1px 6px rgba(15,40,33,.06);
+    --shadow-lg:0 10px 34px rgba(15,40,33,.16);
+    --nav-bg-1:#0c231e;--nav-bg-2:#153a31;--nav-bg-3:#0a1c17;
     --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
     --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);
     --density:1;
   }
   body.dark{
-    --bg:#0f0f16;--surface:#181822;--surface2:#1f1f2c;
-    --border:#2b2b3b;--border2:#34344a;
-    --text:#f1f1f8;--text2:#b6b6c9;--text3:#82829a;
-    --accent:#818cf8;--accent2:#2dd4bf;--accent-bg:#20203a;--accent-border:#3a3a63;
+    --bg:#0f1613;--surface:#182420;--surface2:#1f2e29;
+    --border:#2b3b36;--border2:#34473f;
+    --text:#f1f8f5;--text2:#b6c9c1;--text3:#829a90;
+    --accent:#3fae97;--accent2:#e0b563;--accent-bg:#1c332c;--accent-border:#2e5148;
     --green:#4ade80;--green-bg:#132a1e;--green-border:#1f4a30;
     --red:#fb7185;--red-bg:#301019;--red-border:#5c1f2a;
     --amber:#fbbf24;--amber-bg:#2e2308;--amber-border:#5a4413;
@@ -570,7 +582,7 @@
 
   /* ---------- 2) Universal: barcha qurilmalarga moslashuv ---------- */
   html,body{-webkit-text-size-adjust:100%;overscroll-behavior-x:contain}
-  body{-webkit-tap-highlight-color:transparent;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif;letter-spacing:.1px}
+  body{-webkit-tap-highlight-color:transparent;font-family:'Inter',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif;letter-spacing:.1px}
   input,select,textarea,button{font-family:inherit}
   a{color:var(--accent)}
   /* Notch/status-bar bo'lgan qurilmalar (iPhone, ba'zi Android) uchun xavfsiz maydon */
@@ -602,7 +614,7 @@
   .stat.green::before{background:linear-gradient(90deg,var(--green),#34d399)!important}
   .stat.amber::before{background:linear-gradient(90deg,var(--amber),#fcd34d)!important}
   .stat.red::before{background:linear-gradient(90deg,var(--red),#fb7185)!important}
-  .btn.blue,.btn-primary{background:linear-gradient(135deg,var(--accent),#6d28d9)!important;border-color:transparent!important;box-shadow:0 3px 10px rgba(79,70,229,.28)!important}
+  .btn.blue,.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent) 65%,var(--accent2))!important;border-color:transparent!important;box-shadow:0 3px 10px rgba(15,110,94,.28)!important}
   .btn.blue:hover,.btn-primary:hover{filter:brightness(1.08)}
   .btn.green{background:linear-gradient(135deg,var(--green),#22c55e)!important;border-color:transparent!important}
   .btn.red{background:linear-gradient(135deg,var(--red),#f43f5e)!important;border-color:transparent!important}
@@ -614,12 +626,12 @@
   .card:hover{box-shadow:var(--shadow-lg)!important}
 
   /* ---------- 5) Login ekrani — yangi "mesh" fon ---------- */
-  #login-page{background:radial-gradient(circle at 15% 20%,#312a63,transparent 45%),radial-gradient(circle at 85% 85%,#0d3b3a,transparent 45%),linear-gradient(160deg,#14102b,#1c1440 60%,#0e2530)!important}
-  .login-card{border-radius:22px!important;box-shadow:0 30px 70px rgba(0,0,0,.4)!important}
+  #login-page{background:radial-gradient(circle at 15% 20%,#153a31,transparent 45%),radial-gradient(circle at 85% 85%,#4a3813,transparent 45%),linear-gradient(160deg,#0a1c17,#0c231e 60%,#153a31)!important}
+  .login-card{border-radius:22px!important;box-shadow:0 30px 70px rgba(0,0,0,.4)!important;border-top:4px solid var(--accent2)}
   .role-btn.selected{border-color:var(--accent)!important;background:var(--accent-bg)!important}
   .role-btn:hover{border-color:var(--accent)!important;background:var(--accent-bg)!important}
   .pin-input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent-bg)!important}
-  .btn-primary{background:linear-gradient(135deg,var(--accent),#6d28d9)!important}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent) 65%,var(--accent2))!important}
 
   /* ---------- 6) Skeleton (yuklanish) va bo'sh holat uslublari — YANGI ---------- */
   .skel{position:relative;overflow:hidden;background:var(--surface2);border-radius:var(--radius)}
@@ -750,9 +762,9 @@
     .sort-bar::-webkit-scrollbar{display:none}
     .sort-bar>*{flex-shrink:0}
   }
-  @media(min-width:1025px){
-    .filter-bar,.sort-bar{flex-wrap:wrap!important}
-  }
+  /* filter-bar / sort-bar endi barcha ekran o'lchamlarida (mobil, planshet,
+     noutbuk, desktop) bitta qatorda qoladi — sig'masa gorizontal skroll
+     bo'ladi, lekin hech qachon 2-3 qatorga bo'linib "sinib" ketmaydi. */
 
   /* ---- F) Bo'lim sarlavhasi qatori (sarlavha + tugmalar) — torayganda
      tugmalar sarlavha ostiga chiroyli tushadi, yarim-yarim bo'linmaydi ---- */
@@ -804,7 +816,7 @@
 
   /* ---- L) Yuqoriga qaytish tugmasi (yangi, xavfsiz — faqat vizual) ---- */
   #scroll-top-btn{position:fixed;right:1.25rem;bottom:1.25rem;z-index:109;width:46px;height:46px;border-radius:50%;
-    background:var(--nav-bg-1,#1e293b);color:#fff;border:none;box-shadow:0 4px 14px rgba(0,0,0,.3);
+    background:var(--nav-bg-1,#10302b);color:#fff;border:none;box-shadow:0 4px 14px rgba(0,0,0,.3);
     font-size:19px;cursor:pointer;display:none;align-items:center;justify-content:center;
     opacity:0;transform:translateY(8px);transition:opacity .15s ease,transform .15s ease;-webkit-tap-highlight-color:transparent}
   #scroll-top-btn.show{display:flex;opacity:1;transform:translateY(0)}
@@ -851,6 +863,18 @@
       }
     }, 12000);
   })();
+
+  // XAVFSIZLIK: global esc() — foydalanuvchi kiritgan matnni (mahsulot nomi,
+  // qarzdor ismi, izoh va h.k.) HTML ichiga qo'yishdan oldin "zararsizlantiradi"
+  // (masalan "<img onerror=...>" kabi matn oddiy matn sifatida ko'rsatiladi,
+  // kod sifatida bajarilmaydi). Bu yerda, module skriptdan OLDIN e'lon
+  // qilinadi va window'ga bog'lanadi, shu sababli butun ilova (module ichi
+  // ham) uni window.esc yoki shunchaki esc() sifatida ishlata oladi.
+  window.esc = function(s){
+    const d = document.createElement('div');
+    d.textContent = (s===null || s===undefined) ? '' : String(s);
+    return d.innerHTML;
+  };
 </script>
 
 <div id="login-page" style="display:none">
@@ -902,21 +926,21 @@
   <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
   <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
   <div class="nav-right-tools" id="nav-right-tools">
-    <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#334155;border-color:#475569;color:#94a3b8">🔎</button>
-    <button class="btn sm" onclick="window.startVoiceSearch && window.startVoiceSearch()" id="voice-search-btn" title="Ovozli qidiruv — mikrofon orqali tovar qidiring" style="background:#334155;border-color:#475569;color:#94a3b8;display:none">🎤</button>
-    <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#334155;border-color:#475569;color:#94a3b8">❔</button>
+    <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🔎</button>
+    <button class="btn sm" onclick="window.startVoiceSearch && window.startVoiceSearch()" id="voice-search-btn" title="Ovozli qidiruv — mikrofon orqali tovar qidiring" style="background:#1b4a40;border-color:#475569;color:#9fb3ac;display:none">🎤</button>
+    <button class="btn sm" onclick="openShortcutsModal()" id="shortcuts-btn" title="Klaviatura yorliqlari (?)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">❔</button>
     <div id="notif-bell-wrap" style="position:relative;display:none">
-      <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#334155;border-color:#475569;color:#94a3b8">🔔<span id="notif-bell-count" style="display:none"></span></button>
+      <button class="btn sm" onclick="toggleNotifPanel()" id="notif-bell-btn" title="Bildirishnomalar" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🔔<span id="notif-bell-count" style="display:none"></span></button>
     </div>
-    <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#334155;border-color:#475569;color:#94a3b8">🌙</button>
-    <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#334155;border-color:#475569;color:#94a3b8">🧮</button>
-    <button class="btn sm" onclick="window.openNotesBoard && window.openNotesBoard()" id="notes-nav-btn" title="Eslatmalar taxtasi (N)" style="background:#334155;border-color:#475569;color:#94a3b8">📝</button>
-    <button class="btn sm" onclick="window.openShiftModal && window.openShiftModal()" id="shift-nav-btn" title="Kassa smena (K)" style="background:#334155;border-color:#475569;color:#94a3b8">🧾</button>
-    <button class="btn sm" onclick="window.openTasksModal && window.openTasksModal()" id="tasks-nav-btn" title="Vazifalar rejasi (T)" style="background:#334155;border-color:#475569;color:#94a3b8">✅<span id="tasks-due-badge" style="display:none"></span></button>
-    <button class="btn sm" onclick="window.quickLock && window.quickLock()" id="lock-nav-btn" title="Tezkor qulflash (L)" style="background:#334155;border-color:#475569;color:#94a3b8">🔒</button>
-    <button class="btn sm" onclick="logout()" id="logout-btn-desktop" style="background:#334155;border-color:#475569;color:#94a3b8">Chiqish</button>
+    <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🌙</button>
+    <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🧮</button>
+    <button class="btn sm" onclick="window.openNotesBoard && window.openNotesBoard()" id="notes-nav-btn" title="Eslatmalar taxtasi (N)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">📝</button>
+    <button class="btn sm" onclick="window.openShiftModal && window.openShiftModal()" id="shift-nav-btn" title="Kassa smena (K)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🧾</button>
+    <button class="btn sm" onclick="window.openTasksModal && window.openTasksModal()" id="tasks-nav-btn" title="Vazifalar rejasi (T)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">✅<span id="tasks-due-badge" style="display:none"></span></button>
+    <button class="btn sm" onclick="window.quickLock && window.quickLock()" id="lock-nav-btn" title="Tezkor qulflash (L)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🔒</button>
+    <button class="btn sm" onclick="logout()" id="logout-btn-desktop" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">Chiqish</button>
   </div>
-  <button class="btn sm" id="nav-more-btn" onclick="toggleNavMoreMenu()" title="Ko'proq" style="background:#334155;border-color:#475569;color:#fff;display:none;font-weight:700;font-size:18px;line-height:1;padding:6px 12px">⋮</button>
+  <button class="btn sm" id="nav-more-btn" onclick="toggleNavMoreMenu()" title="Ko'proq" style="background:#1b4a40;border-color:#475569;color:#fff;display:none;font-weight:700;font-size:18px;line-height:1;padding:6px 12px">⋮</button>
 </nav>
 
 <div id="notif-panel" class="hidden"></div>
@@ -944,7 +968,7 @@
   <div class="section-header">
     <div><h2>Bosh sahifa</h2><p id="today-date"></p></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
-      <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
+      <select id="stat-period" onchange="renderDashboard()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:var(--surface2);outline:none">
         <option value="today">Bugun</option>
         <option value="week">Bu hafta</option>
         <option value="month">Bu oy</option>
@@ -1461,7 +1485,7 @@ body.dark tr:hover td {
   <div class="section-header">
     <div><h2>💹 Foyda</h2><p>Foyda = Sotuv narxi − Tannarx</p></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
-      <select id="profit-period" onchange="renderProfit()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:#fff;outline:none">
+      <select id="profit-period" onchange="renderProfit()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;background:var(--surface2);outline:none">
         <option value="today">📅 Kunlik (bugun)</option>
         <option value="week">🗓 Haftalik (bu hafta)</option>
         <option value="month">📆 Oylik (bu oy)</option>
@@ -1577,7 +1601,7 @@ body.dark tr:hover td {
     <div class="field" style="margin-bottom:.5rem">
       <label>Logotip (rasm, ixtiyoriy)</label>
       <div style="display:flex;align-items:center;gap:.75rem;margin-top:.35rem;flex-wrap:wrap">
-        <img id="shop-logo-preview" style="width:52px;height:52px;object-fit:contain;border:1px solid var(--border2);border-radius:8px;background:#fff;display:none">
+        <img id="shop-logo-preview" style="width:52px;height:52px;object-fit:contain;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);display:none">
         <input type="file" id="shop-logo-input" accept="image/*" onchange="previewShopLogo(this)">
       </div>
       <button class="btn sm" id="shop-logo-remove-btn" style="margin-top:.5rem;display:none" onclick="removeShopLogo()">✕ Logotipni o'chirish</button>
@@ -1709,7 +1733,7 @@ body.dark tr:hover td {
   <div class="card" style="max-width:420px;margin-top:1rem" id="settings-autolock-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🔒 Avtomatik qulflash</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Belgilangan vaqt davomida hech qanday amal bajarilmasa, xavfsizlik uchun tizimdan avtomatik chiqadi. <b>Bu yerda belgilangan vaqt — barcha qurilmalar va sotuvchilar uchun bir xilda amal qiladi</b> (admin tomonidan markazlashtirilgan boshqariladi).</p>
-    <select id="autolock-select" onchange="window.setGlobalAutoLockMinutes(this.value)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:#fff">
+    <select id="autolock-select" onchange="window.setGlobalAutoLockMinutes(this.value)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
       <option value="0">O'chirilgan</option>
       <option value="1">1 daqiqadan so'ng</option>
       <option value="2">2 daqiqadan so'ng</option>
@@ -1760,7 +1784,7 @@ body.dark tr:hover td {
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">⏳ Mahsulot yaroqlilik muddati</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Tovarga muddat belgilang — muddati 7 kun qolganda yoki o'tib ketganda bosh sahifada ogohlantirish chiqadi. (Bu ma'lumot faqat shu qurilmada, brauzer xotirasida saqlanadi.)</p>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
-      <select id="expiry-product-select" style="flex:1;min-width:180px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:#fff"></select>
+      <select id="expiry-product-select" style="flex:1;min-width:180px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)"></select>
       <input type="date" id="expiry-date-input" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
       <button class="btn sm blue" onclick="window.saveProductExpiry && window.saveProductExpiry()">Belgilash</button>
     </div>
@@ -1819,7 +1843,7 @@ body.dark tr:hover td {
     <input type="date" id="debt-from" onchange="renderDebts()">
     <input type="date" id="debt-to" onchange="renderDebts()">
     <button class="btn sm" onclick="clearDebtDateFilter()">✕ Sana</button>
-    <input type="text" id="debt-search" oninput="debouncedRenderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:#fff;min-width:180px;margin-left:auto">
+    <input type="text" id="debt-search" oninput="debouncedRenderDebts()" placeholder="🔍 Ism yoki tashkilot..." style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:var(--surface2);min-width:180px;margin-left:auto">
     <button class="btn sm green" onclick="exportDebtsCSV()" title="Qarzlar ro'yxatini CSV faylga yuklab olish">⬇ CSV</button>
     <button class="btn sm green" onclick="exportDebtsExcel()" title="Qarzlar ro'yxatini Excel (.xlsx) faylga yuklab olish">⬇ Excel</button>
     <button class="btn sm" onclick="printDebtsList()" title="Qarzlar ro'yxatini printerga chiqarish">🖨 Chop etish</button>
@@ -2059,7 +2083,7 @@ body.dark tr:hover td {
       <div class="field"><label>Rasm URL (ixtiyoriy)</label><input id="p-img" placeholder="https://...jpg" oninput="previewImg()"></div>
       <div class="field">
         <label>Yoki rasm yuklash</label>
-        <input type="file" id="p-img-file" accept="image/*" onchange="loadImgFile(this)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem;font-size:13px;background:#fff;cursor:pointer">
+        <input type="file" id="p-img-file" accept="image/*" onchange="loadImgFile(this)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem;font-size:13px;background:var(--surface2);cursor:pointer">
       </div>
     </div>
     <div class="form-row full">
@@ -2196,14 +2220,14 @@ body.dark tr:hover td {
     <div class="field" style="margin-bottom:.85rem">
       <label>Tashkilot nomi <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
       <input id="debt-org" placeholder="Masalan: Anvar Market" autocomplete="off" oninput="debtOrgInput(this)">
-      <div id="debt-org-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+      <div id="debt-org-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:var(--surface2);box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
       <p style="font-size:11px;color:var(--text3);margin-top:.25rem">⚠️ Tashkilot uchun bitta login beriladi, barcha ishchilar shu org ga bog'lanadi</p>
     </div>
 
     <div class="field" style="margin-bottom:.85rem">
       <label>Qarz oluvchi ismi *</label>
       <input id="debt-name" placeholder="Ism va familiya" autocomplete="off" oninput="debtNameInput(this)">
-      <div id="debt-name-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+      <div id="debt-name-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:var(--surface2);box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
     </div>
 
     <div class="field" style="margin-bottom:.85rem">
@@ -2615,7 +2639,7 @@ body.dark tr:hover td {
     <div id="assign-video-wrap" style="position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1/1;max-height:280px">
       <video id="assign-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block"></video>
       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-        <div style="width:60%;height:60%;border:3px solid #60a5fa;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);position:relative">
+        <div style="width:60%;height:60%;border:3px solid #d9b25c;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);position:relative">
           <div class="scan-corner tl"></div><div class="scan-corner tr"></div>
           <div class="scan-corner bl"></div><div class="scan-corner br"></div>
           <div class="scan-line"></div>
@@ -3909,7 +3933,7 @@ window.renderDashboard = function(){
             <span style="font-size:13px;font-weight:600;color:${reached?'var(--green)':'var(--text2)'}">${fmt(todayTotal)} / ${fmt(goal)} so'm ${reached?'✅':''}</span>
           </div>
           <div style="background:var(--surface2);border-radius:20px;height:14px;overflow:hidden;border:1px solid var(--border)">
-            <div style="height:100%;width:${pct}%;background:${reached?'linear-gradient(90deg,#16a34a,#22c55e)':'linear-gradient(90deg,#2563eb,#60a5fa)'};transition:width .075s ease;border-radius:20px"></div>
+            <div style="height:100%;width:${pct}%;background:${reached?'linear-gradient(90deg,#16a34a,#22c55e)':'linear-gradient(90deg,#0f6e5e,#d9b25c)'};transition:width .075s ease;border-radius:20px"></div>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:.35rem">${pct.toFixed(0)}% bajarildi ${reached?'— maqsadga yetdingiz, tabriklaymiz! 🎉':''}</div>
         </div>`;
@@ -4200,13 +4224,13 @@ window.renderProducts = function(){
     if(card.dataset.sig !== sig){
       card.dataset.sig = sig;
       card.innerHTML = `<div class="img-wrap">
-        ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
+        ${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="badge ${stockColor}">${p.stock} ta</span></div>
         <div style="position:absolute;top:8px;left:8px"><span class="drag-handle">⠿</span></div>
       </div>
       <div class="body">
-        <div class="prod-name">${p.name}</div>
+        <div class="prod-name">${esc(p.name)}</div>
         ${volLabel}
         <div class="prod-price" style="margin-top:.3rem">${fmt(p.price)} so'm</div>
         ${p.cost ? `<div style="font-size:12px;color:var(--text3)">🏷 Tannarx: ${fmt(p.cost)} so'm · <span style="color:${(p.price-p.cost)>=0?'var(--green)':'var(--red)'}">Foyda/dona: ${fmt(p.price-p.cost)} so'm</span></div>` : `<div style="font-size:12px;color:var(--amber)">⚠️ Tannarx kiritilmagan</div>`}
@@ -4214,14 +4238,14 @@ window.renderProducts = function(){
         <div style="margin-top:.2rem;display:flex;flex-direction:column;gap:.15rem">
           ${p.barcode
             ? `<div style="font-size:11px;color:var(--text3);font-family:monospace;display:flex;align-items:center;gap:.3rem">
-                 <span>📦 ${p.barcode}</span>
+                 <span>📦 ${esc(p.barcode)}</span>
                  <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
                </div>`
             : ''
           }
           ${p.qrCode
             ? `<div style="font-size:11px;color:var(--text3);font-family:monospace;display:flex;align-items:center;gap:.3rem">
-                 <span>📷 ${p.qrCode}</span>
+                 <span>📷 ${esc(p.qrCode)}</span>
                  <button onclick="openAssignBarcode('${p.id}')" style="background:none;border:none;font-size:11px;cursor:pointer;color:var(--accent);padding:0" title="O'zgartirish">✎</button>
                </div>`
             : ''
@@ -4667,7 +4691,7 @@ window.renderCartModal=function(){
     const p=DB.products.find(x=>x.id===id); if(!p) return '';
     const vol=p.volume?` · ${p.volume}L`:'';
     return `<div style="display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><div style="font-weight:600;font-size:14px">${p.name}${vol}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(p.name)}${vol}</div>
       <div style="font-size:12px;color:var(--text3)">${fmt(p.price)} so'm × ${qty} = <strong style="color:var(--green)">${fmt(p.price*qty)} so'm</strong></div></div>
       <div style="display:flex;align-items:center;gap:.4rem">
         <button class="qty-btn" style="width:30px;height:30px;font-size:16px" onclick="removeFromCart('${id}')">−</button>
@@ -4970,7 +4994,7 @@ window.renderDebts = function(){
     const people = Object.values(g.people);
     const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0),0);
     const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
-    const headerTitle = g.isOrg ? `🏢 ${g.org}` : `👤 ${people[0].debtorName}`;
+    const headerTitle = g.isOrg ? `🏢 ${esc(g.org)}` : `👤 ${esc(people[0].debtorName)}`;
     const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
 
     return `<div class="card" style="margin-bottom:.85rem">
@@ -4990,15 +5014,15 @@ window.renderDebts = function(){
         ${people.map(p=>{
           const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
           const debtor = DB.debtors.find(dd=>dd.name===p.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
-          const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+          const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${esc(debtor.login)}</strong> · Parol: <strong>${esc(debtor.password)}</strong></div>` : '';
           const loginBtn = debtor
             ? `<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`
             : `<button class="btn sm" style="margin-top:.4rem" onclick="createDebtorLogin('${p.debtorName.replace(/'/g,"\\'")}','${(g.org||'').replace(/'/g,"\\'")}','${(p.phone||'').replace(/'/g,"\\'")}')">🔐 Login yaratish</button>`;
           return `<div style="${g.isOrg?'border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:var(--surface2)':''}">
             ${g.isOrg?`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
               <div>
-                <div style="font-weight:700;font-size:14px">👤 ${p.debtorName}</div>
-                ${p.phone?`<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${p.phone}</a></div>`:''}
+                <div style="font-weight:700;font-size:14px">👤 ${esc(p.debtorName)}</div>
+                ${p.phone?`<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${esc(p.phone)}</a></div>`:''}
                 ${loginInfo}
                 ${loginBtn}
               </div>
@@ -5009,7 +5033,7 @@ window.renderDebts = function(){
                 ${personOwed>0&&p.phone?`<button class="btn sm green" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
               </div>
             </div>`:`<div style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
-              <div>${p.phone?`<div style="font-size:13px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${p.phone}</a></div>`:''}${loginInfo}${loginBtn}</div>
+              <div>${p.phone?`<div style="font-size:13px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${esc(p.phone)}</a></div>`:''}${loginInfo}${loginBtn}</div>
               <div style="display:flex;gap:.4rem;flex-wrap:wrap">
                 <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
                 ${personOwed>0?`<button class="btn sm amber" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
@@ -5034,9 +5058,9 @@ window.renderDebts = function(){
                     </div>
                   </div>
                   <div style="font-size:12px;color:var(--text2);margin-top:.35rem">
-                    ${d.items.map(i=>`${i.productName} ${i.volume?'('+i.volume+'L)':''} ×${i.qty} ta`).join(', ')}
+                    ${d.items.map(i=>`${esc(i.productName)} ${i.volume?'('+esc(i.volume)+'L)':''} ×${i.qty} ta`).join(', ')}
                   </div>
-                  ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+                  ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${esc(d.note)}</div>`:''}
                   ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
                 </div>`;
               }).join('')}
@@ -5318,8 +5342,8 @@ function groupSalesByReceipt(salesArr){
 // Guruhdagi tovarlar nomini bitta katakda o'qilishi qulay qilib chiqaradi:
 // bitta tovar bo'lsa — nomi, bir nechta bo'lsa — "2x Fuse Tea, 1x Suv..."
 function groupItemsLabel(g){
-  if(g.items.length===1) return `<strong>${g.items[0].productName}</strong>`;
-  return g.items.map(it=>`${it.qty}x ${it.productName}`).join(', ');
+  if(g.items.length===1) return `<strong>${esc(g.items[0].productName)}</strong>`;
+  return g.items.map(it=>`${it.qty}x ${esc(it.productName)}`).join(', ');
 }
 window.printGroupReceipt=function(receiptId){
   const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId);
@@ -5504,7 +5528,7 @@ window.renderHistory=function(){
     const statusLabel = g.allReverted ? 'Qaytarilgan' : (g.anyReverted ? "Qisman qaytarilgan" : 'Aktiv');
     const statusCls = g.allReverted ? 'red' : (g.anyReverted ? 'amber' : 'green');
     const priceCell = g.items.length===1 ? fmt(g.items[0].price)+" so'm" : '—';
-    return `<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(g.date)}</td><td data-label="Tovar">${groupItemsLabel(g)}</td><td data-label="Miqdor">${g.qty} ta</td><td data-label="Narx">${priceCell}</td><td data-label="Jami" style="font-weight:700;color:${g.allReverted?'var(--text3)':'var(--green)'}">${fmt(g.total)} so'm</td><td>${g.seller}</td><td><span class="badge ${statusCls}">${statusLabel}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printGroupReceipt('${g.receiptId}')" title="Chek">🖨</button>${!g.allReverted?`<button class="btn sm red" onclick="adminRevertGroup('${g.receiptId}')">↩</button>`:''}</td></tr>`;
+    return `<tr><td data-label="Sana" style="font-size:13px;color:var(--text3);white-space:nowrap">${timeStr(g.date)}</td><td data-label="Tovar">${groupItemsLabel(g)}</td><td data-label="Miqdor">${g.qty} ta</td><td data-label="Narx">${priceCell}</td><td data-label="Jami" style="font-weight:700;color:${g.allReverted?'var(--text3)':'var(--green)'}">${fmt(g.total)} so'm</td><td>${esc(g.seller)}</td><td><span class="badge ${statusCls}">${statusLabel}</span></td><td style="display:flex;gap:.3rem"><button class="btn sm" onclick="printGroupReceipt('${g.receiptId}')" title="Chek">🖨</button>${!g.allReverted?`<button class="btn sm red" onclick="adminRevertGroup('${g.receiptId}')">↩</button>`:''}</td></tr>`;
   }).join('');
 }
 window.adminRevert=function(id){
@@ -6257,7 +6281,7 @@ window.renderReceiptLinksSettings=function(){
         ? `<span style="font-weight:600;min-width:90px">${escVal(l.label)}</span>`
         : `<input type="text" class="rl-label" value="${escVal(l.label)}" placeholder="Nomi" style="width:130px;border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px">`}
       <input type="text" class="rl-url" value="${escVal(l.url||'')}" placeholder="https://..." style="flex:1;min-width:150px;border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px">
-      <select class="rl-display" style="border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px;background:#fff">
+      <select class="rl-display" style="border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px;background:var(--surface2)">
         <option value="button" ${l.display==='button'?'selected':''}>Tugma</option>
         <option value="qr" ${l.display==='qr'?'selected':''}>QR kod</option>
       </select>
@@ -8700,8 +8724,8 @@ function renderScanSessionLog(){
     </div>
     <div style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem">
       ${_scanSessionLog.map(x=>`
-        <div style="display:flex;justify-content:space-between;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem">
-          <span>${x.name}</span><strong>${x.qty} ta</strong>
+        <div style="display:flex;justify-content:space-between;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem">
+          <span>${esc(x.name)}</span><strong>${x.qty} ta</strong>
         </div>`).join('')}
     </div>`;
 }
@@ -9518,8 +9542,8 @@ function renderAssignSessionLog(){
     </div>
     <div style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem">
       ${_assignSessionLog.map(x=>`
-        <div style="display:flex;justify-content:space-between;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem">
-          <span>${x.name}</span><strong>${x.qty} dona</strong>
+        <div style="display:flex;justify-content:space-between;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem">
+          <span>${esc(x.name)}</span><strong>${x.qty} dona</strong>
         </div>`).join('')}
     </div>`;
 }
@@ -10155,10 +10179,10 @@ window.renderExpenses = function(){
     if(none) none.style.display='none';
     tbody.innerHTML = rows.map(e=>`<tr>
       <td style="font-size:13px;color:var(--text3)">${new Date(e.date).toLocaleDateString('uz-UZ')}</td>
-      <td><strong>${e.name}</strong></td>
-      <td><span class="badge blue">${e.category||'Boshqa'}</span></td>
+      <td><strong>${esc(e.name)}</strong></td>
+      <td><span class="badge blue">${esc(e.category||'Boshqa')}</span></td>
       <td style="font-weight:700;color:var(--red)">-${fmt(e.amount)} so'm</td>
-      <td style="font-size:13px;color:var(--text3);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.note||''}</td>
+      <td style="font-size:13px;color:var(--text3);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.note||'')}</td>
       <td style="white-space:nowrap">
         <button class="btn sm" onclick="openEditExpense('${e.id}')" title="Tahrirlash">✎</button>
         <button class="btn sm red" onclick="deleteExpense('${e.id}')" title="O'chirish">🗑</button>
@@ -10183,7 +10207,7 @@ window.renderExpenses = function(){
       const max = Math.max(...entries.map(e=>e[1]));
       chartEl.innerHTML = entries.map(([cat,amt])=>`
         <div style="margin-bottom:.6rem">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${cat}</span><span>${fmt(amt)} so'm</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${esc(cat)}</span><span>${fmt(amt)} so'm</span></div>
           <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:${max?(amt/max*100):0}%;background:linear-gradient(90deg,#f59e0b,#d97706);border-radius:6px"></div></div>
         </div>`).join('');
     }
@@ -10685,7 +10709,7 @@ function renderSellerComparisonChart13(){
         <span>${fmt(d.rev)} so'm · ${d.count} ta chek</span>
       </div>
       <div style="background:var(--surface2);border-radius:6px;height:12px;overflow:hidden">
-        <div style="height:100%;width:${max?(d.rev/max*100):0}%;background:linear-gradient(90deg,#2563eb,#60a5fa);border-radius:6px"></div>
+        <div style="height:100%;width:${max?(d.rev/max*100):0}%;background:linear-gradient(90deg,#0f6e5e,#d9b25c);border-radius:6px"></div>
       </div>
     </div>`).join('');
 }
@@ -10796,7 +10820,7 @@ document.addEventListener('keydown', (e)=>{
     const btn = document.createElement('button');
     btn.id = 'shortcuts-help-btn-13';
     btn.title = "Klaviatura yorliqlari (? tugmasi)";
-    btn.style.cssText = 'background:#334155;border:none;color:#94a3b8;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;font-weight:700';
+    btn.style.cssText = 'background:#1b4a40;border:none;color:#9fb3ac;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;font-weight:700';
     btn.textContent = '?';
     btn.onclick = () => window.toggleShortcutsHelp13();
     wrap.appendChild(btn);
@@ -11395,7 +11419,7 @@ window.renderAiAssistant = function(){
     btn.className = 'btn sm' + (isSoundOn() ? '' : ' muted');
     btn.id = 'sound-toggle-btn';
     btn.title = 'Ovozli signal';
-    btn.style.cssText = 'background:#334155;border-color:#475569;color:#94a3b8';
+    btn.style.cssText = 'background:#1b4a40;border-color:#475569;color:#9fb3ac';
     btn.textContent = isSoundOn() ? '🔊' : '🔇';
     btn.onclick = function(){
       const nowOn = !isSoundOn();
@@ -11419,7 +11443,7 @@ window.renderAiAssistant = function(){
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const ctx = canvas.getContext('2d');
-    const colors = ['#2563eb','#16a34a','#f59e0b','#ef4444','#a855f7','#06b6d4'];
+    const colors = ['#0f6e5e','#16a34a','#f59e0b','#ef4444','#a855f7','#06b6d4'];
     const pieces = Array.from({length:70}, () => ({
       x: Math.random()*canvas.width,
       y: -20 - Math.random()*canvas.height*0.3,
