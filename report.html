@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -176,7 +177,7 @@
 
 <div id="app" style="display:none">
 <nav>
-  <div class="logo">📊 <span>Do'kon Hisobotlari</span></div>
+  <div class="logo">📊 <span id="app-title-nav">Do'kon Hisobotlari</span></div>
   <button class="nav-tab active" id="navtab-report" onclick="switchMain('report')">📊 Hisobot</button>
   <button class="nav-tab" id="navtab-stock" onclick="switchMain('stock')">📦 Zaxira</button>
   <button class="nav-tab" id="navtab-debts" onclick="switchMain('debts')">💳 Qarzlar</button>
@@ -333,17 +334,34 @@ let DEBTORS = [];
 let reportDebtFilter = 'active';
 let reportDebtDateFilter = 'all';
 
+// Admin "Do'kon Boshqaruvi" ilovasi Sozlamalar > Ko'rinish bo'limida
+// belgilagan brend rangi va ilova nomini shu hisobot sahifasida ham
+// qo'llaydi — barcha sahifalarda bir xil brendlash ta'minlanadi.
+function applyBrandSettings(d){
+  if(!d) return;
+  if(d.brandAccent1){
+    document.documentElement.style.setProperty('--accent', d.brandAccent1);
+    document.documentElement.style.setProperty('--accent-bg', d.brandAccent1+'1a');
+    document.documentElement.style.setProperty('--accent-border', d.brandAccent1+'55');
+  }
+  const title = d.appTitle ? (d.appTitle+' — Hisobotlar') : "Do'kon Hisobotlari";
+  document.title = title;
+  const navT = document.getElementById('app-title-nav'); if(navT) navT.textContent = title;
+}
+
 async function init(){
   try{
     const settingsSnap = await getDoc(doc(db,'dokon','settings'));
     if(settingsSnap.exists()){
       const d = settingsSnap.data();
       if(d.pins && d.pins.admin) ADMIN_PIN = d.pins.admin;
+      applyBrandSettings(d);
     }
     onSnapshot(doc(db,'dokon','settings'), snap=>{
       if(snap.exists()){
         const d = snap.data();
         if(d.pins && d.pins.admin) ADMIN_PIN = d.pins.admin;
+        applyBrandSettings(d);
       }
     });
 
