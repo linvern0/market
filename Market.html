@@ -6479,7 +6479,7 @@ function generateReceiptQR(imgEl, receiptId){
   const link = receiptQrLink(receiptId);
   if(typeof QRCode !== 'undefined' && QRCode.toDataURL){
     QRCode.toDataURL(link, {width:220, margin:1}, (err, url)=>{
-      if(err){ console.error('Mahalliy QR yaratishda xatolik, zaxira usulga o\\'tildi:', err); imgEl.src = receiptQrUrl(receiptId); return; }
+      if(err){ console.error('Mahalliy QR yaratishda xatolik, zaxira usulga o\'tildi:', err); imgEl.src = receiptQrUrl(receiptId); return; }
       imgEl.src = url;
     });
   } else {
