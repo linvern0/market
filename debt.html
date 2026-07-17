@@ -1,44 +1,49 @@
 
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
 <title>Qarz Ko'rish Sahifasi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#f5f5f0;--surface:#fff;--surface2:#fafaf8;
-    --border:#e0ddd6;--border2:#ccc;
-    --text:#1a1a17;--text2:#555;--text3:#888;
-    --accent:#2563eb;--accent-bg:#eff6ff;--accent-border:#bfdbfe;
+    --bg:#f2f6f4;--surface:#fff;--surface2:#f7faf8;
+    --border:#dde6e1;--border2:#c2d0c9;
+    --text:#16221c;--text2:#4d5b54;--text3:#7c8c83;
+    --accent:#0f6e5e;--accent-bg:#e8f5f1;--accent-border:#bfe3d9;
+    --gold:#c99a3a;--gold-dark:#a67c26;
     --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
     --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
     --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fde68a;
-    --radius:10px;--shadow:0 2px 8px rgba(0,0,0,.08);
+    --radius:10px;--shadow:0 1px 2px rgba(15,40,33,.05),0 3px 10px rgba(15,40,33,.06);
+    --font-display:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   }
   html{overflow-x:hidden}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden;font-variant-numeric:tabular-nums}
+  h1,h2,h3{font-family:var(--font-display)}
 
-  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e293b,#334155);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
+  #loading-screen{position:fixed;inset:0;background:linear-gradient(135deg,#10302b,#1b4a40);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem}
   #loading-screen .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite}
-  #loading-screen p{color:#94a3b8;font-size:15px;text-align:center;padding:0 1rem}
+  #loading-screen p{color:#9fb3ac;font-size:15px;text-align:center;padding:0 1rem}
   #loading-screen h2{color:#fff;font-size:20px;font-weight:700}
   @keyframes spin{to{transform:rotate(360deg)}}
   #loading-screen.hidden{display:none}
 
-  nav{background:#1e293b;color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100}
+  nav{background:#10302b;color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100}
   nav .logo{font-weight:700;font-size:17px;color:#fff;flex:1}
   nav .logo span{color:#f59e0b}
-  nav .user-info{background:#334155;border-radius:20px;padding:4px 14px;font-size:13px;color:#cbd5e1}
-  nav .btn-logout{background:none;border:1px solid #475569;color:#94a3b8;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;transition:.15s}
-  nav .btn-logout:hover{background:#334155;color:#fff}
+  nav .user-info{background:#1b4a40;border-radius:20px;padding:4px 14px;font-size:13px;color:#cbd5e1}
+  nav .btn-logout{background:none;border:1px solid #475569;color:#9fb3ac;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;transition:.15s}
+  nav .btn-logout:hover{background:#1b4a40;color:#fff}
 
-  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);padding:1rem}
+  #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#10302b 0%,#1b4a40 100%);padding:1rem}
   .login-card{background:#fff;border-radius:18px;padding:2.5rem;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.3)}
   .login-icon{font-size:48px;text-align:center;margin-bottom:1rem}
-  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#1e293b;text-align:center}
+  .login-card h1{font-size:22px;margin-bottom:.25rem;color:#10302b;text-align:center}
   .login-card p{color:#64748b;font-size:14px;margin-bottom:2rem;text-align:center}
   .field{display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem}
   .field label{font-size:13px;font-weight:600;color:#475569}
@@ -64,7 +69,9 @@
   .section-header h2{font-size:20px;font-weight:700}
   .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
 
-  .filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+  .filter-bar{display:flex;gap:.5rem;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:1.25rem;align-items:center;padding-bottom:.2rem}
+  .filter-bar::-webkit-scrollbar{display:none}
+  .filter-bar>*{flex-shrink:0}
 
   .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border2);background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
   .btn:hover{background:var(--surface2);border-color:#bbb}
@@ -99,13 +106,13 @@
   .empty-state .icon{font-size:56px;margin-bottom:1rem}
   .empty-state p{font-size:15px}
 
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1e293b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#10302b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(20px);transition:.2s;pointer-events:none;max-width:320px}
   .toast.show{opacity:1;transform:translateY(0)}
 
   /* ORGANIZATION HEADER */
-  .org-header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+  .org-header{background:linear-gradient(135deg,#10302b,#1b4a40);color:#fff;border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
   .org-header .org-name{font-size:22px;font-weight:700}
-  .org-header .org-meta{font-size:14px;color:#94a3b8}
+  .org-header .org-meta{font-size:14px;color:#9fb3ac}
 
   .person-filter{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}
   .person-filter .btn{font-size:12px;padding:.3rem .8rem}
@@ -120,8 +127,6 @@
     .login-card{padding:2rem 1.25rem}
     .debt-amount{font-size:22px}
     .total-bar .amount{font-size:24px}
-    .filter-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-    .filter-bar::-webkit-scrollbar{display:none}
     .toast{bottom:1rem;right:.75rem;left:.75rem;max-width:none}
     .org-header .org-name{font-size:18px}
   }
@@ -175,7 +180,7 @@
         <div class="org-meta" id="org-meta-display"></div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:13px;color:#94a3b8">Jami qarz</div>
+        <div style="font-size:13px;color:#9fb3ac">Jami qarz</div>
         <div style="font-size:24px;font-weight:700;color:#fbbf24" id="org-total-display">0 so'm</div>
       </div>
     </div>
