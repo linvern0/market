@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -452,9 +453,9 @@ function render(){
       <div class="debt-header">
         <div>
           <div class="debt-date">📅 ${timeStr(d.date)}</div>
-          ${isOrg ? `<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:.2rem">👤 ${d.debtorName}</div>` : ''}
-          ${d.seller?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">Sotuvchi: ${d.seller}</div>`:''}
-          ${d.note?`<div style="font-size:13px;color:var(--text2);margin-top:.3rem;font-style:italic">📝 ${d.note}</div>`:''}
+          ${isOrg ? `<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:.2rem">👤 ${esc(d.debtorName)}</div>` : ''}
+          ${d.seller?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">Sotuvchi: ${esc(d.seller)}</div>`:''}
+          ${d.note?`<div style="font-size:13px;color:var(--text2);margin-top:.3rem;font-style:italic">📝 ${esc(d.note)}</div>`:''}
         </div>
         <div style="text-align:right">
           <div class="debt-amount ${d.paid?'paid':''}">${fmt(d.total)} so'm</div>
@@ -465,7 +466,7 @@ function render(){
       <div class="debt-items">
         <p>Sotilgan tovarlar:</p>
         ${dItems.length ? dItems.map(i=>`<div class="debt-item-row">
-          <span>${i.productName}${i.volume?' ('+i.volume+'L)':''} × ${i.qty} ta</span>
+          <span>${esc(i.productName)} × ${i.qty} ta</span>
           <span style="font-weight:600">${fmt(i.subtotal||i.total||0)} so'm</span>
         </div>`).join('') : `<div class="debt-item-row" style="color:var(--text3);font-style:italic">Mahsulot tafsiloti saqlanmagan (eski yozuv)</div>`}
         <div class="debt-item-row" style="font-weight:700;border-top:2px solid var(--border);margin-top:.3rem;padding-top:.4rem">
@@ -518,6 +519,10 @@ function getDebtItems(d){
 }
 
 function fmt(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }
+// TUZATILDI: qarzdor ismi, izoh yoki mahsulot nomida "<", ">" kabi belgi
+// bo'lsa, ilgari kartochka HTML sifatida buzilib chiqishi mumkin edi. Endi
+// bu matnlar xavfsiz (escape qilingan) holda chiqariladi.
+function esc(s){ const d=document.createElement('div'); d.textContent=(s===null||s===undefined)?'':String(s); return d.innerHTML; }
 
 let _tCache=new Map();
 function timeStr(iso){
