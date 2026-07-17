@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -117,6 +118,57 @@
   }
   .stamp-wrap{ text-align:center; }
 
+  .rlinks{ margin-top:16px; }
+  .rlinks-title{
+    text-align:center;
+    font-size:10px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .rlinks-buttons{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .rlink-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    text-decoration:none;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink);
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:6px 12px;
+  }
+  .rlinks-qrgrid{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:14px;
+  }
+  .rlink-qr{
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .rlink-qr img{
+    width:88px;
+    height:88px;
+    display:block;
+    margin:0 auto 4px;
+    border:1px solid var(--line);
+    background:#fff;
+    padding:4px;
+  }
+
   .state{
     max-width:380px;
     width:100%;
@@ -184,6 +236,47 @@
       </div>`;
   }
 
+  function esc(s){
+    const d = document.createElement('div');
+    d.textContent = String(s == null ? '' : s);
+    return d.innerHTML;
+  }
+
+  // Admin "Do'kon Boshqaruvi" ilovasidagi Sozlamalar > "Chek sahifasi —
+  // linklar va QR kodlar" bo'limida sozlagan havolalarni chiqaradi. Har bir
+  // havola admin tanlagan ko'rinishda: "button" — bosiladigan tugma,
+  // "qr" — mustaqil QR kod (skanerlangan telefonda o'sha link ochiladi).
+  function renderReceiptLinks(links){
+    if(!Array.isArray(links) || !links.length) return '';
+    const buttons = links.filter(l => l.display !== 'qr');
+    const qrs = links.filter(l => l.display === 'qr');
+
+    const buttonsHtml = buttons.length ? `
+      <div class="rlinks-buttons">
+        ${buttons.map(l => `
+          <a class="rlink-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+            <span>${esc(l.icon || '🔗')}</span><span>${esc(l.label || '')}</span>
+          </a>`).join('')}
+      </div>` : '';
+
+    const qrsHtml = qrs.length ? `
+      <div class="rlinks-qrgrid">
+        ${qrs.map(l => `
+          <div class="rlink-qr">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=6&data=${encodeURIComponent(l.url)}" alt="${esc(l.label || 'QR')}">
+            <div>${esc(l.icon || '🔗')} ${esc(l.label || '')}</div>
+          </div>`).join('')}
+      </div>` : '';
+
+    return `
+      <div class="divider"></div>
+      <div class="rlinks">
+        <div class="rlinks-title">Bog'lanish va havolalar</div>
+        ${buttonsHtml}
+        ${qrsHtml}
+      </div>`;
+  }
+
   function renderReceipt(r){
     const dateStr = r.date ? new Date(r.date).toLocaleString('uz-UZ') : '';
     const itemsHtml = (r.items||[]).map(i => `
@@ -210,6 +303,7 @@
         </div>
         <div class="thanks">Xaridingiz uchun rahmat!</div>
         <div class="stamp-wrap"><span class="stamp">✓ Tasdiqlangan</span></div>
+        ${renderReceiptLinks(r.links)}
       </div>`;
   }
 
