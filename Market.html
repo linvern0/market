@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -24,6 +25,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <!-- Mahsulot shtrix-kod yorliqlarini chop etish uchun (faqat "Yorliq chop etish" funksiyasida ishlatiladi) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
+<!-- TEZLASHTIRISH (2026-07): chek uchun QR kodni endi TARMOQQA MUROJAAT QILMASDAN,
+     to'g'ridan-to'g'ri brauzerda (mahalliy) yaratamiz. Ilgari har bir sotuvda
+     api.qrserver.com'ga tashqi so'rov yuborilardi — internet sekin/beqaror bo'lganda
+     shu so'rov chekni ochilishini bir necha soniyaga (ba'zan undan ko'proqqa) kechiktirardi.
+     Bu kutubxona bilan QR millisekundlarda, hech qanday internetga bog'liq bo'lmasdan yaratiladi. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -5053,6 +5060,7 @@ window.renderDebts = function(){
                     </div>
                     <div style="display:flex;align-items:center;gap:.5rem">
                       <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
+                      <button class="btn sm" onclick="printSingleDebt('${d.id}')" title="Faqat shu bitta qarz yozuvi uchun alohida chek chiqarish">🖨 Chek</button>
                       ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
                       <button class="btn sm red" onclick="deleteDebtEntry('${d.id}')" title="Qarz yozuvini butunlay o'chirish">🗑</button>
                     </div>
@@ -5764,6 +5772,38 @@ window.printPersonDebt=function(org, debtorName){
   printTable(`Qarz — ${debtorName}`, subtitleLines, headers, rows);
 }
 
+// YANGI: MIJOZNING FAQAT BITTA (aynan bosilgan) qarz yozuvi uchun alohida
+// chek chiqarish. Ilgari faqat printPersonDebt bor edi — u shaxsning BARCHA
+// qarz yozuvlarini bitta chekka jamlab chiqarardi. Endi har bir qarz
+// (masalan mijoz turli kunlarda bir necha marta qarzga tovar olgan bo'lsa)
+// o'z-alohida cheki bilan chiqariladi — mijozga faqat o'sha bir xariddagi
+// qarzni ko'rsatish kerak bo'lganda ishlatiladi.
+window.printSingleDebt=function(id){
+  const d = DB.debts.find(x=>x.id===id);
+  if(!d){ toast("Qarz yozuvi topilmadi",'red'); return; }
+  const headers = ['Tovar','Miqdor','Narx','Summa'];
+  const rows = (d.items||[]).map(i=>{
+    const lineTotal = i.subtotal!=null ? i.subtotal : (i.total!=null ? i.total : (i.price||0)*(i.qty||0));
+    return [
+      i.productName + (i.volume?' ('+i.volume+'L)':''),
+      (i.qty||0)+' ta',
+      i.price!=null ? fmt(i.price)+" so'm" : '',
+      fmt(lineTotal)+" so'm"
+    ];
+  });
+  if(!rows.length) rows.push(['—','—','—', fmt(d.total)+" so'm"]);
+  const subtitleLines = [
+    `Sana: ${timeStr(d.date)}`,
+    d.org ? `Tashkilot: ${d.org}` : "Shaxsiy qarzdor (tashkilotsiz)",
+    d.phone ? `Telefon: ${d.phone}` : '',
+    `Holat: ${d.paid?"To'langan":'Faol'}`,
+    (d.paid && d.paidDate) ? `To'langan sana: ${timeStr(d.paidDate)}` : '',
+    d.note ? `Izoh: ${d.note}` : '',
+    `Jami: ${fmt(d.total)} so'm`
+  ].filter(Boolean);
+  printTable(`Qarz cheki — ${d.debtorName}`, subtitleLines, headers, rows);
+}
+
 // YANGI: bitta tashkilotning barcha qarzdor xodimlari bo'yicha umumiy
 // hisobotni chop etish (kim qancha qarzdor — jamlangan ro'yxat).
 window.printOrgDebt=function(org){
@@ -6419,9 +6459,32 @@ let lastReceiptData=null;
 // shu ID orqali Firestore'dan xarid ma'lumotlari o'qib ko'rsatiladi.
 // Sahifa manzilini boshqa domenga ko'chirsangiz shu yerni yangilang.
 const RECEIPT_PAGE_URL = 'https://linvern0.github.io/market/receipt.html';
+function receiptQrLink(receiptId){
+  return `${RECEIPT_PAGE_URL}?id=${encodeURIComponent(receiptId)}`;
+}
+// ESKI usul (zaxira sifatida qoldirildi): tashqi serverga so'rov yuborib rasm
+// olib keladi — sekin internetda kechikish beradi, shuning uchun endi faqat
+// mahalliy kutubxona (QRCode) ishlamay qolgan taqdirdagina ishlatiladi.
 function receiptQrUrl(receiptId){
-  const link = `${RECEIPT_PAGE_URL}?id=${encodeURIComponent(receiptId)}`;
+  const link = receiptQrLink(receiptId);
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(link)}`;
+}
+// TEZLASHTIRISH: QR kodni TARMOQQA CHIQMASDAN, to'g'ridan-to'g'ri brauzerda
+// (mahalliy "qrcode" kutubxonasi orqali) yaratadi — bu millisekundlarda
+// bajariladi va internet tezligiga bog'liq emas. Faqat kutubxona biror sababdan
+// yuklanmagan bo'lsa (masalan sahifa hali to'liq ochilmagan bo'lsa), eski
+// (tarmoqqa bog'liq) usulga avtomatik qaytadi — shunda chek baribir chiqadi.
+function generateReceiptQR(imgEl, receiptId){
+  if(!imgEl || !receiptId) return;
+  const link = receiptQrLink(receiptId);
+  if(typeof QRCode !== 'undefined' && QRCode.toDataURL){
+    QRCode.toDataURL(link, {width:220, margin:1}, (err, url)=>{
+      if(err){ console.error('Mahalliy QR yaratishda xatolik, zaxira usulga o\\'tildi:', err); imgEl.src = receiptQrUrl(receiptId); return; }
+      imgEl.src = url;
+    });
+  } else {
+    imgEl.src = receiptQrUrl(receiptId);
+  }
 }
 function buildReceiptFromItems(items, sellerName, totalOverride, receiptId){
   // items: [{name, volume, qty, price, total}]
@@ -6477,7 +6540,7 @@ window.openReceiptModal=function(receiptData){
   if(copiesEl) copiesEl.value = '1';
   document.getElementById('receipt-items').innerHTML = receiptData.items.map(i=>`
     <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
-      <span>${i.name}${i.volume?' ('+i.volume+'L)':''} x${i.qty}</span>
+      <span>${esc(i.name)} x${i.qty}</span>
       <span>${fmt(i.total)}</span>
     </div>`).join('');
   document.getElementById('receipt-total').textContent = fmt(receiptData.total)+" so'm";
@@ -6485,8 +6548,8 @@ window.openReceiptModal=function(receiptData){
   const qrImg = document.getElementById('receipt-qr-img');
   if(qrImg){
     if(receiptData.id){
-      qrImg.src = receiptQrUrl(receiptData.id);
       qrImg.style.display = 'inline-block';
+      generateReceiptQR(qrImg, receiptData.id);
     } else {
       qrImg.style.display = 'none';
     }
@@ -6532,7 +6595,7 @@ window.shareReceipt=function(){
   lines.push(`Sotuvchi: ${rd.sellerName}`);
   lines.push('----------------------------');
   rd.items.forEach(i=>{
-    lines.push(`${i.name}${i.volume?' ('+i.volume+'L)':''} x${i.qty} — ${fmt(i.total)} so'm`);
+    lines.push(`${i.name} x${i.qty} — ${fmt(i.total)} so'm`);
   });
   lines.push('----------------------------');
   lines.push(`JAMI: ${fmt(rd.total)} so'm`);
@@ -6853,17 +6916,21 @@ function printHTML(bodyHtml, opts={}){
 // bo'lmas holga kelardi.
 function printTable(title, subtitleLines, headers, rows){
   if(!rows.length){ toast("Chop etish uchun ma'lumot yo'q",'red'); return; }
+  // TUZATILDI: ism/izoh/tashkilot kabi matnlar avval to'g'ridan-to'g'ri (escape
+  // qilinmasdan) HTML'ga qo'yilardi — agar shu matnlarda "<", ">" yoki "&" kabi
+  // belgilar bo'lsa (masalan mijoz ismida), chek noto'g'ri chiqib qolishi yoki
+  // butunlay buzilishi mumkin edi. Endi barcha matnlar xavfsiz chiqariladi.
   const dateStr = new Date().toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const subHtml = (subtitleLines||[]).map(l=>`<div class="print-sub">${l}</div>`).join('');
+  const subHtml = (subtitleLines||[]).map(l=>`<div class="print-sub">${esc(l)}</div>`).join('');
   const recordsHtml = rows.map(r=>{
-    const lines = headers.map((h,i)=> (r[i]!==undefined && r[i]!=='') ? `<div class="rt-row"><span class="rt-label">${h}:</span> ${r[i]}</div>` : '').join('');
+    const lines = headers.map((h,i)=> (r[i]!==undefined && r[i]!=='') ? `<div class="rt-row"><span class="rt-label">${esc(h)}:</span> ${esc(r[i])}</div>` : '').join('');
     return `<div class="rt-record">${lines}</div>`;
   }).join('');
   const shopName = DB.shopName || "Do'kon";
   const logoHtml = DB.shopLogo ? `<img src="${DB.shopLogo}" style="max-width:90px;max-height:45px;object-fit:contain;display:block;margin:0 auto 3px">` : '';
   const html = `
     ${logoHtml}
-    <h1>${DB.shopLogo?'':'🏪 '}${shopName} — ${title}</h1>
+    <h1>${DB.shopLogo?'':'🏪 '}${esc(shopName)} — ${esc(title)}</h1>
     <div class="print-sub">Chop etilgan sana: ${dateStr}</div>
     ${subHtml}
     <div class="rt-list">${recordsHtml}</div>`;
