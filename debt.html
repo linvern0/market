@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -154,7 +155,7 @@
 
 <div id="app">
   <nav>
-    <div class="logo">💳 <span>Qarz Portali</span></div>
+    <div class="logo">💳 <span id="app-title-nav">Qarz Portali</span></div>
     <div class="user-info" id="user-info">—</div>
     <button class="btn-logout" onclick="doLogout()">Chiqish</button>
   </nav>
@@ -202,7 +203,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
@@ -224,12 +225,32 @@ let personFilter = 'all'; // all yoki specific person
 let debtsListener = null;
 let personButtons = [];
 
+// Admin "Do'kon Boshqaruvi" ilovasi Sozlamalar > Ko'rinish bo'limida
+// belgilagan brend rangi va ilova nomini shu qarz portalida ham
+// qo'llaydi — barcha sahifalarda bir xil brendlash ta'minlanadi.
+function applyBrandSettings(d){
+  if(!d) return;
+  if(d.brandAccent1){
+    document.documentElement.style.setProperty('--accent', d.brandAccent1);
+    document.documentElement.style.setProperty('--accent-bg', d.brandAccent1+'1a');
+    document.documentElement.style.setProperty('--accent-border', d.brandAccent1+'55');
+  }
+  const title = d.appTitle ? (d.appTitle+' — Qarz portali') : "Qarz Portali";
+  document.title = title;
+  const navT = document.getElementById('app-title-nav'); if(navT) navT.textContent = title;
+}
+
 async function init(){
   try{
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('login-page').style.display = 'flex';
     document.getElementById('login-input').addEventListener('keyup', e=>{ if(e.key==='Enter') document.getElementById('password-input').focus(); });
     document.getElementById('password-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
+    try{
+      const settingsSnap = await getDoc(doc(db,'dokon','settings'));
+      if(settingsSnap.exists()) applyBrandSettings(settingsSnap.data());
+      onSnapshot(doc(db,'dokon','settings'), snap=>{ if(snap.exists()) applyBrandSettings(snap.data()); });
+    }catch(e){ console.error("Sozlamalarni o'qishda xatolik:", e); }
   }catch(e){
     document.getElementById('loading-screen').querySelector('p').textContent = "❌ Ulanib bo'lmadi.";
     console.error(e);
