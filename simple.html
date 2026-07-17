@@ -706,14 +706,21 @@
     #sh-stats,#debt-stats,#exp-stats,#seller-daily-summary,#dash-quick-stats{grid-template-columns:1fr!important}
   }
 
-  /* ---- C) Mahsulot kartalari to'ri (.product-grid) — bitta tizim ---- */
-  .product-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important}
+  /* ---- C) Mahsulot kartalari to'ri (.product-grid) — bitta tizim ----
+     Desktop nuqtalarida (901px+) ustunlar soni oshirildi, shrift
+     o'lchamlari (.prod-name/.prod-price/.prod-stock) o'zgarishsiz
+     qoldi — shu bilan bitta qatorga ko'proq tovar sig'adi. Bu qoida
+     .product-grid klassiga tegishli bo'lgani uchun admin "Tovarlar"
+     (#product-grid) va sotuvchi "Sotish" (#sell-grid) sahifalarining
+     ikkalasida ham bir xil ishlaydi. ---- */
+  .product-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))!important}
   @media(max-width:420px){ .product-grid{grid-template-columns:repeat(2,1fr)!important;gap:.45rem!important} }
   @media(min-width:421px) and (max-width:640px){ .product-grid{grid-template-columns:repeat(2,1fr)!important} }
   @media(min-width:641px) and (max-width:900px){ .product-grid{grid-template-columns:repeat(3,1fr)!important} }
-  @media(min-width:901px) and (max-width:1180px){ .product-grid{grid-template-columns:repeat(4,1fr)!important} }
-  @media(min-width:1181px) and (max-width:1440px){ .product-grid{grid-template-columns:repeat(5,1fr)!important} }
-  @media(min-width:1441px){ .product-grid{grid-template-columns:repeat(6,1fr)!important} }
+  @media(min-width:901px) and (max-width:1180px){ .product-grid{grid-template-columns:repeat(6,1fr)!important} }
+  @media(min-width:1181px) and (max-width:1440px){ .product-grid{grid-template-columns:repeat(7,1fr)!important} }
+  @media(min-width:1441px) and (max-width:1800px){ .product-grid{grid-template-columns:repeat(8,1fr)!important} }
+  @media(min-width:1801px){ .product-grid{grid-template-columns:repeat(10,1fr)!important} }
   .prod-card .prod-actions{flex-wrap:nowrap!important}
   .prod-card .prod-actions .btn{flex:1 1 0!important;min-width:0!important;padding-left:.3rem!important;padding-right:.3rem!important}
   .prod-card .prod-name{overflow-wrap:anywhere}
@@ -1688,6 +1695,18 @@ body.dark tr:hover td {
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🕵️ Amallar jurnali (joriy sessiya)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Ushbu qurilmada joriy sessiya davomida bajarilgan amallar ro'yxati (sahifa yangilansa tozalanadi).</p>
     <button class="btn" onclick="window.openAuditLogViewer && window.openAuditLogViewer()">📜 Jurnalni ko'rish</button>
+  </div>
+
+  <div class="card" style="max-width:560px;margin-top:1rem" id="settings-receiptlinks-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🔗 Chek sahifasi — linklar va QR kodlar</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Mijoz chekdagi QR kodni skanerlaganda ochiladigan onlayn chek sahifasida qo'shimcha havolalar (Telegram, Instagram va h.k) chiqishi mumkin. Har bir havola uchun "Tugma" (bosilsa link ochiladi) yoki "QR kod" (alohida QR chiqadi) ko'rinishini tanlang. URL bo'sh qoldirilsa, o'sha havola chek sahifasida ko'rinmaydi.</p>
+    <div id="receipt-links-list" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.85rem"></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;border-top:1px dashed var(--border2);padding-top:.75rem;margin-bottom:.75rem">
+      <input type="text" id="new-receipt-link-label" placeholder="Nomi (masalan: Yetkazib berish)" style="flex:1;min-width:140px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <input type="text" id="new-receipt-link-url" placeholder="https://..." style="flex:1;min-width:160px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <button class="btn sm blue" onclick="addCustomReceiptLink()">+ Qo'shish</button>
+    </div>
+    <button class="btn sm green" onclick="saveReceiptLinksSettings()">💾 Saqlash</button>
   </div>
 
   <div class="card" style="max-width:480px;margin-top:1rem" id="settings-backup-card">
@@ -2961,7 +2980,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0 };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [] };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3082,7 +3101,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[]}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -3358,8 +3377,12 @@ function startListeners(){
       DB.shopName=d.shopName||"Do'kon";
       DB.shopLogo=d.shopLogo||'';
       DB.autoLockMinutes=(typeof d.autoLockMinutes==='number')?d.autoLockMinutes:0;
+      DB.receiptLinks=Array.isArray(d.receiptLinks)?d.receiptLinks:[];
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
-      if(document.getElementById('page-settings')?.classList.contains('active')) renderSellersManager();
+      if(document.getElementById('page-settings')?.classList.contains('active')){
+        renderSellersManager();
+        if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
+      }
     }
   });
   let prodDebounce=null;
@@ -3515,9 +3538,10 @@ async function init(){
           DB.shopName=d.shopName||"Do'kon";
           DB.shopLogo=d.shopLogo||'';
           DB.autoLockMinutes=(typeof d.autoLockMinutes==='number')?d.autoLockMinutes:0;
+          DB.receiptLinks=Array.isArray(d.receiptLinks)?d.receiptLinks:[];
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[]}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -3726,6 +3750,7 @@ window.showPage = function(page, role){
     if(slp){ if(DB.shopLogo){ slp.src=DB.shopLogo; slp.style.display='inline-block'; if(slb) slb.style.display='inline-block'; } else { slp.style.display='none'; if(slb) slb.style.display='none'; } }
     const dgi=document.getElementById('daily-goal-input'); if(dgi) dgi.value = localStorage.getItem('dokon_daily_goal')||'';
     const odt=document.getElementById('overdue-days-threshold'); if(odt) odt.value = localStorage.getItem('dokon_overdue_days')||'14';
+    if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
   }
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
@@ -6046,6 +6071,77 @@ window.saveShopSettings=function(){
 // sotuvchi endi Sozlamalar > Sotuvchilar bo'limida o'z ismi bilan alohida
 // qo'shiladi va login vaqtida PIN orqali avtomatik aniqlanadi.)
 
+// ===== CHEK SAHIFASI — LINKLAR VA QR KODLAR =====
+// YANGI: admin onlayn chek sahifasida (receipt.html) ko'rinadigan qo'shimcha
+// havolalarni (Telegram, Instagram, Facebook, Veb-sayt va h.k) sozlashi
+// mumkin. Har biri "tugma" yoki "QR kod" ko'rinishida chiqishi tanlanadi.
+// Tayyor (locked) tarmoqlar o'chirilmaydi — faqat URL bo'sh qoldirilsa
+// chek sahifasida ko'rinmaydi. Admin xohlagancha qo'shimcha erkin link
+// (masalan "Yetkazib berish", "Shikoyat va takliflar") qo'shishi mumkin.
+function defaultReceiptLinks(){
+  return [
+    {id:'telegram', icon:'📢', label:'Telegram', url:'', display:'button', locked:true},
+    {id:'instagram', icon:'📷', label:'Instagram', url:'', display:'button', locked:true},
+    {id:'facebook', icon:'👍', label:'Facebook', url:'', display:'button', locked:true},
+    {id:'website', icon:'🌐', label:"Veb-sayt", url:'', display:'button', locked:true}
+  ];
+}
+function escVal(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
+window.renderReceiptLinksSettings=function(){
+  const wrap=document.getElementById('receipt-links-list'); if(!wrap) return;
+  if(!Array.isArray(DB.receiptLinks) || !DB.receiptLinks.length){ DB.receiptLinks = defaultReceiptLinks(); }
+  wrap.innerHTML = DB.receiptLinks.map(l=>`
+    <div class="receipt-link-row" data-id="${l.id}" style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;border:1px solid var(--border2);border-radius:var(--radius);padding:.55rem .65rem">
+      <span style="font-size:18px;min-width:22px">${l.icon||'🔗'}</span>
+      ${l.locked
+        ? `<span style="font-weight:600;min-width:90px">${escVal(l.label)}</span>`
+        : `<input type="text" class="rl-label" value="${escVal(l.label)}" placeholder="Nomi" style="width:130px;border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px">`}
+      <input type="text" class="rl-url" value="${escVal(l.url||'')}" placeholder="https://..." style="flex:1;min-width:150px;border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px">
+      <select class="rl-display" style="border:1.5px solid var(--border2);border-radius:8px;padding:.4rem .5rem;font-size:13px;background:#fff">
+        <option value="button" ${l.display==='button'?'selected':''}>Tugma</option>
+        <option value="qr" ${l.display==='qr'?'selected':''}>QR kod</option>
+      </select>
+      ${l.locked?'':`<button type="button" class="btn sm red" onclick="removeReceiptLink('${l.id}')">✕</button>`}
+    </div>`).join('');
+}
+window.addCustomReceiptLink=function(){
+  const labelEl=document.getElementById('new-receipt-link-label');
+  const urlEl=document.getElementById('new-receipt-link-url');
+  const label=(labelEl.value||'').trim();
+  let url=(urlEl.value||'').trim();
+  if(!label){ toast("Havola nomini kiriting",'red'); return; }
+  if(!url){ toast("Havola manzilini (URL) kiriting",'red'); return; }
+  if(!/^https?:\/\//i.test(url)) url = 'https://'+url;
+  if(!Array.isArray(DB.receiptLinks) || !DB.receiptLinks.length){ DB.receiptLinks = defaultReceiptLinks(); }
+  DB.receiptLinks.push({id:uid(), icon:'🔗', label, url, display:'button', locked:false});
+  labelEl.value=''; urlEl.value='';
+  window.renderReceiptLinksSettings();
+  toast("Qo'shildi — o'zgarishni saqlashni unutmang",'amber');
+}
+window.removeReceiptLink=function(id){
+  if(!Array.isArray(DB.receiptLinks)) return;
+  DB.receiptLinks = DB.receiptLinks.filter(l=>l.id!==id);
+  window.renderReceiptLinksSettings();
+}
+window.saveReceiptLinksSettings=function(){
+  const wrap=document.getElementById('receipt-links-list'); if(!wrap) return;
+  const rows=[...wrap.querySelectorAll('.receipt-link-row')];
+  if(!Array.isArray(DB.receiptLinks)) DB.receiptLinks=[];
+  rows.forEach(row=>{
+    const id=row.dataset.id;
+    const item=DB.receiptLinks.find(l=>l.id===id);
+    if(!item) return;
+    const labelInput=row.querySelector('.rl-label');
+    if(labelInput) item.label=(labelInput.value||'').trim()||item.label;
+    let url=(row.querySelector('.rl-url').value||'').trim();
+    if(url && !/^https?:\/\//i.test(url)) url = 'https://'+url;
+    item.url=url;
+    item.display=row.querySelector('.rl-display').value==='qr'?'qr':'button';
+  });
+  toast('✓ Saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+
 // ===== ZAXIRA NUSXA (BACKUP) VA TIKLASH (RESTORE) =====
 // To'liq bazani (mahsulotlar, savdolar, kirim/chiqim, qarzlar, qarzdorlar,
 // sozlamalar) bitta JSON faylga eksport qiladi. Bu — Firestore'dan
@@ -6153,13 +6249,21 @@ function buildReceiptFromItems(items, sellerName, totalOverride, receiptId){
 // modalini ko'rsatishga to'sqinlik qilmaydi (jim xatolik).
 function saveReceiptRecord(receiptData){
   if(!db || !receiptData || !receiptData.id) return;
+  // YANGI: admin Sozlamalar > "Chek sahifasi — linklar va QR kodlar"
+  // bo'limida sozlagan havolalar (URL to'ldirilganlari) chekka biriktirilib
+  // yuboriladi — receipt.html shu ro'yxatni o'qib, har birini admin
+  // tanlagan ko'rinishda (tugma yoki QR) chiqaradi.
+  const links = (DB.receiptLinks||[]).filter(l=>l.url && l.url.trim()).map(l=>({
+    icon:l.icon||'🔗', label:l.label, url:l.url, display:l.display==='qr'?'qr':'button'
+  }));
   const payload = {
     id: receiptData.id,
     items: receiptData.items,
     total: receiptData.total,
     sellerName: receiptData.sellerName,
     shopName: DB.shopName || "Do'kon",
-    date: (receiptData.date instanceof Date ? receiptData.date.toISOString() : receiptData.date) || new Date().toISOString()
+    date: (receiptData.date instanceof Date ? receiptData.date.toISOString() : receiptData.date) || new Date().toISOString(),
+    links: links
   };
   withRetry(()=>setDoc(doc(db,'receipts',receiptData.id), payload)).catch(e=>{
     console.error('Chek yozuvini saqlashda xatolik:', e);
