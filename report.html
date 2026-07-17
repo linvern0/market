@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -557,6 +558,10 @@ function timeStr(iso){
 }
 function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
 function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+// TUZATILDI: mahsulot/mijoz nomlarida "<", ">" kabi belgilar bo'lsa, ilgari
+// jadval to'g'ridan-to'g'ri buzilib qolar edi (chunki matn HTML sifatida
+// joylashtirilardi). Endi barcha erkin matnlar xavfsiz chiqariladi.
+function esc(s){ const d=document.createElement('div'); d.textContent=(s===null||s===undefined)?'':String(s); return d.innerHTML; }
 
 function render(){
   const {start,end,label} = getRange();
@@ -607,11 +612,11 @@ function render(){
   for(let i=0; i<rows.length; i++){
     const r = rows[i];
     const isOpen = expandedKeys.has(r.key);
-    parts.push(`<tr class="group-row${isOpen?' open':''}" data-key="${escAttr(r.key)}"><td data-label="Tovar"><strong>${r.name}</strong></td><td data-label="Hajm">${r.volume?`<span class="badge blue">${r.volume} L</span>`:'—'}</td><td data-label="Sotilgan">${r.qty} ta</td><td data-label="Savdo">${r.orders} ta</td><td data-label="Jami" style="font-weight:700;color:var(--green)">${fmt(r.total)} so'm</td></tr>`);
+    parts.push(`<tr class="group-row${isOpen?' open':''}" data-key="${escAttr(r.key)}"><td data-label="Tovar"><strong>${esc(r.name)}</strong></td><td data-label="Hajm">${r.volume?`<span class="badge blue">${esc(r.volume)} L</span>`:'—'}</td><td data-label="Sotilgan">${r.qty} ta</td><td data-label="Savdo">${r.orders} ta</td><td data-label="Jami" style="font-weight:700;color:var(--green)">${fmt(r.total)} so'm</td></tr>`);
     if(isOpen){
       const sales = r.sales.slice().sort((a,b)=>getDate(b.date).getTime()-getDate(a.date).getTime());
       let dRows='';
-      for(const s of sales) dRows+=`<tr class="detail-line"><td style="white-space:nowrap;color:var(--text2)">🕐 ${timeStr(s.date)}</td><td>${s.productName}</td><td>${s.volume?`<span class="badge blue">${s.volume} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:600;color:var(--green)">${fmt(s.total)} so'm</td></tr>`;
+      for(const s of sales) dRows+=`<tr class="detail-line"><td style="white-space:nowrap;color:var(--text2)">🕐 ${timeStr(s.date)}</td><td>${esc(s.productName)}</td><td>${s.volume?`<span class="badge blue">${esc(s.volume)} L</span>`:'—'}</td><td>${s.qty} ta</td><td style="font-weight:600;color:var(--green)">${fmt(s.total)} so'm</td></tr>`;
       parts.push(`<tr class="detail-row"><td colspan="5"><table class="detail-tbl"><thead><tr><th>Vaqti</th><th>Nomi</th><th>Hajmi</th><th>Donasi</th><th>Summasi</th></tr></thead><tbody>${dRows}</tbody></table></td></tr>`);
     }
   }
@@ -694,7 +699,7 @@ window.renderStock = function(){
     const pct=Math.min(100,p.stock/maxStock*100|0);
     const bc=p.stock===0?'#dc2626':p.stock<=5?'#d97706':p.stock<=10?'#f59e0b':'#16a34a';
     const badge=p.stock===0?'<span class="badge red">🔴 Tugagan</span>':p.stock<=5?'<span class="badge red">⚠️ Kritik kam</span>':p.stock<=10?'<span class="badge amber">⚠️ Kam qoldi</span>':'<span class="badge green">✅ Yetarli</span>';
-    parts.push(`<tr><td data-label="Tovar"><strong>${p.name}</strong></td><td data-label="Hajm">${p.volume?`<span class="badge blue">${p.volume} L</span>`:'—'}</td><td data-label="Zaxira"><div style="display:flex;align-items:center;gap:.6rem"><span style="font-weight:700;font-size:15px;color:${bc};min-width:36px">${p.stock}</span><div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${bc}"></div></div></div></td><td data-label="Narx">${fmt(p.price)} so'm</td><td data-label="Qiymati" style="font-weight:600;color:var(--accent)">${fmt(p.price*p.stock)} so'm</td><td data-label="Holat">${badge}</td></tr>`);
+    parts.push(`<tr><td data-label="Tovar"><strong>${esc(p.name)}</strong></td><td data-label="Hajm">${p.volume?`<span class="badge blue">${esc(p.volume)} L</span>`:'—'}</td><td data-label="Zaxira"><div style="display:flex;align-items:center;gap:.6rem"><span style="font-weight:700;font-size:15px;color:${bc};min-width:36px">${p.stock}</span><div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${bc}"></div></div></div></td><td data-label="Narx">${fmt(p.price)} so'm</td><td data-label="Qiymati" style="font-weight:600;color:var(--accent)">${fmt(p.price*p.stock)} so'm</td><td data-label="Holat">${badge}</td></tr>`);
   }
   tbody.innerHTML=parts.join('');
 }
@@ -802,7 +807,7 @@ window.renderReportDebts = function(){
     const people = Object.values(g.people);
     const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0),0);
     const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
-    const headerTitle = g.isOrg ? `🏢 ${g.org}` : `👤 ${people[0].debtorName}`;
+    const headerTitle = g.isOrg ? `🏢 ${esc(g.org)}` : `👤 ${esc(people[0].debtorName)}`;
     const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
 
     parts.push(`<div class="card" style="margin-bottom:.85rem">
@@ -821,16 +826,16 @@ window.renderReportDebts = function(){
         ${people.map(p=>{
           const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+(d.total||0),0);
           const debtor = DEBTORS.find(dd=>dd.name===p.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
-          const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${debtor.login}</strong> · Parol: <strong>${debtor.password}</strong></div>` : '';
+          const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${esc(debtor.login)}</strong> · Parol: <strong>${esc(debtor.password)}</strong></div>` : '';
           return `<div style="${g.isOrg?'border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:var(--surface2)':''}">
             ${g.isOrg?`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
               <div>
-                <div style="font-weight:700;font-size:14px">👤 ${p.debtorName}</div>
-                ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${p.phone}</div>`:''}
+                <div style="font-weight:700;font-size:14px">👤 ${esc(p.debtorName)}</div>
+                ${p.phone?`<div style="font-size:12px;color:var(--text3)">📞 ${esc(p.phone)}</div>`:''}
                 ${loginInfo}
               </div>
               <div style="text-align:right;font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
-            </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${p.phone}</div>`:''}${loginInfo}</div>`}
+            </div>`:`<div style="margin-bottom:.5rem">${p.phone?`<div style="font-size:13px;color:var(--text3)">📞 ${esc(p.phone)}</div>`:''}${loginInfo}</div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
               ${p.debts.map(d=>`<div style="border:1px solid ${d.paid?'var(--green-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':'var(--amber-bg)'}">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
@@ -840,8 +845,8 @@ window.renderReportDebts = function(){
                   </div>
                   <span style="font-weight:700;font-size:15px">${fmt(d.total||0)} so'm</span>
                 </div>
-                <div style="font-size:12px;color:var(--text2);margin-top:.35rem">${(d.items||[]).map(i=>`${i.productName} ×${i.qty}`).join(', ')}</div>
-                ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${d.note}</div>`:''}
+                <div style="font-size:12px;color:var(--text2);margin-top:.35rem">${(d.items||[]).map(i=>`${esc(i.productName)} ×${i.qty}`).join(', ')}</div>
+                ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${esc(d.note)}</div>`:''}
                 ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
               </div>`).join('')}
             </div>
