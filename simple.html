@@ -239,10 +239,17 @@
   .prod-card .stock-badge{position:absolute;top:8px;right:8px}
   .prod-card .body{padding:.65rem}
   .prod-card .prod-name{font-weight:700;font-size:14px;margin-bottom:.25rem}
-  .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:15px}
+  .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:15px;white-space:nowrap}
   .prod-card .prod-stock{font-size:13px;color:var(--text3);margin-top:.25rem}
-  .prod-card .prod-actions{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.45rem}
-  .prod-card .prod-actions .btn{flex:1 1 calc(50% - .35rem);justify-content:center;min-width:0}
+  .prod-card .prod-actions{display:flex;flex-wrap:nowrap;gap:.3rem;margin-top:.45rem}
+  .prod-card .prod-actions .btn{flex:1 1 0;justify-content:center;min-width:0;padding:.5rem .2rem;font-size:16px}
+  /* TUZATILDI (2026-07): Tovar bo'limida "Kirim/Chiqim/Tahrirlash/O'chirish"
+     matnli yorliqlar tor kartochkalarga (ayniqsa keng ekranda ko'p ustunli
+     to'r bo'lganda) sig'may, tugmalar bir-birining ustiga chiqib ketardi.
+     Endi har doim faqat ikon ko'rsatiladi, matn esa title/aria-label orqali
+     tooltip sifatida qoladi — barcha ekran o'lchamlarida bir xil, ixcham
+     ko'rinish. */
+  .prod-card .prod-actions .act-label{display:none}
   .qty-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.025s}
   .qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   .filter-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
@@ -1923,17 +1930,14 @@ body.dark tr:hover td {
 
 <div class="page" id="page-my-sales">
   <div class="section-header"><h2>Mening sotuvlarim</h2></div>
-  <div id="my-revert-info" class="revert-info" style="display:none"></div>
+  <!-- YANGI (2026-07): sana filtrlari va qidiruv inputi bitta qatorga
+       joylashtirildi — ilgari qidiruv input alohida qatorda edi. -->
   <div class="filter-bar" style="margin-bottom:.75rem">
     <button class="btn sm" id="ms-btn-today" onclick="setMySalesFilter('today')">Bugun</button>
     <button class="btn sm" id="ms-btn-yesterday" onclick="setMySalesFilter('yesterday')">Kecha</button>
     <button class="btn sm" id="ms-btn-all" onclick="setMySalesFilter('all')">Barchasi</button>
     <input type="date" id="ms-date" onchange="setMySalesFilter('custom')">
-  </div>
-  <!-- YANGI (2026-07): tovar nomi bo'yicha tezkor qidiruv — sotuvchi ro'yxat
-       uzun bo'lganda kerakli savdoni tez topishi uchun. -->
-  <div style="margin-bottom:.75rem">
-    <input type="text" id="ms-search" oninput="window.debouncedRenderMySales?window.debouncedRenderMySales():renderMySales()" placeholder="🔍 Tovar nomi bo'yicha qidirish..." style="width:100%;max-width:320px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .9rem;font-size:14px;outline:none">
+    <input type="text" id="ms-search" oninput="window.debouncedRenderMySales?window.debouncedRenderMySales():renderMySales()" placeholder="🔍 Tovar nomi bo'yicha qidirish..." style="margin-left:auto;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .85rem;font-size:13px;outline:none;min-width:180px">
   </div>
   <div id="seller-daily-summary" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem"></div>
   <div class="tbl-wrap">
@@ -5266,9 +5270,6 @@ window.renderMySales=function(){
 }
 function renderMySalesInner(){
   const revertMins=DB.revertMinutes;
-  const info=document.getElementById('my-revert-info');
-  info.style.display='block';
-  info.textContent=`⏱ Siz ${revertMins} daqiqa ichida sotuvni qaytara olasiz.`;
   const now=new Date();
 
   let rangeStart=null, rangeEnd=null, label='Bugungi savdo';
@@ -11979,10 +11980,25 @@ window.checkNavOverflow = function(){
   if(wasCompact) body.classList.remove('nav-compact');
   let needsCompact = window.innerWidth <= 768; // haqiqiy mobil — har doim compact
   if(!needsCompact){
-    const navId = window.currentRole === 'admin' ? 'nav-admin' : 'nav-seller';
-    const activeNav = document.getElementById(navId);
-    if(activeNav && activeNav.style.display !== 'none'){
-      needsCompact = activeNav.scrollWidth > activeNav.clientWidth + 2;
+    // TUZATILDI (2026-07): qaror endi HAR DOIM "nav-admin" (eng ko'p — 10 ta
+    // bo'limli) qatorining tabiiy kengligiga qarab chiqariladi, joriy rol
+    // (admin/sotuvchi)dan qat'i nazar. Ilgari qaror joriy rolning O'Z tab
+    // qatoriga qarab chiqarilardi — sotuvchida atigi 3 ta tab bo'lgani
+    // uchun ular deyarli hech qachon sig'may qolmasdi, admin esa tez-tez
+    // sig'may qolib pastki panelga o'tardi. Natijada bir xil ekran
+    // kengligida admin va sotuvchi navigatsiyasi ikki xil ko'rinishda
+    // chiqardi. Endi ikkalasi ham AYNAN bir xil kenglik chegarasida
+    // pastki panelga o'tadi — ko'rinish har doim bir xil bo'ladi.
+    const adminNav = document.getElementById('nav-admin');
+    const sellerNav = document.getElementById('nav-seller');
+    if(adminNav){
+      const adminWasDisplay = adminNav.style.display;
+      const sellerWasDisplay = sellerNav ? sellerNav.style.display : null;
+      if(sellerNav) sellerNav.style.display = 'none';
+      adminNav.style.display = 'flex';
+      needsCompact = adminNav.scrollWidth > adminNav.clientWidth + 2;
+      adminNav.style.display = adminWasDisplay;
+      if(sellerNav) sellerNav.style.display = sellerWasDisplay;
     }
   }
   body.classList.toggle('nav-compact', needsCompact);
