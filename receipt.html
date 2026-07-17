@@ -278,6 +278,11 @@
   }
 
   function renderReceipt(r){
+    // Admin Sozlamalar > Ko'rinish bo'limida belgilagan brend rangi shu
+    // chek sahifasida ham qo'llanadi — ilova va chek bir xil rangda ko'rinadi.
+    if(r.brandAccent1){
+      document.documentElement.style.setProperty('--accent', r.brandAccent1);
+    }
     const dateStr = r.date ? new Date(r.date).toLocaleString('uz-UZ') : '';
     const itemsHtml = (r.items||[]).map(i => `
       <div class="item-row">
@@ -288,10 +293,14 @@
         <div class="item-sum">${fmt(i.total)}</div>
       </div>`).join('');
 
+    const shopMeta = [r.shopAddress, r.shopPhone, r.workHours].filter(Boolean).join(' · ');
+    const logoHtml = r.shopLogo ? `<img src="${esc(r.shopLogo)}" alt="" style="width:44px;height:44px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:8px">` : '';
     appEl.innerHTML = `
       <div class="receipt">
         <div class="eyebrow">Xarid tasdig'i</div>
-        <div class="shopname">🏪 ${r.shopName || "Do'kon"}</div>
+        ${logoHtml}
+        <div class="shopname">${r.shopLogo ? '' : '🏪 '}${r.shopName || "Do'kon"}</div>
+        ${shopMeta ? `<div class="meta">${esc(shopMeta)}</div>` : ''}
         <div class="meta">${dateStr}</div>
         <div class="meta">Sotuvchi: ${r.sellerName || '—'}</div>
         <div class="divider"></div>
@@ -301,7 +310,7 @@
           <span class="label">Jami to'lov</span>
           <span class="value">${fmt(r.total)} so'm</span>
         </div>
-        <div class="thanks">Xaridingiz uchun rahmat!</div>
+        <div class="thanks">${esc(r.receiptFooter) || "Xaridingiz uchun rahmat!"}</div>
         <div class="stamp-wrap"><span class="stamp">✓ Tasdiqlangan</span></div>
         ${renderReceiptLinks(r.links)}
       </div>`;
