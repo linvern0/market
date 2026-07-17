@@ -855,7 +855,7 @@
 
 <div id="login-page" style="display:none">
   <div class="login-card">
-    <h1>🏪 Do'kon Tizimi</h1>
+    <h1 id="app-title-login">🏪 Do'kon Tizimi</h1>
     <p>Rolni tanlang va PIN kiriting</p>
     <div class="role-btns">
       <div class="role-btn" data-role="admin">
@@ -881,7 +881,7 @@
 
 <div id="app" style="display:none">
 <nav>
-  <div class="logo">🏪 <span>Do'kon</span><div id="nav-clock"></div></div>
+  <div class="logo">🏪 <span id="app-title-nav">Do'kon</span><div id="nav-clock"></div></div>
   <div id="nav-admin" style="display:none;gap:.25rem">
     <button class="tab active" onclick="showPage('dashboard','admin')">📊 Bosh sahifa<span id="dash-low-badge"></span></button>
     <button class="tab" onclick="showPage('products','admin')">📦 Tovarlar</button>
@@ -1584,6 +1584,48 @@ body.dark tr:hover td {
     </div>
     <button class="btn sm blue" onclick="saveShopSettings()">Saqlash</button>
   </div>
+
+  <div class="card" style="max-width:420px;margin-top:1rem" id="settings-apptitle-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🏷️ Ilova nomi (interfeys matni)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Kirish ekrani sarlavhasi va yuqori navigatsiyadagi nomni o'zgartiring. Bo'sh qoldirilsa, standart "Do'kon" nomi ishlatiladi. Barcha qurilmalarda avtomatik yangilanadi.</p>
+    <div class="field" style="margin-bottom:.75rem">
+      <input type="text" id="app-title-input" maxlength="30" placeholder="Masalan: Aziz Market" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <button class="btn sm blue" onclick="saveAppTitle()">Saqlash</button>
+  </div>
+
+  <div class="card" style="max-width:520px;margin-top:1rem" id="settings-business-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🏢 Do'kon rekvizitlari va biznes qoidalari</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Bu ma'lumotlar chek, hisobot va Z-hisobotlarda ko'rsatiladi. Barcha qurilmalarda avtomatik sinxron.</p>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Manzil</label>
+      <input type="text" id="biz-address-input" maxlength="120" placeholder="Masalan: Toshkent sh., Chilonzor tumani" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Telefon raqami</label>
+      <input type="text" id="biz-phone-input" maxlength="30" placeholder="Masalan: +998 90 123 45 67" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Ish vaqti</label>
+      <input type="text" id="biz-hours-input" maxlength="60" placeholder="Masalan: Har kuni 9:00 – 21:00" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Chek pastki qismidagi matn</label>
+      <input type="text" id="biz-footer-input" maxlength="120" placeholder="Masalan: Xaridingiz uchun rahmat! Almashtirish 3 kun ichida." style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Valyuta belgisi</label>
+      <input type="text" id="biz-currency-input" maxlength="10" placeholder="so'm" style="width:160px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <div style="font-size:12px;color:var(--text3);margin-top:.3rem">Hozircha faqat chek/hisobotlarning ba'zi joylarida namoyish uchun; asosiy summalar "so'm"da hisoblanadi.</div>
+    </div>
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Sotuvchi bera oladigan maksimal chegirma (%)</label>
+      <input type="number" id="biz-maxdiscount-input" min="0" max="100" placeholder="0 = chegirma berish o'chirilgan/cheklanmagan emas" style="width:160px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <div style="font-size:12px;color:var(--text3);margin-top:.3rem">0 qoldirilsa — cheklov qo'yilmaydi. Masalan 10 kiritilsa, sotuvchi 10% dan ortiq chegirma bera olmaydi (aksiyalar bo'limida).</div>
+    </div>
+    <button class="btn sm blue" style="margin-top:.5rem" onclick="saveBusinessSettings()">💾 Hammasini saqlash</button>
+  </div>
+
   <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Sotuvchi orqaga qaytarish muddati</h3>
     <div style="display:flex;gap:.75rem;align-items:center">
@@ -1628,10 +1670,29 @@ body.dark tr:hover td {
       <input type="file" id="restore-file-input" accept="application/json" style="display:none" onchange="importBackupJSON(this)">
     </div>
   </div>
+  <div class="card" style="max-width:460px;margin-top:1rem" id="settings-brand-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🏢 Brend rangi (barcha qurilmalar uchun)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Bu yerda belgilangan rang butun do'kon jamoasiga (admin va barcha sotuvchilarga) avtomatik qo'llanadi — chek va hisobot sahifalarida ham shu rang ishlatiladi. Agar biror xodim quyidagi "Shaxsiy ko'rinish" bo'limida o'zi alohida rang tanlagan bo'lsa, o'sha qurilmada shaxsiy tanlovi ustuvor bo'ladi.</p>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem">
+      <label style="font-size:12px;color:var(--text2)">Asosiy rang <input type="color" id="brand-accent-1" value="#4f46e5" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+      <label style="font-size:12px;color:var(--text2)">Qo'shimcha rang <input type="color" id="brand-accent-2" value="#0ea5a4" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+    </div>
+    <button class="btn sm blue" onclick="window.saveBrandTheme && window.saveBrandTheme()">💾 Barcha uchun saqlash</button>
+  </div>
+
   <div class="card" style="max-width:420px;margin-top:1rem" id="settings-appearance-card">
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🎨 Ko'rinish</h3>
-    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Ilova rangini va zichligini o'zingizga moslang.</p>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🎨 Shaxsiy ko'rinish (faqat shu qurilmada)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bu yerdagi rang tanlovi faqat shu qurilma/brauzerda amal qiladi va yuqoridagi brend rangidan ustun turadi.</p>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem" id="theme-dots"></div>
+    <div style="border-top:1px dashed var(--border2);padding-top:.85rem;margin-bottom:1rem">
+      <div style="font-size:13px;font-weight:600;margin-bottom:.5rem">🎨 Yoki o'zingiz istalgan rangni tanlang</div>
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--text2)">Asosiy rang <input type="color" id="custom-accent-1" value="#4f46e5" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+        <label style="font-size:12px;color:var(--text2)">Qo'shimcha rang <input type="color" id="custom-accent-2" value="#0ea5a4" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+        <button class="btn sm blue" onclick="window.applyCustomThemeColor && window.applyCustomThemeColor()">Qo'llash</button>
+      </div>
+      <button class="btn sm" style="margin-top:.6rem" onclick="window.resetToBrandTheme && window.resetToBrandTheme()">↺ Do'kon brend rangiga qaytarish</button>
+    </div>
     <div class="settings-switch">
       <div><div class="lbl">Ixcham ko'rinish</div><div class="sub">Kartalar va jadvallar orasidagi bo'sh joyni kamaytiradi</div></div>
       <label class="switch"><input type="checkbox" id="sw-density" onchange="toggleDensityMode(this.checked)"><span class="slider"></span></label>
@@ -1666,6 +1727,20 @@ body.dark tr:hover td {
     <div style="display:flex;gap:.75rem;flex-wrap:wrap">
       <button class="btn green" onclick="exportCSV()">⬇ CSV yuklab olish</button>
       <button class="btn red" onclick="clearAll()">🗑 Hammasini o'chirish</button>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:480px;margin-top:1rem" id="settings-partial-reset-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧹 Bo'lim bo'yicha tozalash</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">"Hammasini o'chirish"dan farqli — faqat tanlangan bo'limni tozalaydi, qolganlariga tegmaydi. Ehtiyot bo'ling, bu amalni ortga qaytarib bo'lmaydi.</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('sales')">🧾 Savdolar tarixi</button>
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('restocks')">📦 Kirimlar tarixi</button>
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('debts')">💳 Qarzlar</button>
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('expenses')">💰 Xarajatlar</button>
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('suppliers')">🚚 Yetkazib beruvchilar</button>
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('customers')">👥 Mijozlar</button>
+      <button class="btn amber sm" onclick="window.partialReset && window.partialReset('promotions')">🏷️ Aksiyalar</button>
     </div>
   </div>
 
@@ -2294,6 +2369,7 @@ body.dark tr:hover td {
       <div style="text-align:center;margin-bottom:.75rem">
         <img id="receipt-logo" src="" style="max-width:110px;max-height:55px;object-fit:contain;display:none;margin:0 auto .3rem">
         <div id="receipt-shopname" style="font-size:18px;font-weight:700">🏪 Do'kon</div>
+        <div id="receipt-shopmeta" style="font-size:11px;color:#555"></div>
         <div id="receipt-date" style="font-size:12px;color:#555"></div>
         <div id="receipt-seller" style="font-size:12px;color:#555"></div>
       </div>
@@ -2301,7 +2377,7 @@ body.dark tr:hover td {
       <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px">
         <span>JAMI:</span><span id="receipt-total">0 so'm</span>
       </div>
-      <div style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
+      <div id="receipt-footer-text" style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
       <div id="receipt-qr" style="text-align:center;margin-top:.6rem">
         <img id="receipt-qr-img" src="" alt="QR" style="width:110px;height:110px;display:none;margin:0 auto">
       </div>
@@ -2984,7 +3060,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [] };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '' };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3105,7 +3181,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[]}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||''}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -3382,10 +3458,23 @@ function startListeners(){
       DB.shopLogo=d.shopLogo||'';
       DB.autoLockMinutes=(typeof d.autoLockMinutes==='number')?d.autoLockMinutes:0;
       DB.receiptLinks=Array.isArray(d.receiptLinks)?d.receiptLinks:[];
+      DB.shopAddress=d.shopAddress||'';
+      DB.shopPhone=d.shopPhone||'';
+      DB.receiptFooter=d.receiptFooter||'';
+      DB.workHours=d.workHours||'';
+      DB.currencySymbol=d.currencySymbol||"so'm";
+      DB.maxDiscountPercent=(typeof d.maxDiscountPercent==='number')?d.maxDiscountPercent:0;
+      DB.overdueDaysGlobal=(typeof d.overdueDaysGlobal==='number')?d.overdueDaysGlobal:14;
+      DB.brandAccent1=d.brandAccent1||'';
+      DB.brandAccent2=d.brandAccent2||'';
+      DB.appTitle=d.appTitle||'';
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
+      if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
       if(document.getElementById('page-settings')?.classList.contains('active')){
         renderSellersManager();
         if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
+        if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
+        if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
       }
     }
   });
@@ -3543,9 +3632,20 @@ async function init(){
           DB.shopLogo=d.shopLogo||'';
           DB.autoLockMinutes=(typeof d.autoLockMinutes==='number')?d.autoLockMinutes:0;
           DB.receiptLinks=Array.isArray(d.receiptLinks)?d.receiptLinks:[];
+          DB.shopAddress=d.shopAddress||'';
+          DB.shopPhone=d.shopPhone||'';
+          DB.receiptFooter=d.receiptFooter||'';
+          DB.workHours=d.workHours||'';
+          DB.currencySymbol=d.currencySymbol||"so'm";
+          DB.maxDiscountPercent=(typeof d.maxDiscountPercent==='number')?d.maxDiscountPercent:0;
+          DB.overdueDaysGlobal=(typeof d.overdueDaysGlobal==='number')?d.overdueDaysGlobal:14;
+          DB.brandAccent1=d.brandAccent1||'';
+          DB.brandAccent2=d.brandAccent2||'';
+          DB.appTitle=d.appTitle||'';
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
+          if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[]}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:''}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -3753,8 +3853,10 @@ window.showPage = function(page, role){
     const slp=document.getElementById('shop-logo-preview'), slb=document.getElementById('shop-logo-remove-btn');
     if(slp){ if(DB.shopLogo){ slp.src=DB.shopLogo; slp.style.display='inline-block'; if(slb) slb.style.display='inline-block'; } else { slp.style.display='none'; if(slb) slb.style.display='none'; } }
     const dgi=document.getElementById('daily-goal-input'); if(dgi) dgi.value = localStorage.getItem('dokon_daily_goal')||'';
-    const odt=document.getElementById('overdue-days-threshold'); if(odt) odt.value = localStorage.getItem('dokon_overdue_days')||'14';
+    const odt=document.getElementById('overdue-days-threshold'); if(odt) odt.value = (typeof getOverdueDays==='function') ? getOverdueDays() : (localStorage.getItem('dokon_overdue_days')||'14');
     if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
+    if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
+    if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
   }
   if(page==='dashboard') renderDashboard();
   if(page==='stock-history'){ setStockHistFilter('today'); }
@@ -6020,14 +6122,20 @@ window.saveLowStockThreshold=function(){
 // faqat shu qurilmada saqlanadi (localStorage), Firebase orqali sinxron
 // bo'lmaydi — chunki bu shunchaki ko'rinish/ogohlantirish sozlamasi.
 function getOverdueDays(){
+  // Endi bu qiymat Firebase orqali BARCHA qurilmalarda sinxron (avval faqat
+  // shu brauzerda localStorage'da saqlanardi). Eski localStorage qiymati
+  // (agar bo'lsa) fallback sifatida ishlatiladi.
+  if(typeof DB!=='undefined' && typeof DB.overdueDaysGlobal==='number' && DB.overdueDaysGlobal>=1) return DB.overdueDaysGlobal;
   const v = parseInt(localStorage.getItem('dokon_overdue_days')||'14', 10);
   return (!v || v<1) ? 14 : v;
 }
 window.saveOverdueThreshold = function(){
   const v = parseInt(document.getElementById('overdue-days-threshold').value, 10);
   if(isNaN(v) || v<1){ toast("Noto'g'ri qiymat",'red'); return; }
-  localStorage.setItem('dokon_overdue_days', String(v));
-  toast('✓ Saqlandi','green');
+  DB.overdueDaysGlobal = v;
+  localStorage.setItem('dokon_overdue_days', String(v)); // eski qurilmalar bilan moslik uchun
+  toast('✓ Saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
 }
 // YANGI: admin sotuvchining chek/hisobotlarda ko'rinadigan ismini
@@ -6068,9 +6176,60 @@ window.saveShopSettings=function(){
   toast('✓ Saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
+// YANGI: ilova nomi (interfeys matni) — kirish ekrani va yuqori navigatsiyada
+// ko'rinadi, barcha qurilmalarda Firebase orqali sinxron.
+window.saveAppTitle=function(){
+  const v=(document.getElementById('app-title-input').value||'').trim();
+  DB.appTitle=v;
+  if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
+  toast('✓ Saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+window.fillBrandSettingsForm=function(){
+  const ati=document.getElementById('app-title-input'); if(ati) ati.value=DB.appTitle||'';
+  const ba1=document.getElementById('brand-accent-1'); if(ba1 && DB.brandAccent1) ba1.value=DB.brandAccent1;
+  const ba2=document.getElementById('brand-accent-2'); if(ba2 && DB.brandAccent2) ba2.value=DB.brandAccent2;
+}
+// YANGI: admin brend rangini Firebase'ga saqlaydi — shu zahoti barcha
+// qurilmalarga (shaxsiy rang tanlamagan foydalanuvchilarga) tarqaladi.
+window.saveBrandTheme=function(){
+  const c1=document.getElementById('brand-accent-1')?.value || '#4f46e5';
+  const c2=document.getElementById('brand-accent-2')?.value || '#0ea5a4';
+  DB.brandAccent1=c1; DB.brandAccent2=c2;
+  if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
+  toast('✓ Brend rangi saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
 // (Eslatma: yakka "sotuvchi ismi" sozlamasi endi kerak emas — chunki har bir
 // sotuvchi endi Sozlamalar > Sotuvchilar bo'limida o'z ismi bilan alohida
 // qo'shiladi va login vaqtida PIN orqali avtomatik aniqlanadi.)
+
+// ===== YANGI: TO'LIQ DO'KON REKVIZITLARI VA BIZNES QOIDALARI =====
+// Admin endi manzil, telefon, ish vaqti, chek pastki matni, valyuta belgisi
+// va sotuvchi bera oladigan maksimal chegirma foizini markazlashtirilgan
+// holda (Firebase orqali barcha qurilmalarda sinxron) boshqara oladi.
+window.fillBusinessSettingsForm = function(){
+  const a=document.getElementById('biz-address-input'); if(a && document.activeElement!==a) a.value = DB.shopAddress||'';
+  const p=document.getElementById('biz-phone-input'); if(p && document.activeElement!==p) p.value = DB.shopPhone||'';
+  const h=document.getElementById('biz-hours-input'); if(h && document.activeElement!==h) h.value = DB.workHours||'';
+  const f=document.getElementById('biz-footer-input'); if(f && document.activeElement!==f) f.value = DB.receiptFooter||'';
+  const c=document.getElementById('biz-currency-input'); if(c && document.activeElement!==c) c.value = DB.currencySymbol||"so'm";
+  const m=document.getElementById('biz-maxdiscount-input'); if(m && document.activeElement!==m) m.value = DB.maxDiscountPercent||0;
+  const od=document.getElementById('overdue-days-threshold'); if(od && document.activeElement!==od) od.value = DB.overdueDaysGlobal||14;
+}
+window.saveBusinessSettings = function(){
+  DB.shopAddress = (document.getElementById('biz-address-input').value||'').trim();
+  DB.shopPhone = (document.getElementById('biz-phone-input').value||'').trim();
+  DB.workHours = (document.getElementById('biz-hours-input').value||'').trim();
+  DB.receiptFooter = (document.getElementById('biz-footer-input').value||'').trim();
+  DB.currencySymbol = (document.getElementById('biz-currency-input').value||'').trim() || "so'm";
+  let md = parseInt(document.getElementById('biz-maxdiscount-input').value, 10);
+  if(isNaN(md) || md<0) md = 0;
+  if(md>100) md = 100;
+  DB.maxDiscountPercent = md;
+  toast('✓ Rekvizitlar saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
 
 // ===== CHEK SAHIFASI — LINKLAR VA QR KODLAR =====
 // YANGI: admin onlayn chek sahifasida (receipt.html) ko'rinadigan qo'shimcha
@@ -6263,6 +6422,12 @@ function saveReceiptRecord(receiptData){
     total: receiptData.total,
     sellerName: receiptData.sellerName,
     shopName: DB.shopName || "Do'kon",
+    shopLogo: DB.shopLogo || '',
+    shopAddress: DB.shopAddress || '',
+    shopPhone: DB.shopPhone || '',
+    workHours: DB.workHours || '',
+    receiptFooter: DB.receiptFooter || '',
+    brandAccent1: DB.brandAccent1 || '',
     date: (receiptData.date instanceof Date ? receiptData.date.toISOString() : receiptData.date) || new Date().toISOString(),
     links: links
   };
@@ -6276,6 +6441,12 @@ window.openReceiptModal=function(receiptData){
   const receiptLogoEl = document.getElementById('receipt-logo');
   if(DB.shopLogo){ receiptLogoEl.src = DB.shopLogo; receiptLogoEl.style.display='inline-block'; }
   else { receiptLogoEl.style.display='none'; }
+  // YANGI: manzil/telefon/ish vaqti — Sozlamalar > "Do'kon rekvizitlari"da belgilansa chekda ko'rinadi
+  const metaParts = [DB.shopAddress, DB.shopPhone, DB.workHours].filter(Boolean);
+  const shopMetaEl = document.getElementById('receipt-shopmeta');
+  if(shopMetaEl) shopMetaEl.textContent = metaParts.join(' · ');
+  const footerEl = document.getElementById('receipt-footer-text');
+  if(footerEl) footerEl.textContent = DB.receiptFooter || 'Xaridingiz uchun rahmat!';
   document.getElementById('receipt-date').textContent = receiptData.date.toLocaleString('uz-UZ');
   document.getElementById('receipt-seller').textContent = 'Sotuvchi: '+receiptData.sellerName;
   const copiesEl = document.getElementById('receipt-copies');
@@ -6423,6 +6594,36 @@ window.clearAll=function(){
     ]).then(()=>{
       toast('Barcha ma\'lumotlar tozalandi','green');
     }).catch(e=>{ console.error(e); toast('Tozalashda xatolik yuz berdi','red'); });
+  });
+}
+
+// ===== YANGI: BO'LIM BO'YICHA TOZALASH (partial reset) =====
+// "Hammasini o'chirish" faqat tovar+savdolarni tozalaydi. Bu funksiya admin
+// tanlagan BITTA bo'limni (masalan faqat qarzlar, yoki faqat xarajatlar)
+// alohida tozalash imkonini beradi — qolgan bo'limlar tegilmay qoladi.
+const PARTIAL_RESET_META = {
+  sales:      { label:'Savdolar tarixi', collection:'sales', dbKey:'sales' },
+  restocks:   { label:'Kirimlar tarixi', collection:'restocks', dbKey:'restocks' },
+  debts:      { label:'Qarzlar', collection:'debts', dbKey:'debts' },
+  expenses:   { label:'Xarajatlar', collection:'expenses', dbKey:'expenses' },
+  suppliers:  { label:'Yetkazib beruvchilar', collection:'suppliers', dbKey:'suppliers' },
+  customers:  { label:'Mijozlar', collection:'customers', dbKey:'customers' },
+  promotions: { label:'Aksiyalar', collection:'promotions', dbKey:'promotions' }
+};
+window.partialReset = function(type){
+  const meta = PARTIAL_RESET_META[type];
+  if(!meta) return;
+  const items = DB[meta.dbKey] || [];
+  if(!items.length){ toast(`"${meta.label}" bo'limida ma'lumot yo'q`, 'amber'); return; }
+  confirm2(`${meta.label}ni tozalash`, `Ushbu bo'limdagi barcha ${items.length} ta yozuv butunlay o'chiriladi. Boshqa bo'limlarga tegilmaydi. Bu amalni ortga qaytarib bo'lmaydi. Davom etilsinmi?`, ()=>{
+    toast(`${meta.label} tozalanmoqda...`, 'amber');
+    const ids = items.map(x=>x.id);
+    Promise.all(ids.map(id=>withRetry(()=>deleteDoc(doc(db, meta.collection, id)))))
+      .then(()=>{
+        DB[meta.dbKey] = [];
+        toast(`✓ ${meta.label} tozalandi`, 'green');
+      })
+      .catch(e=>{ console.error(e); toast('Tozalashda xatolik yuz berdi', 'red'); });
   });
 }
 
@@ -11377,13 +11578,51 @@ window.renderAiAssistant = function(){
     {id:'rose',   name:'Nafis pushti', a:'#e11d48', a2:'#f97316'},
     {id:'amber',  name:'Kahrabo', a:'#b45309', a2:'#0891b2'},
   ];
-  function applyTheme(id){
+  function applyTheme(id, isPersonalChoice){
     const t = THEMES.find(x=>x.id===id) || THEMES[0];
     document.documentElement.style.setProperty('--accent', t.a);
     document.documentElement.style.setProperty('--accent2', t.a2);
     localStorage.setItem('dokon_theme', t.id);
+    // Foydalanuvchi bu yerda o'zi ongli ravishda bosgan bo'lsa (dastlabki
+    // yuklashda emas), shu qurilma uchun "shaxsiy tanlov" deb belgilanadi —
+    // shundan keyin admin brend rangi shu qurilmada avtomatik qo'llanmaydi,
+    // toki foydalanuvchi "Brendga qaytarish" tugmasini bosmaguncha.
+    if(isPersonalChoice) localStorage.setItem('dokon_theme_override','1');
     document.querySelectorAll('.theme-dot').forEach(d=>d.classList.toggle('active', d.dataset.theme===t.id));
   }
+  // ---------- 11.1b ADMIN BREND RANGI (barcha qurilmalarga sinxron) ----------
+  // Admin "Sozlamalar > Ko'rinish" bo'limida belgilagan asosiy/qo'shimcha
+  // rang Firebase orqali BARCHA qurilmalarga (admin va sotuvchilar) avtomatik
+  // qo'llanadi — bu do'konning yagona "brend rangi" bo'lib xizmat qiladi.
+  // Agar biror foydalanuvchi shu qurilmada shaxsan boshqa rang tanlagan
+  // bo'lsa (yuqoridagi override), brend rangi o'sha qurilmaga tegmaydi.
+  window.applyBrandTheme = function(d){
+    try{
+      if(d && d.appTitle){
+        document.title = d.appTitle;
+        const navT=document.getElementById('app-title-nav'); if(navT) navT.textContent = d.appTitle;
+        const loginT=document.getElementById('app-title-login'); if(loginT) loginT.textContent = '🏪 '+d.appTitle;
+      } else {
+        document.title = "Do'kon Boshqaruvi";
+        const navT=document.getElementById('app-title-nav'); if(navT) navT.textContent = "Do'kon";
+        const loginT=document.getElementById('app-title-login'); if(loginT) loginT.textContent = "🏪 Do'kon Tizimi";
+      }
+      if(localStorage.getItem('dokon_theme_override')==='1') return; // shaxsiy tanlov ustuvor
+      if(d && d.brandAccent1){
+        document.documentElement.style.setProperty('--accent', d.brandAccent1);
+        document.documentElement.style.setProperty('--accent2', d.brandAccent2 || d.brandAccent1);
+        document.querySelectorAll('.theme-dot').forEach(dot=>dot.classList.remove('active'));
+      }
+    }catch(e){}
+  };
+  window.resetToBrandTheme = function(){
+    localStorage.removeItem('dokon_theme_override');
+    localStorage.removeItem('dokon_theme');
+    localStorage.removeItem('dokon_theme_custom_1');
+    localStorage.removeItem('dokon_theme_custom_2');
+    if(typeof window.applyBrandTheme==='function' && window.DB) window.applyBrandTheme(window.DB);
+    if(typeof toast==='function') toast("✓ Do'kon brend rangiga qaytarildi", 'green');
+  };
   function buildThemeDots(){
     const wrap = document.getElementById('theme-dots');
     if(!wrap || wrap.dataset.built) return;
@@ -11395,12 +11634,42 @@ window.renderAiAssistant = function(){
       dot.dataset.theme = t.id;
       dot.title = t.name;
       dot.style.background = `linear-gradient(135deg,${t.a},${t.a2})`;
-      dot.onclick = () => applyTheme(t.id);
+      dot.onclick = () => applyTheme(t.id, true);
       wrap.appendChild(dot);
     });
   }
+  // Shaxsiy tanlovlardan tashqari, istalgan rangni (hex color picker orqali)
+  // tanlash mumkin. Bu rang shu qurilmada (localStorage) saqlanadi va sahifa
+  // qayta yuklanganda avtomatik qo'llanadi — admin brend rangidan ustun turadi.
+  window.applyCustomThemeColor = function(){
+    const c1 = document.getElementById('custom-accent-1')?.value || '#4f46e5';
+    const c2 = document.getElementById('custom-accent-2')?.value || '#0ea5a4';
+    document.documentElement.style.setProperty('--accent', c1);
+    document.documentElement.style.setProperty('--accent2', c2);
+    localStorage.setItem('dokon_theme', 'custom');
+    localStorage.setItem('dokon_theme_custom_1', c1);
+    localStorage.setItem('dokon_theme_custom_2', c2);
+    localStorage.setItem('dokon_theme_override','1');
+    document.querySelectorAll('.theme-dot').forEach(d=>d.classList.remove('active'));
+    if(typeof toast==='function') toast('✓ Rang shu qurilmada qo\'llandi', 'green');
+  };
   window.addEventListener('load', () => {
-    applyTheme(localStorage.getItem('dokon_theme') || 'indigo');
+    // Faqat shu qurilmada foydalanuvchi ONGLI ravishda shaxsiy rang
+    // tanlagan bo'lsa (override), uni qo'llaymiz. Aks holda admin brend
+    // rangi (Firebase'dan window.applyBrandTheme orqali) ustuvor bo'ladi.
+    if(localStorage.getItem('dokon_theme_override')==='1'){
+      const savedTheme = localStorage.getItem('dokon_theme') || 'indigo';
+      if(savedTheme === 'custom'){
+        const c1 = localStorage.getItem('dokon_theme_custom_1') || '#4f46e5';
+        const c2 = localStorage.getItem('dokon_theme_custom_2') || '#0ea5a4';
+        document.documentElement.style.setProperty('--accent', c1);
+        document.documentElement.style.setProperty('--accent2', c2);
+        const i1=document.getElementById('custom-accent-1'), i2=document.getElementById('custom-accent-2');
+        if(i1) i1.value=c1; if(i2) i2.value=c2;
+      } else {
+        applyTheme(savedTheme, false);
+      }
+    }
     setTimeout(buildThemeDots, 400);
   });
 
