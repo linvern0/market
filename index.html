@@ -2415,7 +2415,9 @@ body.dark tr:hover td {
               <option value="">— Joriy sozlamalar —</option>
             </select>
           </div>
-          <button type="button" class="btn sm" onclick="saveLabelTemplate('xprinter')" title="Joriy sozlamalarni nomli shablon sifatida saqlash">💾 Saqlash</button>
+          <button type="button" class="btn sm" onclick="saveLabelTemplate('xprinter')" title="Joriy sozlamalarni YANGI nomli shablon sifatida saqlash">💾 Saqlash</button>
+          <button type="button" class="btn sm" id="label-template-update-btn" style="display:none" onclick="updateLabelTemplate('xprinter')" title="Tanlangan shablonni joriy sozlamalar bilan yangilash">🔄</button>
+          <button type="button" class="btn sm" id="label-template-rename-btn" style="display:none" onclick="renameLabelTemplate('xprinter')" title="Tanlangan shablon nomini o'zgartirish">✏️</button>
           <button type="button" class="btn sm red" id="label-template-delete-btn" style="display:none" onclick="deleteLabelTemplate('xprinter')" title="Tanlangan shablonni o'chirish">🗑</button>
         </div>
 
@@ -2541,7 +2543,9 @@ body.dark tr:hover td {
               <option value="">— Joriy sozlamalar —</option>
             </select>
           </div>
-          <button type="button" class="btn sm" onclick="saveLabelTemplate('epson')" title="Joriy sozlamalarni nomli shablon sifatida saqlash">💾 Saqlash</button>
+          <button type="button" class="btn sm" onclick="saveLabelTemplate('epson')" title="Joriy sozlamalarni YANGI nomli shablon sifatida saqlash">💾 Saqlash</button>
+          <button type="button" class="btn sm" id="label-epson-template-update-btn" style="display:none" onclick="updateLabelTemplate('epson')" title="Tanlangan shablonni joriy sozlamalar bilan yangilash">🔄</button>
+          <button type="button" class="btn sm" id="label-epson-template-rename-btn" style="display:none" onclick="renameLabelTemplate('epson')" title="Tanlangan shablon nomini o'zgartirish">✏️</button>
           <button type="button" class="btn sm red" id="label-epson-template-delete-btn" style="display:none" onclick="deleteLabelTemplate('epson')" title="Tanlangan shablonni o'chirish">🗑</button>
         </div>
 
@@ -3410,7 +3414,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3531,7 +3535,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -3820,6 +3824,7 @@ function startListeners(){
       DB.brandAccent2=d.brandAccent2||'';
       DB.appTitle=d.appTitle||'';
       DB.labelSettings=d.labelSettings||null;
+      DB.labelTemplates=d.labelTemplates||null;
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
       if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
       if(document.getElementById('page-settings')?.classList.contains('active')){
@@ -3995,10 +4000,11 @@ async function init(){
           DB.brandAccent2=d.brandAccent2||'';
           DB.appTitle=d.appTitle||'';
           DB.labelSettings=d.labelSettings||null;
+          DB.labelTemplates=d.labelTemplates||null;
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -10837,12 +10843,20 @@ function persistLabelTemplates(all){
 function labelTemplateConfig(kind){
   if(kind==='epson') return {
     selectId:'label-epson-template-select', deleteBtnId:'label-epson-template-delete-btn',
+    renameBtnId:'label-epson-template-rename-btn', updateBtnId:'label-epson-template-update-btn',
     read: readEpsonSettingsFromForm, apply: applyEpsonSettingsToForm
   };
   return {
     selectId:'label-template-select', deleteBtnId:'label-template-delete-btn',
+    renameBtnId:'label-template-rename-btn', updateBtnId:'label-template-update-btn',
     read: readLabelSettingsFromForm, apply: applyLabelSettingsToForm
   };
+}
+function toggleLabelTemplateButtons(cfg, show){
+  [cfg.deleteBtnId, cfg.renameBtnId, cfg.updateBtnId].forEach(id=>{
+    const btn = document.getElementById(id);
+    if(btn) btn.style.display = show ? 'inline-flex' : 'none';
+  });
 }
 window.populateLabelTemplateSelect = function(kind){
   const cfg = labelTemplateConfig(kind);
@@ -10853,14 +10867,12 @@ window.populateLabelTemplateSelect = function(kind){
   const cur = sel.value;
   sel.innerHTML = '<option value="">— Joriy sozlamalar —</option>' + list.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
   sel.value = list.some(t=>t.id===cur) ? cur : '';
-  const delBtn = document.getElementById(cfg.deleteBtnId);
-  if(delBtn) delBtn.style.display = sel.value ? 'inline-flex' : 'none';
+  toggleLabelTemplateButtons(cfg, !!sel.value);
 };
 window.onLabelTemplateSelectChange = function(kind){
   const cfg = labelTemplateConfig(kind);
   const sel = document.getElementById(cfg.selectId);
-  const delBtn = document.getElementById(cfg.deleteBtnId);
-  if(delBtn) delBtn.style.display = sel.value ? 'inline-flex' : 'none';
+  toggleLabelTemplateButtons(cfg, !!sel.value);
   if(!sel.value) return;
   const all = loadLabelTemplates();
   const t = (all[kind]||[]).find(x=>x.id===sel.value);
@@ -10879,9 +10891,36 @@ window.saveLabelTemplate = function(kind){
   populateLabelTemplateSelect(kind);
   const sel = document.getElementById(cfg.selectId);
   if(sel) sel.value = id;
-  const delBtn = document.getElementById(cfg.deleteBtnId);
-  if(delBtn) delBtn.style.display = 'inline-flex';
+  toggleLabelTemplateButtons(cfg, true);
   toast('✓ Shablon saqlandi: "'+name.trim()+'"','green');
+};
+window.updateLabelTemplate = function(kind){
+  const cfg = labelTemplateConfig(kind);
+  const sel = document.getElementById(cfg.selectId);
+  if(!sel || !sel.value){ toast('Avval yangilanadigan shablonni tanlang','amber'); return; }
+  const all = loadLabelTemplates();
+  const t = (all[kind]||[]).find(x=>x.id===sel.value);
+  if(!t) return;
+  if(!confirm(`"${t.name}" shabloni JORIY (hozirgi formadagi) sozlamalar bilan yangilansinmi?`)) return;
+  t.settings = cfg.read();
+  persistLabelTemplates(all);
+  toast('✓ Shablon yangilandi: "'+t.name+'"','green');
+};
+window.renameLabelTemplate = function(kind){
+  const cfg = labelTemplateConfig(kind);
+  const sel = document.getElementById(cfg.selectId);
+  if(!sel || !sel.value) return;
+  const all = loadLabelTemplates();
+  const t = (all[kind]||[]).find(x=>x.id===sel.value);
+  if(!t) return;
+  const name = prompt('Shablonning yangi nomi:', t.name);
+  if(!name || !name.trim() || name.trim()===t.name) return;
+  t.name = name.trim();
+  persistLabelTemplates(all);
+  populateLabelTemplateSelect(kind);
+  sel.value = t.id;
+  toggleLabelTemplateButtons(cfg, true);
+  toast('✓ Shablon nomi o\'zgartirildi','green');
 };
 window.deleteLabelTemplate = function(kind){
   const cfg = labelTemplateConfig(kind);
