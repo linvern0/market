@@ -2407,6 +2407,19 @@ body.dark tr:hover td {
         </div>
 
         <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">💾 Shablonlar <span style="font-weight:400;color:var(--text3)">(o'lchamlarni nomlab saqlash — "Asliga qaytarish" ularga tegmaydi)</span></div>
+        <div class="form-row" style="margin-bottom:.85rem;align-items:flex-end">
+          <div class="field" style="flex:1">
+            <label>Saqlangan shablon</label>
+            <select id="label-template-select" onchange="onLabelTemplateSelectChange('xprinter')">
+              <option value="">— Joriy sozlamalar —</option>
+            </select>
+          </div>
+          <button type="button" class="btn sm" onclick="saveLabelTemplate('xprinter')" title="Joriy sozlamalarni nomli shablon sifatida saqlash">💾 Saqlash</button>
+          <button type="button" class="btn sm red" id="label-template-delete-btn" style="display:none" onclick="deleteLabelTemplate('xprinter')" title="Tanlangan shablonni o'chirish">🗑</button>
+        </div>
+
+        <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
         <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">🖨 Printer va qog'oz sozlamalari <span style="font-weight:400;color:var(--text3)">(uzun lentali termoprinter uchun)</span></div>
 
         <div class="form-row" style="margin-bottom:.85rem">
@@ -2429,7 +2442,17 @@ body.dark tr:hover td {
 
         <div class="form-row" style="margin-bottom:.85rem">
           <div class="field">
-            <label>Yorliqlar orasidagi masofa (mm) *</label>
+            <label>Ustunlar soni <span style="color:var(--text3);font-weight:400">(bir qatorda nechta yorliq)</span></label>
+            <input id="label-cols" type="number" min="1" max="6" step="1" value="1" oninput="onLabelColsChange()">
+          </div>
+          <div class="field" id="label-col-gap-wrap">
+            <label>Ustunlar orasidagi masofa (mm)</label>
+            <input id="label-col-gap" type="number" min="0" max="30" step="0.5" value="2" oninput="renderLabelPreview()">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:.85rem">
+          <div class="field">
+            <label>Qatorlar orasidagi masofa (mm) *</label>
             <input id="label-gap" type="number" min="0" max="50" step="0.5" value="2" oninput="renderLabelPreview()">
           </div>
           <div class="field">
@@ -2437,7 +2460,7 @@ body.dark tr:hover td {
             <input id="label-margin" type="number" min="0" max="20" step="0.1" value="0.8" oninput="renderLabelPreview()">
           </div>
         </div>
-        <p style="font-size:11px;color:var(--text3);margin:-.5rem 0 .85rem">* Uzunlik avtomatik hisoblanadi: nechta yorliq va ular orasidagi masofaga qarab. Kenglikni tanlang — shrift shu kenglikka avtomatik moslashadi (pastda qo'lda ham sozlash mumkin).</p>
+        <p style="font-size:11px;color:var(--text3);margin:-.5rem 0 .85rem">* Uzunlik avtomatik hisoblanadi: nechta yorliq, ustunlar soni va ular orasidagi masofaga qarab. Kenglikni tanlang — shrift shu kenglikka (bitta ustundagi yorliq eniga) avtomatik moslashadi (pastda qo'lda ham sozlash mumkin). Bir qatorda bir nechta yorliq chiqarish uchun "Ustunlar soni"ni oshiring — masalan 80mm keng lentada 2-3 ta yorliqni yonma-yon joylashtirish mumkin.</p>
 
         <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:.6rem;cursor:pointer">
           <input type="checkbox" id="label-font-auto" checked onchange="toggleLabelFontAuto()"> Shrift o'lchami avtomatik (kenglikka qarab)
@@ -2507,6 +2530,19 @@ body.dark tr:hover td {
         <div class="field" style="margin-bottom:.85rem">
           <label>Nechta yorliq chop etilsin?</label>
           <input id="label-epson-qty" type="number" min="1" max="500" value="1" oninput="renderEpsonLabelPreview()">
+        </div>
+
+        <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">💾 Shablonlar <span style="font-weight:400;color:var(--text3)">(o'lchamlarni nomlab saqlash — "Asliga qaytarish" ularga tegmaydi)</span></div>
+        <div class="form-row" style="margin-bottom:.85rem;align-items:flex-end">
+          <div class="field" style="flex:1">
+            <label>Saqlangan shablon</label>
+            <select id="label-epson-template-select" onchange="onLabelTemplateSelectChange('epson')">
+              <option value="">— Joriy sozlamalar —</option>
+            </select>
+          </div>
+          <button type="button" class="btn sm" onclick="saveLabelTemplate('epson')" title="Joriy sozlamalarni nomli shablon sifatida saqlash">💾 Saqlash</button>
+          <button type="button" class="btn sm red" id="label-epson-template-delete-btn" style="display:none" onclick="deleteLabelTemplate('epson')" title="Tanlangan shablonni o'chirish">🗑</button>
         </div>
 
         <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
@@ -10708,6 +10744,7 @@ window.saveDailyGoal = function(){
 const LABEL_SETTINGS_KEY = 'dokon_label_settings_v2';
 const XPRINTER_SETTINGS_DEFAULT = {
   width: 40, widthPreset: '40', gap: 2, margin: 0.8,
+  cols: 1, colGap: 2,
   fontAuto: true, fontSize: 12,
   showShop: false, showVolume: false, showPrice: true, showBarcode: false, showBarcodeNum: false
 };
@@ -10769,6 +10806,96 @@ function saveEpsonSettings(s){
   persistLabelSettingsAll(all);
 }
 
+// ===== YORLIQ SHABLONLARI (nomli, foydalanuvchi saqlagan o'lcham to'plamlari) =====
+// Muammo: "Asliga qaytarish" tugmasi doim FABRIKA standartiga (masalan
+// shrift 12px, avtomatik) qaytaradi — bu foydalanuvchining o'zi qo'lda
+// moslagan (masalan 7px shrift, 19.5x9.5mm yorliq, 10x2 grid) sozlamalarini
+// yo'qotib qo'yishi mumkin. Shu sababli, "joriy (oxirgi ishlatilgan)
+// sozlamalar" dan TASHQARI, foydalanuvchi xohlagan sozlamalar to'plamini
+// NOMLAB, alohida saqlab qo'yishi va istalgan payt bittasini tanlab qayta
+// yuklashi mumkin — "Asliga qaytarish" bosilsa ham, shablon o'zgarmay qoladi.
+const LABEL_TEMPLATES_KEY = 'dokon_label_templates_v1';
+function loadLabelTemplates(){
+  let base = null;
+  if(DB.labelTemplates && typeof DB.labelTemplates==='object') base = DB.labelTemplates;
+  else {
+    try{
+      const raw = localStorage.getItem(LABEL_TEMPLATES_KEY);
+      if(raw) base = JSON.parse(raw);
+    }catch(e){}
+  }
+  return {
+    xprinter: (base && Array.isArray(base.xprinter)) ? base.xprinter : [],
+    epson: (base && Array.isArray(base.epson)) ? base.epson : []
+  };
+}
+function persistLabelTemplates(all){
+  DB.labelTemplates = all;
+  try{ localStorage.setItem(LABEL_TEMPLATES_KEY, JSON.stringify(all)); }catch(e){}
+  if(typeof fbSaveSettings==='function') fbSaveSettings();
+}
+function labelTemplateConfig(kind){
+  if(kind==='epson') return {
+    selectId:'label-epson-template-select', deleteBtnId:'label-epson-template-delete-btn',
+    read: readEpsonSettingsFromForm, apply: applyEpsonSettingsToForm
+  };
+  return {
+    selectId:'label-template-select', deleteBtnId:'label-template-delete-btn',
+    read: readLabelSettingsFromForm, apply: applyLabelSettingsToForm
+  };
+}
+window.populateLabelTemplateSelect = function(kind){
+  const cfg = labelTemplateConfig(kind);
+  const sel = document.getElementById(cfg.selectId);
+  if(!sel) return;
+  const all = loadLabelTemplates();
+  const list = all[kind]||[];
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Joriy sozlamalar —</option>' + list.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+  sel.value = list.some(t=>t.id===cur) ? cur : '';
+  const delBtn = document.getElementById(cfg.deleteBtnId);
+  if(delBtn) delBtn.style.display = sel.value ? 'inline-flex' : 'none';
+};
+window.onLabelTemplateSelectChange = function(kind){
+  const cfg = labelTemplateConfig(kind);
+  const sel = document.getElementById(cfg.selectId);
+  const delBtn = document.getElementById(cfg.deleteBtnId);
+  if(delBtn) delBtn.style.display = sel.value ? 'inline-flex' : 'none';
+  if(!sel.value) return;
+  const all = loadLabelTemplates();
+  const t = (all[kind]||[]).find(x=>x.id===sel.value);
+  if(t) cfg.apply(t.settings);
+};
+window.saveLabelTemplate = function(kind){
+  const cfg = labelTemplateConfig(kind);
+  const name = prompt('Shablon nomini kiriting (masalan: "58mm narx yorlig\'i" yoki "10x2 mayda yorliq"):');
+  if(!name || !name.trim()) return;
+  const s = cfg.read();
+  const all = loadLabelTemplates();
+  if(!all[kind]) all[kind] = [];
+  const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  all[kind].push({id, name:name.trim(), settings:s});
+  persistLabelTemplates(all);
+  populateLabelTemplateSelect(kind);
+  const sel = document.getElementById(cfg.selectId);
+  if(sel) sel.value = id;
+  const delBtn = document.getElementById(cfg.deleteBtnId);
+  if(delBtn) delBtn.style.display = 'inline-flex';
+  toast('✓ Shablon saqlandi: "'+name.trim()+'"','green');
+};
+window.deleteLabelTemplate = function(kind){
+  const cfg = labelTemplateConfig(kind);
+  const sel = document.getElementById(cfg.selectId);
+  if(!sel || !sel.value) return;
+  const all = loadLabelTemplates();
+  const t = (all[kind]||[]).find(x=>x.id===sel.value);
+  if(!confirm(`"${t?t.name:'Shablon'}" o'chirilsinmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
+  all[kind] = (all[kind]||[]).filter(x=>x.id!==sel.value);
+  persistLabelTemplates(all);
+  populateLabelTemplateSelect(kind);
+  toast('✓ Shablon o\'chirildi','green');
+};
+
 // ===== 1-QADAM: PRINTER TURINI TANLASH =====
 // "Yorliq" tugmasi bosilganda ENG AVVAL shu tanlov oynasi chiqadi.
 window.openPrintLabelsModal = function(){
@@ -10793,6 +10920,9 @@ function applyLabelSettingsToForm(s){
   document.getElementById('label-width-select').value = presetVal;
   document.getElementById('label-width-custom').value = s.width;
   document.getElementById('label-width-custom-wrap').style.display = presetVal==='custom' ? 'flex' : 'none';
+  document.getElementById('label-cols').value = s.cols || 1;
+  document.getElementById('label-col-gap').value = (s.colGap===0 || s.colGap) ? s.colGap : 2;
+  document.getElementById('label-col-gap-wrap').style.display = (s.cols||1)>1 ? 'flex' : 'none';
   document.getElementById('label-gap').value = s.gap;
   document.getElementById('label-margin').value = s.margin;
   document.getElementById('label-font-auto').checked = !!s.fontAuto;
@@ -10812,6 +10942,8 @@ function readLabelSettingsFromForm(){
     : parseFloat(widthSel);
   return {
     width,
+    cols: Math.max(1, Math.min(6, parseInt(document.getElementById('label-cols').value)||1)),
+    colGap: Math.max(0, Math.min(30, parseFloat(document.getElementById('label-col-gap').value)||0)),
     gap: Math.max(0, Math.min(50, parseFloat(document.getElementById('label-gap').value)||0)),
     margin: Math.max(0, Math.min(20, parseFloat(document.getElementById('label-margin').value)||0)),
     fontAuto: document.getElementById('label-font-auto').checked,
@@ -10826,6 +10958,11 @@ function readLabelSettingsFromForm(){
 window.onLabelWidthPresetChange = function(){
   const v = document.getElementById('label-width-select').value;
   document.getElementById('label-width-custom-wrap').style.display = v==='custom' ? 'flex' : 'none';
+  renderLabelPreview();
+}
+window.onLabelColsChange = function(){
+  const cols = Math.max(1, Math.min(6, parseInt(document.getElementById('label-cols').value)||1));
+  document.getElementById('label-col-gap-wrap').style.display = cols>1 ? 'flex' : 'none';
   renderLabelPreview();
 }
 window.toggleLabelFontAuto = function(){
@@ -10843,6 +10980,7 @@ function openXprinterLabelsModal(){
   if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
   sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
   document.getElementById('label-qty').value = 1;
+  populateLabelTemplateSelect('xprinter');
   applyLabelSettingsToForm(loadLabelSettingsAll().xprinter);
   openModal('modal-print-labels');
 }
@@ -10851,8 +10989,8 @@ function openXprinterLabelsModal(){
 // ko'rinish/preview uchun BIR XIL kod ishlatiladi — shu tufayli oynadagi
 // namuna chop etilgan natija bilan aynan mos keladi). Ikkala printer rejimi
 // (Xprinter va Epson) ham shu bitta funksiyadan foydalanadi.
-function buildLabelInnerHTML(p, s){
-  const refWidth = s.width || s.labelWidth || 40;
+function buildLabelInnerHTML(p, s, refWidthOverride){
+  const refWidth = refWidthOverride || s.width || s.labelWidth || 40;
   const nameFontPx = s.fontAuto ? Math.max(9, Math.min(22, Math.round(refWidth*0.62))) : s.fontSize;
   const shopFontPx = Math.round(nameFontPx*0.78);
   const priceFontPx = Math.round(nameFontPx*1.15);
@@ -10900,6 +11038,27 @@ function joinLabelsWithGap(oneLabelHtml, count, gapMm){
   return Array.from({length:count}).map((_, i)=> i<count-1 ? `${oneLabelHtml}<div style="height:${gapMm}mm"></div>` : oneLabelHtml).join('');
 }
 
+// YANGI: Xprinter uchun "Ustunlar soni" — bir qatorda bir nechta yorliqni
+// yonma-yon (CSS grid) joylashtiradi. cols===1 bo'lsa avvalgidek bitta
+// ustunda (joinLabelsWithGap) chiqadi — eski xatti-harakat o'zgarmaydi.
+function joinLabelsGrid(oneLabelHtml, count, cols, colGapMm, rowGapMm){
+  if(cols<=1) return joinLabelsWithGap(oneLabelHtml, count, rowGapMm);
+  const cells = Array.from({length:count}).map(()=> `<div>${oneLabelHtml}</div>`).join('');
+  return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);column-gap:${colGapMm}mm;row-gap:${rowGapMm}mm;align-items:start">${cells}</div>`;
+}
+
+// Bitta yorliqning HAQIQIY eni (mm) — agar bir qatorda bir nechta ustun
+// bo'lsa, umumiy qog'oz eni ustunlarga bo'linadi (ular orasidagi masofa
+// hisobga olingan holda). Shrift o'lchami ANA SHU eni asosida hisoblanadi
+// (butun qog'oz eniga emas) — aks holda matn juda katta chiqib ketardi.
+function computeXprinterLabelWidth(s){
+  const cols = Math.max(1, s.cols||1);
+  const usable = Math.max(1, (s.width||40) - (s.margin||0)*2);
+  if(cols<=1) return usable;
+  const colGap = s.colGap||0;
+  return Math.max(5, (usable - colGap*(cols-1)) / cols);
+}
+
 window.renderLabelPreview = function(){
   const stage = document.getElementById('label-preview-stage');
   const wrap = document.getElementById('label-preview-wrap');
@@ -10910,7 +11069,9 @@ window.renderLabelPreview = function(){
   const p = (DB.products||[]).find(x=>x.id===id) || null;
   const qty = Math.max(1, Math.min(200, parseInt(document.getElementById('label-qty')?.value)||1));
 
-  const inner = buildLabelInnerHTML(p, s);
+  const cols = Math.max(1, s.cols||1);
+  const refWidth = computeXprinterLabelWidth(s);
+  const inner = buildLabelInnerHTML(p, s, refWidth);
   const oneLabelHtml = `<div class="lbl" style="text-align:center">${inner}</div>`;
   const renderCount = Math.min(qty, LABEL_PREVIEW_RENDER_CAP);
 
@@ -10919,7 +11080,7 @@ window.renderLabelPreview = function(){
   stage.style.padding = s.margin+'mm';
   stage.style.width = s.width+'mm';
   stage.style.transform = 'none';
-  stage.innerHTML = joinLabelsWithGap(oneLabelHtml, renderCount, s.gap);
+  stage.innerHTML = joinLabelsGrid(oneLabelHtml, renderCount, cols, s.colGap, s.gap);
 
   requestAnimationFrame(()=>{
     const rect = stage.getBoundingClientRect();
@@ -10931,16 +11092,19 @@ window.renderLabelPreview = function(){
     wrap.style.width = (realWidthPx*scale)+'px';
     wrap.style.height = (realHeightPx*scale)+'px';
 
-    // Taxminiy umumiy uzunlikni hisoblash: bitta yorliqning haqiqiy (mm)
-    // balandligini o'lchab, keyin TO'LIQ (kesilmagan) yorliqlar soniga
-    // ko'paytiramiz — shunda ko'rinishda faqat bir nechtasi chizilgan
-    // bo'lsa ham, uzunlik hisobi to'g'ri (barcha N ta uchun) chiqadi.
+    // Taxminiy umumiy uzunlikni hisoblash: bitta QATOR balandligini o'lchab
+    // (chunki cols>1 bo'lsa bir qatorda bir nechta yorliq yonma-yon turadi),
+    // keyin JAMI qatorlar soniga ko'paytiramiz — shunda ko'rinishda faqat
+    // bir qismi chizilgan bo'lsa ham, uzunlik hisobi to'g'ri chiqadi.
     if(note){
       const realHeightMm = realHeightPx/MM_TO_PX;
-      const perLabelHeightMm = renderCount>0 ? (realHeightMm - s.margin*2 - s.gap*(renderCount-1)) / renderCount : 0;
-      const totalLengthMm = Math.max(0, Math.round(perLabelHeightMm*qty + s.gap*Math.max(0,qty-1) + s.margin*2));
+      const renderRows = Math.max(1, Math.ceil(renderCount/cols));
+      const totalRows = Math.max(1, Math.ceil(qty/cols));
+      const perRowHeightMm = (realHeightMm - s.margin*2 - s.gap*(renderRows-1)) / renderRows;
+      const totalLengthMm = Math.max(0, Math.round(perRowHeightMm*totalRows + s.gap*Math.max(0,totalRows-1) + s.margin*2));
       const cappedNote = qty>LABEL_PREVIEW_RENDER_CAP ? ` <span style="color:var(--text3)">(ko'rinishda birinchi ${LABEL_PREVIEW_RENDER_CAP} tasi ko'rsatilgan)</span>` : '';
-      note.innerHTML = `📏 Kenglik: <b>${s.width} mm</b> &nbsp;·&nbsp; Uzunlik (taxminiy): <b>${totalLengthMm} mm</b> (${(totalLengthMm/10).toFixed(1)} sm) &nbsp;·&nbsp; Yorliqlar soni: <b>${qty}</b>${cappedNote}`;
+      const colsNote = cols>1 ? ` &nbsp;·&nbsp; Ustunlar: <b>${cols}</b>` : '';
+      note.innerHTML = `📏 Kenglik: <b>${s.width} mm</b> &nbsp;·&nbsp; Uzunlik (taxminiy): <b>${totalLengthMm} mm</b> (${(totalLengthMm/10).toFixed(1)} sm) &nbsp;·&nbsp; Yorliqlar soni: <b>${qty}</b>${colsNote}${cappedNote}`;
     }
   });
 }
@@ -10957,9 +11121,11 @@ window.doPrintLabels = function(){
   const s = readLabelSettingsFromForm();
   saveXprinterSettings(s);
 
-  const inner = buildLabelInnerHTML(p, s);
+  const cols = Math.max(1, s.cols||1);
+  const refWidth = computeXprinterLabelWidth(s);
+  const inner = buildLabelInnerHTML(p, s, refWidth);
   const oneLabel = `<div class="lbl" style="text-align:center;page-break-inside:avoid">${inner}</div>`;
-  const html = joinLabelsWithGap(oneLabel, qty, s.gap);
+  const html = joinLabelsGrid(oneLabel, qty, cols, s.colGap, s.gap);
 
   closeModal('modal-print-labels');
   printLabelsHTML(html, {title:'Shtrix-kod yorliqlari', width:s.width, margin:s.margin});
@@ -10978,7 +11144,8 @@ window.doPrintTestLabel = function(){
   }
   const s = readLabelSettingsFromForm();
   saveXprinterSettings(s);
-  const inner = buildLabelInnerHTML(p, s);
+  const refWidth = computeXprinterLabelWidth(s);
+  const inner = buildLabelInnerHTML(p, s, refWidth);
   const oneLabel = `<div class="lbl" style="text-align:center;page-break-inside:avoid">${inner}</div>`;
   printLabelsHTML(oneLabel, {title:'Sinov yorlig\'i', width:s.width, margin:s.margin});
   toast('🖶 Sinov yorlig\'i chop etishga yuborildi','blue');
@@ -11094,6 +11261,7 @@ function openEpsonLabelsModal(){
   if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
   sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
   document.getElementById('label-epson-qty').value = 1;
+  populateLabelTemplateSelect('epson');
   applyEpsonSettingsToForm(loadLabelSettingsAll().epson);
   openModal('modal-print-labels-epson');
 }
