@@ -1,0 +1,52 @@
+{
+  "name": "Do'kon Boshqaruvi",
+  "short_name": "Do'kon",
+  "description": "Do'kon uchun to'liq boshqaruv tizimi: sotish, tovarlar, qarzlar, xarajatlar, hisobotlar va analitika.",
+  "start_url": "./index.html",
+  "id": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#10302b",
+  "theme_color": "#10302b",
+  "lang": "uz",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "./icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "./icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "./icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Yangi sotish",
+      "short_name": "Sotish",
+      "description": "Tezkor savdo ekranini ochish",
+      "url": "./index.html?action=sell",
+      "icons": [{ "src": "./icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Bosh sahifa",
+      "short_name": "Dashboard",
+      "description": "Bugungi savdo va statistikani ko'rish",
+      "url": "./index.html?action=dashboard",
+      "icons": [{ "src": "./icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Shtrix-kod skaner",
+      "short_name": "Skaner",
+      "description": "Kamera orqali tovar skanerlash",
+      "url": "./index.html?action=scan",
+      "icons": [{ "src": "./icon-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
