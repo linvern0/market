@@ -2367,76 +2367,96 @@ body.dark tr:hover td {
   </div>
 </div>
 <div class="modal-overlay hidden" id="modal-print-labels">
-  <div class="modal" style="max-width:460px">
+  <div class="modal" style="max-width:820px">
     <h3>🏷 Shtrix-kod yorliqlarini chop etish</h3>
-    <div class="field" style="margin-bottom:.85rem">
-      <label>Tovar</label>
-      <select id="label-product-select"></select>
-    </div>
-    <div class="field" style="margin-bottom:.85rem">
-      <label>Nechta yorliq chop etilsin?</label>
-      <input id="label-qty" type="number" min="1" max="200" value="1">
-    </div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+      <div style="flex:1 1 380px;min-width:280px">
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Tovar</label>
+          <select id="label-product-select" onchange="renderLabelPreview()"></select>
+        </div>
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Nechta yorliq chop etilsin?</label>
+          <input id="label-qty" type="number" min="1" max="200" value="1">
+        </div>
 
-    <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
-    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">🖨 Printer va qog'oz sozlamalari <span style="font-weight:400;color:var(--text3)">(uzun lentali termoprinter uchun)</span></div>
+        <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">🖨 Printer va qog'oz sozlamalari <span style="font-weight:400;color:var(--text3)">(uzun lentali termoprinter uchun)</span></div>
 
-    <div class="form-row" style="margin-bottom:.85rem">
-      <div class="field">
-        <label>Qog'oz kengligi (mm)</label>
-        <select id="label-width-select" onchange="onLabelWidthPresetChange()">
-          <option value="30">30 mm</option>
-          <option value="40">40 mm</option>
-          <option value="50">50 mm</option>
-          <option value="58">58 mm</option>
-          <option value="80">80 mm</option>
-          <option value="custom">Boshqa (qo'lda kiritish)</option>
-        </select>
+        <div class="form-row" style="margin-bottom:.85rem">
+          <div class="field">
+            <label>Qog'oz kengligi (mm)</label>
+            <select id="label-width-select" onchange="onLabelWidthPresetChange()">
+              <option value="30">30 mm</option>
+              <option value="40">40 mm</option>
+              <option value="50">50 mm</option>
+              <option value="58">58 mm</option>
+              <option value="80">80 mm</option>
+              <option value="custom">Boshqa (qo'lda kiritish)</option>
+            </select>
+          </div>
+          <div class="field" id="label-width-custom-wrap" style="display:none">
+            <label>Kenglik (mm)</label>
+            <input id="label-width-custom" type="number" min="10" max="200" step="0.5" value="40" oninput="renderLabelPreview()">
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:.85rem">
+          <div class="field">
+            <label>Yorliqlar orasidagi masofa (mm) *</label>
+            <input id="label-gap" type="number" min="0" max="50" step="0.5" value="2" oninput="renderLabelPreview()">
+          </div>
+          <div class="field">
+            <label>Chekka bo'shlig'i — margin (mm)</label>
+            <input id="label-margin" type="number" min="0" max="20" step="0.1" value="0.8" oninput="renderLabelPreview()">
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin:-.5rem 0 .85rem">* Uzunlik avtomatik hisoblanadi: nechta yorliq va ular orasidagi masofaga qarab. Kenglikni tanlang — shrift shu kenglikka avtomatik moslashadi (pastda qo'lda ham sozlash mumkin).</p>
+
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:.6rem;cursor:pointer">
+          <input type="checkbox" id="label-font-auto" checked onchange="toggleLabelFontAuto()"> Shrift o'lchami avtomatik (kenglikka qarab)
+        </label>
+        <div class="field" id="label-font-manual-wrap" style="display:none;margin-bottom:.85rem">
+          <label>Shrift o'lchami (tovar nomi, px)</label>
+          <input id="label-font-size" type="number" min="6" max="60" step="1" value="12" oninput="renderLabelPreview()">
+        </div>
+
+        <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">📋 Yorliqda nima chiqsin?</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.85rem">
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-show-shop" onchange="renderLabelPreview()"> Do'kon nomi
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-show-volume" onchange="renderLabelPreview()"> Mahsulot hajmi (litr)
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-show-price" checked onchange="renderLabelPreview()"> Narxi
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-show-barcode" onchange="renderLabelPreview()"> Shtrix-kod tasviri (barcode chizig'i)
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-show-barcode-num" onchange="renderLabelPreview()"> Shtrix-kod raqami (son ko'rinishida)
+          </label>
+        </div>
+
+        <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
       </div>
-      <div class="field" id="label-width-custom-wrap" style="display:none">
-        <label>Kenglik (mm)</label>
-        <input id="label-width-custom" type="number" min="10" max="200" step="0.5" value="40">
+
+      <div style="flex:0 0 260px;min-width:220px">
+        <div style="position:sticky;top:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">👁 Jonli ko'rinish</div>
+          <div style="background:#e9e4d8;border-radius:12px;padding:16px;display:flex;align-items:flex-start;justify-content:center;min-height:180px">
+            <div id="label-preview-wrap" style="background:transparent">
+              <div id="label-preview-stage" style="background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18)"></div>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--text3);margin-top:.5rem;text-align:center">Namuna — sozlamani o'zgartirsangiz shu yerda darhol yangilanadi (aniq o'lchamda emas, faqat ko'rinish uchun kattalashtirilgan)</p>
+        </div>
       </div>
     </div>
 
-    <div class="form-row" style="margin-bottom:.85rem">
-      <div class="field">
-        <label>Yorliqlar orasidagi masofa (mm) *</label>
-        <input id="label-gap" type="number" min="0" max="50" step="0.5" value="2">
-      </div>
-      <div class="field">
-        <label>Chekka bo'shlig'i — margin (mm)</label>
-        <input id="label-margin" type="number" min="0" max="20" step="0.1" value="0.8">
-      </div>
-    </div>
-    <p style="font-size:11px;color:var(--text3);margin:-.5rem 0 .85rem">* Uzunlik avtomatik hisoblanadi: nechta yorliq va ular orasidagi masofaga qarab. Kenglikni tanlang — shrift shu kenglikka avtomatik moslashadi (pastda qo'lda ham sozlash mumkin).</p>
-
-    <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:.6rem;cursor:pointer">
-      <input type="checkbox" id="label-font-auto" checked onchange="toggleLabelFontAuto()"> Shrift o'lchami avtomatik (kenglikka qarab)
-    </label>
-    <div class="field" id="label-font-manual-wrap" style="display:none;margin-bottom:.85rem">
-      <label>Shrift o'lchami (tovar nomi, px)</label>
-      <input id="label-font-size" type="number" min="6" max="60" step="1" value="12">
-    </div>
-
-    <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
-    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">📋 Yorliqda nima chiqsin?</div>
-    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.85rem">
-      <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
-        <input type="checkbox" id="label-show-shop"> Do'kon nomi
-      </label>
-      <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
-        <input type="checkbox" id="label-show-volume"> Mahsulot hajmi (litr)
-      </label>
-      <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
-        <input type="checkbox" id="label-show-price" checked> Narxi
-      </label>
-      <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
-        <input type="checkbox" id="label-show-barcode-num" checked> Shtrix-kod raqami (barcode ostidagi son)
-      </label>
-    </div>
-
-    <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
     <div class="modal-footer">
       <button class="btn" onclick="resetLabelSettings()" title="Sozlamalarni asliga qaytarish" style="margin-right:auto">↺ Asliga qaytarish</button>
       <button class="btn" onclick="closeModal('modal-print-labels')">Bekor qilish</button>
@@ -10524,7 +10544,8 @@ const LABEL_SETTINGS_DEFAULT = {
   showShop: false,
   showVolume: false,
   showPrice: true,
-  showBarcodeNum: true
+  showBarcode: false,
+  showBarcodeNum: false
 };
 function loadLabelSettings(){
   try{
@@ -10550,7 +10571,9 @@ function applyLabelSettingsToForm(s){
   document.getElementById('label-show-shop').checked = !!s.showShop;
   document.getElementById('label-show-volume').checked = !!s.showVolume;
   document.getElementById('label-show-price').checked = !!s.showPrice;
+  document.getElementById('label-show-barcode').checked = !!s.showBarcode;
   document.getElementById('label-show-barcode-num').checked = !!s.showBarcodeNum;
+  renderLabelPreview();
 }
 function readLabelSettingsFromForm(){
   const widthSel = document.getElementById('label-width-select').value;
@@ -10566,16 +10589,19 @@ function readLabelSettingsFromForm(){
     showShop: document.getElementById('label-show-shop').checked,
     showVolume: document.getElementById('label-show-volume').checked,
     showPrice: document.getElementById('label-show-price').checked,
+    showBarcode: document.getElementById('label-show-barcode').checked,
     showBarcodeNum: document.getElementById('label-show-barcode-num').checked
   };
 }
 window.onLabelWidthPresetChange = function(){
   const v = document.getElementById('label-width-select').value;
   document.getElementById('label-width-custom-wrap').style.display = v==='custom' ? 'flex' : 'none';
+  renderLabelPreview();
 }
 window.toggleLabelFontAuto = function(){
   const auto = document.getElementById('label-font-auto').checked;
   document.getElementById('label-font-manual-wrap').style.display = auto ? 'none' : 'flex';
+  renderLabelPreview();
 }
 window.resetLabelSettings = function(){
   applyLabelSettingsToForm({...LABEL_SETTINGS_DEFAULT});
@@ -10590,45 +10616,91 @@ window.openPrintLabelsModal = function(){
   applyLabelSettingsToForm(loadLabelSettings());
   openModal('modal-print-labels');
 }
-window.doPrintLabels = function(){
-  const id = document.getElementById('label-product-select').value;
-  const qty = Math.max(1, Math.min(200, parseInt(document.getElementById('label-qty').value)||1));
-  const p = (DB.products||[]).find(x=>x.id===id);
-  if(!p){ toast('Tovar topilmadi','red'); return; }
-  if(typeof JsBarcode === 'undefined'){ toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
 
-  const s = readLabelSettingsFromForm();
-  saveLabelSettings(s);
-
-  // Kenglikka qarab avtomatik shrift o'lchamlari (yoki qo'lda kiritilgan qiymat).
+// Bitta yorliqning ICHKI HTML'ini hosil qiladi (chop etish va jonli
+// ko'rinish/preview uchun BIR XIL kod ishlatiladi — shu tufayli oynadagi
+// namuna chop etilgan natija bilan aynan mos keladi).
+function buildLabelInnerHTML(p, s){
   const nameFontPx = s.fontAuto ? Math.max(9, Math.min(22, Math.round(s.width*0.62))) : s.fontSize;
   const shopFontPx = Math.round(nameFontPx*0.78);
   const priceFontPx = Math.round(nameFontPx*1.15);
   const barcodeFontPx = Math.max(8, Math.round(nameFontPx*0.72));
   const barcodeHeight = Math.max(24, Math.min(60, Math.round(s.width*0.9)));
 
-  const canvas = document.createElement('canvas');
-  try{
-    JsBarcode(canvas, p.barcode, {format:'CODE128', displayValue:s.showBarcodeNum, fontSize:barcodeFontPx, height:barcodeHeight, margin:2});
-  }catch(e){
-    console.error(e);
-    toast("Bu shtrix-kod formatini chop etib bo'lmadi",'red');
-    return;
+  let barcodeHtml = '';
+  if(s.showBarcode && p && p.barcode && typeof JsBarcode !== 'undefined'){
+    const canvas = document.createElement('canvas');
+    try{
+      JsBarcode(canvas, p.barcode, {format:'CODE128', displayValue:s.showBarcodeNum, fontSize:barcodeFontPx, height:barcodeHeight, margin:2});
+      barcodeHtml = `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;height:auto;display:block;margin:0 auto">`;
+    }catch(e){
+      barcodeHtml = `<div style="font-size:${barcodeFontPx}px;color:#b91c1c">Shtrix-kod xato</div>`;
+    }
+  } else if(s.showBarcodeNum && p && p.barcode){
+    // Faqat raqam — chiziqlarsiz oddiy matn ko'rinishida.
+    barcodeHtml = `<div style="font-size:${barcodeFontPx}px;letter-spacing:1px;margin:1mm 0">${esc(p.barcode)}</div>`;
   }
-  const imgData = canvas.toDataURL('image/png');
+
   const shopName = DB.shopName || "Do'kon";
-
   const shopLine = s.showShop ? `<div style="font-size:${shopFontPx}px;margin-bottom:1mm">${esc(shopName)}</div>` : '';
-  const nameLine = `<div style="font-size:${nameFontPx}px;margin-bottom:1mm;font-weight:700">${esc(p.name)}${(s.showVolume && p.volume) ? ' · '+esc(String(p.volume))+'L' : ''}</div>`;
-  const priceLine = s.showPrice ? `<div style="font-size:${priceFontPx}px;margin-top:1mm;font-weight:700">${fmt(p.price)} so'm</div>` : '';
+  const pname = p ? p.name : "Tovar nomi";
+  const pvol = p ? p.volume : '';
+  const pprice = p ? p.price : 0;
+  const nameLine = `<div style="font-size:${nameFontPx}px;margin-bottom:1mm;font-weight:700">${esc(pname)}${(s.showVolume && pvol) ? ' · '+esc(String(pvol))+'L' : ''}</div>`;
+  const priceLine = s.showPrice ? `<div style="font-size:${priceFontPx}px;margin-top:1mm;font-weight:700">${fmt(pprice)} so'm</div>` : '';
 
-  const oneLabel = `
-    <div class="lbl" style="text-align:center;page-break-inside:avoid">
-      ${shopLine}
-      ${nameLine}
-      <img src="${imgData}" style="max-width:100%;height:auto;display:block;margin:0 auto">
-      ${priceLine}
-    </div>`;
+  return `${shopLine}${nameLine}${barcodeHtml}${priceLine}`;
+}
+
+// O'ng paneldagi jonli ko'rinish: sozlamalar o'zgarganda (shrift, margin,
+// kenglik, ko'rsatiladigan maydonlar va h.k.) darhol qayta chiziladi, shu
+// bilan admin chop etishdan oldin natijani ko'radi. Aniq fizik o'lchamda
+// emas — ekranda yaxshi ko'rinishi uchun kattalashtirilgan (masshtablangan).
+const LABEL_PREVIEW_TARGET_PX = 220;
+const MM_TO_PX = 96/25.4;
+window.renderLabelPreview = function(){
+  const stage = document.getElementById('label-preview-stage');
+  const wrap = document.getElementById('label-preview-wrap');
+  if(!stage || !wrap) return;
+  const s = readLabelSettingsFromForm();
+  const id = document.getElementById('label-product-select') ? document.getElementById('label-product-select').value : null;
+  const p = (DB.products||[]).find(x=>x.id===id) || null;
+
+  const inner = buildLabelInnerHTML(p, s);
+  // Ikkita nusxa + orasidagi masofa — "yorliqlar orasidagi masofa" sozlamasi
+  // ham ko'rinishda aks etadi (rulon qanday chop etilishini ko'rsatadi).
+  stage.innerHTML = `
+    <div class="lbl" style="text-align:center;padding:${s.margin}mm">${inner}</div>
+    <div style="height:${s.gap}mm;background:repeating-linear-gradient(45deg,#f1eee3,#f1eee3 4px,#e9e4d8 4px,#e9e4d8 8px)"></div>
+    <div class="lbl" style="text-align:center;padding:${s.margin}mm;opacity:.55">${inner}</div>`;
+  stage.style.width = s.width+'mm';
+  stage.style.transform = 'none';
+
+  requestAnimationFrame(()=>{
+    const actualWidthPx = stage.getBoundingClientRect().width || (s.width*MM_TO_PX);
+    const actualHeightPx = stage.getBoundingClientRect().height || 100;
+    const scale = Math.min(3, LABEL_PREVIEW_TARGET_PX/actualWidthPx);
+    stage.style.transformOrigin = 'top left';
+    stage.style.transform = `scale(${scale})`;
+    wrap.style.width = (actualWidthPx*scale)+'px';
+    wrap.style.height = (actualHeightPx*scale)+'px';
+  });
+}
+
+window.doPrintLabels = function(){
+  const id = document.getElementById('label-product-select').value;
+  const qty = Math.max(1, Math.min(200, parseInt(document.getElementById('label-qty').value)||1));
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if(!p){ toast('Tovar topilmadi','red'); return; }
+  if((document.getElementById('label-show-barcode').checked) && typeof JsBarcode === 'undefined'){
+    toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return;
+  }
+
+  const s = readLabelSettingsFromForm();
+  saveLabelSettings(s);
+
+  const inner = buildLabelInnerHTML(p, s);
+  const oneLabel = `<div class="lbl" style="text-align:center;page-break-inside:avoid">${inner}</div>`;
   const html = Array.from({length:qty}).map((_, i)=> i<qty-1 ? `${oneLabel}<div style="height:${s.gap}mm"></div>` : oneLabel).join('');
 
   closeModal('modal-print-labels');
@@ -10659,7 +10731,6 @@ function printLabelsHTML(bodyHtml, opts={}){
       html,body{width:${width}mm}
       body{margin:0;padding:${margin}mm;font-family:'Courier New',monospace;color:#000}
       .lbl{width:100%}
-      .lbl img{ }
     </style></head>
     <body>${bodyHtml}</body></html>`);
   doc.close();
