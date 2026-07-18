@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -397,15 +398,19 @@ function buildPersonFilter(){
   const allBtn = document.createElement('button');
   allBtn.className = 'btn sm';
   allBtn.textContent = 'Barchasi';
+  allBtn.dataset.person = 'all';
   allBtn.onclick = () => setPersonFilter('all');
   container.prepend(allBtn);
 
-  // Tashkilotdagi shaxslar ro'yxati
+  // Tashkilotdagi shaxslar ro'yxati — har bir shaxsning ISMI YONIDA o'zining
+  // FAOL (to'lanmagan) qarzi ko'rsatiladi, shunda tugmani bosmasdan turib ham
+  // "kimning qarzi qancha" darhol ko'rinadi (avval bu umuman ko'rsatilmasdi).
   const persons = [...new Set(MY_DEBTS.map(d=>d.debtorName).filter(Boolean))];
   persons.forEach(name => {
+    const personOwed = MY_DEBTS.filter(d=>d.debtorName===name && !d.paid).reduce((a,d)=>a+d.total,0);
     const btn = document.createElement('button');
     btn.className = 'btn sm';
-    btn.textContent = name;
+    btn.innerHTML = `${esc(name)}${personOwed>0 ? ` <b style="opacity:.85">· ${fmt(personOwed)} so'm</b>` : ' <span style="opacity:.7">· 0 so\'m</span>'}`;
     btn.dataset.person = name;
     btn.onclick = () => setPersonFilter(name);
     container.appendChild(btn);
@@ -416,17 +421,14 @@ function buildPersonFilter(){
   // filtr (masalan muayyan shaxs) ko'k bo'lib ko'rinishda qolishi kerak —
   // avval bu yerda har doim "Barchasi" ga qaytib ketardi.
   personButtons.forEach(b => {
-    b.classList.toggle('blue', personFilter==='all' ? b.textContent==='Barchasi' : b.textContent===personFilter);
+    b.classList.toggle('blue', b.dataset.person === personFilter);
   });
 }
 
 window.setPersonFilter = function(name){
   personFilter = name;
   personButtons.forEach(b => {
-    b.classList.remove('blue');
-    if(b.textContent === name || (name === 'all' && b.textContent === 'Barchasi')){
-      b.classList.add('blue');
-    }
+    b.classList.toggle('blue', b.dataset.person === name);
   });
   render();
 }
@@ -453,20 +455,37 @@ function render(){
   if(filterMode==='active') list = list.filter(d=>!d.paid);
   else if(filterMode==='paid') list = list.filter(d=>d.paid);
 
-  // Statistika (faqat ko'rsatilayotgan ro'yxat bo'yicha emas, balki barcha qarzlar bo'yicha)
-  const totalOwedAll = MY_DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-  const totalPaidAll = MY_DEBTS.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
-  const activeCountAll = MY_DEBTS.filter(d=>!d.paid).length;
-  const paidCountAll = MY_DEBTS.filter(d=>d.paid).length;
+  // TUZATILDI: ilgari bu yerdagi statistika HAR DOIM butun tashkilotning
+  // jami qarzini ko'rsatardi — hatto "Shaxslar" filtridan muayyan bir kishi
+  // tanlanganda ham (masalan tashkilot ichidan "Aziz"ni tanlasangiz), pastdagi
+  // "Umumiy qarz" va statistik kartalar baribir BUTUN tashkilot summasini
+  // ko'rsatib turardi, Azizning o'z qarzi alohida ko'rinmasdi. Endi bu
+  // statistika TANLANGAN shaxs bo'yicha (personFilter) hisoblanadi; "Barchasi"
+  // tanlanganda esa avvalgidek butun tashkilot bo'yicha ko'rsatiladi.
+  const statsSource = personFilter === 'all'
+    ? MY_DEBTS
+    : MY_DEBTS.filter(d => d.debtorName === personFilter);
 
-  // Tashkilot jami
+  const totalOwedAll = statsSource.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalPaidAll = statsSource.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+  const activeCountAll = statsSource.filter(d=>!d.paid).length;
+  const paidCountAll = statsSource.filter(d=>d.paid).length;
+
+  // Tashkilot jami (bu ko'rsatkich ATAYLAB har doim BUTUN tashkilot bo'yicha
+  // qoladi — sarlavhadagi "Jami qarz" tashkilotning umumiy holatini ko'rsatib
+  // turishi kerak, shaxs tanlashdan qat'i nazar)
   if(currentDebtor.org){
-    document.getElementById('org-total-display').textContent = fmt(totalOwedAll) + ' so\'m';
+    const orgTotal = MY_DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+    document.getElementById('org-total-display').textContent = fmt(orgTotal) + ' so\'m';
   }
 
+  const totalBarLabel = personFilter === 'all'
+    ? 'Umumiy qarzingiz'
+    : `👤 ${esc(personFilter)}ning qarzi`;
+
   document.getElementById('total-bar').innerHTML = totalOwedAll > 0
-    ? `<div><div class="label">Umumiy qarzingiz</div></div><div class="amount">${fmt(totalOwedAll)} so'm</div>`
-    : `<div><div class="label" style="color:#166534">✅ Barcha qarzlaringiz to'langan!</div></div><div class="amount paid">0 so'm</div>`;
+    ? `<div><div class="label">${totalBarLabel}</div></div><div class="amount">${fmt(totalOwedAll)} so'm</div>`
+    : `<div><div class="label" style="color:#166534">✅ ${personFilter==='all' ? 'Barcha qarzlaringiz' : esc(personFilter)+'ning barcha qarzi'} to'langan!</div></div><div class="amount paid">0 so'm</div>`;
 
   document.getElementById('stat-grid').innerHTML = `
     <div class="stat amber"><div class="val">${fmt(totalOwedAll)}</div><div class="lbl">💳 Faol qarz</div></div>
