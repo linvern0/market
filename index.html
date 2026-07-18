@@ -30,17 +30,23 @@
 <meta name="application-name" content="Do'kon Boshqaruvi">
 <meta name="color-scheme" content="light">
 <!-- Excel (.xlsx) va PDF hisobotlar uchun kutubxonalar (faqat eksport funksiyalarida ishlatiladi) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- TEZLASHTIRISH (yangi): bu 5 ta kutubxona faqat eksport/chop etish tugmalari
+     bosilganda kerak bo'ladi, ilova ochilishida emas. "defer" bilan ular endi
+     HTML render bo'lishini TO'XTATMAYDI — bosh ekran (dashboard) sezilarli
+     tezroq chiqadi, ayniqsa sekin internet/eski qurilmalarda (Android/iOS/Windows
+     barchasida). Funksionallik o'zgarmaydi: defer skriptlar hali ham
+     DOMContentLoaded'dan OLDIN, ijro tartibi bo'yicha ishga tushadi. -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <!-- Mahsulot shtrix-kod yorliqlarini chop etish uchun (faqat "Yorliq chop etish" funksiyasida ishlatiladi) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
 <!-- TEZLASHTIRISH (2026-07): chek uchun QR kodni endi TARMOQQA MUROJAAT QILMASDAN,
      to'g'ridan-to'g'ri brauzerda (mahalliy) yaratamiz. Ilgari har bir sotuvda
      api.qrserver.com'ga tashqi so'rov yuborilardi — internet sekin/beqaror bo'lganda
      shu so'rov chekni ochilishini bir necha soniyaga (ba'zan undan ko'proqqa) kechiktirardi.
      Bu kutubxona bilan QR millisekundlarda, hech qanday internetga bog'liq bo'lmasdan yaratiladi. -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -842,8 +848,61 @@
   @media(max-width:768px){ #scroll-top-btn{bottom:78px;right:1rem;width:42px;height:42px;font-size:17px} }
   body.nav-compact #scroll-top-btn{bottom:80px}
 </style>
+
+<!-- ================================================================
+     🆕 PLATFORMA VA TEZLIK QATLAMI (v6) — iOS / Android / Windows
+     Faqat QO'SHIMCHA qoidalar: hech qanday mavjud selektor o'zgartirilmagan
+     yoki ustidan yozilmagan, shu sabab avvalgi funksiyalar/ko'rinish 100%
+     saqlanib qoladi.
+     ================================================================ -->
+<style id="platform-polish-v6">
+  /* 1) BOSISH TEZLIGI (barcha platforma): brauzerning "ikki marta bosib,
+     kattalashtiryapmi" deb kutadigan ~300ms kechikishini olib tashlaydi va
+     tugmalarni tasodifiy pinch-zoom qilib yubormaydi. Android Chrome va
+     iOS Safari'da har bir bosish sezilarli tezroq javob beradi. */
+  button,.btn,a,.role-btn,.theme-dot,nav button.tab,.prod-card .prod-actions .btn,
+  #mobile-tabbar button,.switch .slider,.scan-fab,#scroll-top-btn{touch-action:manipulation}
+
+  /* 2) WINDOWS — ilova PWA sifatida o'rnatilganda, manifest.json'dagi
+     "window-controls-overlay" endi haqiqiy ishlatiladi: minimallashtirish/
+     yopish tugmalari ustiga cho'kib qolgan holat o'rniga, ilova o'zining
+     ingichka sarlavha panelini chizadi (nav rangida) va uni "tortib
+     ko'chirish" mintaqasiga aylantiradi — mahalliy Windows dasturiga
+     o'xshab his qiladi. Faqat shu rejim ishlaganda ko'rinadi (JS quyida
+     "wco-active" klassini qo'shadi); boshqa hech qanday holatda ta'sir
+     qilmaydi.  */
+  #wco-titlebar{display:none;position:fixed;left:env(titlebar-area-x,0);top:env(titlebar-area-y,0);
+    width:env(titlebar-area-width,100%);height:env(titlebar-area-height,33px);
+    background:#10302b;color:#d9b25c;align-items:center;padding-left:.85rem;
+    font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:.02em;
+    -webkit-app-region:drag;z-index:1000;gap:.4rem}
+  #wco-titlebar .wco-ico{font-size:13px}
+  body.wco-active #wco-titlebar{display:flex}
+  body.wco-active{padding-top:env(titlebar-area-height,33px)}
+
+  /* 3) SILLIQ ANIMATSIYA: modal/toast/savat/menyularning ochilish-yopilishi
+     past narxli Android qurilmalarda ham "sakramasdan" chizilishi uchun
+     brauzerga oldindan signal beramiz. */
+  .modal,.toast,#sticky-cart,#mobile-more-menu,#nav-more-menu,#notif-panel{will-change:transform,opacity}
+
+  /* 4) DESKTOP (Windows/Mac) KLAVIATURA FOKUSI: sichqoncha bilan bosilganda
+     emas, faqat Tab bilan o'tilganda aniq ko'rinadigan fokus halqasi —
+     klaviatura orqali boshqaruvchi foydalanuvchilar (kassa/ombor xodimlari)
+     uchun ekranda "qayerdaman" degan savolga aniq javob. */
+  button:focus-visible,.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px}
+
+  /* 5) Android/iOS: matn belgilab olishning oldini olish faqat tugma va
+     navigatsiya elementlarida (formalarda/jadvallarda matn hamon
+     belgilanadi — nusxa ko'chirish funksiyasi buzilmaydi). */
+  nav,button,.btn,.role-btn,#mobile-tabbar,.tab{-webkit-user-select:none;user-select:none}
+</style>
 </head>
 <body>
+
+<!-- Windows uchun sarlavha-panel tortish mintaqasi — faqat window-controls-overlay
+     rejimida ko'rinadi, aks holda butunlay yashirin va joy egallamaydi -->
+<div id="wco-titlebar"><span class="wco-ico">🏪</span><span id="wco-titlebar-text">Do'kon Boshqaruvi</span></div>
 
 <button id="scroll-top-btn" type="button" title="Yuqoriga" aria-label="Yuqoriga qaytish">⬆</button>
 
@@ -2367,17 +2426,54 @@ body.dark tr:hover td {
   </div>
 </div>
 <div class="modal-overlay hidden" id="modal-print-labels">
-  <div class="modal" style="max-width:420px">
-    <h3>🏷 Shtrix-kod yorliqlarini chop etish</h3>
+  <div class="modal" style="max-width:460px">
+    <h3>🏷 Tovar yorliqlarini chop etish</h3>
     <div class="field" style="margin-bottom:.85rem">
       <label>Tovar</label>
       <select id="label-product-select"></select>
     </div>
     <div class="field" style="margin-bottom:.85rem">
-      <label>Nechta yorliq chop etilsin?</label>
-      <input id="label-qty" type="number" min="1" max="200" value="1">
+      <label>Yorliq o'lchami</label>
+      <select id="label-size-preset" onchange="onLabelSizePresetChange()">
+        <option value="58x40">58 × 40 mm (Xprinter — standart)</option>
+        <option value="50x30">50 × 30 mm</option>
+        <option value="40x30">40 × 30 mm</option>
+        <option value="40x20">40 × 20 mm (kichik)</option>
+        <option value="30x20">30 × 20 mm (juda kichik)</option>
+        <option value="60x40">60 × 40 mm</option>
+        <option value="custom">✏️ Boshqa (o'zim kiritaman)</option>
+      </select>
     </div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi. Yorliqda tovar nomi, narxi va shtrix-kod tasviri chop etiladi.</p>
+    <div class="form-row" id="label-custom-size-row" style="display:none">
+      <div class="field"><label>Kengligi (mm)</label><input id="label-w-mm" type="number" min="10" max="200" value="58"></div>
+      <div class="field"><label>Balandligi (mm)</label><input id="label-h-mm" type="number" min="8" max="200" value="40"></div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Nechta yorliq chop etilsin?</label>
+        <input id="label-qty" type="number" min="1" max="500" value="1">
+      </div>
+      <div class="field">
+        <label>Bir qatorda nechta yorliq</label>
+        <select id="label-cols">
+          <option value="1">1 ta (tor lentali printer)</option>
+          <option value="2">2 ta</option>
+          <option value="3">3 ta</option>
+          <option value="4">4 ta</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field" style="flex-direction:row;align-items:center;gap:.5rem">
+        <label class="switch"><input type="checkbox" id="label-show-barcode" checked><span class="slider"></span></label>
+        <label style="margin:0">Shtrix-kod ko'rsatilsin</label>
+      </div>
+      <div class="field" style="flex-direction:row;align-items:center;gap:.5rem">
+        <label class="switch"><input type="checkbox" id="label-show-price" checked><span class="slider"></span></label>
+        <label style="margin:0">Narx ko'rsatilsin</label>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">O'lcham va ustunlar sonini printeringizga (masalan Xprinter XP-365B/433B) qarab moslang — chop etish oynasida ham kerak bo'lsa yana o'zgartirishingiz mumkin. Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-print-labels')">Bekor qilish</button>
       <button class="btn blue" onclick="doPrintLabels()">🖨 Chop etish</button>
@@ -10452,34 +10548,122 @@ window.openPrintLabelsModal = function(){
   if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
   sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
   document.getElementById('label-qty').value = 1;
+  // Foydalanuvchi oldin tanlagan o'lcham/ustunlar sonini eslab qolamiz —
+  // har safar Xprinter uchun qaytadan sozlashning hojati bo'lmasin.
+  try{
+    const saved = JSON.parse(localStorage.getItem('dokon_label_prefs')||'null');
+    if(saved){
+      document.getElementById('label-size-preset').value = saved.preset || '58x40';
+      document.getElementById('label-w-mm').value = saved.w || 58;
+      document.getElementById('label-h-mm').value = saved.h || 40;
+      document.getElementById('label-cols').value = saved.cols || 1;
+      document.getElementById('label-show-barcode').checked = saved.showBarcode !== false;
+      document.getElementById('label-show-price').checked = saved.showPrice !== false;
+    }
+  }catch(e){}
+  onLabelSizePresetChange();
   openModal('modal-print-labels');
+}
+window.onLabelSizePresetChange = function(){
+  const preset = document.getElementById('label-size-preset').value;
+  const row = document.getElementById('label-custom-size-row');
+  if(preset === 'custom'){
+    row.style.display = 'grid';
+  } else {
+    row.style.display = 'none';
+    const [w,h] = preset.split('x').map(Number);
+    document.getElementById('label-w-mm').value = w;
+    document.getElementById('label-h-mm').value = h;
+  }
 }
 window.doPrintLabels = function(){
   const id = document.getElementById('label-product-select').value;
-  const qty = Math.max(1, Math.min(200, parseInt(document.getElementById('label-qty').value)||1));
+  const qty = Math.max(1, Math.min(500, parseInt(document.getElementById('label-qty').value)||1));
+  const preset = document.getElementById('label-size-preset').value;
+  const wMm = Math.max(10, Math.min(200, parseFloat(document.getElementById('label-w-mm').value)||58));
+  const hMm = Math.max(8, Math.min(200, parseFloat(document.getElementById('label-h-mm').value)||40));
+  const cols = Math.max(1, Math.min(4, parseInt(document.getElementById('label-cols').value)||1));
+  const showBarcode = document.getElementById('label-show-barcode').checked;
+  const showPrice = document.getElementById('label-show-price').checked;
   const p = (DB.products||[]).find(x=>x.id===id);
   if(!p){ toast('Tovar topilmadi','red'); return; }
-  if(typeof JsBarcode === 'undefined'){ toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
-  const canvas = document.createElement('canvas');
-  try{
-    JsBarcode(canvas, p.barcode, {format:'CODE128', displayValue:true, fontSize:14, height:40, margin:4});
-  }catch(e){
-    console.error(e);
-    toast("Bu shtrix-kod formatini chop etib bo'lmadi",'red');
-    return;
+
+  // Keyingi safar uchun tanlovni eslab qolamiz
+  try{ localStorage.setItem('dokon_label_prefs', JSON.stringify({preset, w:wMm, h:hMm, cols, showBarcode, showPrice})); }catch(e){}
+
+  let barcodeImg = '';
+  if(showBarcode){
+    if(typeof JsBarcode === 'undefined'){ toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return; }
+    const canvas = document.createElement('canvas');
+    try{
+      // Yorliq balandligiga qarab shtrix-kod balandligini moslashtiramiz —
+      // juda kichik (20mm) yorliqlarda katta shtrix-kod nom/narxni bosib
+      // ketmasin, katta (40mm+) yorliqlarda esa skanerlash osonroq bo'lsin.
+      const bcHeight = hMm <= 22 ? 22 : (hMm <= 32 ? 32 : 42);
+      JsBarcode(canvas, p.barcode, {format:'CODE128', displayValue:true, fontSize:hMm<=22?9:12, height:bcHeight, margin:2});
+    }catch(e){
+      console.error(e);
+      toast("Bu shtrix-kod formatini chop etib bo'lmadi",'red');
+      return;
+    }
+    barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;height:auto;display:block;margin:0 auto">`;
   }
-  const imgData = canvas.toDataURL('image/png');
+
   const shopName = DB.shopName || "Do'kon";
   const oneLabel = `
-    <div style="border:1px dashed #000;padding:6px;margin-bottom:6px;text-align:center;page-break-inside:avoid">
-      <div style="font-size:11px">${shopName}</div>
-      <div style="font-size:12px;margin:2px 0">${p.name}${p.volume?' · '+p.volume+'L':''}</div>
-      <img src="${imgData}" style="max-width:100%;height:auto">
-      <div style="font-size:13px;margin-top:2px">${fmt(p.price)} so'm</div>
+    <div class="prlbl" style="width:${wMm}mm;height:${hMm}mm;box-sizing:border-box;border:1px dashed #000;padding:1.5mm;text-align:center;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;page-break-inside:avoid">
+      <div style="font-size:${hMm<=22?'7px':'9px'};line-height:1.1">${esc(shopName)}</div>
+      <div style="font-size:${hMm<=22?'8px':'10px'};line-height:1.15;margin:.5mm 0;font-weight:700">${esc(p.name)}${p.volume?' · '+p.volume+'L':''}</div>
+      ${barcodeImg}
+      ${showPrice ? `<div style="font-size:${hMm<=22?'10px':'13px'};font-weight:800;margin-top:.5mm">${fmt(p.price)} so'm</div>` : ''}
     </div>`;
-  const html = Array.from({length:qty}).map(()=>oneLabel).join('');
+
   closeModal('modal-print-labels');
-  printHTML(html, {title:'Shtrix-kod yorliqlari'});
+  printLabelSheetHTML(oneLabel, { qty, wMm, hMm, cols, title:'Tovar yorliqlari' });
+}
+
+// YANGI: haqiqiy yorliq/barcode printerlar (Xprinter va h.k.) uchun MAXSUS
+// chop etish funksiyasi — avval yorliqlar ham chek printerlariga mo'ljallangan
+// 58mm x 210mm formatda chiqarilardi, bu haqiqiy yorliq o'lchamlariga mos
+// kelmasdi. Endi @page o'lchami FOYDALANUVCHI tanlagan aniq kenglik/balandlik
+// (mm) asosida hisoblanadi, shu sabab Xprinter yoki boshqa istalgan yorliq
+// printerida qog'oz chegarasidan chiqib ketmasdan, aniq to'g'ri chop etiladi.
+function printLabelSheetHTML(oneLabelHtml, opts){
+  const { qty, wMm, hMm, cols, title } = opts;
+  const rows = Math.ceil(qty / cols);
+  const pageW = (wMm * cols).toFixed(2);
+  let rowsHtml = '';
+  let printed = 0;
+  for(let r=0; r<rows; r++){
+    let rowCells = '';
+    for(let c=0; c<cols && printed<qty; c++, printed++){
+      rowCells += oneLabelHtml;
+    }
+    rowsHtml += `<div class="prlbl-row" style="display:flex;flex-direction:row">${rowCells}</div>`;
+  }
+  let frame = document.getElementById('print-frame');
+  if(frame) frame.remove();
+  frame = document.createElement('iframe');
+  frame.id = 'print-frame';
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title||"Yorliqlar"}</title>
+    <style>
+      @page{size:${pageW}mm ${hMm}mm;margin:0}
+      *{box-sizing:border-box;margin:0;padding:0;font-family:'Courier New',monospace;color:#000}
+      .prlbl-row{page-break-after:always}
+      .prlbl-row:last-child{page-break-after:auto}
+    </style></head>
+    <body>${rowsHtml}</body></html>`);
+  doc.close();
+  frame.onload = function(){
+    setTimeout(()=>{
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }, 150);
+  };
 }
 
 // ---------- 10.5 EXCEL/CSV ORQALI OMMAVIY TOVAR IMPORT QILISH ----------
@@ -13630,6 +13814,66 @@ document.addEventListener('keydown', function(e){
       return r;
     };
   }
+})();
+</script>
+
+<!-- ================================================================
+     🆕 PLATFORMA VA TEZLIK QATLAMI (v6) — JS qismi
+     E'TIBOR: bu skript FAQAT o'z ichidagi yangi elementlar (#wco-titlebar)
+     bilan ishlaydi va mavjud hech qanday funksiyani chaqirmaydi/almashtir-
+     maydi, shu sabab avvalgi funksiyalarga hech qanday xavf yo'q. Har bir
+     qism o'zining try/catch ichida — biror joyda xato bo'lsa ham, ilovaning
+     qolgan qismi (savdo, Firestore va h.k.) buzilmaydi.
+     ================================================================ -->
+<script>
+(function(){
+  'use strict';
+
+  // ---- A) Windows: Window Controls Overlay ----
+  // Ilova Windows'da "PWA" sifatida o'rnatilib, WCO rejimida ochilganda
+  // (Edge/Chrome "display_override":"window-controls-overlay"), o'zining
+  // sarlavha panelini ko'rsatadi va tortib-ko'chirish mintaqasini beradi.
+  // Telefon/planshetda yoki oddiy brauzer oynasida bu kod hech narsa
+  // qilmaydi (funksiya mavjud emasligi tekshiriladi).
+  try{
+    if('windowControlsOverlay' in navigator){
+      var wco = navigator.windowControlsOverlay;
+      var syncWco = function(){
+        try{ document.body.classList.toggle('wco-active', !!wco.visible); }catch(e){}
+      };
+      syncWco();
+      wco.addEventListener('geometrychange', syncWco);
+    }
+  }catch(e){ /* WCO qo'llab-quvvatlanmaydi — jim o'tkazib yuboramiz */ }
+
+  // ---- B) Sarlavha panel matnini do'kon nomi bilan sinxronlash ----
+  // Ilova <title> allaqachon do'kon nomi o'zgarganda yangilanadi (Sozlamalar
+  // > Ilova sarlavhasi). Biz shu <title>'ni kuzatib, WCO panelidagi matnni
+  // ham avtomatik moslashtiramiz — alohida sozlama kerak emas.
+  try{
+    var titleEl = document.querySelector('head > title');
+    var wcoText = document.getElementById('wco-titlebar-text');
+    if(titleEl && wcoText){
+      var syncTitle = function(){ wcoText.textContent = document.title || "Do'kon Boshqaruvi"; };
+      syncTitle();
+      new MutationObserver(syncTitle).observe(titleEl, { childList:true, characterData:true, subtree:true });
+    }
+  }catch(e){ /* jim */ }
+
+  // ---- C) iOS/Android: sahifa fokusga qaytganda (masalan tugmalar
+  // almashtirilgandan/uzoq vaqt fonda turgandan keyin) 100vh muammosi —
+  // ba'zi mobil brauzerlarda manzil paneli chiqib-kirib, "vh" birligi eski
+  // qiymatda "qotib" qolishi mumkin. Buni CSS custom property orqali
+  // to'g'irlaymiz, mavjud CSS'ga tegmasdan (--app-vh hech qayerda hali
+  // ishlatilmaydi, shu sabab bu qo'shimcha, xavfsiz signal). ----
+  try{
+    var setAppVh = function(){
+      document.documentElement.style.setProperty('--app-vh', (window.innerHeight*0.01)+'px');
+    };
+    setAppVh();
+    window.addEventListener('resize', setAppVh, { passive:true });
+    window.addEventListener('orientationchange', setAppVh, { passive:true });
+  }catch(e){ /* jim */ }
 })();
 </script>
 </body>
