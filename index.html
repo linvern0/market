@@ -1,3 +1,8 @@
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -23,7 +28,7 @@
 <meta name="msapplication-TileImage" content="./icon-144.png">
 <meta name="msapplication-config" content="./browserconfig.xml">
 <meta name="application-name" content="Do'kon Boshqaruvi">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <!-- Excel (.xlsx) va PDF hisobotlar uchun kutubxonalar (faqat eksport funksiyalarida ishlatiladi) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -158,7 +163,8 @@
   .form-row.full{grid-template-columns:1fr}
   .field{display:flex;flex-direction:column;gap:.35rem}
   .field label{font-size:13px;font-weight:600;color:var(--text2)}
-  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;width:100%}
+  input,select,textarea{color:#16221c;background:#fff}
+  .field input,.field select,.field textarea{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem .9rem;font-size:14px;outline:none;transition:.15s;font-family:inherit;background:#fff;color:#16221c;width:100%}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,110,94,.12)}
   .field textarea{resize:vertical;min-height:70px}
   .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;min-height:38px;border-radius:var(--radius);border:1.5px solid var(--border2);background:var(--surface2);font-size:13px;font-weight:600;cursor:pointer;transition:.15s;color:var(--text)}
