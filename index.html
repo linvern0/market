@@ -2366,9 +2366,35 @@ body.dark tr:hover td {
     </div>
   </div>
 </div>
+<!-- YANGI: Yorliq chop etishdan oldin printer turini tanlash oynasi -->
+<div class="modal-overlay hidden" id="modal-print-choice">
+  <div class="modal" style="max-width:480px">
+    <h3>🏷 Yorliq chop etish — printer turini tanlang</h3>
+    <p style="font-size:13px;color:var(--text2);margin:.5rem 0 1.1rem">Qaysi printerda chop etasiz?</p>
+    <div style="display:flex;flex-direction:column;gap:.75rem">
+      <button type="button" onclick="selectLabelPrinter('xprinter')" style="display:flex;align-items:center;gap:.85rem;text-align:left;background:var(--surface2);border:1.5px solid var(--border2);border-radius:12px;padding:1rem;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <span style="font-size:28px">🧾</span>
+        <span>
+          <span style="display:block;font-weight:700;font-size:15px;color:var(--text)">Xprinter (termoprinter)</span>
+          <span style="display:block;font-size:12.5px;color:var(--text2);margin-top:2px">Uzun lentali shtrix-kod printeri — rulon qog'ozga ketma-ket chop etadi</span>
+        </span>
+      </button>
+      <button type="button" onclick="selectLabelPrinter('epson')" style="display:flex;align-items:center;gap:.85rem;text-align:left;background:var(--surface2);border:1.5px solid var(--border2);border-radius:12px;padding:1rem;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <span style="font-size:28px">🖨️</span>
+        <span>
+          <span style="display:block;font-weight:700;font-size:15px;color:var(--text)">Epson (A4 varaq)</span>
+          <span style="display:block;font-size:12.5px;color:var(--text2);margin-top:2px">Oddiy yoki o'zi-yopishqoq A4 yorliq varag'iga, bir necha ustun/qatorda chop etadi</span>
+        </span>
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-print-choice')">Bekor qilish</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="modal-print-labels">
   <div class="modal" style="max-width:820px">
-    <h3>🏷 Shtrix-kod yorliqlarini chop etish</h3>
+    <h3>🏷 Shtrix-kod yorliqlarini chop etish <span style="font-size:12px;font-weight:400;color:var(--text3)">— Xprinter (termoprinter)</span></h3>
     <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
       <div style="flex:1 1 380px;min-width:280px">
         <div class="field" style="margin-bottom:.85rem">
@@ -2377,7 +2403,7 @@ body.dark tr:hover td {
         </div>
         <div class="field" style="margin-bottom:.85rem">
           <label>Nechta yorliq chop etilsin?</label>
-          <input id="label-qty" type="number" min="1" max="200" value="1">
+          <input id="label-qty" type="number" min="1" max="200" value="1" oninput="renderLabelPreview()">
         </div>
 
         <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
@@ -2444,23 +2470,156 @@ body.dark tr:hover td {
         <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
       </div>
 
-      <div style="flex:0 0 260px;min-width:220px">
+      <div style="flex:0 0 270px;min-width:230px">
         <div style="position:sticky;top:0">
           <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">👁 Jonli ko'rinish</div>
-          <div style="background:#e9e4d8;border-radius:12px;padding:16px;display:flex;align-items:flex-start;justify-content:center;min-height:180px">
-            <div id="label-preview-wrap" style="background:transparent">
+          <div style="background:#e9e4d8;border-radius:12px;padding:14px;display:flex;justify-content:center;max-height:420px;overflow:auto">
+            <div id="label-preview-wrap" style="background:transparent;flex-shrink:0">
               <div id="label-preview-stage" style="background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18)"></div>
             </div>
           </div>
-          <p style="font-size:11px;color:var(--text3);margin-top:.5rem;text-align:center">Namuna — sozlamani o'zgartirsangiz shu yerda darhol yangilanadi (aniq o'lchamda emas, faqat ko'rinish uchun kattalashtirilgan)</p>
+          <p id="label-preview-note" style="font-size:11.5px;color:var(--text2);margin-top:.6rem;text-align:center;line-height:1.5"></p>
+          <p style="font-size:10.5px;color:var(--text3);margin-top:.15rem;text-align:center">Ko'rinish uchun kattalashtirilgan (proporsional) — kenglik va yorliqlar soni o'zgarsa shu yerda ham darhol o'zgaradi.</p>
+          <button class="btn sm" style="width:100%;margin-top:.6rem;justify-content:center" onclick="doPrintTestLabel()" title="Joriy sozlamalar bilan faqat 1 dona yorliq chop etadi — printerni sozlashdan oldin tekshirish uchun qulay">🖶 1 dona sinov chop etish</button>
         </div>
       </div>
     </div>
 
     <div class="modal-footer">
       <button class="btn" onclick="resetLabelSettings()" title="Sozlamalarni asliga qaytarish" style="margin-right:auto">↺ Asliga qaytarish</button>
+      <button class="btn" onclick="backToLabelPrinterChoice('modal-print-labels')" title="Printer turini qayta tanlash">← Orqaga</button>
       <button class="btn" onclick="closeModal('modal-print-labels')">Bekor qilish</button>
       <button class="btn blue" onclick="doPrintLabels()">🖨 Chop etish</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: Epson (A4 varaq, gridda) yorliq chop etish modali -->
+<div class="modal-overlay hidden" id="modal-print-labels-epson">
+  <div class="modal" style="max-width:860px">
+    <h3>🏷 Shtrix-kod yorliqlarini chop etish <span style="font-size:12px;font-weight:400;color:var(--text3)">— Epson (A4 varaq)</span></h3>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+      <div style="flex:1 1 400px;min-width:280px">
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Tovar</label>
+          <select id="label-epson-product-select" onchange="renderEpsonLabelPreview()"></select>
+        </div>
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Nechta yorliq chop etilsin?</label>
+          <input id="label-epson-qty" type="number" min="1" max="500" value="1" oninput="renderEpsonLabelPreview()">
+        </div>
+
+        <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">📄 A4 varaq va grid sozlamalari</div>
+
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Tayyor andoza (yorliq varag'i turi)</label>
+          <select id="label-epson-preset" onchange="onEpsonPresetChange()">
+            <option value="3x8">3 × 8 — 24 dona (63.5×33.9 mm)</option>
+            <option value="2x7">2 × 7 — 14 dona (99.1×38.1 mm)</option>
+            <option value="3x10">3 × 10 — 30 dona (63.5×25.4 mm)</option>
+            <option value="custom">Boshqa (qo'lda kiritish)</option>
+          </select>
+        </div>
+
+        <div id="label-epson-manual-wrap">
+          <div class="form-row" style="margin-bottom:.85rem">
+            <div class="field">
+              <label>Ustunlar soni</label>
+              <input id="label-epson-cols" type="number" min="1" max="10" value="3" oninput="renderEpsonLabelPreview()">
+            </div>
+            <div class="field">
+              <label>Qatorlar soni</label>
+              <input id="label-epson-rows" type="number" min="1" max="20" value="8" oninput="renderEpsonLabelPreview()">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:.85rem">
+            <div class="field">
+              <label>Yorliq eni (mm)</label>
+              <input id="label-epson-label-width" type="number" min="10" max="210" step="0.1" value="63.5" oninput="renderEpsonLabelPreview()">
+            </div>
+            <div class="field">
+              <label>Yorliq bo'yi (mm)</label>
+              <input id="label-epson-label-height" type="number" min="5" max="297" step="0.1" value="33.9" oninput="renderEpsonLabelPreview()">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:.85rem">
+            <div class="field">
+              <label>Varaq yuqori chekkasi (mm)</label>
+              <input id="label-epson-margin-top" type="number" min="0" max="50" step="0.1" value="8" oninput="renderEpsonLabelPreview()">
+            </div>
+            <div class="field">
+              <label>Varaq chap chekkasi (mm)</label>
+              <input id="label-epson-margin-left" type="number" min="0" max="50" step="0.1" value="7" oninput="renderEpsonLabelPreview()">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:.85rem">
+            <div class="field">
+              <label>Ustunlar orasi (mm)</label>
+              <input id="label-epson-gap-x" type="number" min="0" max="30" step="0.1" value="2.5" oninput="renderEpsonLabelPreview()">
+            </div>
+            <div class="field">
+              <label>Qatorlar orasi (mm)</label>
+              <input id="label-epson-gap-y" type="number" min="0" max="30" step="0.1" value="0" oninput="renderEpsonLabelPreview()">
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:.85rem">
+          <label>Boshlang'ich katak <span style="color:var(--text3);font-weight:400">(0 = 1-katakdan boshlash; agar varaqdan bir nechtasi allaqachon ishlatilgan bo'lsa, qolganidan boshlash uchun raqam kiriting)</span></label>
+          <input id="label-epson-start-index" type="number" min="0" value="0" oninput="renderEpsonLabelPreview()">
+        </div>
+
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:.6rem;cursor:pointer">
+          <input type="checkbox" id="label-epson-font-auto" checked onchange="toggleEpsonFontAuto()"> Shrift o'lchami avtomatik (yorliq eniga qarab)
+        </label>
+        <div class="field" id="label-epson-font-manual-wrap" style="display:none;margin-bottom:.85rem">
+          <label>Shrift o'lchami (tovar nomi, px)</label>
+          <input id="label-epson-font-size" type="number" min="6" max="60" step="1" value="12" oninput="renderEpsonLabelPreview()">
+        </div>
+
+        <div style="border-top:1px dashed var(--border2);margin:1rem 0 .85rem"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">📋 Yorliqda nima chiqsin?</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.85rem">
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-epson-show-shop" onchange="renderEpsonLabelPreview()"> Do'kon nomi
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-epson-show-volume" onchange="renderEpsonLabelPreview()"> Mahsulot hajmi (litr)
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-epson-show-price" checked onchange="renderEpsonLabelPreview()"> Narxi
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-epson-show-barcode" onchange="renderEpsonLabelPreview()"> Shtrix-kod tasviri (barcode chizig'i)
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="label-epson-show-barcode-num" onchange="renderEpsonLabelPreview()"> Shtrix-kod raqami (son ko'rinishida)
+          </label>
+        </div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
+      </div>
+
+      <div style="flex:0 0 260px;min-width:230px">
+        <div style="position:sticky;top:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:.6rem">👁 Jonli ko'rinish (A4 varaq)</div>
+          <div style="background:#e9e4d8;border-radius:12px;padding:14px;display:flex;justify-content:center;max-height:420px;overflow:auto">
+            <div id="label-epson-preview-wrap" style="background:transparent;flex-shrink:0">
+              <div id="label-epson-preview-stage" style="background:transparent;flex-shrink:0"></div>
+            </div>
+          </div>
+          <p id="label-epson-preview-note" style="font-size:11.5px;color:var(--text2);margin-top:.6rem;text-align:center;line-height:1.5"></p>
+          <p style="font-size:10.5px;color:var(--text3);margin-top:.15rem;text-align:center">Ko'rinish A4 varaqning proporsional nusxasi — chop etilgan natija shu bilan bir xil bo'ladi.</p>
+          <button class="btn sm" style="width:100%;margin-top:.6rem;justify-content:center" onclick="doPrintEpsonTestLabel()" title="Joriy sozlamalar bilan boshlang'ich katakka faqat 1 dona yorliq chop etadi — printer/qog'oz joylashuvini tekshirish uchun qulay">🖶 1 dona sinov chop etish</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="resetEpsonLabelSettings()" title="Sozlamalarni asliga qaytarish" style="margin-right:auto">↺ Asliga qaytarish</button>
+      <button class="btn" onclick="backToLabelPrinterChoice('modal-print-labels-epson')" title="Printer turini qayta tanlash">← Orqaga</button>
+      <button class="btn" onclick="closeModal('modal-print-labels-epson')">Bekor qilish</button>
+      <button class="btn blue" onclick="doPrintEpsonLabels()">🖨 Chop etish</button>
     </div>
   </div>
 </div>
@@ -3215,7 +3374,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '' };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3336,7 +3495,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||''}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -3624,6 +3783,7 @@ function startListeners(){
       DB.brandAccent1=d.brandAccent1||'';
       DB.brandAccent2=d.brandAccent2||'';
       DB.appTitle=d.appTitle||'';
+      DB.labelSettings=d.labelSettings||null;
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
       if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
       if(document.getElementById('page-settings')?.classList.contains('active')){
@@ -3798,10 +3958,11 @@ async function init(){
           DB.brandAccent1=d.brandAccent1||'';
           DB.brandAccent2=d.brandAccent2||'';
           DB.appTitle=d.appTitle||'';
+          DB.labelSettings=d.labelSettings||null;
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:''}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -10526,37 +10687,106 @@ window.saveDailyGoal = function(){
 }
 
 // ---------- 10.4 MAHSULOT SHTRIX-KOD YORLIQLARINI CHOP ETISH ----------
-// Uzun lentali (continuous roll) termoprinterlar uchun: foydalanuvchi faqat
-// qog'oz KENGLIGINI tanlaydi, UZUNLIK esa yorliqlar soni va ular orasidagi
-// (qo'lda kiritiladigan) masofaga qarab avtomatik hisoblanadi (@page uchun
-// balandlik belgilanmaydi — "auto"). Shrift kenglikka qarab avtomatik
-// moslashadi, lekin barcha qiymatlar (kenglik/masofa/margin/shrift) va
-// ko'rinish sozlamalari (do'kon nomi/hajm/narx/barcode raqami) qo'lda ham
-// sozlanadi va shu qurilma uchun localStorage'da eslab qolinadi.
-const LABEL_SETTINGS_KEY = 'dokon_label_settings_v1';
-const LABEL_SETTINGS_DEFAULT = {
-  width: 40,
-  widthPreset: '40',
-  gap: 2,
-  margin: 0.8,
-  fontAuto: true,
-  fontSize: 12,
-  showShop: false,
-  showVolume: false,
-  showPrice: true,
-  showBarcode: false,
-  showBarcodeNum: false
+// Ikki xil printer rejimi qo'llab-quvvatlanadi:
+//  1) XPRINTER — uzun lentali (continuous roll) termoprinter: foydalanuvchi
+//     faqat qog'oz KENGLIGINI tanlaydi, uzunlik esa yorliqlar soni va ular
+//     orasidagi (qo'lda kiritiladigan) masofaga qarab avtomatik hisoblanadi.
+//  2) EPSON — oddiy A4 varaqqa (masalan lazerli/siyohli printerda, yoki A4
+//     o'lchamdagi o'zi-yopishqoq yorliq varag'iga) GRID (ustun x qator)
+//     ko'rinishida chop etiladi. Ustun/qator soni, yorliq eni/bo'yi, varaq
+//     chekkasidan bo'shliq, yorliqlar orasidagi masofa — barchasi qo'lda
+//     sozlanadi (manual A4 sozlash).
+// Ikkala rejim uchun ham JONLI KO'RINISH (preview) chop etishda ishlatiladigan
+// AYNAN BIR XIL HTML/CSS qurish funksiyalaridan foydalanadi — shu tufayli
+// oynadagi namuna qaysi qurilma/brauzerda ochilmasin, haqiqiy chop etish
+// natijasi bilan mos keladi.
+// Sozlamalar shu qurilmada localStorage'da VA Firebase'da ('dokon/settings'
+// hujjatining labelSettings maydonida) saqlanadi — shuning uchun oxirgi
+// ishlatilgan sozlamalar (printer turi, o'lchamlar va h.k.) istalgan
+// qurilmada ham eslab qolinadi.
+
+const LABEL_SETTINGS_KEY = 'dokon_label_settings_v2';
+const XPRINTER_SETTINGS_DEFAULT = {
+  width: 40, widthPreset: '40', gap: 2, margin: 0.8,
+  fontAuto: true, fontSize: 12,
+  showShop: false, showVolume: false, showPrice: true, showBarcode: false, showBarcodeNum: false
 };
-function loadLabelSettings(){
-  try{
-    const raw = localStorage.getItem(LABEL_SETTINGS_KEY);
-    if(!raw) return {...LABEL_SETTINGS_DEFAULT};
-    return {...LABEL_SETTINGS_DEFAULT, ...JSON.parse(raw)};
-  }catch(e){ return {...LABEL_SETTINGS_DEFAULT}; }
+// Uzbekistonda ko'p tarqalgan o'zi-yopishqoq A4 yorliq varaqlari uchun
+// tayyor andozalar (foydalanuvchi xohlasa "Boshqa (qo'lda)" ni tanlab,
+// barcha qiymatlarni o'zi kiritishi ham mumkin).
+const EPSON_PRESETS = {
+  '3x8':  {cols:3, rows:8,  labelWidth:63.5, labelHeight:33.9, marginTop:8,    marginLeft:7,   gapX:2.5, gapY:0},
+  '2x7':  {cols:2, rows:7,  labelWidth:99.1, labelHeight:38.1, marginTop:11.5, marginLeft:5.5, gapX:2.5, gapY:0},
+  '3x10': {cols:3, rows:10, labelWidth:63.5, labelHeight:25.4, marginTop:13.5, marginLeft:7,   gapX:2.5, gapY:0}
+};
+const EPSON_SETTINGS_DEFAULT = {
+  preset:'3x8', cols:3, rows:8, labelWidth:63.5, labelHeight:33.9,
+  marginTop:8, marginLeft:7, gapX:2.5, gapY:0, startIndex:0,
+  fontAuto:true, fontSize:12,
+  showShop:false, showVolume:false, showPrice:true, showBarcode:false, showBarcodeNum:false
+};
+function defaultLabelSettingsAll(){
+  return {printerType:'xprinter', xprinter:{...XPRINTER_SETTINGS_DEFAULT}, epson:{...EPSON_SETTINGS_DEFAULT}};
 }
-function saveLabelSettings(s){
-  try{ localStorage.setItem(LABEL_SETTINGS_KEY, JSON.stringify(s)); }catch(e){}
+// Sozlamalarni o'qish tartibi: avval Firebase orqali kelgan DB.labelSettings
+// (boshqa qurilmada saqlangan bo'lishi mumkin), bo'lmasa shu qurilmaning
+// localStorage nusxasi, aks holda standart qiymatlar.
+function loadLabelSettingsAll(){
+  const def = defaultLabelSettingsAll();
+  let base = null;
+  if(DB.labelSettings && typeof DB.labelSettings==='object') base = DB.labelSettings;
+  else {
+    try{
+      const raw = localStorage.getItem(LABEL_SETTINGS_KEY);
+      if(raw) base = JSON.parse(raw);
+    }catch(e){}
+  }
+  if(!base) return def;
+  return {
+    printerType: base.printerType || def.printerType,
+    xprinter: {...def.xprinter, ...(base.xprinter||{})},
+    epson: {...def.epson, ...(base.epson||{})}
+  };
 }
+// Sozlamalarni DARHOL shu qurilmada (localStorage) saqlaydi va Firebase'ga
+// FONDA (fire-and-forget, kutmasdan) yuboradi — shu bilan ilova sekinlashmaydi,
+// lekin oxirgi amallar boshqa qurilmalar uchun ham saqlanib qoladi.
+function persistLabelSettingsAll(updated){
+  DB.labelSettings = updated;
+  try{ localStorage.setItem(LABEL_SETTINGS_KEY, JSON.stringify(updated)); }catch(e){}
+  if(typeof fbSaveSettings==='function') fbSaveSettings();
+}
+function saveXprinterSettings(s){
+  const all = loadLabelSettingsAll();
+  all.printerType = 'xprinter';
+  all.xprinter = s;
+  persistLabelSettingsAll(all);
+}
+function saveEpsonSettings(s){
+  const all = loadLabelSettingsAll();
+  all.printerType = 'epson';
+  all.epson = s;
+  persistLabelSettingsAll(all);
+}
+
+// ===== 1-QADAM: PRINTER TURINI TANLASH =====
+// "Yorliq" tugmasi bosilganda ENG AVVAL shu tanlov oynasi chiqadi.
+window.openPrintLabelsModal = function(){
+  const withBarcode = (DB.products||[]).filter(p=>p.barcode);
+  if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
+  openModal('modal-print-choice');
+}
+window.selectLabelPrinter = function(type){
+  closeModal('modal-print-choice');
+  if(type==='epson') openEpsonLabelsModal();
+  else openXprinterLabelsModal();
+}
+window.backToLabelPrinterChoice = function(fromModalId){
+  closeModal(fromModalId);
+  openModal('modal-print-choice');
+}
+
+// ===== XPRINTER (uzun lentali termoprinter) sozlamalari =====
 function applyLabelSettingsToForm(s){
   const widthPresets = ['30','40','50','58','80'];
   const presetVal = widthPresets.includes(String(s.width)) ? String(s.width) : 'custom';
@@ -10604,28 +10834,30 @@ window.toggleLabelFontAuto = function(){
   renderLabelPreview();
 }
 window.resetLabelSettings = function(){
-  applyLabelSettingsToForm({...LABEL_SETTINGS_DEFAULT});
+  applyLabelSettingsToForm({...XPRINTER_SETTINGS_DEFAULT});
   toast('✓ Sozlamalar asliga qaytarildi','green');
 }
-window.openPrintLabelsModal = function(){
+function openXprinterLabelsModal(){
   const sel = document.getElementById('label-product-select');
   const withBarcode = (DB.products||[]).filter(p=>p.barcode);
   if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
   sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
   document.getElementById('label-qty').value = 1;
-  applyLabelSettingsToForm(loadLabelSettings());
+  applyLabelSettingsToForm(loadLabelSettingsAll().xprinter);
   openModal('modal-print-labels');
 }
 
 // Bitta yorliqning ICHKI HTML'ini hosil qiladi (chop etish va jonli
 // ko'rinish/preview uchun BIR XIL kod ishlatiladi — shu tufayli oynadagi
-// namuna chop etilgan natija bilan aynan mos keladi).
+// namuna chop etilgan natija bilan aynan mos keladi). Ikkala printer rejimi
+// (Xprinter va Epson) ham shu bitta funksiyadan foydalanadi.
 function buildLabelInnerHTML(p, s){
-  const nameFontPx = s.fontAuto ? Math.max(9, Math.min(22, Math.round(s.width*0.62))) : s.fontSize;
+  const refWidth = s.width || s.labelWidth || 40;
+  const nameFontPx = s.fontAuto ? Math.max(9, Math.min(22, Math.round(refWidth*0.62))) : s.fontSize;
   const shopFontPx = Math.round(nameFontPx*0.78);
   const priceFontPx = Math.round(nameFontPx*1.15);
   const barcodeFontPx = Math.max(8, Math.round(nameFontPx*0.72));
-  const barcodeHeight = Math.max(24, Math.min(60, Math.round(s.width*0.9)));
+  const barcodeHeight = Math.max(24, Math.min(60, Math.round(refWidth*0.9)));
 
   let barcodeHtml = '';
   if(s.showBarcode && p && p.barcode && typeof JsBarcode !== 'undefined'){
@@ -10653,37 +10885,63 @@ function buildLabelInnerHTML(p, s){
 }
 
 // O'ng paneldagi jonli ko'rinish: sozlamalar o'zgarganda (shrift, margin,
-// kenglik, ko'rsatiladigan maydonlar va h.k.) darhol qayta chiziladi, shu
-// bilan admin chop etishdan oldin natijani ko'radi. Aniq fizik o'lchamda
-// emas — ekranda yaxshi ko'rinishi uchun kattalashtirilgan (masshtablangan).
-const LABEL_PREVIEW_TARGET_PX = 220;
-const MM_TO_PX = 96/25.4;
+// kenglik, ko'rsatiladigan maydonlar, YORLIQLAR SONI va h.k.) darhol qayta
+// chiziladi. Kattalashtirish DOIM BIR XIL nisbatda (PREVIEW_PX_PER_MM/haqiqiy
+// mm->px) qo'llanadi — shuning uchun masalan 80mm kenglik 30mm dan ko'rinishda
+// ham kattaroq chiqadi (nisbat chop etilgan natijaga mos keladi), shunchaki
+// ekranda yaxshi ko'rinishi uchun kattalashtirilgan.
+const MM_TO_PX = 96/25.4;           // haqiqiy CSS mm->px nisbati (chop etishda ishlatiladi)
+const PREVIEW_PX_PER_MM = 5;        // ko'rinishdagi "1mm nechа ekran pikseli" — faqat preview uchun
+const LABEL_PREVIEW_RENDER_CAP = 25; // unumsizlikning oldini olish uchun DOM'da ko'rsatiladigan maksimal nusxa
+
+// Bir nechta yorliqni orasidagi masofa bilan birlashtiradi — chop etish va
+// preview aynan BIR XIL usulda quriladi, shu bilan ular mos keladi.
+function joinLabelsWithGap(oneLabelHtml, count, gapMm){
+  return Array.from({length:count}).map((_, i)=> i<count-1 ? `${oneLabelHtml}<div style="height:${gapMm}mm"></div>` : oneLabelHtml).join('');
+}
+
 window.renderLabelPreview = function(){
   const stage = document.getElementById('label-preview-stage');
   const wrap = document.getElementById('label-preview-wrap');
+  const note = document.getElementById('label-preview-note');
   if(!stage || !wrap) return;
   const s = readLabelSettingsFromForm();
   const id = document.getElementById('label-product-select') ? document.getElementById('label-product-select').value : null;
   const p = (DB.products||[]).find(x=>x.id===id) || null;
+  const qty = Math.max(1, Math.min(200, parseInt(document.getElementById('label-qty')?.value)||1));
 
   const inner = buildLabelInnerHTML(p, s);
-  // Ikkita nusxa + orasidagi masofa — "yorliqlar orasidagi masofa" sozlamasi
-  // ham ko'rinishda aks etadi (rulon qanday chop etilishini ko'rsatadi).
-  stage.innerHTML = `
-    <div class="lbl" style="text-align:center;padding:${s.margin}mm">${inner}</div>
-    <div style="height:${s.gap}mm;background:repeating-linear-gradient(45deg,#f1eee3,#f1eee3 4px,#e9e4d8 4px,#e9e4d8 8px)"></div>
-    <div class="lbl" style="text-align:center;padding:${s.margin}mm;opacity:.55">${inner}</div>`;
+  const oneLabelHtml = `<div class="lbl" style="text-align:center">${inner}</div>`;
+  const renderCount = Math.min(qty, LABEL_PREVIEW_RENDER_CAP);
+
+  // Butun rulon uchun BIR MARTA chekka bo'shlig'i (margin) — aynan chop
+  // etishdagi body{padding} kabi, har bir yorliqqa alohida emas.
+  stage.style.padding = s.margin+'mm';
   stage.style.width = s.width+'mm';
   stage.style.transform = 'none';
+  stage.innerHTML = joinLabelsWithGap(oneLabelHtml, renderCount, s.gap);
 
   requestAnimationFrame(()=>{
-    const actualWidthPx = stage.getBoundingClientRect().width || (s.width*MM_TO_PX);
-    const actualHeightPx = stage.getBoundingClientRect().height || 100;
-    const scale = Math.min(3, LABEL_PREVIEW_TARGET_PX/actualWidthPx);
+    const rect = stage.getBoundingClientRect();
+    const realWidthPx = rect.width || (s.width*MM_TO_PX);
+    const realHeightPx = rect.height || 100;
+    const scale = PREVIEW_PX_PER_MM/MM_TO_PX; // kenglikdan qat'i nazar BIR XIL nisbat
     stage.style.transformOrigin = 'top left';
     stage.style.transform = `scale(${scale})`;
-    wrap.style.width = (actualWidthPx*scale)+'px';
-    wrap.style.height = (actualHeightPx*scale)+'px';
+    wrap.style.width = (realWidthPx*scale)+'px';
+    wrap.style.height = (realHeightPx*scale)+'px';
+
+    // Taxminiy umumiy uzunlikni hisoblash: bitta yorliqning haqiqiy (mm)
+    // balandligini o'lchab, keyin TO'LIQ (kesilmagan) yorliqlar soniga
+    // ko'paytiramiz — shunda ko'rinishda faqat bir nechtasi chizilgan
+    // bo'lsa ham, uzunlik hisobi to'g'ri (barcha N ta uchun) chiqadi.
+    if(note){
+      const realHeightMm = realHeightPx/MM_TO_PX;
+      const perLabelHeightMm = renderCount>0 ? (realHeightMm - s.margin*2 - s.gap*(renderCount-1)) / renderCount : 0;
+      const totalLengthMm = Math.max(0, Math.round(perLabelHeightMm*qty + s.gap*Math.max(0,qty-1) + s.margin*2));
+      const cappedNote = qty>LABEL_PREVIEW_RENDER_CAP ? ` <span style="color:var(--text3)">(ko'rinishda birinchi ${LABEL_PREVIEW_RENDER_CAP} tasi ko'rsatilgan)</span>` : '';
+      note.innerHTML = `📏 Kenglik: <b>${s.width} mm</b> &nbsp;·&nbsp; Uzunlik (taxminiy): <b>${totalLengthMm} mm</b> (${(totalLengthMm/10).toFixed(1)} sm) &nbsp;·&nbsp; Yorliqlar soni: <b>${qty}</b>${cappedNote}`;
+    }
   });
 }
 
@@ -10697,14 +10955,33 @@ window.doPrintLabels = function(){
   }
 
   const s = readLabelSettingsFromForm();
-  saveLabelSettings(s);
+  saveXprinterSettings(s);
 
   const inner = buildLabelInnerHTML(p, s);
   const oneLabel = `<div class="lbl" style="text-align:center;page-break-inside:avoid">${inner}</div>`;
-  const html = Array.from({length:qty}).map((_, i)=> i<qty-1 ? `${oneLabel}<div style="height:${s.gap}mm"></div>` : oneLabel).join('');
+  const html = joinLabelsWithGap(oneLabel, qty, s.gap);
 
   closeModal('modal-print-labels');
   printLabelsHTML(html, {title:'Shtrix-kod yorliqlari', width:s.width, margin:s.margin});
+}
+
+// QO'SHIMCHA: joriy sozlamalar bilan faqat 1 dona yorliq chop etadi (nechta
+// nusxa maydonidan qat'i nazar) — printer joylashuvi/hizalanishini bosib
+// ko'rish uchun qulay, katta partiya chop etishdan oldin xato bo'lmasligini
+// tekshirish imkonini beradi.
+window.doPrintTestLabel = function(){
+  const id = document.getElementById('label-product-select').value;
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if(!p){ toast('Tovar topilmadi','red'); return; }
+  if((document.getElementById('label-show-barcode').checked) && typeof JsBarcode === 'undefined'){
+    toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return;
+  }
+  const s = readLabelSettingsFromForm();
+  saveXprinterSettings(s);
+  const inner = buildLabelInnerHTML(p, s);
+  const oneLabel = `<div class="lbl" style="text-align:center;page-break-inside:avoid">${inner}</div>`;
+  printLabelsHTML(oneLabel, {title:'Sinov yorlig\'i', width:s.width, margin:s.margin});
+  toast('🖶 Sinov yorlig\'i chop etishga yuborildi','blue');
 }
 
 // Yorliqlar uchun alohida chop etish funksiyasi — asosiy printHTML() (chek/
@@ -10733,6 +11010,221 @@ function printLabelsHTML(bodyHtml, opts={}){
       .lbl{width:100%}
     </style></head>
     <body>${bodyHtml}</body></html>`);
+  doc.close();
+  frame.onload = function(){
+    setTimeout(()=>{
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }, 150);
+  };
+}
+
+// ===== EPSON (A4 varaqqa gridda chop etish) sozlamalari =====
+function applyEpsonSettingsToForm(s){
+  document.getElementById('label-epson-preset').value = s.preset || 'custom';
+  document.getElementById('label-epson-cols').value = s.cols;
+  document.getElementById('label-epson-rows').value = s.rows;
+  document.getElementById('label-epson-label-width').value = s.labelWidth;
+  document.getElementById('label-epson-label-height').value = s.labelHeight;
+  document.getElementById('label-epson-margin-top').value = s.marginTop;
+  document.getElementById('label-epson-margin-left').value = s.marginLeft;
+  document.getElementById('label-epson-gap-x').value = s.gapX;
+  document.getElementById('label-epson-gap-y').value = s.gapY;
+  document.getElementById('label-epson-start-index').value = s.startIndex;
+  document.getElementById('label-epson-font-auto').checked = !!s.fontAuto;
+  document.getElementById('label-epson-font-size').value = s.fontSize;
+  document.getElementById('label-epson-font-manual-wrap').style.display = s.fontAuto ? 'none' : 'flex';
+  document.getElementById('label-epson-show-shop').checked = !!s.showShop;
+  document.getElementById('label-epson-show-volume').checked = !!s.showVolume;
+  document.getElementById('label-epson-show-price').checked = !!s.showPrice;
+  document.getElementById('label-epson-show-barcode').checked = !!s.showBarcode;
+  document.getElementById('label-epson-show-barcode-num').checked = !!s.showBarcodeNum;
+  renderEpsonLabelPreview();
+}
+function readEpsonSettingsFromForm(){
+  return {
+    preset: document.getElementById('label-epson-preset').value,
+    cols: Math.max(1, Math.min(10, parseInt(document.getElementById('label-epson-cols').value)||1)),
+    rows: Math.max(1, Math.min(20, parseInt(document.getElementById('label-epson-rows').value)||1)),
+    labelWidth: Math.max(10, Math.min(210, parseFloat(document.getElementById('label-epson-label-width').value)||63.5)),
+    labelHeight: Math.max(5, Math.min(297, parseFloat(document.getElementById('label-epson-label-height').value)||33.9)),
+    marginTop: Math.max(0, Math.min(50, parseFloat(document.getElementById('label-epson-margin-top').value)||0)),
+    marginLeft: Math.max(0, Math.min(50, parseFloat(document.getElementById('label-epson-margin-left').value)||0)),
+    gapX: Math.max(0, Math.min(30, parseFloat(document.getElementById('label-epson-gap-x').value)||0)),
+    gapY: Math.max(0, Math.min(30, parseFloat(document.getElementById('label-epson-gap-y').value)||0)),
+    startIndex: Math.max(0, parseInt(document.getElementById('label-epson-start-index').value)||0),
+    fontAuto: document.getElementById('label-epson-font-auto').checked,
+    fontSize: Math.max(6, Math.min(60, parseInt(document.getElementById('label-epson-font-size').value)||12)),
+    showShop: document.getElementById('label-epson-show-shop').checked,
+    showVolume: document.getElementById('label-epson-show-volume').checked,
+    showPrice: document.getElementById('label-epson-show-price').checked,
+    showBarcode: document.getElementById('label-epson-show-barcode').checked,
+    showBarcodeNum: document.getElementById('label-epson-show-barcode-num').checked
+  };
+}
+window.onEpsonPresetChange = function(){
+  const v = document.getElementById('label-epson-preset').value;
+  const wrap = document.getElementById('label-epson-manual-wrap');
+  if(EPSON_PRESETS[v]){
+    const pr = EPSON_PRESETS[v];
+    document.getElementById('label-epson-cols').value = pr.cols;
+    document.getElementById('label-epson-rows').value = pr.rows;
+    document.getElementById('label-epson-label-width').value = pr.labelWidth;
+    document.getElementById('label-epson-label-height').value = pr.labelHeight;
+    document.getElementById('label-epson-margin-top').value = pr.marginTop;
+    document.getElementById('label-epson-margin-left').value = pr.marginLeft;
+    document.getElementById('label-epson-gap-x').value = pr.gapX;
+    document.getElementById('label-epson-gap-y').value = pr.gapY;
+    if(wrap) wrap.style.opacity = '.55';
+  } else if(wrap) wrap.style.opacity = '1';
+  renderEpsonLabelPreview();
+}
+window.toggleEpsonFontAuto = function(){
+  const auto = document.getElementById('label-epson-font-auto').checked;
+  document.getElementById('label-epson-font-manual-wrap').style.display = auto ? 'none' : 'flex';
+  renderEpsonLabelPreview();
+}
+window.resetEpsonLabelSettings = function(){
+  applyEpsonSettingsToForm({...EPSON_SETTINGS_DEFAULT});
+  toast('✓ Sozlamalar asliga qaytarildi','green');
+}
+function openEpsonLabelsModal(){
+  const sel = document.getElementById('label-epson-product-select');
+  const withBarcode = (DB.products||[]).filter(p=>p.barcode);
+  if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
+  sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
+  document.getElementById('label-epson-qty').value = 1;
+  applyEpsonSettingsToForm(loadLabelSettingsAll().epson);
+  openModal('modal-print-labels-epson');
+}
+
+// Bitta A4 varaq(lar) uchun grid HTML'ini quradi — chop etish va preview
+// uchun AYNAN BIR XIL funksiya ishlatiladi (shu tufayli ular mos keladi).
+// s.startIndex — jismonan allaqachon bir nechta yorlig'i yirtib olingan
+// varaqni qayta ishlatish uchun, nechanchi katakdan boshlab chop etish
+// kerakligini bildiradi (0-index).
+// maxSheets berilsa (masalan preview uchun 1), faqat shuncha varaq quriladi,
+// lekin haqiqatda nechta varaq kerakligi (sheetsNeeded) baribir qaytariladi.
+function buildEpsonGridHTML(p, s, qty, maxSheets){
+  const cellsPerSheet = Math.max(1, s.cols*s.rows);
+  const totalSlots = s.startIndex + qty;
+  const sheetsNeeded = Math.max(1, Math.ceil(totalSlots/cellsPerSheet));
+  const sheets = (typeof maxSheets==='number') ? Math.min(maxSheets, sheetsNeeded) : sheetsNeeded;
+  let globalIdx = 0, printedCount = 0, pagesHtml = '';
+  for(let sheet=0; sheet<sheets; sheet++){
+    let cellsHtml = '';
+    for(let c=0; c<cellsPerSheet; c++){
+      let content = '';
+      if(globalIdx>=s.startIndex && printedCount<qty){
+        content = `<div class="lbl-cell-inner">${buildLabelInnerHTML(p,s)}</div>`;
+        printedCount++;
+      }
+      cellsHtml += `<div class="lbl-cell">${content}</div>`;
+      globalIdx++;
+    }
+    pagesHtml += `<div class="a4-sheet">${cellsHtml}</div>`;
+  }
+  return {html:pagesHtml, sheetsNeeded};
+}
+
+const A4_MM_W = 210, A4_MM_H = 297;
+
+// O'ng paneldagi jonli ko'rinish: haqiqiy A4 varaqning proporsional
+// (kichraytirilgan) nusxasi — grid, o'lchamlar va bo'shliqlar aynan chop
+// etishdagi bilan bir xil CSS qiymatlarida quriladi, faqat butun sahifa
+// kichik ko'rinishga scale() bilan moslashtiriladi. Shu tufayli ekranda
+// ko'rilgan joylashuv har qanday qurilma/brauzerda chop etilgan qog'ozga
+// mos keladi.
+window.renderEpsonLabelPreview = function(){
+  const stage = document.getElementById('label-epson-preview-stage');
+  const wrap = document.getElementById('label-epson-preview-wrap');
+  const note = document.getElementById('label-epson-preview-note');
+  if(!stage || !wrap) return;
+  const s = readEpsonSettingsFromForm();
+  const id = document.getElementById('label-epson-product-select') ? document.getElementById('label-epson-product-select').value : null;
+  const p = (DB.products||[]).find(x=>x.id===id) || null;
+  const qty = Math.max(1, Math.min(500, parseInt(document.getElementById('label-epson-qty')?.value)||1));
+
+  const built = buildEpsonGridHTML(p, s, qty, 1); // preview uchun faqat 1-varaq chiziladi
+  stage.innerHTML = `<style>
+      #label-epson-preview-stage .a4-sheet{width:${A4_MM_W}mm;height:${A4_MM_H}mm;box-sizing:border-box;padding:${s.marginTop}mm 0 0 ${s.marginLeft}mm;display:grid;grid-template-columns:repeat(${s.cols}, ${s.labelWidth}mm);grid-template-rows:repeat(${s.rows}, ${s.labelHeight}mm);column-gap:${s.gapX}mm;row-gap:${s.gapY}mm;background:#fff}
+      #label-epson-preview-stage .lbl-cell{width:${s.labelWidth}mm;height:${s.labelHeight}mm;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 .3px #cbd5c9}
+      #label-epson-preview-stage .lbl-cell-inner{text-align:center;width:100%;padding:1mm}
+    </style>${built.html}`;
+
+  requestAnimationFrame(()=>{
+    const targetWidthPx = 230; // preview konteynerning ekrandagi taxminiy kengligi
+    const realWidthPx = A4_MM_W*MM_TO_PX;
+    const scale = targetWidthPx/realWidthPx;
+    stage.style.transformOrigin = 'top left';
+    stage.style.transform = `scale(${scale})`;
+    wrap.style.width = (realWidthPx*scale)+'px';
+    wrap.style.height = (A4_MM_H*MM_TO_PX*scale)+'px';
+    if(note){
+      const cellsPerSheet = s.cols*s.rows;
+      const cappedNote = built.sheetsNeeded>1 ? ` <span style="color:var(--text3)">(ko'rinishda faqat 1-varaq, jami ${built.sheetsNeeded} ta A4 varaq kerak bo'ladi)</span>` : '';
+      note.innerHTML = `📄 A4 (210×297mm) &nbsp;·&nbsp; Har varaqda: <b>${cellsPerSheet}</b> ta katak (${s.cols}×${s.rows}) &nbsp;·&nbsp; Yorliqlar soni: <b>${qty}</b>${cappedNote}`;
+    }
+  });
+}
+
+window.doPrintEpsonLabels = function(){
+  const id = document.getElementById('label-epson-product-select').value;
+  const qty = Math.max(1, Math.min(500, parseInt(document.getElementById('label-epson-qty').value)||1));
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if(!p){ toast('Tovar topilmadi','red'); return; }
+  if((document.getElementById('label-epson-show-barcode').checked) && typeof JsBarcode === 'undefined'){
+    toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return;
+  }
+  const s = readEpsonSettingsFromForm();
+  saveEpsonSettings(s);
+  const built = buildEpsonGridHTML(p, s, qty);
+  closeModal('modal-print-labels-epson');
+  printEpsonSheetHTML(built.html, s);
+}
+
+// QO'SHIMCHA: joriy boshlang'ich katak (startIndex) joyiga FAQAT 1 dona
+// yorliq chop etadi — printerni sozlashdan va katta partiyani chop
+// etishdan oldin, yorliq qog'ozidagi joylashuvni tekshirish uchun qulay.
+window.doPrintEpsonTestLabel = function(){
+  const id = document.getElementById('label-epson-product-select').value;
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if(!p){ toast('Tovar topilmadi','red'); return; }
+  if((document.getElementById('label-epson-show-barcode').checked) && typeof JsBarcode === 'undefined'){
+    toast("Shtrix-kod kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return;
+  }
+  const s = readEpsonSettingsFromForm();
+  saveEpsonSettings(s);
+  const built = buildEpsonGridHTML(p, s, 1, 1);
+  printEpsonSheetHTML(built.html, s);
+  toast('🖶 Sinov yorlig\'i chop etishga yuborildi','blue');
+}
+
+// A4 gridni haqiqiy chop etish — @page:A4, har bir varaq alohida sahifa
+// (page-break-after) sifatida chiqadi. Yorliq/katak o'lchamlari mm'da
+// berilgani uchun brauzer/qurilmadan qat'i nazar chop etishda bir xil
+// natija beradi (preview'dagi kabi).
+function printEpsonSheetHTML(sheetsHtml, s){
+  let frame = document.getElementById('print-frame');
+  if(frame) frame.remove();
+  frame = document.createElement('iframe');
+  frame.id = 'print-frame';
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Shtrix-kod yorliqlari (A4)</title>
+    <style>
+      @page{ size:A4; margin:0 }
+      *{box-sizing:border-box}
+      html,body{margin:0;padding:0}
+      body{font-family:'Courier New',monospace;color:#000}
+      .a4-sheet{width:${A4_MM_W}mm;height:${A4_MM_H}mm;padding:${s.marginTop}mm 0 0 ${s.marginLeft}mm;display:grid;grid-template-columns:repeat(${s.cols}, ${s.labelWidth}mm);grid-template-rows:repeat(${s.rows}, ${s.labelHeight}mm);column-gap:${s.gapX}mm;row-gap:${s.gapY}mm;page-break-after:always}
+      .a4-sheet:last-child{page-break-after:auto}
+      .lbl-cell{width:${s.labelWidth}mm;height:${s.labelHeight}mm;overflow:hidden;display:flex;align-items:center;justify-content:center}
+      .lbl-cell-inner{text-align:center;width:100%;padding:1mm}
+    </style></head>
+    <body>${sheetsHtml}</body></html>`);
   doc.close();
   frame.onload = function(){
     setTimeout(()=>{
