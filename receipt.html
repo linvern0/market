@@ -202,9 +202,32 @@
   </div>
 </div>
 
+<script>
+  // ZAXIRA "WATCHDOG": mijoz chekni QR orqali ochganda ko'pincha sekin yoki
+  // beqaror mobil tarmoqda bo'ladi. Agar Firebase CDN (gstatic.com) umuman
+  // yuklanmasa, <script type="module"> ishga tushmaydi va "Yuklanmoqda…"
+  // holati abadiy ekranda qolib qoladi. 12 soniyadan keyin hali ham
+  // ulanmagan bo'lsa, aniq xabar va "qayta urinish" tugmasi ko'rsatiladi.
+  (function(){
+    window.__appBooted = false;
+    setTimeout(function(){
+      if(window.__appBooted) return;
+      var appEl = document.getElementById('app');
+      if(appEl && appEl.querySelector('.state h1') && appEl.querySelector('.state h1').textContent.indexOf('Yuklanmoqda') !== -1){
+        appEl.innerHTML = '<div class="state">'
+          + '<div class="icon">⚠️</div>'
+          + '<h1>Ulanib bo\'lmadi</h1>'
+          + '<p>Internet aloqasi yoki tarmoq sozlamalarini tekshiring.</p>'
+          + '<button onclick="location.reload()" style="margin-top:12px;font-family:inherit;font-size:12px;font-weight:700;color:#1e1d1a;background:#fff;border:1px solid #d8d2c2;border-radius:999px;padding:6px 14px;cursor:pointer">🔄 Qayta urinish</button>'
+          + '</div>';
+      }
+    }, 12000);
+  })();
+</script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   // Asosiy Do'kon Boshqaruvi ilovasi bilan BIR XIL Firebase loyihasi
   const firebaseConfig = {
@@ -217,10 +240,14 @@
     measurementId: "G-75RXS3WVWC"
   };
 
+  window.__appBooted = true; // modul muvaffaqiyatli yuklandi — watchdog endi kerak emas
+
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
   const appEl = document.getElementById('app');
+  const params = new URLSearchParams(window.location.search);
+  const isPreview = params.get('preview') === '1';
 
   function fmt(n){
     return Math.round(n||0).toLocaleString('uz-UZ').replace(/,/g,' ');
@@ -241,11 +268,46 @@
     return d.innerHTML;
   }
 
+  // YANGI: chek sahifasining TO'LIQ ko'rinishi (ranglar, matnlar, qaysi
+  // qismlar ko'rinishi) endi admin "Do'kon Boshqaruvi" ilovasi Sozlamalar >
+  // "Chek sahifasi dizayni" bo'limida boshqaradi. Bu sozlama Firestore'da
+  // dokon/settings hujjatida saqlanadi va shu yerda REAL VAQTDA (onSnapshot)
+  // o'qiladi — shuning uchun admin biror narsani o'zgartirsa, hatto AVVAL
+  // chop etilgan (eski) cheklar ham darhol yangi ko'rinishda ochiladi.
+  function defaultReceiptDesign(){
+    return {
+      paper:'#fbfaf6', ink:'#1e1d1a', inkSoft:'#6b6558', line:'#d8d2c2', bg:'#e9e4d8',
+      accent:'#a8462f', accentFollowBrand:false,
+      font:'mono', width:380,
+      eyebrow:"Xarid tasdig'i", totalLabel:"Jami to'lov", stamp:'✓ Tasdiqlangan', linksTitle:"Bog'lanish va havolalar",
+      showLogo:true, showAddress:true, showPhone:true, showHours:true, showSeller:true,
+      showUnitPrice:true, showStamp:true, showLinks:true
+    };
+  }
+
+  function applyReceiptDesign(design, brandAccent1){
+    const d = Object.assign(defaultReceiptDesign(), design||{});
+    const root = document.documentElement.style;
+    root.setProperty('--paper', d.paper);
+    root.setProperty('--ink', d.ink);
+    root.setProperty('--ink-soft', d.inkSoft);
+    root.setProperty('--line', d.line);
+    root.setProperty('--bg', d.bg);
+    root.setProperty('--accent', (d.accentFollowBrand && brandAccent1) ? brandAccent1 : d.accent);
+    document.body.style.fontFamily = d.font === 'sans'
+      ? "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif"
+      : "'Courier New', ui-monospace, monospace";
+    let styleTag = document.getElementById('rd-dynamic-style');
+    if(!styleTag){ styleTag = document.createElement('style'); styleTag.id = 'rd-dynamic-style'; document.head.appendChild(styleTag); }
+    styleTag.textContent = `.receipt, .state{ max-width:${d.width}px }`;
+    return d;
+  }
+
   // Admin "Do'kon Boshqaruvi" ilovasidagi Sozlamalar > "Chek sahifasi —
   // linklar va QR kodlar" bo'limida sozlagan havolalarni chiqaradi. Har bir
   // havola admin tanlagan ko'rinishda: "button" — bosiladigan tugma,
   // "qr" — mustaqil QR kod (skanerlangan telefonda o'sha link ochiladi).
-  function renderReceiptLinks(links){
+  function renderReceiptLinks(links, d){
     if(!Array.isArray(links) || !links.length) return '';
     const buttons = links.filter(l => l.display !== 'qr');
     const qrs = links.filter(l => l.display === 'qr');
@@ -270,59 +332,103 @@
     return `
       <div class="divider"></div>
       <div class="rlinks">
-        <div class="rlinks-title">Bog'lanish va havolalar</div>
+        <div class="rlinks-title">${esc(d.linksTitle)}</div>
         ${buttonsHtml}
         ${qrsHtml}
       </div>`;
   }
 
-  function renderReceipt(r){
-    // Admin Sozlamalar > Ko'rinish bo'limida belgilagan brend rangi shu
-    // chek sahifasida ham qo'llanadi — ilova va chek bir xil rangda ko'rinadi.
-    if(r.brandAccent1){
-      document.documentElement.style.setProperty('--accent', r.brandAccent1);
-    }
+  function renderReceipt(r, design){
+    const d = applyReceiptDesign(design, r.brandAccent1);
     const dateStr = r.date ? new Date(r.date).toLocaleString('uz-UZ') : '';
     const itemsHtml = (r.items||[]).map(i => `
       <div class="item-row">
         <div class="item-name">
           ${esc(i.name) || ''}
-          <span class="item-qty">x${i.qty}${i.price ? '  ·  '+fmt(i.price)+" so'm/dona" : ''}</span>
+          <span class="item-qty">x${i.qty}${(d.showUnitPrice && i.price) ? '  ·  '+fmt(i.price)+" so'm/dona" : ''}</span>
         </div>
         <div class="item-sum">${fmt(i.total)}</div>
       </div>`).join('');
 
-    const shopMeta = [r.shopAddress, r.shopPhone, r.workHours].filter(Boolean).join(' · ');
-    const logoHtml = r.shopLogo ? `<img src="${esc(r.shopLogo)}" alt="" style="width:44px;height:44px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:8px">` : '';
+    const shopMeta = [d.showAddress && r.shopAddress, d.showPhone && r.shopPhone, d.showHours && r.workHours].filter(Boolean).join(' · ');
+    const logoHtml = (d.showLogo && r.shopLogo) ? `<img src="${esc(r.shopLogo)}" alt="" style="width:44px;height:44px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:8px">` : '';
     appEl.innerHTML = `
       <div class="receipt">
-        <div class="eyebrow">Xarid tasdig'i</div>
+        <div class="eyebrow">${esc(d.eyebrow)}</div>
         ${logoHtml}
-        <div class="shopname">${r.shopLogo ? '' : '🏪 '}${esc(r.shopName) || "Do'kon"}</div>
+        <div class="shopname">${logoHtml ? '' : '🏪 '}${esc(r.shopName) || "Do'kon"}</div>
         ${shopMeta ? `<div class="meta">${esc(shopMeta)}</div>` : ''}
         <div class="meta">${dateStr}</div>
-        <div class="meta">Sotuvchi: ${esc(r.sellerName) || '—'}</div>
+        ${d.showSeller ? `<div class="meta">Sotuvchi: ${esc(r.sellerName) || '—'}</div>` : ''}
         <div class="divider"></div>
         <div class="items">${itemsHtml || '<div class="item-row"><div class="item-name">Tovar topilmadi</div></div>'}</div>
         <div class="divider"></div>
         <div class="total-row">
-          <span class="label">Jami to'lov</span>
+          <span class="label">${esc(d.totalLabel)}</span>
           <span class="value">${fmt(r.total)} so'm</span>
         </div>
         <div class="thanks">${esc(r.receiptFooter) || "Xaridingiz uchun rahmat!"}</div>
-        <div class="stamp-wrap"><span class="stamp">✓ Tasdiqlangan</span></div>
-        ${renderReceiptLinks(r.links)}
+        ${d.showStamp ? `<div class="stamp-wrap"><span class="stamp">${esc(d.stamp)}</span></div>` : ''}
+        ${d.showLinks ? renderReceiptLinks(r.links, d) : ''}
       </div>`;
   }
 
-  async function init(){
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
+  // ===== JONLI KO'RISH (PREVIEW) REJIMI =====
+  // Admin Sozlamalar sahifasidagi "Jonli ko'rish" tugmasi shu sahifani
+  // ?preview=1 bilan ochadi. Bu holatda Firestore'dan HAQIQIY chek
+  // qidirilmaydi — o'rniga admin oynasi localStorage orqali qoldirgan
+  // NAMUNA ma'lumot va qoralama dizayn sozlamalari o'qiladi. Admin
+  // sozlamalarni o'zgartirganda, brauzerning o'zi "storage" hodisasini
+  // BOSHQA oynalarga (aynan shu darcha kabi) yuboradi — shu orqali sahifa
+  // qayta yuklanmasdan turib darhol yangilanadi.
+  const PREVIEW_KEY = 'dokon_receipt_design_preview';
+  function renderFromPreviewStorage(){
+    try{
+      const raw = localStorage.getItem(PREVIEW_KEY);
+      if(!raw){
+        renderError('Jonli ko\'rish', 'Sozlamalar sahifasidan "👁️ Jonli ko\'rish" tugmasini bosing.');
+        return;
+      }
+      const draft = JSON.parse(raw);
+      renderReceipt(draft.sample||{}, draft.design||{});
+    }catch(e){
+      console.error(e);
+      renderError('Xatolik', "Namunani o'qib bo'lmadi.");
+    }
+  }
 
+  async function init(){
+    if(isPreview){
+      renderFromPreviewStorage();
+      // Boshqa oyna (admin sozlamalar) localStorage'ni yangilasa — shu
+      // zahoti qayta chizamiz. E'tibor bering: 'storage' hodisasi FAQAT
+      // BOSHQA oynada o'zgartirilganda otiladi (o'zimiznikida emas) — bu
+      // aynan admin oynasi ↔ preview oynasi orasidagi aloqa uchun mos.
+      window.addEventListener('storage', e=>{
+        if(e.key === PREVIEW_KEY) renderFromPreviewStorage();
+      });
+      return;
+    }
+
+    const id = params.get('id');
     if(!id){
       renderError("Chek topilmadi", "Havolada chek raqami ko'rsatilmagan. QR kodni qaytadan skanerlang.");
       return;
     }
+
+    let design = defaultReceiptDesign();
+    let receiptData = null;
+
+    // Dizayn sozlamalarini REAL VAQTDA kuzatamiz — admin o'zgartirsa,
+    // sahifa ochiq turgan mijozga ham darhol qo'llanadi.
+    try{
+      onSnapshot(doc(db,'dokon','settings'), snap=>{
+        if(snap.exists() && snap.data().receiptDesign){
+          design = snap.data().receiptDesign;
+          if(receiptData) renderReceipt(receiptData, design);
+        }
+      });
+    }catch(e){ console.error("Dizayn sozlamalarini o'qishda xatolik:", e); }
 
     try{
       const snap = await getDoc(doc(db, 'receipts', id));
@@ -330,7 +436,8 @@
         renderError("Chek topilmadi", "Bu chek bazada mavjud emas yoki muddati o'tgan bo'lishi mumkin.");
         return;
       }
-      renderReceipt(snap.data());
+      receiptData = snap.data();
+      renderReceipt(receiptData, design);
     }catch(e){
       console.error(e);
       renderError("Xatolik yuz berdi", "Ma'lumotni yuklab bo'lmadi. Internet aloqasini tekshirib, qaytadan urinib ko'ring.");

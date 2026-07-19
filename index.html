@@ -2,7 +2,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -1830,6 +1829,62 @@ body.dark tr:hover td {
     <button class="btn sm green" onclick="saveReceiptLinksSettings()">💾 Saqlash</button>
   </div>
 
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-receiptdesign-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧾 Chek sahifasi dizayni (mijoz ko'radigan onlayn chek)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">QR kod skanerlanganda ochiladigan onlayn chek sahifasining ko'rinishini — ranglar, matnlar va qaysi qismlar ko'rinishini — to'liq o'zingizga moslang. O'zgarishlar barcha qurilmalarda, shu jumladan avval chop etilgan cheklarda ham darhol qo'llanadi.</p>
+
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">🎨 Ranglar</div>
+    <div style="display:flex;gap:.85rem;flex-wrap:wrap;margin-bottom:.85rem">
+      <label style="font-size:12px;color:var(--text2)">Qog'oz foni <input type="color" id="rd-paper" value="#fbfaf6" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+      <label style="font-size:12px;color:var(--text2)">Asosiy matn <input type="color" id="rd-ink" value="#1e1d1a" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+      <label style="font-size:12px;color:var(--text2)">Ikkinchi darajali matn <input type="color" id="rd-ink-soft" value="#6b6558" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+      <label style="font-size:12px;color:var(--text2)">Chiziqlar <input type="color" id="rd-line" value="#d8d2c2" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+      <label style="font-size:12px;color:var(--text2)">Sahifa foni <input type="color" id="rd-bg" value="#e9e4d8" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+      <label style="font-size:12px;color:var(--text2)">Urg'u rangi (jami summa) <input type="color" id="rd-accent" value="#a8462f" style="vertical-align:middle;margin-left:.3rem;width:34px;height:28px;border:none;padding:0;cursor:pointer"></label>
+    </div>
+    <label class="row" style="display:flex;align-items:center;gap:.4rem;font-size:12px;color:var(--text3);margin-bottom:.85rem"><input type="checkbox" id="rd-accent-follow-brand"> Urg'u rangi sifatida yuqoridagi "Brend rangi"ni ishlatish</label>
+
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">🔤 Shrift va o'lcham</div>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem">
+      <select id="rd-font" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="mono">Kassa cheki uslubi (monospace)</option>
+        <option value="sans">Zamonaviy (sans-serif)</option>
+      </select>
+      <select id="rd-width" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="340">Ixcham (340px)</option>
+        <option value="380">Oddiy (380px)</option>
+        <option value="420">Keng (420px)</option>
+      </select>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">✏️ Matnlar</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.85rem">
+      <div class="field"><label>Yuqori yozuv</label><input type="text" id="rd-eyebrow" maxlength="40" placeholder="Xarid tasdig'i" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none"></div>
+      <div class="field"><label>"Jami" yozuvi</label><input type="text" id="rd-total-label" maxlength="30" placeholder="Jami to'lov" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none"></div>
+      <div class="field"><label>Muhr matni</label><input type="text" id="rd-stamp" maxlength="30" placeholder="✓ Tasdiqlangan" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none"></div>
+      <div class="field"><label>Havolalar bo'limi sarlavhasi</label><input type="text" id="rd-links-title" maxlength="40" placeholder="Bog'lanish va havolalar" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none"></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">👁️ Qaysi qismlar ko'rinsin</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;margin-bottom:1rem">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-logo" checked> Do'kon logotipi</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-address" checked> Manzil</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-phone" checked> Telefon</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-hours" checked> Ish vaqti</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-seller" checked> Sotuvchi ismi</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-unitprice" checked> Har bir tovarning dona narxi</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-stamp" checked> "Tasdiqlangan" muhri</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="rd-show-links" checked> Havolalar/QR bo'limi</label>
+    </div>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <button class="btn sm blue" onclick="saveReceiptDesignSettings()">💾 Saqlash (barcha qurilmalarda)</button>
+      <button class="btn sm" onclick="previewReceiptDesign()">👁️ Jonli ko'rish (yangi oynada)</button>
+      <button class="btn sm" onclick="resetReceiptDesignDefaults()">↺ Standart holatga qaytarish</button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:.6rem">💡 "Jonli ko'rish" oynasini ochiq qoldirib, shu yerdagi sozlamalarni o'zgartiring — namuna chek darhol yangilanib turadi (saqlashni kutmasdan).</p>
+  </div>
+
   <div class="card" style="max-width:520px;margin-top:1rem" id="settings-backup-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">💾 To'liq zaxira nusxa (Backup / Restore)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.6rem">Barcha ma'lumotlarni (tovarlar, savdolar, qarzlar, xarajatlar, yetkazib beruvchilar, mijozlar, aksiyalar va h.k) bitta JSON fayl qilib yuklab oling yoki avvalgi fayldan tiklang.</p>
@@ -2297,8 +2352,8 @@ body.dark tr:hover td {
           <input id="debt-password" placeholder="parol123" autocomplete="off">
         </div>
       </div>
-      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">Bo'sh qoldirsangiz, avvalgi login/parol saqlanadi.<br>
-      <span id="debt-login-note">Tashkilot uchun bitta login: barcha ishchilar shu org ga bog'lanadi</span></p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">Bo'sh qoldirsangiz, bu odam hozircha portalga kira olmaydi (keyinroq Qarzdorlar sahifasidan "🔐 Login yaratish" orqali berish mumkin).<br>
+      <span id="debt-login-note">Shaxsning O'ZI uchun shaxsiy login/parol — faqat o'z qarzini ko'radi</span></p>
     </div>
 
     <div class="modal-footer">
@@ -2399,7 +2454,7 @@ body.dark tr:hover td {
       <div style="flex:1 1 380px;min-width:280px">
         <div class="field" style="margin-bottom:.85rem">
           <label>Tovar</label>
-          <select id="label-product-select" onchange="renderLabelPreview()"></select>
+          <select id="label-product-select" onchange="syncLabelBarcodeAvailability('label-product-select',['label-show-barcode','label-show-barcode-num'],'label-barcode-hint');renderLabelPreview()"></select>
         </div>
         <div class="field" style="margin-bottom:.85rem">
           <label>Nechta yorliq chop etilsin?</label>
@@ -2492,7 +2547,7 @@ body.dark tr:hover td {
           </label>
         </div>
 
-        <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
+        <p id="label-barcode-hint" style="display:none;font-size:12px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.5rem .65rem;margin-bottom:.5rem">⚠ Bu tovarda shtrix-kod (barcode) kiritilmagan — shuning uchun shtrix-kod tasviri/raqami chop etilmaydi, faqat nomi va narxi chiqadi. Shtrix-kod qo'shish uchun tovarni tahrirlang.</p>
       </div>
 
       <div style="flex:0 0 270px;min-width:230px">
@@ -2527,7 +2582,7 @@ body.dark tr:hover td {
       <div style="flex:1 1 400px;min-width:280px">
         <div class="field" style="margin-bottom:.85rem">
           <label>Tovar</label>
-          <select id="label-epson-product-select" onchange="renderEpsonLabelPreview()"></select>
+          <select id="label-epson-product-select" onchange="syncLabelBarcodeAvailability('label-epson-product-select',['label-epson-show-barcode','label-epson-show-barcode-num'],'label-epson-barcode-hint');renderEpsonLabelPreview()"></select>
         </div>
         <div class="field" style="margin-bottom:.85rem">
           <label>Nechta yorliq chop etilsin?</label>
@@ -2637,7 +2692,7 @@ body.dark tr:hover td {
             <input type="checkbox" id="label-epson-show-barcode-num" onchange="renderEpsonLabelPreview()"> Shtrix-kod raqami (son ko'rinishida)
           </label>
         </div>
-        <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Faqat shtrix-kodi (barcode) kiritilgan tovarlar ro'yxatda ko'rinadi.</p>
+        <p id="label-epson-barcode-hint" style="display:none;font-size:12px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.5rem .65rem;margin-bottom:.5rem">⚠ Bu tovarda shtrix-kod (barcode) kiritilmagan — shuning uchun shtrix-kod tasviri/raqami chop etilmaydi, faqat nomi va narxi chiqadi. Shtrix-kod qo'shish uchun tovarni tahrirlang.</p>
       </div>
 
       <div style="flex:0 0 260px;min-width:230px">
@@ -2738,7 +2793,7 @@ body.dark tr:hover td {
 
 <!-- Qarzdor login/parol tahrirlash modal -->
 <div class="modal-overlay hidden" id="modal-debtor-login">
-  <div class="modal" style="max-width:400px">
+  <div class="modal" style="max-width:420px">
     <h3>🔐 Login/Parol tahrirlash</h3>
     <div class="field" style="margin-bottom:.85rem">
       <label>Qarzdor</label>
@@ -2750,13 +2805,22 @@ body.dark tr:hover td {
     </div>
     <div class="field" style="margin-bottom:.85rem">
       <label>Login</label>
-      <input id="dl-login" placeholder="Yangi login">
+      <div style="display:flex;gap:.4rem">
+        <input id="dl-login" placeholder="Yangi login" style="flex:1">
+        <button type="button" class="btn sm" onclick="copyDebtorLoginField('dl-login')" title="Nusxalash">📋</button>
+      </div>
     </div>
     <div class="field" style="margin-bottom:.85rem">
       <label>Parol</label>
-      <input id="dl-password" placeholder="Yangi parol">
+      <div style="display:flex;gap:.4rem">
+        <input id="dl-password" placeholder="Yangi parol" style="flex:1">
+        <button type="button" class="btn sm" onclick="copyDebtorLoginField('dl-password')" title="Nusxalash">📋</button>
+        <button type="button" class="btn sm" onclick="generateDebtorPassword()" title="Kuchli tasodifiy parol yaratish">🎲</button>
+      </div>
     </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.5rem;margin-bottom:.85rem">🎲 — tasodifiy xavfsiz parol yaratadi. 📋 — maydondagi matnni nusxalaydi (mijozga yuborish uchun qulay).</p>
     <div class="modal-footer">
+      <button class="btn red" style="margin-right:auto" onclick="revokeDebtorLogin()" title="Bu qarzdorning login/parolini o'chirib, kirish huquqini bekor qiladi">🚫 Kirishni bekor qilish</button>
       <button class="btn" onclick="closeModal('modal-debtor-login')">Bekor qilish</button>
       <button class="btn blue" onclick="saveDebtorLogin()">Saqlash</button>
     </div>
@@ -3414,7 +3478,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3535,7 +3599,7 @@ window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!'
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null}))
+  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null}))
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
@@ -3825,6 +3889,7 @@ function startListeners(){
       DB.appTitle=d.appTitle||'';
       DB.labelSettings=d.labelSettings||null;
       DB.labelTemplates=d.labelTemplates||null;
+      DB.receiptDesign=d.receiptDesign||null;
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
       if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
       if(document.getElementById('page-settings')?.classList.contains('active')){
@@ -3832,6 +3897,7 @@ function startListeners(){
         if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
         if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
         if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
+        if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
       }
     }
   });
@@ -4001,10 +4067,11 @@ async function init(){
           DB.appTitle=d.appTitle||'';
           DB.labelSettings=d.labelSettings||null;
           DB.labelTemplates=d.labelTemplates||null;
+          DB.receiptDesign=d.receiptDesign||null;
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -4226,6 +4293,7 @@ window.showPage = function(page, role){
     if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
     if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
     if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
+    if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
     if(typeof window.renderBackupStatus==='function') window.renderBackupStatus();
   }
   if(page==='dashboard'){ renderDashboard(); if(typeof window.renderBackupStatus==='function') window.renderBackupStatus(); }
@@ -5084,8 +5152,8 @@ function updateDebtLoginType(org){
   const typeEl = document.getElementById('debt-login-type');
   const noteEl = document.getElementById('debt-login-note');
   if(org){
-    typeEl.textContent = '🏢 Tashkilot ('+org+')';
-    noteEl.textContent = 'Tashkilot uchun bitta login: barcha ishchilar shu org ga bog\'lanadi';
+    typeEl.textContent = '👤 Shaxs ('+org+' tashkiloti xodimi)';
+    noteEl.textContent = "Faqat shu shaxsning O'ZI uchun — o'zining qarzinigina ko'radi. Butun " + org + " tashkilotini ko'rsatuvchi umumiy login Qarzdorlar sahifasida \"🔑 Tashkilot login\" tugmasi orqali beriladi.";
   } else {
     typeEl.textContent = '👤 Shaxs';
     noteEl.textContent = 'Shaxs uchun shaxsiy login/parol yaratiladi';
@@ -5138,9 +5206,9 @@ window.selectDebtName = function(name){
   const org = document.getElementById('debt-org').value.trim();
   let debtor;
   if(org){
-    debtor = DB.debtors.find(d=>d.org===org && d.name===name);
+    debtor = DB.debtors.find(d=>d.org===org && d.name===name && !d.isOrgAccount);
   } else {
-    debtor = DB.debtors.find(d=>d.name===name && !d.org);
+    debtor = DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
   }
   if(debtor){
     if(debtor.phone) document.getElementById('debt-phone').value = debtor.phone||'';
@@ -5186,13 +5254,29 @@ window.doDebtSell = async function(){
   // lekin BOSHQA tashkilotga tegishli bir xil ismli odam bilan HECH QACHON
   // aralashtirilmaydi.
   let debtor = org
-    ? DB.debtors.find(d=>d.org===org && d.name===name)
-    : DB.debtors.find(d=>d.name===name && !d.org);
-  if(!debtor && org) debtor = DB.debtors.find(d=>d.name===name && !d.org);
+    ? DB.debtors.find(d=>d.org===org && d.name===name && !d.isOrgAccount)
+    : DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
+  if(!debtor && org) debtor = DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
 
   const debtorId = debtor ? debtor.id : uid();
-  const finalLogin = loginVal || debtor?.login || (org ? org.replace(/\s+/g,'_').toLowerCase() : name.replace(/\s+/g,'_').toLowerCase());
-  const finalPass  = passVal  || debtor?.password || '1234';
+  // TUZATILDI (MUHIM): ilgari login/parol bo'sh qoldirilsa, avtomatik ravishda
+  // TASHKILOT NOMIDAN hosil qilingan login (masalan "guliston_mfy") va DOIM
+  // BIR XIL zaif "1234" parol berilardi. Bu degani — bitta tashkilot ichidagi
+  // BARCHA turli odamlar (turli debtorId) BIR XIL loginga ega bo'lib qolardi.
+  // Qarz portaliga shu login bilan kirilganda, tizim qaysi odamning yozuvini
+  // qaytarishini ANIQLAY OLMASDI (Firestore'da bir nechta hujjat mos kelardi) —
+  // natijada tasodifan boshqa odamning yoki noto'g'ri ma'lumot ko'rsatilishi
+  // mumkin edi. Endi: login/parol FAQAT admin aniq kiritganda yoki bu odam
+  // ilgari allaqachon o'ziga xos loginga ega bo'lsa saqlanadi — aks holda
+  // bo'sh qoldiriladi (kirish keyinroq, "🔐 Login yaratish" tugmasi orqali,
+  // xavfsiz tarzda berilishi mumkin). Butun TASHKILOT uchun kirish esa endi
+  // alohida, maxsus "🔑 Tashkilot login" orqali beriladi (pastga qarang).
+  const finalLogin = loginVal || debtor?.login || '';
+  const finalPass  = passVal  || debtor?.password || '';
+  if(finalLogin){
+    const dupLogin = DB.debtors.find(d=>d.id!==debtorId && d.login && d.login===finalLogin);
+    if(dupLogin){ toast(`Bu login allaqachon "${dupLogin.name}"da ishlatilgan — boshqa login kiriting`,'red'); return; }
+  }
 
   const newDebtor = {
     id: debtorId, name, org: org||'', phone: phone||'',
@@ -5342,24 +5426,36 @@ window.renderDebts = function(){
     const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
     const headerTitle = g.isOrg ? `🏢 ${esc(g.org)}` : `👤 ${esc(people[0].debtorName)}`;
     const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
+    // YANGI: TASHKILOT darajasidagi umumiy login (butun tashkilotni,
+    // shaxslar kesimida to'liq ko'rsatadigan) — har bir alohida xodimning
+    // shaxsiy loginidan MUSTAQIL.
+    const orgAcct = g.isOrg ? DB.debtors.find(d=>d.isOrgAccount && d.org===g.org) : null;
+    const orgAcctInfo = (g.isOrg && orgAcct && orgAcct.login)
+      ? `<div style="font-size:12px;color:var(--text3);margin-top:.3rem">🔑 Tashkilot login: <strong>${esc(orgAcct.login)}</strong> · Parol: <strong>${esc(orgAcct.password)}</strong></div>`
+      : '';
+    const orgAcctBtn = g.isOrg
+      ? `<button class="btn sm blue" style="margin-top:.4rem" onclick="openOrgAccountLogin('${g.org.replace(/'/g,"\\'")}')" title="Butun tashkilotni (barcha xodimlarni, shaxslar kesimida) ko'rsatadigan YAGONA login/parol">🔑 Tashkilot login</button>`
+      : '';
 
     return `<div class="card" style="margin-bottom:.85rem">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
         <div>
           <div style="font-weight:700;font-size:16px">${headerTitle}</div>
           ${headerSub?`<div style="font-size:12px;color:var(--text3)">${headerSub}</div>`:''}
+          ${orgAcctInfo}
         </div>
         <div style="text-align:right">
           <div style="font-size:22px;font-weight:700;color:${totalOwed>0?'var(--amber)':'var(--green)'}">${fmt(totalOwed)} so'm</div>
           <div style="font-size:12px;color:var(--text3)">${totalOwed>0?'Qarz bor':'To\'liq to\'langan'}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:.2rem">${totalCount} ta qarz</div>
           ${g.isOrg?`<button class="btn sm" style="margin-top:.4rem" onclick="printOrgDebt('${g.org.replace(/'/g,"\\'")}')" title="Butun tashkilot qarzini chop etish">🖨 Tashkilot ro'yxati</button>`:''}
+          ${orgAcctBtn}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:.85rem">
         ${people.map(p=>{
           const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
-          const debtor = DB.debtors.find(dd=>dd.name===p.debtorName && (dd.org===g.org || (!g.org && !dd.org)));
+          const debtor = DB.debtors.find(dd=>dd.name===p.debtorName && !dd.isOrgAccount && (dd.org===g.org || (!g.org && !dd.org)));
           const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${esc(debtor.login)}</strong> · Parol: <strong>${esc(debtor.password)}</strong></div>` : '';
           const loginBtn = debtor
             ? `<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`
@@ -5433,7 +5529,35 @@ window.openDebtorLogin = function(id){
   if(!debtor) return;
   editingDebtorId = id;
   document.getElementById('dl-name').value = debtor.name + (debtor.org ? ' · '+debtor.org : '');
-  document.getElementById('dl-type').value = debtor.org ? '🏢 Tashkilot' : '👤 Shaxs';
+  document.getElementById('dl-type').value = debtor.org ? "👤 Shaxs (faqat O'ZINING qarzini ko'radi)" : '👤 Shaxs';
+  document.getElementById('dl-login').value = debtor.login||'';
+  document.getElementById('dl-password').value = debtor.password||'';
+  openModal('modal-debtor-login');
+}
+
+// YANGI: TASHKILOT darajasidagi (butun tashkilotni ko'rsatuvchi, shaxslar
+// kesimida to'liq ma'lumot beruvchi) alohida login/parol. Bu HECH BIR aniq
+// shaxsga tegishli emas — mavjud "debtors" kolleksiyasida maxsus
+// isOrgAccount:true belgisi bilan alohida yozuv sifatida saqlanadi, shunda
+// (a) yangi Firestore to'plami/qoidalari kerak bo'lmaydi va (b) debt.html
+// buni oddiy shaxsiy logindan (isOrgAccount orqali) aniq ajrata oladi.
+// Muhim: bitta tashkilot uchun ID doim BIR XIL (org nomidan hosil qilinadi)
+// — shu bilan tugma qayta bosilganda YANGI yozuv yaratilmay, xuddi
+// avvalgisi tahrirlanadi.
+function orgAccountId(org){
+  return 'orgacct_' + String(org).toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi,'_').slice(0,80);
+}
+window.openOrgAccountLogin = function(org){
+  if(!org) return;
+  const id = orgAccountId(org);
+  let debtor = DB.debtors.find(d=>d.id===id);
+  if(!debtor){
+    debtor = { id, name: org, org: org, isOrgAccount:true, login:'', password:'', phone:'', createdAt:new Date().toISOString() };
+    fbSaveDebtor(debtor).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  }
+  editingDebtorId = id;
+  document.getElementById('dl-name').value = '🏢 '+org;
+  document.getElementById('dl-type').value = "🏢 Tashkilot (BUTUN tashkilotni, barcha xodimlarni ko'radi)";
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
   openModal('modal-debtor-login');
@@ -5445,6 +5569,11 @@ window.saveDebtorLogin = function(){
   if(!login || !password){ toast('Login va parolni kiriting','red'); return; }
   const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
   if(!debtor) return;
+  // Bir xil login boshqa qarzdor/tashkilotda ishlatilmasligini tekshiramiz —
+  // aks holda ikkita turli hisob bir xil login bilan to'qnashib, tizim
+  // qaysi birini ochishni bilmay qolishi mumkin edi.
+  const dup = DB.debtors.find(d=>d.id!==editingDebtorId && d.login && d.login===login);
+  if(dup){ toast(`Bu login allaqachon "${dup.name}"da ishlatilgan`,'red'); return; }
   closeModal('modal-debtor-login');
   toast('Login/Parol yangilandi','green');
   const p = fbSaveDebtor({...debtor, login, password});
@@ -5452,12 +5581,46 @@ window.saveDebtorLogin = function(){
   p.catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
+// YANGI: kirishni butunlay bekor qiladi (login/parolni tozalaydi) — shaxsni
+// yoki tashkilot hisobini o'chirmasdan, faqat portalga kira olmaydigan qiladi.
+window.revokeDebtorLogin = function(){
+  const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
+  if(!debtor) return;
+  confirm2("Kirishni bekor qilish", `"${debtor.name}" endi qarz portaliga kira olmaydi. Davom etilsinmi?`, ()=>{
+    closeModal('modal-debtor-login');
+    toast('Kirish huquqi bekor qilindi','amber');
+    fbSaveDebtor({...debtor, login:'', password:''}).then(()=>renderDebts()).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  });
+}
+
+// YANGI: mijozga yuborish uchun login/parolni bitta bosishda buferga nusxalaydi.
+window.copyDebtorLoginField = function(fieldId){
+  const el = document.getElementById(fieldId);
+  if(!el || !el.value){ toast("Nusxalash uchun avval maydonni to'ldiring",'amber'); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(el.value).then(()=> toast('✓ Nusxalandi','green')).catch(()=> toast("Nusxalab bo'lmadi",'red'));
+  } else {
+    el.select();
+    try{ document.execCommand('copy'); toast('✓ Nusxalandi','green'); }catch(e){ toast("Nusxalab bo'lmadi",'red'); }
+  }
+}
+// YANGI: "eslab qolish qiyin bo'lmagan, lekin taxmin qilib bo'lmaydigan"
+// tasodifiy parol — chalkash bo'lishi mumkin bo'lgan harflar (0/O, 1/l/I)
+// chiqarib tashlangan, 8 belgili.
+window.generateDebtorPassword = function(){
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let pass = '';
+  for(let i=0;i<8;i++) pass += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('dl-password').value = pass;
+  toast('🎲 Yangi parol yaratildi — saqlashni unutmang','blue');
+}
+
 // Ba'zi odamlarning debitor yozuvi topilmasligi mumkin (masalan, eski xato
 // tufayli tashkilot ichidagi ismlar bir-birining ustidan yozilib qolgan hollarda).
 // Bu funksiya shunday odamlar uchun YANGI debitor yozuvini yaratib, so'ng
 // login/parol tahrirlash oynasini ochadi.
 window.createDebtorLogin = function(name, org, phone){
-  let debtor = DB.debtors.find(d=>d.name===name && ((org && d.org===org) || (!org && !d.org)));
+  let debtor = DB.debtors.find(d=>d.name===name && !d.isOrgAccount && ((org && d.org===org) || (!org && !d.org)));
   if(!debtor){
     debtor = {
       id: uid(),
@@ -6737,7 +6900,108 @@ window.saveReceiptLinksSettings=function(){
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
-// ===== ZAXIRA NUSXA (BACKUP) VA TIKLASH (RESTORE) =====
+// ===== CHEK SAHIFASI DIZAYNI (receipt.html to'liq sozlash) =====
+// YANGI: admin mijoz ko'radigan onlayn chek sahifasining ranglari, matnlari
+// va qaysi bo'limlar ko'rinishini to'liq boshqara oladi. receipt.html bu
+// sozlamalarni Firestore'dan REAL VAQTDA (onSnapshot) o'qiydi — shuning
+// uchun o'zgarish saqlangach, hatto AVVAL chop etilgan (eski) cheklar ham
+// darhol yangi ko'rinishda ochiladi (faqat dizayn — xarid ma'lumotlari
+// o'zgarmaydi, ular chek yaratilgan paytdagi holatda saqlanib qoladi).
+function defaultReceiptDesign(){
+  return {
+    paper:'#fbfaf6', ink:'#1e1d1a', inkSoft:'#6b6558', line:'#d8d2c2', bg:'#e9e4d8',
+    accent:'#a8462f', accentFollowBrand:false,
+    font:'mono', width:380,
+    eyebrow:"Xarid tasdig'i", totalLabel:"Jami to'lov", stamp:'✓ Tasdiqlangan', linksTitle:"Bog'lanish va havolalar",
+    showLogo:true, showAddress:true, showPhone:true, showHours:true, showSeller:true,
+    showUnitPrice:true, showStamp:true, showLinks:true
+  };
+}
+window.fillReceiptDesignForm = function(){
+  const s = Object.assign(defaultReceiptDesign(), DB.receiptDesign||{});
+  const set=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.value=val; };
+  const setChk=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.checked=!!val; };
+  set('rd-paper', s.paper); set('rd-ink', s.ink); set('rd-ink-soft', s.inkSoft); set('rd-line', s.line); set('rd-bg', s.bg); set('rd-accent', s.accent);
+  setChk('rd-accent-follow-brand', s.accentFollowBrand);
+  set('rd-font', s.font); set('rd-width', String(s.width));
+  set('rd-eyebrow', s.eyebrow); set('rd-total-label', s.totalLabel); set('rd-stamp', s.stamp); set('rd-links-title', s.linksTitle);
+  setChk('rd-show-logo', s.showLogo); setChk('rd-show-address', s.showAddress); setChk('rd-show-phone', s.showPhone);
+  setChk('rd-show-hours', s.showHours); setChk('rd-show-seller', s.showSeller); setChk('rd-show-unitprice', s.showUnitPrice);
+  setChk('rd-show-stamp', s.showStamp); setChk('rd-show-links', s.showLinks);
+}
+function collectReceiptDesignForm(){
+  const val=(id)=>document.getElementById(id)?.value;
+  const chk=(id)=>!!document.getElementById(id)?.checked;
+  return {
+    paper: val('rd-paper')||'#fbfaf6', ink: val('rd-ink')||'#1e1d1a', inkSoft: val('rd-ink-soft')||'#6b6558',
+    line: val('rd-line')||'#d8d2c2', bg: val('rd-bg')||'#e9e4d8', accent: val('rd-accent')||'#a8462f',
+    accentFollowBrand: chk('rd-accent-follow-brand'),
+    font: val('rd-font')||'mono', width: parseInt(val('rd-width'),10)||380,
+    eyebrow: (val('rd-eyebrow')||"Xarid tasdig'i").trim(), totalLabel: (val('rd-total-label')||"Jami to'lov").trim(),
+    stamp: (val('rd-stamp')||'✓ Tasdiqlangan').trim(), linksTitle: (val('rd-links-title')||"Bog'lanish va havolalar").trim(),
+    showLogo: chk('rd-show-logo'), showAddress: chk('rd-show-address'), showPhone: chk('rd-show-phone'),
+    showHours: chk('rd-show-hours'), showSeller: chk('rd-show-seller'), showUnitPrice: chk('rd-show-unitprice'),
+    showStamp: chk('rd-show-stamp'), showLinks: chk('rd-show-links')
+  };
+}
+window.saveReceiptDesignSettings = function(){
+  DB.receiptDesign = collectReceiptDesignForm();
+  toast('✓ Chek dizayni saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+window.resetReceiptDesignDefaults = function(){
+  confirm2('Standart holatga qaytarish', 'Chek dizayni sozlamalari asl (standart) holatiga qaytariladi. Davom etilsinmi?', ()=>{
+    DB.receiptDesign = defaultReceiptDesign();
+    window.fillReceiptDesignForm();
+    updateReceiptPreviewDraft();
+    toast('✓ Standart holatga qaytarildi — saqlashni unutmang','amber');
+  });
+}
+// YANGI: "Jonli ko'rish" — receipt.html'ni namuna (haqiqiy bo'lmagan) xarid
+// ma'lumoti bilan, PREVIEW rejimida yangi oynada ochadi. Shu darcha ochiq
+// turgan holda pastdagi maydonlarni o'zgartirsangiz — localStorage orqali
+// (brauzer o'zining ichki "storage" hodisasi bilan) boshqa oynadagi
+// receipt.html buni DARHOL sezib, ko'rinishni qayta chizadi — sahifani
+// qayta yuklash yoki saqlash tugmasini bosish shart emas.
+const RECEIPT_PREVIEW_STORAGE_KEY = 'dokon_receipt_design_preview';
+function updateReceiptPreviewDraft(){
+  const draft = {
+    design: collectReceiptDesignForm(),
+    sample: {
+      shopName: DB.shopName || "Do'kon", shopLogo: DB.shopLogo || '',
+      shopAddress: DB.shopAddress||'', shopPhone: DB.shopPhone||'', workHours: DB.workHours||'',
+      sellerName: (DB.sellers&&DB.sellers[0]?.name) || 'Aziz',
+      date: new Date().toISOString(),
+      items: [
+        {name:"Coca-Cola 1.5L", qty:2, price:14000, total:28000},
+        {name:"Non", qty:3, price:3000, total:9000},
+        {name:"Yog' 1L", qty:1, price:22000, total:22000}
+      ],
+      total: 59000,
+      receiptFooter: DB.receiptFooter || "Xaridingiz uchun rahmat!",
+      brandAccent1: DB.brandAccent1||'',
+      links: (DB.receiptLinks||[]).filter(l=>l.url)
+    }
+  };
+  try{ localStorage.setItem(RECEIPT_PREVIEW_STORAGE_KEY, JSON.stringify(draft)); }catch(e){}
+}
+window.previewReceiptDesign = function(){
+  updateReceiptPreviewDraft();
+  const w = window.open('receipt.html?preview=1', 'dokon_receipt_preview');
+  if(!w){ toast("Yangi oyna ochilmadi — brauzeringiz popup'larni bloklagan bo'lishi mumkin",'red'); return; }
+  // Sozlamalar formasidagi HAR BIR o'zgarishda darhol preview'ga uzatish
+  // (debounce bilan — har harf terilganda emas, qisqa pauzadan so'ng).
+  if(!window._rdPreviewWired){
+    window._rdPreviewWired = true;
+    let t;
+    document.getElementById('settings-receiptdesign-card')?.addEventListener('input', ()=>{
+      clearTimeout(t); t=setTimeout(updateReceiptPreviewDraft, 150);
+    });
+    document.getElementById('settings-receiptdesign-card')?.addEventListener('change', updateReceiptPreviewDraft);
+  }
+}
+
+
 // ESKARTMA: Bu yerda ilgari alohida, cheklangan (faqat products/sales/...)
 // exportBackupJSON/importBackupJSON funksiyalari bor edi — ular pastdagi
 // "TO'LIQ ZAXIRA NUSXA (BACKUP/RESTORE)" bo'limidagi window.exportFullBackup /
@@ -6774,11 +7038,30 @@ window.toggleDarkMode=function(){
 
 // ===== CHEK (RECEIPT) CHIQARISH =====
 let lastReceiptData=null;
-// YANGI: har bir chekka QR kod qo'shiladi. QR kod GitHub Pages'dagi
-// alohida "receipt.html" sahifasiga (receiptId bilan) ishora qiladi —
-// shu ID orqali Firestore'dan xarid ma'lumotlari o'qib ko'rsatiladi.
-// Sahifa manzilini boshqa domenga ko'chirsangiz shu yerni yangilang.
-const RECEIPT_PAGE_URL = 'https://linvern0.github.io/market/receipt.html';
+// YANGI: har bir chekka QR kod qo'shiladi. QR kod "receipt.html" sahifasiga
+// (receiptId bilan) ishora qiladi — shu ID orqali Firestore'dan xarid
+// ma'lumotlari o'qib ko'rsatiladi.
+// TUZATILDI: ilgari bu manzil QATTIQ (hardcoded) bitta domenga
+// ('linvern0.github.io/market/') yozilgan edi. Agar ilova BOSHQA domen/
+// papkaga joylashtirilsa (masalan boshqa GitHub repo, boshqa hosting yoki
+// index.html bilan bir xil papkada emas joyga ko'chirilsa), mijoz QR
+// kodni skanerlaganda "sahifa topilmadi" (404) xatosiga uchrardi — chekning
+// eng muhim qismi (onlayn chek/QR) butunlay ishlamay qolardi. Endi manzil
+// ilovaning O'ZI qaysi domen/papkada ishlab turgan bo'lsa, o'shandan
+// AVTOMATIK hisoblanadi (receipt.html shu index.html bilan BIR XIL papkada
+// turishi kerak) — shu bilan qayerga joylashtirilishidan qat'i nazar QR
+// to'g'ri ishlaydi. Faqat mahalliy (file://, localhost) sinovda, qattiq
+// yozilgan asl manzilga qaytiladi (chunki localhost havolasini telefon
+// kamerasi bilan ochib bo'lmaydi).
+const RECEIPT_PAGE_URL = (function(){
+  const fallback = 'https://linvern0.github.io/market/receipt.html';
+  try{
+    const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(location.hostname) || location.protocol === 'file:';
+    if(isLocal) return fallback;
+    const dir = location.pathname.replace(/[^/]*$/, ''); // oxirgi bo'lak (masalan "index.html") olib tashlanadi
+    return `${location.origin}${dir}receipt.html`;
+  }catch(e){ return fallback; }
+})();
 function receiptQrLink(receiptId){
   return `${RECEIPT_PAGE_URL}?id=${encodeURIComponent(receiptId)}`;
 }
@@ -6960,7 +7243,7 @@ window.shareDebtReminder = function(org, debtorName, viaWhatsapp){
   lines.push("Iltimos, imkon qadar tezroq to'lovni amalga oshiring. Rahmat!");
   const text = lines.join('\n');
   if(viaWhatsapp){
-    const debtor = DB.debtors.find(dd=>dd.name===debtorName && (dd.org||'')===(org||''));
+    const debtor = DB.debtors.find(dd=>dd.name===debtorName && !dd.isOrgAccount && (dd.org||'')===(org||''));
     const rawPhone = (debtor?.phone||'').replace(/[^\d+]/g,'');
     if(!rawPhone){ toast("Bu qarzdorning telefon raqami kiritilmagan",'red'); return; }
     // Uzbekiston raqamlari uchun: agar +998 bilan boshlanmasa va 9 xonali bo'lsa, 998 qo'shamiz.
@@ -7194,6 +7477,32 @@ function download(name,type,content){ const a=document.createElement('a'); a.hre
 // yoziladi va faqat o'sha iframe chop etiladi. Shu tufayli asosiy sahifaning
 // uzunligi yoki boshqa elementlari chop etishga umuman ta'sir qilmaydi va
 // bo'sh sahifalar chiqmaydi.
+// YANGI: chop etishdan oldin iframe ICHIDAGI barcha <img> elementlari
+// to'liq yuklanishini (yoki xatolik bilan tugashini) kutadi — ilgari har
+// doim QATTIQ 150ms kechikish qo'yilgan edi, bu FAQAT allaqachon tayyor
+// (data:URL) rasm uchun yetarli edi. Agar biror rasm tashqi manzildan
+// (masalan zaxira QR xizmati yoki sekin internetdagi tovar rasmi) hali
+// yuklanayotgan bo'lsa, chop etilgan hujjatda o'sha joy BO'SH chiqib
+// qolishi mumkin edi. Endi: barcha rasmlar tayyor bo'lgach (yoki
+// maxWaitMs oshib ketsa — abadiy kutib qolmasligi uchun) chop etish
+// buyrug'i beriladi.
+function waitForImagesThenPrint(frame, maxWaitMs){
+  maxWaitMs = maxWaitMs || 2500;
+  const doc = frame.contentWindow.document;
+  const printNow = ()=>{ try{ frame.contentWindow.focus(); }catch(e){} frame.contentWindow.print(); };
+  const imgs = Array.prototype.slice.call(doc.images || []);
+  const pending = imgs.filter(img=>!img.complete);
+  if(!pending.length){ setTimeout(printNow, 100); return; }
+  let remaining = pending.length;
+  let done = false;
+  const finish = ()=>{ if(done) return; done = true; printNow(); };
+  pending.forEach(img=>{
+    img.addEventListener('load', ()=>{ remaining--; if(remaining<=0) finish(); });
+    img.addEventListener('error', ()=>{ remaining--; if(remaining<=0) finish(); });
+  });
+  setTimeout(finish, maxWaitMs);
+}
+
 function printHTML(bodyHtml, opts={}){
   let frame = document.getElementById('print-frame');
   if(frame) frame.remove();
@@ -7240,12 +7549,7 @@ function printHTML(bodyHtml, opts={}){
       <div style="${opts.pageStyle||''}">${bodyHtml}</div>
     </body></html>`);
   doc.close();
-  frame.onload = function(){
-    setTimeout(()=>{
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-    }, 150);
-  };
+  frame.onload = function(){ waitForImagesThenPrint(frame); };
 }
 
 // Sarlavha, izoh qatorlari, ustun sarlavhalari va qatorlar asosida jadval
@@ -10938,8 +11242,12 @@ window.deleteLabelTemplate = function(kind){
 // ===== 1-QADAM: PRINTER TURINI TANLASH =====
 // "Yorliq" tugmasi bosilganda ENG AVVAL shu tanlov oynasi chiqadi.
 window.openPrintLabelsModal = function(){
-  const withBarcode = (DB.products||[]).filter(p=>p.barcode);
-  if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
+  // TUZATILDI: ilgari FAQAT barcode kiritilgan tovarlar bo'lsa oyna ochilardi —
+  // shtrix-kodsiz tovar uchun oddiy narx yorlig'ini (nomi+narxi, chiziqsiz)
+  // chop etishning iloji umuman yo'q edi. Endi kamida BITTA tovar bo'lsa
+  // yetarli; shtrix-kod tasviri faqat shu maydoni to'ldirilgan tovarlar
+  // uchun ko'rsatiladi (pastda avtomatik o'chib/yoqilib turadi).
+  if(!(DB.products||[]).length){ toast("Avval tovar qo'shing",'red'); return; }
   openModal('modal-print-choice');
 }
 window.selectLabelPrinter = function(type){
@@ -11015,13 +11323,63 @@ window.resetLabelSettings = function(){
 }
 function openXprinterLabelsModal(){
   const sel = document.getElementById('label-product-select');
-  const withBarcode = (DB.products||[]).filter(p=>p.barcode);
-  if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
-  sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
+  const all = (DB.products||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'uz'));
+  if(!all.length){ toast("Avval tovar qo'shing",'red'); return; }
+  sel.innerHTML = all.map(p=>`<option value="${p.id}" data-has-barcode="${p.barcode?'1':'0'}">${p.barcode?'':'⚠ '}${esc(p.name)}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm${p.barcode?'':' (shtrix-kodsiz)'}</option>`).join('');
   document.getElementById('label-qty').value = 1;
   populateLabelTemplateSelect('xprinter');
   applyLabelSettingsToForm(loadLabelSettingsAll().xprinter);
+  syncLabelBarcodeAvailability('label-product-select', ['label-show-barcode','label-show-barcode-num'], 'label-barcode-hint');
+  renderLabelPreview();
   openModal('modal-print-labels');
+}
+
+// YANGI: tovar tanlash ro'yxatida shtrix-kodsiz tovar tanlansa, "Shtrix-kod
+// tasviri"/"raqami" katakchalarini avtomatik o'chirib (va bosib bo'lmaydigan
+// qilib) qo'yadi hamda tushuntiruvchi eslatma ko'rsatadi — aks holda
+// foydalanuvchi katakchani belgilab qo'yib, natijada bo'sh joy chiqqanini
+// tushunmay qolishi mumkin edi.
+function syncLabelBarcodeAvailability(selectId, checkboxIds, hintId){
+  const sel = document.getElementById(selectId);
+  const hint = document.getElementById(hintId);
+  if(!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  const hasBarcode = !!(opt && opt.dataset.hasBarcode === '1');
+  checkboxIds.forEach(id=>{
+    const cb = document.getElementById(id);
+    if(!cb) return;
+    cb.disabled = !hasBarcode;
+    if(!hasBarcode) cb.checked = false;
+  });
+  if(hint) hint.style.display = hasBarcode ? 'none' : 'block';
+}
+
+// YANGI: shtrix-kod SONINI ko'rinishiga (uzunligiga) qarab TO'G'RI standart
+// formatni tanlaydi. Ilgari HAMMA shtrix-kodlar majburan CODE128 sifatida
+// chizilardi — bu ko'rinishda "ishlaydi" (ba'zi skanerlar CODE128'ni ham
+// o'qiydi), lekin ko'plab do'kon kassa skanerlari faqat EAN-13/EAN-8/UPC-A
+// kabi standart chakana formatlarni kutadi va ularni ANIQROQ/tezroq o'qiydi.
+// Format mos kelmasa (masalan checksum xato) JsBarcode xato tashlaydi —
+// shu holatda ham xavfsiz CODE128'ga qaytariladi, shunda yorliq baribir chiqadi.
+function pickBarcodeFormat(code){
+  const digits = String(code||'').replace(/\D/g,'');
+  if(digits.length===13) return 'EAN13';
+  if(digits.length===12) return 'UPC';
+  if(digits.length===8)  return 'EAN8';
+  return 'CODE128';
+}
+function renderBarcodeToCanvas(canvas, code, opts){
+  const preferred = pickBarcodeFormat(code);
+  try{
+    JsBarcode(canvas, code, {...opts, format:preferred});
+    return true;
+  }catch(e){
+    if(preferred==='CODE128') return false; // hatto CODE128 ham ishlamadi
+    try{
+      JsBarcode(canvas, code, {...opts, format:'CODE128'});
+      return true;
+    }catch(e2){ return false; }
+  }
 }
 
 // Bitta yorliqning ICHKI HTML'ini hosil qiladi (chop etish va jonli
@@ -11039,10 +11397,10 @@ function buildLabelInnerHTML(p, s, refWidthOverride){
   let barcodeHtml = '';
   if(s.showBarcode && p && p.barcode && typeof JsBarcode !== 'undefined'){
     const canvas = document.createElement('canvas');
-    try{
-      JsBarcode(canvas, p.barcode, {format:'CODE128', displayValue:s.showBarcodeNum, fontSize:barcodeFontPx, height:barcodeHeight, margin:2});
+    const ok = renderBarcodeToCanvas(canvas, p.barcode, {displayValue:s.showBarcodeNum, fontSize:barcodeFontPx, height:barcodeHeight, margin:2});
+    if(ok){
       barcodeHtml = `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;height:auto;display:block;margin:0 auto">`;
-    }catch(e){
+    } else {
       barcodeHtml = `<div style="font-size:${barcodeFontPx}px;color:#b91c1c">Shtrix-kod xato</div>`;
     }
   } else if(s.showBarcodeNum && p && p.barcode){
@@ -11217,12 +11575,7 @@ function printLabelsHTML(bodyHtml, opts={}){
     </style></head>
     <body>${bodyHtml}</body></html>`);
   doc.close();
-  frame.onload = function(){
-    setTimeout(()=>{
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-    }, 150);
-  };
+  frame.onload = function(){ waitForImagesThenPrint(frame); };
 }
 
 // ===== EPSON (A4 varaqqa gridda chop etish) sozlamalari =====
@@ -11296,12 +11649,14 @@ window.resetEpsonLabelSettings = function(){
 }
 function openEpsonLabelsModal(){
   const sel = document.getElementById('label-epson-product-select');
-  const withBarcode = (DB.products||[]).filter(p=>p.barcode);
-  if(!withBarcode.length){ toast("Shtrix-kodli tovar topilmadi. Avval tovarga barcode kiriting.",'red'); return; }
-  sel.innerHTML = withBarcode.map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm</option>`).join('');
+  const all = (DB.products||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'uz'));
+  if(!all.length){ toast("Avval tovar qo'shing",'red'); return; }
+  sel.innerHTML = all.map(p=>`<option value="${p.id}" data-has-barcode="${p.barcode?'1':'0'}">${p.barcode?'':'⚠ '}${esc(p.name)}${p.volume?' · '+p.volume+'L':''} — ${fmt(p.price)} so'm${p.barcode?'':' (shtrix-kodsiz)'}</option>`).join('');
   document.getElementById('label-epson-qty').value = 1;
   populateLabelTemplateSelect('epson');
   applyEpsonSettingsToForm(loadLabelSettingsAll().epson);
+  syncLabelBarcodeAvailability('label-epson-product-select', ['label-epson-show-barcode','label-epson-show-barcode-num'], 'label-epson-barcode-hint');
+  renderEpsonLabelPreview();
   openModal('modal-print-labels-epson');
 }
 
@@ -11433,12 +11788,7 @@ function printEpsonSheetHTML(sheetsHtml, s){
     </style></head>
     <body>${sheetsHtml}</body></html>`);
   doc.close();
-  frame.onload = function(){
-    setTimeout(()=>{
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-    }, 150);
-  };
+  frame.onload = function(){ waitForImagesThenPrint(frame); };
 }
 
 // ---------- 10.5 EXCEL/CSV ORQALI OMMAVIY TOVAR IMPORT QILISH ----------

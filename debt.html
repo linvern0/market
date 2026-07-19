@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -118,6 +117,15 @@
   .person-filter{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}
   .person-filter .btn{font-size:12px;padding:.3rem .8rem}
 
+  /* TASHKILOT: shaxslar kesimida to'liq ma'lumot beruvchi xulosa panel */
+  .people-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1.25rem}
+  .person-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;cursor:pointer;transition:.15s}
+  .person-card:hover{border-color:var(--accent-border);box-shadow:var(--shadow)}
+  .person-card .pc-name{font-weight:700;font-size:14px;margin-bottom:.4rem;display:flex;align-items:center;gap:.35rem}
+  .person-card .pc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:.15rem}
+  .person-card .pc-owed{font-size:17px;font-weight:800;color:var(--amber);margin-top:.35rem}
+  .person-card .pc-owed.zero{color:var(--green)}
+
   @media(max-width:600px){
     input,select,textarea{font-size:16px!important}
     nav{height:52px;padding:0 1rem}
@@ -138,8 +146,33 @@
 <div id="loading-screen">
   <div class="spinner"></div>
   <h2>💳 Qarz Portali</h2>
-  <p>Ulanmoqda...</p>
+  <p id="loading-screen-msg">Ulanmoqda...</p>
 </div>
+<script>
+  // ZAXIRA "WATCHDOG": agar Firebase CDN (gstatic.com) tarmoq/VPN/filtr
+  // tomonidan bloklansa, <script type="module"> umuman ishga tushmaydi va
+  // spinner abadiy ekranda qolib qoladi. 12 soniyadan keyin hali ham
+  // ulanmagan bo'lsa, aniq xabar va "qayta urinish" tugmasi ko'rsatiladi.
+  (function(){
+    window.__appBooted = false;
+    setTimeout(function(){
+      if(window.__appBooted) return;
+      var scr = document.getElementById('loading-screen');
+      var msg = document.getElementById('loading-screen-msg');
+      if(scr && !scr.classList.contains('hidden')){
+        if(msg) msg.innerHTML = "Ulanib bo'lmadi. Internet aloqasi yoki tarmoq sozlamalarini (VPN/filtr) tekshiring.";
+        var spinner = scr.querySelector('.spinner');
+        if(spinner) spinner.style.display = 'none';
+        var btn = document.createElement('button');
+        btn.textContent = '🔄 Qayta urinish';
+        btn.className = 'btn-primary';
+        btn.style.cssText = 'max-width:220px;margin-top:.5rem';
+        btn.onclick = function(){ location.reload(); };
+        scr.appendChild(btn);
+      }
+    }, 12000);
+  })();
+</script>
 
 <div id="login-page" style="display:none">
   <div class="login-card">
@@ -188,6 +221,7 @@
 
     <div class="total-bar" id="total-bar"></div>
     <div class="stat-grid" id="stat-grid"></div>
+    <div id="org-people-summary"></div>
 
     <!-- Shaxslar bo'yicha filter (faqat tashkilot uchun) -->
     <div id="person-filter" class="person-filter" style="display:none">
@@ -220,6 +254,8 @@ const firebaseConfig = {
   appId: "1:1024226826394:web:3a052adf83b46202c96723",
   measurementId: "G-75RXS3WVWC"
 };
+
+window.__appBooted = true; // modul muvaffaqiyatli yuklandi — watchdog endi kerak emas
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -331,19 +367,30 @@ function startDebtListener(){
   // kirgach, boshqa barcha mijozlarning qarz ma'lumotlarini ham o'z
   // brauzerida (dev tools orqali) ko'ra olardi. Endi faqat shu
   // mijoz/tashkilotga tegishli yozuvlar so'raladi.
-  const q = currentDebtor.org
+  //
+  // TUZATILDI (MUHIM): ilgari BIRON BIR debtor yozuvida "org" maydoni
+  // to'ldirilgan bo'lsa (ya'ni bu odam biror tashkilot xodimi bo'lsa),
+  // u o'z shaxsiy logini bilan kirganda ham BUTUN TASHKILOTNING barcha
+  // xodimlari qarzini ko'rar edi — bu shaxsiy login uchun noto'g'ri va
+  // xavfsiz emas edi. Endi FAQAT chinakam "tashkilot hisobi" (isOrgAccount,
+  // admin tomonidan alohida "🔑 Tashkilot login" orqali yaratilgan) butun
+  // tashkilotni ko'radi. Oddiy xodim, hatto tashkilotga tegishli bo'lsa ham,
+  // o'z shaxsiy logini bilan kirganda FAQAT O'Z qarzini ko'radi.
+  const isOrgLogin = !!currentDebtor.isOrgAccount;
+  const q = isOrgLogin
     ? query(collection(db,'debts'), where('org','==', currentDebtor.org))
     : query(collection(db,'debts'), where('debtorId','==', currentDebtor.id));
 
   debtsListener = onSnapshot(q, snap=>{
     let all = snap.docs.map(d=>d.data());
     // Eski (debtorId maydonisiz) yozuvlar bilan orqaga moslik uchun,
-    // shaxs holatida ismi bo'yicha ham qo'shimcha so'rov yuboramiz.
-    if(!currentDebtor.org){
+    // shaxs holatida ismi (va tashkiloti) bo'yicha ham qo'shimcha so'rov
+    // yuboramiz — bu endi tashkilot ichidagi xodimlarga ham tegishli.
+    if(!isOrgLogin){
       render0(all);
       const qLegacy = query(collection(db,'debts'), where('debtorName','==', currentDebtor.name));
       getDocs(qLegacy).then(snap2=>{
-        const legacy = snap2.docs.map(d=>d.data()).filter(d=>!d.org);
+        const legacy = snap2.docs.map(d=>d.data()).filter(d=>(d.org||'')===(currentDebtor.org||''));
         const byId = new Map();
         all.concat(legacy).forEach(d=> byId.set(d.id||JSON.stringify(d), d));
         render0(Array.from(byId.values()));
@@ -366,20 +413,21 @@ function showApp(){
   document.querySelector('.btn-primary').textContent = 'Kirish →';
   document.querySelector('.btn-primary').disabled = false;
 
-  const nameLabel = currentDebtor.org
-    ? `${currentDebtor.org} (${currentDebtor.name})`
-    : currentDebtor.name;
+  const isOrgLogin = !!currentDebtor.isOrgAccount;
+  const nameLabel = isOrgLogin
+    ? `🏢 ${currentDebtor.org}`
+    : (currentDebtor.org ? `${currentDebtor.name} · ${currentDebtor.org}` : currentDebtor.name);
   document.getElementById('user-info').textContent = '👤 ' + nameLabel;
-  document.getElementById('page-title').textContent = currentDebtor.org ? `🏢 ${currentDebtor.org} qarzlari` : 'Mening qarzlarim';
-  document.getElementById('page-sub').textContent = 'Real vaqtda yangilanadi · ' + new Date().toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('page-title').textContent = isOrgLogin ? `🏢 ${currentDebtor.org} qarzlari` : 'Mening qarzlarim';
+  document.getElementById('page-sub').textContent = (isOrgLogin ? 'Real vaqtda yangilanadi · Barcha xodimlar bo\'yicha · ' : 'Real vaqtda yangilanadi · ') + new Date().toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'});
 
-  // Tashkilot uchun maxsus header
-  if(currentDebtor.org){
+  // Tashkilot HISOBI (isOrgAccount) uchun maxsus header — butun
+  // tashkilotni, shaxslar kesimida to'liq ko'rsatadi.
+  if(isOrgLogin){
     document.getElementById('org-header').style.display = 'flex';
     document.getElementById('org-name-display').textContent = currentDebtor.org;
-    document.getElementById('org-meta-display').textContent = `Rahbar: ${currentDebtor.name} · Login: ${currentDebtor.login}`;
-    
-    // Person filter ni ko'rsatish
+    document.getElementById('org-meta-display').textContent = `Tashkilot hisobi · Login: ${currentDebtor.login}`;
+
     document.getElementById('person-filter').style.display = 'flex';
     buildPersonFilter();
   } else {
@@ -474,7 +522,7 @@ function render(){
   // Tashkilot jami (bu ko'rsatkich ATAYLAB har doim BUTUN tashkilot bo'yicha
   // qoladi — sarlavhadagi "Jami qarz" tashkilotning umumiy holatini ko'rsatib
   // turishi kerak, shaxs tanlashdan qat'i nazar)
-  if(currentDebtor.org){
+  if(currentDebtor.isOrgAccount){
     const orgTotal = MY_DEBTS.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
     document.getElementById('org-total-display').textContent = fmt(orgTotal) + ' so\'m';
   }
@@ -486,6 +534,31 @@ function render(){
   document.getElementById('total-bar').innerHTML = totalOwedAll > 0
     ? `<div><div class="label">${totalBarLabel}</div></div><div class="amount">${fmt(totalOwedAll)} so'm</div>`
     : `<div><div class="label" style="color:#166534">✅ ${personFilter==='all' ? 'Barcha qarzlaringiz' : esc(personFilter)+'ning barcha qarzi'} to'langan!</div></div><div class="amount paid">0 so'm</div>`;
+
+  // YANGI: tashkilot hisobi "Barchasi"ni ko'rayotganda, pastdagi aralash
+  // ro'yxatdan oldin — HAR BIR XODIM bo'yicha alohida xulosa kartalari
+  // ko'rsatiladi (necha ta faol qarz, qancha summa, qancha to'langan).
+  // Shu bilan "kimning qanchasi bor" tugmani bosib qidirmasdan, bitta
+  // qarashda to'liq ko'rinadi. Kartaga bosilsa o'sha shaxsga filtrlanadi.
+  const summaryEl = document.getElementById('org-people-summary');
+  if(currentDebtor.isOrgAccount && personFilter==='all'){
+    const persons = [...new Set(MY_DEBTS.map(d=>d.debtorName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uz'));
+    summaryEl.innerHTML = `<p style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:.6rem">👥 Xodimlar kesimida to'liq ma'lumot</p>
+      <div class="people-summary-grid">${persons.map(name=>{
+        const pd = MY_DEBTS.filter(d=>d.debtorName===name);
+        const owed = pd.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+        const paidSum = pd.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
+        const activeCnt = pd.filter(d=>!d.paid).length;
+        return `<div class="person-card" onclick="setPersonFilter('${name.replace(/'/g,"\\'")}')">
+          <div class="pc-name">👤 ${esc(name)}</div>
+          <div class="pc-owed ${owed>0?'':'zero'}">${fmt(owed)} so'm</div>
+          <div class="pc-row"><span>⏳ Faol qarz</span><span>${activeCnt} ta</span></div>
+          <div class="pc-row"><span>✅ To'langan</span><span>${fmt(paidSum)} so'm</span></div>
+        </div>`;
+      }).join('')}</div>`;
+  } else {
+    summaryEl.innerHTML = '';
+  }
 
   document.getElementById('stat-grid').innerHTML = `
     <div class="stat amber"><div class="val">${fmt(totalOwedAll)}</div><div class="lbl">💳 Faol qarz</div></div>
