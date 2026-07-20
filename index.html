@@ -2421,6 +2421,12 @@ body.dark table {
       <input id="debt-phone" type="tel" placeholder="+998 90 000 00 00">
     </div>
 
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Telegram username <span style="color:var(--text3);font-weight:400">(ixtiyoriy, @siz)</span></label>
+      <input id="debt-username" type="text" placeholder="masalan: azizkarimov" autocomplete="off">
+      <div style="font-size:11.5px;color:var(--text3);margin-top:.25rem">Kiritilsa, mijoz botga /start yozganda darhol qarzi haqida ma'lumot oladi (telefon yubormasdan)</div>
+    </div>
+
     <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:14px;color:#92400e;font-weight:600">Qarz summasi:</span>
@@ -5580,7 +5586,7 @@ window.openDebtModal = function(){
   const orgVal = document.getElementById('debt-org').value.trim();
   updateDebtLoginType(orgVal);
   
-  ['debt-org','debt-name','debt-phone','debt-note','debt-login','debt-password'].forEach(id=>{
+  ['debt-org','debt-name','debt-phone','debt-username','debt-note','debt-login','debt-password'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   closeModal('modal-cart');
@@ -5621,6 +5627,7 @@ window.selectDebtOrg = function(org){
   // selectDebtName orqali — ORG+ISM juftligi mos kelganda — to'ldiriladi.
   document.getElementById('debt-name').value = '';
   document.getElementById('debt-phone').value = '';
+  document.getElementById('debt-username').value = '';
   document.getElementById('debt-login').value = '';
   document.getElementById('debt-password').value = '';
   document.getElementById('debt-name').focus();
@@ -5652,6 +5659,7 @@ window.selectDebtName = function(name){
   }
   if(debtor){
     if(debtor.phone) document.getElementById('debt-phone').value = debtor.phone||'';
+    document.getElementById('debt-username').value = debtor.telegramUsername||'';
     if(debtor.login) document.getElementById('debt-login').value = debtor.login||'';
     if(debtor.password) document.getElementById('debt-password').value = debtor.password||'';
   }
@@ -5668,6 +5676,7 @@ window.doDebtSell = async function(){
   const name = document.getElementById('debt-name').value.trim();
   const org = document.getElementById('debt-org').value.trim();
   const phone = document.getElementById('debt-phone').value.trim();
+  const username = document.getElementById('debt-username').value.trim().replace(/^@/,'').toLowerCase();
   const note = document.getElementById('debt-note').value.trim();
   const loginVal = document.getElementById('debt-login').value.trim();
   const passVal = document.getElementById('debt-password').value.trim();
@@ -5727,7 +5736,11 @@ window.doDebtSell = async function(){
     // debtor obyekti qayta yozilgani uchun o'sha bog'lanish albatta
     // saqlanishi kerak — aks holda mijoz Telegram xabarlarini olishni
     // to'xtatib qo'yadi.
-    telegramChatId: debtor?.telegramChatId || ''
+    telegramChatId: debtor?.telegramChatId || '',
+    // Admin tomonidan kiritilgan Telegram username (@ belgisisiz, kichik harf) —
+    // bot shu username orqali mijozni avtomatik taniydi va /start bosganda
+    // hech narsa so'ramasdan darhol qarz ma'lumotini yuboradi.
+    telegramUsername: username || debtor?.telegramUsername || ''
   };
 
   // LOCAL ga darhol yoz — UI zudlik bilan yangilansin
