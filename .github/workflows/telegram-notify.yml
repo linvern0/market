@@ -1,0 +1,31 @@
+name: Telegram Notifier (24/7)
+
+# Bu ish oqimi repo'ga push qilingandan keyin GitHub serverlarida ishlaydi —
+# sizning kompyuteringiz yoki telefoningizda ilova ochiq bo'lishi shart emas.
+# GitHub'ning cron jadvali ba'zan 5-15 daqiqa kechikishi mumkin (bu GitHub'ning
+# o'zining cheklovi, xatolik emas) — shu sababli har 15 daqiqada tekshiramiz.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # har 15 daqiqada (UTC vaqt bo'yicha)
+  workflow_dispatch: {}       # "Actions" bo'limidan qo'lda ham ishga tushirish mumkin
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo'ni yuklab olish
+        uses: actions/checkout@v4
+
+      - name: Node.js o'rnatish
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Bog'liqliklarni o'rnatish
+        run: npm install --omit=dev
+
+      - name: Telegram bildirishnomalarini tekshirish va yuborish
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: npm run notify
