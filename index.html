@@ -396,16 +396,13 @@
   @media(min-width:769px){.scan-fab{bottom:1.25rem}}
 </style>
 <style>
-  /* ===== TUNGI REJIM (DARK MODE) ===== */
-  body.dark{
-    --bg:#0f1419;--surface:#1a2129;--surface2:#212a34;
-    --border:#2d3742;--border2:#3a4652;
-    --text:#e5e9ee;--text2:#b0bac4;--text3:#7c8794;
-    --accent:#3b82f6;--accent-bg:#10302b;--accent-border:#3b5578;
-    --green:#22c55e;--green-bg:#132a1c;--green-border:#22492f;
-    --red:#f87171;--red-bg:#301a1a;--red-border:#552626;
-    --amber:#fbbf24;--amber-bg:#332208;--amber-border:#5a4413;
-  }
+  /* ===== TUNGI REJIM (DARK MODE) =====
+     Palitra o'zgaruvchilari (--bg, --text va h.k.) endi FAQAT pastroqdagi
+     "#design-v2" blokida bitta joyda e'lon qilinadi (ilgari shu yerda ham
+     alohida, boshqacha ranglar bilan qayta e'lon qilingan edi — bu
+     ziddiyat tungi rejimni nomutanosib ko'rsatishga sabab bo'lgan asosiy
+     muammolardan biri edi). Bu yerda faqat o'sha o'zgaruvchilardan
+     foydalanadigan komponent qoidalari qoladi. */
   body.dark .login-card,body.dark .modal{background:var(--surface);color:var(--text)}
   body.dark .field input,body.dark .field select,body.dark .field textarea{background:var(--surface2);color:var(--text);border-color:var(--border2)}
   body.dark .role-btn{background:var(--surface);border-color:var(--border2)}
@@ -942,7 +939,7 @@
     <button class="tab" onclick="showPage('debts','seller')">💳 Qarzlar</button>
   </div>
   <div id="offline-banner" style="display:none;background:#7f1d1d;color:#fecaca;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">🔴 Offline</div>
-  <div class="user-badge" id="user-badge"><span id="sync-dot"></span>—</div>
+  <div class="user-badge" id="user-badge"><span id="sync-dot" onclick="window.showSyncPanel && window.showSyncPanel()" style="cursor:pointer" title="Sinxronizatsiya holati"></span><span id="sync-conflict-badge" onclick="window.showSyncPanel && window.showSyncPanel()" style="display:none;cursor:pointer;background:var(--amber,#d97706);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;font-weight:700;margin-right:4px;align-items:center"></span>—</div>
   <div class="nav-right-tools" id="nav-right-tools">
     <button class="btn sm" onclick="openCommandPalette()" id="cmdk-btn" title="Global qidiruv (Ctrl+K) — tovar yoki qarzdorni tezda toping" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🔎</button>
     <button class="btn sm" onclick="window.startVoiceSearch && window.startVoiceSearch()" id="voice-search-btn" title="Ovozli qidiruv — mikrofon orqali tovar qidiring" style="background:#1b4a40;border-color:#475569;color:#9fb3ac;display:none">🎤</button>
@@ -1317,28 +1314,21 @@ tr.row-flash td {
 }
 
 /* Dark Mode Support */
-body.dark {
-  --bg: #1a1a1a;
-  --surface: #2a2a2a;
-  --surface2: #3a3a3a;
-  --border: #444;
-  --border2: #555;
-  --text: #f5f5f5;
-  --text2: #ccc;
-  --text3: #888;
-}
-
+/* TUZATILDI (2026-07): bu yerda ILGARI --bg/--surface/--text kabi
+   o'zgaruvchilar QAYTA (uchinchi marta!) oddiy kulrang ranglar bilan
+   e'lon qilingan edi. CSS'da bir xil "body.dark" selektor pastroqda
+   qayta yozilsa, ENG PASTDAGISI g'alaba qiladi — shu sabab butun ilova
+   uchun mo'ljallangan yashil-tilla (teal/gold) tungi rejim palitrasi
+   (yuqorida, :root ichida) o'rniga shu yerdagi "yalang'och" kulrang
+   ranglar amalda ishlatilar edi, lekin --accent/--green/--red/--amber
+   kabilar hali ham eski palitradan qolar edi — natijada fon kulrang,
+   lekin tugma/status ranglari yashil-tilla bo'lib, TUNGI REJIM
+   "chalasingan" va nomutanosib ko'rinardi. Endi bu qayta e'lon olib
+   tashlandi — yagona, to'liq palitra endi faqat pastroqdagi
+   "#design-v2" blokidagi "body.dark{...}" orqali belgilanadi. */
 body.dark table {
   background: var(--surface);
   color: var(--text);
-}
-
-body.dark th {
-  background: var(--surface2);
-}
-
-body.dark tr:hover td {
-  background: var(--surface2);
 }
 
 /* Responsive Improvements */
@@ -1829,6 +1819,85 @@ body.dark tr:hover td {
     <button class="btn sm green" onclick="saveReceiptLinksSettings()">💾 Saqlash</button>
   </div>
 
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-bluetooth-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🖨️📶 Bluetooth termoprinter</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.5rem">Chekni Bluetooth orqali termoprinterga to'g'ridan-to'g'ri chop etish (brauzerning "Chop etish" oynasisiz).</p>
+    <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.6rem .75rem;font-size:12px;color:var(--text2);margin-bottom:.75rem">
+      ⚠️ Faqat <b>Android</b> yoki <b>Windows/Mac</b> kompyuterda <b>Chrome/Edge</b> brauzerida ishlaydi. <b>iPhone/iPad'da ishlamaydi</b> (Apple cheklaydi). Shuningdek, faqat <b>Bluetooth Low Energy (BLE)</b> printerlar bilan ishlaydi — "klassik" Bluetooth printerlar ulanmasligi mumkin (bu holda oddiy "🖨 Chop etish" tugmasidan foydalaning).
+    </div>
+    <button class="btn sm blue" onclick="connectBluetoothPrinter()">🔗 Printerni ulash</button>
+    <button class="btn sm" onclick="testBluetoothPrinter()">✉ Sinov chek chiqarish</button>
+  </div>
+
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-pwa-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">📲 Ilovani qurilmaga o'rnatish</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">iOS, Android, Windows va Mac — barcha qurilmalarda ilovani asosiy ekranga/ish stoliga o'rnatib, tezroq va oflayn rejimda ham ishlatishingiz mumkin.</p>
+    <button class="btn sm blue" onclick="triggerAppInstall()">📲 Ilovani o'rnatish</button>
+  </div>
+
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-schedule-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">⏰ Ish vaqti va bildirishnomalar</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Haftalik ish jadvalini belgilang — dam olish kunida yoki ish vaqtidan tashqarida tizimga kirilsa, ogohlantirish ko'rsatiladi (kirish bloklanmaydi, faqat eslatma).</p>
+    <div id="schedule-days-wrap" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem"></div>
+    <div class="field" style="margin-bottom:.85rem;max-width:260px">
+      <label>Zaxira nusxa eslatmasi (necha kunda)</label>
+      <input type="number" id="backup-reminder-days" min="1" max="30" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <button class="btn sm blue" onclick="saveScheduleSettings()">💾 Saqlash</button>
+  </div>
+
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-auditlog-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">📜 Amallar tarixi (audit)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Tovar o'chirish, qarz to'lovi/o'chirish kabi muhim amallarning kim, qachon bajarganini ko'rsatadi. So'nggi 200 ta yozuv saqlanadi.</p>
+    <select id="auditlog-filter" onchange="renderAuditLog()" style="margin-bottom:.75rem;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:13px;background:var(--surface2)">
+      <option value="">Barcha amallar</option>
+      <option value="product_delete">🗑 Tovar o'chirish</option>
+      <option value="debt_delete">🗑 Qarz o'chirish</option>
+      <option value="debt_payment">💵 Qarz to'lovi</option>
+    </select>
+    <div id="auditlog-list" style="max-height:340px;overflow-y:auto"></div>
+  </div>
+
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-telegram-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🤖 Telegram bot bildirishnomalari</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.5rem">Kam qolgan tovar, muddati o'tgan qarz va kunlik hisobotni Telegram orqali olish uchun sozlang. Xabarlar qo'shilgan barcha adminlarga yuboriladi.</p>
+    <details style="margin-bottom:.85rem">
+      <summary style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:600">📖 Qanday sozlanadi? (bosing)</summary>
+      <ol style="font-size:12px;color:var(--text3);margin:.5rem 0 0 1.1rem;line-height:1.7">
+        <li>Telegram'da <b>@BotFather</b>ga yozing → <code>/newbot</code> → bot nomini bering → sizga <b>Bot token</b> beriladi (uni pastga qo'ying)</li>
+        <li>Xabar olishni istagan har bir admin botga Telegram'da /start yozsin (yoki bot guruhga qo'shilsin)</li>
+        <li>Har bir adminning <b>Chat ID</b>sini bilish uchun o'sha admin <b>@userinfobot</b>ga yozadi — u ID raqamini ko'rsatadi</li>
+        <li>Pastda tokenni kiriting, so'ng har bir admin uchun ism + Chat ID'ni "Admin qo'shish" orqali qo'shing</li>
+      </ol>
+      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⚠️ Eslatma: bu sahifa (brauzer) ochiq turganda xabarlar har 30 daqiqada tekshirilib yuboriladi. Ilova umuman ochilmagan kunlarda ham 24/7 xabar kelishini istasangiz, loyihaning GitHub repository'siga qo'shilgan avtomatik "Telegram Notifier" ish oqimidan (GitHub Actions) foydalaning — bu alohida serversiz, repo ichida cron sifatida ishlaydi.</p>
+    </details>
+    <div class="field" style="margin-bottom:.6rem">
+      <label>Bot token</label>
+      <input type="text" id="tg-bot-token" placeholder="123456789:AAExampleTokenHere" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu tokenni GitHub Actions orqali 24/7 ishlashi uchun repo'ning "Secrets" bo'limiga ham qo'shishingiz kerak bo'ladi (pastdagi qo'llanmaga qarang).</p>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
+      <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.5rem">👤 Telegram adminlari</label>
+      <div id="tg-admins-list" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem"></div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <input type="text" id="tg-admin-name" placeholder="Ism (masalan: Dilnoza)" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
+        <input type="text" id="tg-admin-chatid" placeholder="Chat ID" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
+        <button class="btn sm blue" onclick="addTelegramAdmin()">➕ Admin qo'shish</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.85rem">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-lowstock">Kam qolgan/tugagan tovar haqida xabar</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-overdue">Muddati o'tgan qarzlar haqida xabar</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-daily">Kunlik savdo hisobotini yuborish</label>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn sm blue" onclick="saveTelegramSettings()">💾 Saqlash</button>
+      <button class="btn sm" onclick="sendTelegramTestMessage()">✉ Sinov xabari yuborish (hammasiga)</button>
+    </div>
+  </div>
+
   <div class="card" style="max-width:640px;margin-top:1rem" id="settings-receiptdesign-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧾 Chek sahifasi dizayni (mijoz ko'radigan onlayn chek)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">QR kod skanerlanganda ochiladigan onlayn chek sahifasining ko'rinishini — ranglar, matnlar va qaysi qismlar ko'rinishini — to'liq o'zingizga moslang. O'zgarishlar barcha qurilmalarda, shu jumladan avval chop etilgan cheklarda ham darhol qo'llanadi.</p>
@@ -2068,6 +2137,29 @@ body.dark tr:hover td {
     <div id="ai-slowmover-list"></div>
   </div>
 
+  <!-- YANGI: KELGUSI OY UCHUN SAVDO BASHORATI -->
+  <div class="card" style="margin-top:1.25rem" id="ai-monthly-forecast-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.25rem">🔮 Kelgusi oy uchun savdo bashorati</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:1rem">So'nggi oylar savdo tendensiyasi asosida keyingi oy uchun taxminiy savdo va foyda ko'rsatkichlari (chiziqli regressiya).</p>
+    <div id="ai-monthly-forecast-body"></div>
+  </div>
+
+  <!-- YANGI: BIRGA SOTILADIGAN TOVARLAR TAHLILI ("combo" taklif) -->
+  <div class="card" style="margin-top:1.25rem" id="ai-basket-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.25rem">🧺 Birga sotiladigan tovarlar</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:1rem">Bir xaridda ko'pincha birga olinadigan tovar juftliklari — sotuvchilar mijozga taklif qilishi yoki "combo" narx o'rnatish uchun foydali.</p>
+    <div id="ai-basket-body"></div>
+  </div>
+
+  <!-- YANGI: AI ORQALI "FOYDA NEGA PASAYDI" TUSHUNTIRISHI -->
+  <div class="card" style="margin-top:1.25rem" id="ai-profit-explain-card">
+    <div class="section-header" style="margin-bottom:.5rem">
+      <div><h3 style="font-size:16px;font-weight:700">📉 Foyda nega o'zgardi?</h3><p style="font-size:12px;color:var(--text3);margin-top:2px">So'nggi 30 kunni oldingi 30 kun bilan solishtirib, o'zgarishning asosiy sabablarini matn shaklida tushuntiradi</p></div>
+      <button class="btn sm blue" onclick="window.renderAiProfitExplainer && window.renderAiProfitExplainer()">🔍 Tahlil qilish</button>
+    </div>
+    <div id="ai-profit-explain-body"><p style="color:var(--text3);font-size:13px;padding:.5rem 0">Tahlilni boshlash uchun "Tahlil qilish" tugmasini bosing.</p></div>
+  </div>
+
   <!-- 4) VAQT MASHINASI — NARX SIMULYATORI -->
   <div class="card" style="margin-top:1.25rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.25rem">🕰️ Vaqt mashinasi — narx o'zgarishi simulyatori</h3>
@@ -2287,6 +2379,10 @@ body.dark tr:hover td {
   <div class="modal" style="max-width:560px">
     <h3>🛒 Savat</h3>
     <div id="cart-items" style="margin-bottom:1rem"></div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>🎫 Mijoz <span style="color:var(--text3);font-weight:400">(ixtiyoriy — tanlansa, xarid tarixiga va ballariga avtomatik qo'shiladi)</span></label>
+      <select id="cart-customer-select" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)"></select>
+    </div>
     <div style="border-top:1.5px solid var(--border);padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
       <span style="font-size:14px;color:var(--text2)">Jami summa:</span>
       <span style="font-size:22px;font-weight:700;color:var(--green)" id="cart-grand-total">0 so'm</span>
@@ -2309,7 +2405,7 @@ body.dark tr:hover td {
       <label>Tashkilot nomi <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
       <input id="debt-org" placeholder="Masalan: Anvar Market" autocomplete="off" oninput="debtOrgInput(this)">
       <div id="debt-org-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:var(--surface2);box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
-      <p style="font-size:11px;color:var(--text3);margin-top:.25rem">⚠️ Tashkilot uchun bitta login beriladi, barcha ishchilar shu org ga bog'lanadi</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.25rem">ℹ️ Bu shaxs qaysi tashkilotga tegishli ekanini belgilaydi. Butun tashkilotni ko'rsatuvchi umumiy login Qarzdorlar sahifasidagi "🔑 Tashkilot login" tugmasi orqali beriladi.</p>
     </div>
 
     <div class="field" style="margin-bottom:.85rem">
@@ -2418,6 +2514,18 @@ body.dark tr:hover td {
     </div>
     <div class="modal-footer">
       <button class="btn blue" onclick="closeModal('modal-shortcuts')">Yopish</button>
+    </div>
+  </div>
+</div>
+<!-- YANGI: Sinxronizatsiya holati va ziddiyatlar paneli — yuqori nav'dagi sync-dot bosilganda ochiladi -->
+<div class="modal-overlay hidden" id="modal-sync-panel">
+  <div class="modal" style="max-width:480px">
+    <h3>🔄 Sinxronizatsiya holati</h3>
+    <p style="font-size:12.5px;color:var(--text3);margin:.3rem 0 1rem">Ma'lumotlaringiz Firebase bulutiga qanday saqlanayotgani va bir vaqtda ikkita qurilmadan qilingan o'zgarishlar (agar bo'lsa) shu yerda ko'rsatiladi.</p>
+    <div id="sync-panel-body"></div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;gap:.5rem">
+      <button class="btn sm red" onclick="window.clearSyncConflicts && window.clearSyncConflicts()">🗑️ Jurnalni tozalash</button>
+      <button class="btn blue" onclick="closeModal('modal-sync-panel')">Yopish</button>
     </div>
   </div>
 </div>
@@ -2786,6 +2894,7 @@ body.dark tr:hover td {
       <button class="btn" onclick="closeModal('modal-receipt')">Yopish</button>
       <button class="btn" onclick="window.announceReceipt && window.announceReceipt()" id="receipt-voice-btn" title="Jami summani ovoz orqali aytish" style="display:none">🔊 Aytish</button>
       <button class="btn" onclick="shareReceipt()">📤 Ulashish</button>
+      <button class="btn" onclick="printReceiptViaBluetooth()" title="Bluetooth termoprinterga to'g'ridan-to'g'ri ulanib chop etish (faqat Android/Windows/Mac, Chrome yoki Edge brauzerida)">🖨️📶 Bluetooth</button>
       <button class="btn blue" onclick="printReceipt()">🖨 Chop etish</button>
     </div>
   </div>
@@ -2819,10 +2928,75 @@ body.dark tr:hover td {
       </div>
     </div>
     <p style="font-size:12px;color:var(--text3);margin-top:-.5rem;margin-bottom:.85rem">🎲 — tasodifiy xavfsiz parol yaratadi. 📋 — maydondagi matnni nusxalaydi (mijozga yuborish uchun qulay).</p>
+
+    <!-- YANGI: QR KOD ORQALI MIJOZ PORTALI — mijoz login/parolni QO'LDA
+         KIRITMASDAN, shu QR-ni skanerlab, o'z xarid tarixi/qarzini
+         to'g'ridan-to'g'ri ko'radi. Chekka yopishtirish yoki bosib
+         berish uchun qulay. -->
+    <div class="field" style="margin-bottom:.85rem">
+      <label>📱 Mijoz uchun QR (avtomatik kirish)</label>
+      <div style="display:flex;gap:.85rem;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem">
+        <img id="dl-qr-img" style="width:96px;height:96px;background:#fff;border-radius:6px;flex-shrink:0;display:none">
+        <div style="flex:1;min-width:0">
+          <p style="font-size:12px;color:var(--text2);line-height:1.5">Mijoz shu kodni telefon kamerasi bilan skanerlasa, login/parol kiritmasdan o'z xarid tarixi va qarzini ko'radi.</p>
+          <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
+            <button type="button" class="btn sm" onclick="refreshDebtorLoginQR()">🔄 QR yaratish</button>
+            <button type="button" class="btn sm" id="dl-qr-print-btn" onclick="printDebtorLoginQR()" style="display:none">🖨 Chop etish</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn red" style="margin-right:auto" onclick="revokeDebtorLogin()" title="Bu qarzdorning login/parolini o'chirib, kirish huquqini bekor qiladi">🚫 Kirishni bekor qilish</button>
       <button class="btn" onclick="closeModal('modal-debtor-login')">Bekor qilish</button>
       <button class="btn blue" onclick="saveDebtorLogin()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-partial-payment">
+  <div class="modal" style="max-width:420px">
+    <h3>💵 To'lov qabul qilish</h3>
+    <p id="pd-debtor-name" style="font-weight:700;font-size:15px;margin-bottom:.75rem"></p>
+    <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+      <div style="flex:1;background:var(--surface2);border-radius:10px;padding:.6rem .75rem;text-align:center">
+        <div style="font-size:11px;color:var(--text3)">Jami qarz</div>
+        <div id="pd-total" style="font-weight:700;font-size:14px">0 so'm</div>
+      </div>
+      <div style="flex:1;background:var(--green-bg);border-radius:10px;padding:.6rem .75rem;text-align:center">
+        <div style="font-size:11px;color:var(--text3)">To'langan</div>
+        <div id="pd-paid-so-far" style="font-weight:700;font-size:14px;color:var(--green)">0 so'm</div>
+      </div>
+      <div style="flex:1;background:var(--amber-bg);border-radius:10px;padding:.6rem .75rem;text-align:center">
+        <div style="font-size:11px;color:var(--text3)">Qoldiq</div>
+        <div id="pd-remaining" style="font-weight:700;font-size:14px;color:var(--amber)">0 so'm</div>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:.6rem">
+      <label>To'lov summasi (so'm)</label>
+      <input type="number" id="pd-amount" min="1" placeholder="Masalan: 5000" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.6rem .75rem;font-size:16px;font-weight:700;outline:none">
+    </div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.85rem">
+      <button type="button" class="btn sm" onclick="setPartialPaymentQuick(25)">25%</button>
+      <button type="button" class="btn sm" onclick="setPartialPaymentQuick(50)">50%</button>
+      <button type="button" class="btn sm" onclick="setPartialPaymentQuick(75)">75%</button>
+      <button type="button" class="btn sm green" onclick="setPartialPaymentQuick(1)">To'liq qoldiq</button>
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Izoh (ixtiyoriy)</label>
+      <input type="text" id="pd-note" maxlength="60" placeholder="Masalan: naqd, karta orqali..." style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+
+    <div style="border-top:1px dashed var(--border2);padding-top:.6rem;margin-bottom:.6rem">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.4rem">📜 To'lovlar tarixi</div>
+      <div id="pd-history" style="max-height:120px;overflow-y:auto"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-partial-payment')">Bekor qilish</button>
+      <button class="btn blue" onclick="submitDebtPayment()">✓ To'lovni qabul qilish</button>
     </div>
   </div>
 </div>
@@ -3423,7 +3597,7 @@ window.debouncedRenderCmdkResults = debounce(()=>window.renderCmdkResults(), 120
 
 // FIREBASE INIT
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath, query, orderBy, limit, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
@@ -3478,7 +3652,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3593,23 +3767,138 @@ function updateOfflineBanner(){
 window.addEventListener('online', ()=>{ toast('✓ Internet qayta ulandi','green'); updateOfflineBanner(); });
 window.addEventListener('offline', ()=>{ toast('⚠️ Internet aloqasi uzildi!','red'); updateOfflineBanner(); });
 
+// ===== YANGI: ZIDDIYATLARNI ANIQLASH + SINXRONIZATSIYA HOLATI PANELI =====
+// Ilgari ikkita qurilma (masalan ikkita admin telefoni) BIR XIL mahsulot
+// yoki sozlamalarni OFFLINE holatda tahrirlab, keyin ikkalasi ham onlayn
+// bo'lganda — kim OXIRGI bo'lib yozgan bo'lsa, o'shaniki saqlanib, boshqa
+// qurilmadagi o'zgarish HECH QANDAY OGOHLANTIRISHSIZ jimgina yo'qolib
+// ketardi ("last write wins"). Bu YANGI blok buni butunlay oldini olmaydi
+// (chunki ilova qasddan "fire-and-forget" — tez javob berish uchun),
+// lekin HAR BIR shunday holatni ANIQLAYDI, jurnalga yozadi va admin'ga
+// ko'rsatadi, shunda kamida "biror narsa bosib yuborilgan bo'lishi mumkin"
+// haqida xabardor bo'ladi va kerak bo'lsa qayta tekshiradi.
+function getDeviceId(){
+  let id;
+  try{ id = localStorage.getItem('dokon_device_id'); }catch(e){}
+  if(!id){
+    id = 'dev-'+Math.random().toString(36).slice(2,8);
+    try{ localStorage.setItem('dokon_device_id', id); }catch(e){}
+  }
+  return id;
+}
+function logSyncConflict(entry){
+  try{
+    const key='dokon_sync_conflicts';
+    const list = JSON.parse(localStorage.getItem(key)||'[]');
+    list.unshift(Object.assign({time:new Date().toISOString()}, entry));
+    while(list.length>20) list.pop();
+    localStorage.setItem(key, JSON.stringify(list));
+  }catch(e){}
+  if(typeof window.renderSyncConflictBadge==='function') window.renderSyncConflictBadge();
+}
+function markSyncedNow(){
+  try{ localStorage.setItem('dokon_last_sync', new Date().toISOString()); }catch(e){}
+}
+window.renderSyncConflictBadge = function(){
+  const el = document.getElementById('sync-conflict-badge');
+  if(!el) return;
+  let count = 0;
+  try{ count = (JSON.parse(localStorage.getItem('dokon_sync_conflicts')||'[]')).length; }catch(e){}
+  if(count>0){ el.textContent = '⚠️'+count; el.style.display='inline-flex'; }
+  else{ el.style.display='none'; }
+};
+window.showSyncPanel = function(){
+  let conflicts = [];
+  try{ conflicts = JSON.parse(localStorage.getItem('dokon_sync_conflicts')||'[]'); }catch(e){}
+  let lastSync = null;
+  try{ lastSync = localStorage.getItem('dokon_last_sync'); }catch(e){}
+  const lastSyncTxt = lastSync ? new Date(lastSync).toLocaleString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : "Hali aniqlanmagan";
+  const statusTxt = navigator.onLine ? '🟢 Onlayn' : '🔴 Offline (internet yo\'q)';
+  const pendingTxt = _pendingWrites>0 ? `${_pendingWrites} ta yozuv kutilmoqda...` : 'Barcha o\'zgarishlar saqlangan';
+
+  const body = document.getElementById('sync-panel-body');
+  if(body){
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+        <div class="stat" style="padding:.85rem"><div class="val" style="font-size:15px">${statusTxt}</div><div class="lbl">Holat</div></div>
+        <div class="stat" style="padding:.85rem"><div class="val" style="font-size:15px">${escA(pendingTxt)}</div><div class="lbl">Yozuvlar navbati</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text3);margin-bottom:1rem">🕓 Oxirgi muvaffaqiyatli sinxronizatsiya: <b>${lastSyncTxt}</b></p>
+      <h4 style="font-size:14px;font-weight:700;margin-bottom:.5rem">⚠️ Aniqlangan ziddiyatlar (${conflicts.length})</h4>
+      ${conflicts.length ? `<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem">
+        ${conflicts.map(c=>`<div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.6rem .75rem;font-size:12.5px">
+          <div style="font-weight:700;margin-bottom:.2rem">${escA(c.title||'Ziddiyat')}</div>
+          <div style="color:var(--text2)">${escA(c.detail||'')}</div>
+          <div style="color:var(--text3);margin-top:.25rem;font-size:11px">${new Date(c.time).toLocaleString('uz-UZ',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>`).join('')}
+      </div>` : `<p style="font-size:13px;color:var(--text3)">Hozircha bir vaqtda ikkita qurilmadan qilingan ziddiyatli o'zgarish aniqlanmagan.</p>`}
+    `;
+  }
+  document.getElementById('modal-sync-panel')?.classList.remove('hidden');
+};
+window.clearSyncConflicts = function(){
+  try{ localStorage.setItem('dokon_sync_conflicts','[]'); }catch(e){}
+  window.renderSyncConflictBadge();
+  window.showSyncPanel();
+  toast('✓ Tozalandi','green');
+};
+window.addEventListener('load', ()=> setTimeout(()=>{ if(typeof window.renderSyncConflictBadge==='function') window.renderSyncConflictBadge(); }, 800));
+
 // ===== FIREBASE YOZISH FUNKSIYALARI — "FIRE-AND-FORGET" MODEL =====
 // Avval ma'lumot LOKAL saqlanadi va ekran DARHOL yangilanadi, so'ng Firebase
 // yozuvi FONDA (kutmasdan) yuboriladi — shu sabab sekin internetda ham
 // tugmalar/oynalar zudlik bilan javob beradi.
 async function fbSaveSettings(){
   setSyncing(true);
-  withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null}))
-    .catch(e=>{ setSyncError(); console.error(e); })
-    .finally(()=>setSyncing(false));
+  const deviceId = getDeviceId();
+  const localV = DB._settingsV||0;
+  (async ()=>{
+    let versionForSave = localV+1;
+    try{
+      const remoteSnap = await getDoc(settingsRef);
+      if(remoteSnap.exists()){
+        const remote = remoteSnap.data();
+        const remoteV = remote._v||0;
+        if(remoteV > localV && remote._updatedBy && remote._updatedBy!==deviceId){
+          logSyncConflict({title:"Do'kon sozlamalari boshqa qurilmada ham yangilangan", detail:`Sizning qurilmangiz (${deviceId}) saqlagan payt, ${remote._updatedBy} qurilmasi ham sozlamalarni o'zgartirgan edi. Eng oxirgi (sizning) versiyangiz qo'llanildi — sozlamalarni tekshirib chiqing.`});
+          toast("⚠️ Sozlamalar boshqa qurilmada ham yangilangan edi", 'amber');
+        }
+        versionForSave = Math.max(remoteV, localV)+1;
+      }
+    }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
+    DB._settingsV = versionForSave;
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+      .then(()=>markSyncedNow())
+      .catch(e=>{ setSyncError(); console.error(e); })
+      .finally(()=>setSyncing(false));
+  })();
 }
 async function fbSaveProduct(p){
   localUpsertProduct(p);
   refreshProductViews();
   setSyncing(true);
-  withRetry(()=>setDoc(doc(db,'products',p.id),p))
-    .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
-    .finally(()=>setSyncing(false));
+  const deviceId = getDeviceId();
+  const localV = p._v||0;
+  (async ()=>{
+    let versionForSave = localV+1;
+    try{
+      const remoteSnap = await getDoc(doc(db,'products',p.id));
+      if(remoteSnap.exists()){
+        const remote = remoteSnap.data();
+        const remoteV = remote._v||0;
+        if(remoteV > localV && remote._updatedBy && remote._updatedBy!==deviceId){
+          logSyncConflict({title:`"${p.name}" mahsuloti boshqa qurilmada ham yangilangan`, detail:`Boshqa versiya: "${remote.name}" — ${(remote.price||0).toLocaleString('uz-UZ')} so'm (${remote._updatedBy} qurilmasi). Sizning versiyangiz: "${p.name}" — ${(p.price||0).toLocaleString('uz-UZ')} so'm. Sizniki saqlanib qoldi — solishtirib ko'ring.`});
+          toast(`⚠️ "${p.name}" boshqa qurilmada ham yangilangan edi`, 'amber');
+        }
+        versionForSave = Math.max(remoteV, localV)+1;
+      }
+    }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
+    const payload = Object.assign({}, p, { _v: versionForSave, _updatedBy: deviceId, _updatedAt: new Date().toISOString() });
+    withRetry(()=>setDoc(doc(db,'products',p.id),payload))
+      .then(()=>markSyncedNow())
+      .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
+      .finally(()=>setSyncing(false));
+  })();
 }
 // MUHIM: bu funksiya butun mahsulot obyektini emas, FAQAT ko'rsatilgan
 // maydonlarni (masalan stock, yoki bitta serialCodes.KOD kaliti) Firestore'da
@@ -3652,7 +3941,47 @@ async function fbUpdateProductCodeFields(id, plainFields, codeFieldPairs){
     .catch(e=>{ setSyncError(); console.error(e); toast("Saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
+// ================== YANGI: AMALLAR TARIXI (AUDIT LOG) ==================
+// Bir nechta sotuvchi ishlaydigan do'konda "kim, qachon, nima qilgani"ni
+// bilish muhim (masalan kim tovarni o'chirdi, kim katta chegirma berdi,
+// kim qarzni to'langan deb belgiladi). Bu yozuvlar Firestore'ning alohida
+// 'auditLog' to'plamida saqlanadi va O'CHIRILMAYDI/TAHRIRLANMAYDI —
+// shunga hisobdorlik ta'minlanadi. Faqat ADMIN ko'ra oladi (Sozlamalar
+// sahifasida).
+window.DB_AUDIT_LOG = [];
+let auditLogListenerStarted = false;
+function startAuditLogListener(){
+  if(auditLogListenerStarted) return;
+  auditLogListenerStarted = true;
+  try{
+    const q = query(collection(db,'auditLog'), orderBy('ts','desc'), limit(200));
+    onSnapshot(q, snap=>{
+      window.DB_AUDIT_LOG = snap.docs.map(d=>d.data());
+      if(document.getElementById('page-settings')?.classList.contains('active') && typeof window.renderAuditLog==='function') window.renderAuditLog();
+    }, e=>console.error('Audit log listener xatosi:', e));
+  }catch(e){ console.error(e); }
+}
+// Muhim amallarni qayd etadi. Xato bo'lsa ham ASOSIY amal to'xtamasligi
+// kerak — shuning uchun bu funksiya hech qachon xatoni tashqariga
+// chiqarmaydi (faqat konsolga yozadi).
+function logAudit(action, summary){
+  try{
+    const entry = {
+      id: uid(),
+      ts: new Date().toISOString(),
+      actor: currentRole==='admin' ? 'Admin' : (currentSellerName||'Sotuvchi'),
+      role: currentRole||'admin',
+      action,
+      summary
+    };
+    window.DB_AUDIT_LOG = [entry, ...(window.DB_AUDIT_LOG||[])].slice(0,200);
+    setDoc(doc(db,'auditLog',entry.id), entry).catch(e=>console.error('Audit yozishda xatolik:', e));
+  }catch(e){ console.error(e); }
+}
+
 async function fbDeleteProduct(id){
+  const p = DB.products.find(x=>x.id===id);
+  logAudit('product_delete', `🗑 Tovar o'chirildi: ${p?p.name+(p.volume?' ('+p.volume+'L)':''):id}`);
   localRemoveProduct(id);
   refreshProductViews();
   setSyncing(true);
@@ -3714,10 +4043,62 @@ async function fbUpdateDebt(id, patch){
     .catch(e=>{ setSyncError(); console.error(e); })
     .finally(()=>setSyncing(false));
 }
+// YANGI: bitta qarz yozuvi qancha bo'lmasin (16 000 so'm bo'lsin), mijoz uni
+// bo'lib-bo'lib (masalan 5 000, keyin 10 000) to'lashi mumkin. Shu maqsadda
+// har bir qarzga ikkita yangi maydon qo'shildi:
+//  - paidAmount: hozirgacha jami to'langan summa (0 dan boshlanadi)
+//  - payments: har bir to'lovning tarixi ([{amount, date, note, by}, ...])
+// "paid" (to'liq to'langan/yo'q) BOOLEAN maydoni ESKI holicha qoladi —
+// u FAQAT qoldiq 0 ga yetganda true bo'ladi. Bu orqali ilovaning boshqa
+// ko'plab joylarida (hisobotlar, chek, AI yordamchi va h.k) ishlatiladigan
+// "d.paid" tekshiruvlari BUZILMAYDI — ular hali ham to'g'ri ishlaydi,
+// faqat endi "qancha qarz bor" hisoblashda d.total o'rniga QOLDIQ
+// (debtRemaining) ishlatiladi.
+function debtRemaining(d){
+  const rem = (d.total||0) - (d.paidAmount||0);
+  return rem>0.5 ? rem : 0; // arzimas (tiyin darajasidagi) yaxlitlash xatolariga tolerantlik
+}
+// YANGI: chek/hisobot/CSV kabi joylarda holatni bir xilda ko'rsatish uchun.
+function debtStatusLabel(d){
+  if(d.paid) return "To'langan";
+  if((d.paidAmount||0) > 0) return `Qisman (${fmt(d.paidAmount)}/${fmt(d.total)})`;
+  return 'Faol';
+}
+function debtDisplayAmount(d){
+  return d.paid ? d.total : debtRemaining(d);
+}
+// Bitta qarzga to'lov qo'shadi. amount qoldiqdan katta bo'lsa, avtomatik
+// ravishda qoldiq bilan chegaralanadi (ortiqcha to'lov kiritilmaydi).
+async function fbApplyDebtPayment(id, amount, note){
+  const d = DB.debts.find(x=>x.id===id);
+  if(!d) return;
+  const remaining = debtRemaining(d);
+  const applied = Math.min(Math.round(amount), Math.round(remaining));
+  if(applied<=0) return;
+  const payment = { amount: applied, date: new Date().toISOString(), note: (note||'').trim(), by: currentRole==='admin'?'Admin':(currentSellerName||'Sotuvchi') };
+  const newPaidAmount = (d.paidAmount||0) + applied;
+  const isFullyPaid = (d.total - newPaidAmount) <= 0.5;
+  logAudit('debt_payment', `💵 ${fmt(applied)} so'm to'lov qabul qilindi: ${d.debtorName||d.org||''}${isFullyPaid?' (to\'liq yopildi)':''}`);
+  // Optimistik (mahalliy, internetni kutmasdan) yangilash — foydalanuvchi
+  // natijani DARHOL ko'radi, Firestore fon rejimida sinxronlanadi.
+  d.paidAmount = newPaidAmount;
+  d.payments = Array.isArray(d.payments) ? d.payments.concat([payment]) : [payment];
+  if(isFullyPaid){ d.paid = true; d.paidDate = payment.date; }
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+  setSyncing(true);
+  const patch = { paidAmount: increment(applied), payments: arrayUnion(payment) };
+  if(isFullyPaid){ patch.paid = true; patch.paidDate = payment.date; }
+  withRetry(()=>updateDoc(doc(db,'debts',id), patch))
+    .catch(e=>{ setSyncError(); console.error(e); toast("To'lovni saqlashda xatolik",'red'); })
+    .finally(()=>setSyncing(false));
+  return { applied, isFullyPaid };
+}
 // YANGI: qarz yozuvini BUTUNLAY o'chirish (masalan xato kiritilgan bo'lsa).
 // "To'landi" belgisidan farqli o'laroq, bu yozuvni butunlay yo'q qiladi —
 // shuning uchun har doim tasdiqlash (confirm2) orqali chaqiriladi.
 async function fbDeleteDebt(id){
+  const d = DB.debts.find(x=>x.id===id);
+  logAudit('debt_delete', `🗑 Qarz yozuvi o'chirildi: ${d?d.debtorName+(d.org?' ('+d.org+')':'')+' — '+fmt(d.total||0)+" so'm":id}`);
   const i=DB.debts.findIndex(x=>x.id===id);
   if(i>=0) DB.debts.splice(i,1);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
@@ -3875,6 +4256,7 @@ function startListeners(){
       DB.sellerName=d.sellerName||'Sotuvchi';
       DB.shopName=d.shopName||"Do'kon";
       DB.shopLogo=d.shopLogo||'';
+      DB._settingsV=d._v||0;
       DB.autoLockMinutes=(typeof d.autoLockMinutes==='number')?d.autoLockMinutes:0;
       DB.receiptLinks=Array.isArray(d.receiptLinks)?d.receiptLinks:[];
       DB.shopAddress=d.shopAddress||'';
@@ -3890,6 +4272,16 @@ function startListeners(){
       DB.labelSettings=d.labelSettings||null;
       DB.labelTemplates=d.labelTemplates||null;
       DB.receiptDesign=d.receiptDesign||null;
+      DB.backupReminderDays=d.backupReminderDays||7;
+      DB.workSchedule=d.workSchedule||null;
+      DB.pinMinLength=d.pinMinLength||4;
+      DB.telegramBotToken=d.telegramBotToken||'';
+      DB.telegramChatId=d.telegramChatId||'';
+      DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
+      DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
+      DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
+      DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
+      if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts();
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
       if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
       if(document.getElementById('page-settings')?.classList.contains('active')){
@@ -3898,11 +4290,15 @@ function startListeners(){
         if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
         if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
         if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
+        if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
+        if(typeof window.renderAuditLog==='function') window.renderAuditLog();
+        if(typeof window.fillTelegramSettingsForm==='function') window.fillTelegramSettingsForm();
       }
     }
   });
   let prodDebounce=null;
   onSnapshot(collection(db,'products'), snap=>{
+    if(!snap.metadata.fromCache) markSyncedNow();
     DB.products = snap.docs.map(d=>d.data());
     DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
     migrateLegacyProductCodes();
@@ -4053,6 +4449,7 @@ async function init(){
           DB.sellerName=d.sellerName||'Sotuvchi';
           DB.shopName=d.shopName||"Do'kon";
           DB.shopLogo=d.shopLogo||'';
+          DB._settingsV=d._v||0;
           DB.autoLockMinutes=(typeof d.autoLockMinutes==='number')?d.autoLockMinutes:0;
           DB.receiptLinks=Array.isArray(d.receiptLinks)?d.receiptLinks:[];
           DB.shopAddress=d.shopAddress||'';
@@ -4068,10 +4465,19 @@ async function init(){
           DB.labelSettings=d.labelSettings||null;
           DB.labelTemplates=d.labelTemplates||null;
           DB.receiptDesign=d.receiptDesign||null;
+          DB.backupReminderDays=d.backupReminderDays||7;
+          DB.workSchedule=d.workSchedule||null;
+          DB.pinMinLength=d.pinMinLength||4;
+          DB.telegramBotToken=d.telegramBotToken||'';
+          DB.telegramChatId=d.telegramChatId||'';
+          DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
+          DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
+          DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
+          DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -4177,10 +4583,12 @@ window.completeLogin = function(role, sellerName, sellerId){
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
   resetInactivityTimer();
-  document.getElementById('user-badge').innerHTML = '<span id="sync-dot"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 '+currentSellerName);
+  document.getElementById('user-badge').innerHTML = '<span id="sync-dot" onclick="window.showSyncPanel && window.showSyncPanel()" style="cursor:pointer" title="Sinxronizatsiya holati"></span><span id="sync-conflict-badge" onclick="window.showSyncPanel && window.showSyncPanel()" style="display:none;cursor:pointer;background:var(--amber,#d97706);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;font-weight:700;margin-right:4px;align-items:center"></span>&nbsp;'+(role==='admin'?'👨‍💼 Admin':'🛒 '+currentSellerName);
+  if(typeof window.renderSyncConflictBadge==='function') window.renderSyncConflictBadge();
   if(role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
+    startAuditLogListener();
     ['dashboard','products','history','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
@@ -4294,6 +4702,9 @@ window.showPage = function(page, role){
     if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
     if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
     if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
+    if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
+    if(typeof window.renderAuditLog==='function') window.renderAuditLog();
+    if(typeof window.fillTelegramSettingsForm==='function') window.fillTelegramSettingsForm();
     if(typeof window.renderBackupStatus==='function') window.renderBackupStatus();
   }
   if(page==='dashboard'){ renderDashboard(); if(typeof window.renderBackupStatus==='function') window.renderBackupStatus(); }
@@ -4411,7 +4822,7 @@ window.renderDashboard = function(){
   (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{
     const key = (d.org?d.org+' · ':'')+d.debtorName;
     if(!debtorTotals[key]) debtorTotals[key] = { label:key, org:d.org||'', name:d.debtorName, total:0 };
-    debtorTotals[key].total += d.total;
+    debtorTotals[key].total += debtRemaining(d);
   });
   const topDebtors = Object.values(debtorTotals).sort((a,b)=>b.total-a.total).slice(0,5);
   const tdEl = document.getElementById('top-debtors');
@@ -4744,6 +5155,21 @@ window.loadImgFile=function(input){
   };
   reader.readAsDataURL(file);
 }
+// Tovar tahrirlashni yakunlaydi: saqlaydi va narx o'zgargan bo'lsa audit
+// jurnaliga yozadi (narx tarixi shaffofligi uchun).
+function finishSaveExistingProduct(p, fields){
+  closeModal('modal-product');
+  toast('Tovar yangilandi','green');
+  if(p.price !== fields.price){
+    logAudit('product_price_change', `✏️ Narx o'zgartirildi: ${fields.name} — ${fmt(p.price)} → ${fmt(fields.price)} so'm`);
+  }
+  fbSaveProduct({
+    ...p,
+    ...fields,
+    serialCodes:p.serialCodes || {},
+    soldCodes:p.soldCodes || {}
+  }).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
 window.saveProduct=async function(){
   const name=document.getElementById('p-name').value.trim();
   const price=parseFloat(document.getElementById('p-price').value);
@@ -4769,28 +5195,29 @@ window.saveProduct=async function(){
   }
   if(editingProductId){
     const p=DB.products.find(x=>x.id===editingProductId);
-    closeModal('modal-product');
-    toast('Tovar yangilandi','green');
-  fbSaveProduct({
-    ...p,
-
-    name,
-    price,
-    cost,
-    img,
-    note,
-    volume,
-
-    barcode,
-    qrCode,
-
-    serialCodes:p.serialCodes || {},
-
-    soldCodes:p.soldCodes || {}
-})
+    // YANGI: narx tannarxdan PAST kiritilsa (odatda xato terish natijasida),
+    // buni faqat keyinchalik AI tahlilchi orqali "zarar bilan sotilgan"
+    // sifatida bilib qolish o'rniga — SAQLASH PAYTIDA darhol ogohlantiramiz.
+    if(cost>0 && price>0 && price<cost){
+      confirm2('⚠️ Narx tannarxdan past', `Sotish narxi (${fmt(price)} so'm) tannarxdan (${fmt(cost)} so'm) past — har bir sotuvda zarar ko'rasiz. Baribir shunday saqlansinmi?`, ()=>{
+        finishSaveExistingProduct(p, {name,price,cost,img,note,volume,barcode,qrCode});
+      });
+      return;
+    }
+    finishSaveExistingProduct(p, {name,price,cost,img,note,volume,barcode,qrCode});
   } else {
     const qty=parseInt(document.getElementById('p-qty').value);
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
+    if(cost>0 && price>0 && price<cost){
+      confirm2('⚠️ Narx tannarxdan past', `Sotish narxi (${fmt(price)} so'm) tannarxdan (${fmt(cost)} so'm) past — har bir sotuvda zarar ko'rasiz. Baribir shunday saqlansinmi?`, ()=>{
+        finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty);
+      });
+      return;
+    }
+    finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty);
+  }
+}
+function finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty){
     const newProd = {
     id: uid(),
     name,
@@ -4826,7 +5253,6 @@ window.saveProduct=async function(){
       }));
     }
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
-  }
 }
 window.deleteProduct=function(id){
   const p=DB.products.find(x=>x.id===id);
@@ -5097,7 +5523,18 @@ window.clearCart=function(){
   ids.forEach(id=>updateSingleCard(id));
   closeModal('modal-cart');
 }
-window.openCartModal=function(){ renderCartModal(); openModal('modal-cart'); }
+window.openCartModal=function(){ renderCartModal(); populateCartCustomerSelect(); openModal('modal-cart'); }
+// YANGI: savat mijoz bilan bog'lansa, sotuv yakunlanganda avtomatik ravishda
+// o'sha mijozning xarid tarixiga va ballariga qo'shiladi (mijoz uchun har
+// safar qo'lda "Xarid qayd etish" tugmasini bosish shart emas).
+function populateCartCustomerSelect(){
+  const sel = document.getElementById('cart-customer-select');
+  if(!sel) return;
+  const cur = sel.value;
+  const list = (DB.customers||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'uz'));
+  sel.innerHTML = `<option value="">— Mijoz tanlanmagan —</option>` + list.map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?' · '+esc(c.phone):''}</option>`).join('');
+  if(cur && list.some(c=>c.id===cur)) sel.value = cur;
+}
 window.renderCartModal=function(){
   const items=Object.entries(cart); const el=document.getElementById('cart-items');
   if(!items.length){ el.innerHTML='<p style="color:var(--text3);text-align:center;padding:1.5rem">Savat bo\'sh</p>'; document.getElementById('cart-grand-total').textContent="0 so'm"; return; }
@@ -5382,7 +5819,7 @@ window.renderDebts = function(){
 
   // Statistika — TANLANGAN filtr + sana oralig'i bo'yicha (report.html bilan
   // bir xil mantiq: `list` allaqachon debtFilter'ga qarab filtrlangan).
-  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
   const overdueDays = getOverdueDays();
@@ -5422,7 +5859,7 @@ window.renderDebts = function(){
 
   container.innerHTML = Object.values(grouped).map(g=>{
     const people = Object.values(g.people);
-    const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0),0);
+    const totalOwed = people.reduce((sum,p)=>sum+p.debts.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0),0);
     const totalCount = people.reduce((a,p)=>a+p.debts.length,0);
     const headerTitle = g.isOrg ? `🏢 ${esc(g.org)}` : `👤 ${esc(people[0].debtorName)}`;
     const headerSub = g.isOrg ? `${people.length} ta kishi qarzdor` : '';
@@ -5454,7 +5891,7 @@ window.renderDebts = function(){
       </div>
       <div style="display:flex;flex-direction:column;gap:.85rem">
         ${people.map(p=>{
-          const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+          const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
           const debtor = DB.debtors.find(dd=>dd.name===p.debtorName && !dd.isOrgAccount && (dd.org===g.org || (!g.org && !dd.org)));
           const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${esc(debtor.login)}</strong> · Parol: <strong>${esc(debtor.password)}</strong></div>` : '';
           const loginBtn = debtor
@@ -5486,25 +5923,33 @@ window.renderDebts = function(){
               ${p.debts.map(d=>{
                 const daysOld = Math.floor((new Date()-new Date(d.date))/86400000);
                 const overdue = !d.paid && daysOld>=overdueDays;
+                const remaining = debtRemaining(d);
+                const isPartial = !d.paid && (d.paidAmount||0) > 0;
+                const pct = d.total>0 ? Math.min(100, Math.round(((d.paidAmount||0)/d.total)*100)) : 0;
+                const stateColor = d.paid?'green':isPartial?'blue':overdue?'red':'amber';
+                const stateVarPrefix = stateColor==='blue' ? 'accent' : stateColor;
+                const stateLabel = d.paid?'✅ To\'langan':isPartial?`🔵 Qisman to'langan (${pct}%)`:overdue?`⏰ Muddati o'tgan (${daysOld} kun)`:'⏳ Kutilmoqda';
                 return `
-                <div style="border:1px solid ${d.paid?'var(--green-border)':overdue?'var(--red-border)':'var(--amber-border)'};border-radius:8px;padding:.65rem .85rem;background:${d.paid?'var(--green-bg)':overdue?'var(--red-bg)':'var(--amber-bg)'}">
+                <div style="border:1px solid var(--${stateVarPrefix}-border);border-radius:10px;padding:.7rem .85rem;background:var(--${stateVarPrefix}-bg)">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
                     <div>
                       <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
-                      <span class="badge ${d.paid?'green':overdue?'red':'amber'}" style="margin-left:.5rem">${d.paid?'✅ To\'langan':overdue?`⏰ Muddati o'tgan (${daysOld} kun)`:'⏳ Kutilmoqda'}</span>
+                      <span class="badge ${stateColor}" style="margin-left:.5rem">${stateLabel}</span>
                     </div>
-                    <div style="display:flex;align-items:center;gap:.5rem">
-                      <span style="font-weight:700;font-size:15px">${fmt(d.total)} so'm</span>
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+                      <span style="font-weight:700;font-size:15px">${isPartial ? `${fmt(remaining)} so'm <span style="font-size:11px;font-weight:400;color:var(--text3)">(jami ${fmt(d.total)})</span>` : `${fmt(d.total)} so'm`}</span>
                       <button class="btn sm" onclick="printSingleDebt('${d.id}')" title="Faqat shu bitta qarz yozuvi uchun alohida chek chiqarish">🖨 Chek</button>
-                      ${!d.paid?`<button class="btn sm green" onclick="markDebtPaid('${d.id}')">✓ To'landi</button>`:''}
+                      ${!d.paid?`<button class="btn sm blue" onclick="openPartialPaymentModal('${d.id}')" title="To'liq yoki qisman to'lov qabul qilish">💵 To'lov</button>`:''}
                       <button class="btn sm red" onclick="deleteDebtEntry('${d.id}')" title="Qarz yozuvini butunlay o'chirish">🗑</button>
                     </div>
                   </div>
+                  ${isPartial?`<div style="height:6px;background:var(--border2);border-radius:4px;margin-top:.5rem;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:4px"></div></div>`:''}
                   <div style="font-size:12px;color:var(--text2);margin-top:.35rem">
                     ${d.items.map(i=>`${esc(i.productName)} ${i.volume?'('+esc(i.volume)+'L)':''} ×${i.qty} ta`).join(', ')}
                   </div>
                   ${d.note?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">📝 ${esc(d.note)}</div>`:''}
-                  ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}</div>`:''}
+                  ${isPartial?`<div style="font-size:12px;color:var(--text3);margin-top:.2rem">💵 Jami to'langan: ${fmt(d.paidAmount||0)} so'm (${(d.payments||[]).length} ta to'lov) · <a href="javascript:void(0)" onclick="openPartialPaymentModal('${d.id}')" style="color:var(--accent);font-weight:600">tarixni ko'rish</a></div>`:''}
+                  ${d.paid&&d.paidDate?`<div style="font-size:12px;color:var(--green);margin-top:.2rem">✅ ${timeStr(d.paidDate)}${(d.payments||[]).length>1?` · ${d.payments.length} ta to'lov orqali`:''}</div>`:''}
                 </div>`;
               }).join('')}
             </div>
@@ -5517,10 +5962,70 @@ window.renderDebts = function(){
 
 window.markDebtPaid = function(id){
   const d = DB.debts.find(x=>x.id===id);
-  confirm2('Qarzni to\'langan deb belgilash', `${d?.debtorName} — ${fmt(d?.total)} so'm qarz to'landimi?`, ()=>{
-    toast('Qarz to\'langan deb belgilandi','green');
-    fbUpdateDebt(id, {paid:true, paidDate:new Date().toISOString()}).catch(e=>{ console.error(e); toast('Yangilashda xatolik','red'); });
+  if(!d) return;
+  const remaining = debtRemaining(d);
+  confirm2('Qarzni to\'langan deb belgilash', `${d.debtorName} — qolgan ${fmt(remaining)} so'm bir yo'la to'landimi?`, ()=>{
+    toast('Qarz to\'liq to\'landi deb belgilandi','green');
+    fbApplyDebtPayment(id, remaining, "To'liq yopildi").catch(e=>{ console.error(e); toast('Yangilashda xatolik','red'); });
   });
+}
+
+// YANGI: QISMAN TO'LOV oynasi. Masalan 16 000 so'mlik qarzni mijoz avval
+// 5 000, keyinroq яна 10 000 qilib to'lashi mumkin — har safar shu oyna
+// orqali. Qoldiq avtomatik hisoblab ko'rsatiladi, tezkor tugmalar
+// (1/2 qismi, to'liq qoldiq) va o'zingiz xohlagan summani kiritish mumkin.
+let payingDebtId = null;
+window.openPartialPaymentModal = function(id){
+  const d = DB.debts.find(x=>x.id===id);
+  if(!d) return;
+  if(debtRemaining(d)<=0){ toast('Bu qarz allaqachon to\'liq to\'langan','amber'); return; }
+  payingDebtId = id;
+  const remaining = debtRemaining(d);
+  document.getElementById('pd-debtor-name').textContent = d.debtorName + (d.org?' · '+d.org:'');
+  document.getElementById('pd-total').textContent = fmt(d.total)+" so'm";
+  document.getElementById('pd-paid-so-far').textContent = fmt(d.paidAmount||0)+" so'm";
+  document.getElementById('pd-remaining').textContent = fmt(remaining)+" so'm";
+  document.getElementById('pd-amount').value = '';
+  document.getElementById('pd-amount').max = remaining;
+  document.getElementById('pd-note').value = '';
+  renderPartialPaymentHistory(d);
+  openModal('modal-partial-payment');
+  setTimeout(()=>document.getElementById('pd-amount')?.focus(), 50);
+}
+function renderPartialPaymentHistory(d){
+  const wrap = document.getElementById('pd-history');
+  if(!wrap) return;
+  if(!Array.isArray(d.payments) || !d.payments.length){ wrap.innerHTML = '<p style="font-size:12px;color:var(--text3)">Hali to\'lov qilinmagan</p>'; return; }
+  wrap.innerHTML = d.payments.slice().reverse().map(p=>`
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);padding:.25rem 0;border-bottom:1px dashed var(--border2)">
+      <span>${timeStr(p.date)}${p.note?' · '+esc(p.note):''}</span>
+      <span style="font-weight:700;color:var(--green)">+${fmt(p.amount)} so'm</span>
+    </div>`).join('');
+}
+window.setPartialPaymentQuick = function(fraction){
+  const d = DB.debts.find(x=>x.id===payingDebtId);
+  if(!d) return;
+  const remaining = debtRemaining(d);
+  const amount = fraction===1 ? remaining : Math.round(remaining*fraction/100);
+  document.getElementById('pd-amount').value = amount;
+}
+window.submitDebtPayment = function(){
+  const d = DB.debts.find(x=>x.id===payingDebtId);
+  if(!d) return;
+  const remaining = debtRemaining(d);
+  let amount = parseFloat(document.getElementById('pd-amount').value);
+  if(!amount || amount<=0){ toast("To'lov summasini kiriting",'red'); return; }
+  if(amount > remaining + 0.5){
+    toast(`Qoldiqdan (${fmt(remaining)} so'm) ortiq kiritib bo'lmaydi`,'red');
+    return;
+  }
+  const note = (document.getElementById('pd-note').value||'').trim();
+  closeModal('modal-partial-payment');
+  fbApplyDebtPayment(payingDebtId, amount, note).then(res=>{
+    if(res){
+      toast(res.isFullyPaid ? `✓ To'liq yopildi (+${fmt(res.applied)} so'm)` : `✓ ${fmt(res.applied)} so'm qabul qilindi, qoldiq: ${fmt(debtRemaining(d))} so'm`, 'green');
+    }
+  }).catch(e=>{ console.error(e); toast('Xatolik yuz berdi','red'); });
 }
 
 // ===== DEBTOR LOGIN EDIT =====
@@ -5532,6 +6037,7 @@ window.openDebtorLogin = function(id){
   document.getElementById('dl-type').value = debtor.org ? "👤 Shaxs (faqat O'ZINING qarzini ko'radi)" : '👤 Shaxs';
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
+  resetDebtorLoginQRPreview();
   openModal('modal-debtor-login');
 }
 
@@ -5560,7 +6066,14 @@ window.openOrgAccountLogin = function(org){
   document.getElementById('dl-type').value = "🏢 Tashkilot (BUTUN tashkilotni, barcha xodimlarni ko'radi)";
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
+  resetDebtorLoginQRPreview();
   openModal('modal-debtor-login');
+}
+function resetDebtorLoginQRPreview(){
+  const imgEl = document.getElementById('dl-qr-img');
+  const printBtn = document.getElementById('dl-qr-print-btn');
+  if(imgEl){ imgEl.style.display = 'none'; imgEl.src=''; delete imgEl.dataset.link; }
+  if(printBtn) printBtn.style.display = 'none';
 }
 
 window.saveDebtorLogin = function(){
@@ -5591,6 +6104,82 @@ window.revokeDebtorLogin = function(){
     toast('Kirish huquqi bekor qilindi','amber');
     fbSaveDebtor({...debtor, login:'', password:''}).then(()=>renderDebts()).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
+}
+
+// YANGI: QR ORQALI AVTOMATIK KIRISH — "debt.html" sahifasiga
+// "?u=<login>&p=<parol>" bilan ishora qiluvchi havola yaratadi. Manzil
+// receiptQrLink bilan bir xil mantiqda, joriy ilova qaysi domen/papkada
+// turgan bo'lsa, o'shandan avtomatik hisoblanadi — shu bilan qayerga
+// joylashtirilishidan qat'i nazar to'g'ri ishlaydi.
+const DEBTOR_PORTAL_PAGE_URL = (function(){
+  const fallback = 'https://linvern0.github.io/market/debt.html';
+  try{
+    const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(location.hostname) || location.protocol === 'file:';
+    if(isLocal) return fallback;
+    const dir = location.pathname.replace(/[^/]*$/, '');
+    return `${location.origin}${dir}debt.html`;
+  }catch(e){ return fallback; }
+})();
+function debtorPortalLink(login, password){
+  return `${DEBTOR_PORTAL_PAGE_URL}?u=${encodeURIComponent(login)}&p=${encodeURIComponent(password)}`;
+}
+// Mijoz uchun QR-ni "Login/Parol" oynasida ko'rsatadi. Login/parol hali
+// saqlanmagan (yangi) bo'lsa, avval saqlashni so'raydi — chunki QR faqat
+// FIRESTORE'da mavjud (saqlangan) login/parol uchun ishlaydi.
+window.refreshDebtorLoginQR = function(){
+  const login = document.getElementById('dl-login').value.trim();
+  const password = document.getElementById('dl-password').value.trim();
+  if(!login || !password){ toast("Avval login va parolni to'ldirib, saqlang", 'amber'); return; }
+  const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
+  if(!debtor || debtor.login!==login || debtor.password!==password){
+    toast("QR yaratishdan oldin o'zgarishlarni saqlang", 'amber');
+    return;
+  }
+  const link = debtorPortalLink(login, password);
+  const imgEl = document.getElementById('dl-qr-img');
+  const printBtn = document.getElementById('dl-qr-print-btn');
+  if(typeof QRCode !== 'undefined' && QRCode.toDataURL){
+    QRCode.toDataURL(link, {width:220, margin:1}, (err, url)=>{
+      if(err){ console.error('QR yaratishda xatolik:', err); toast('QR yaratib bo\'lmadi', 'red'); return; }
+      imgEl.src = url;
+      imgEl.style.display = 'block';
+      imgEl.dataset.link = link;
+      if(printBtn) printBtn.style.display = 'inline-flex';
+    });
+  } else {
+    toast('QR kutubxonasi hali yuklanmadi, sahifani qayta yuklab ko\'ring', 'red');
+  }
+}
+// QR-ni A6 o'lchamdagi chop etiladigan sahifa sifatida (yorliq/varoqcha)
+// yangi oynada ochadi — do'kon xohlasa kesib mijozga bersa bo'ladi.
+window.printDebtorLoginQR = function(){
+  const imgEl = document.getElementById('dl-qr-img');
+  const link = imgEl && imgEl.dataset.link;
+  if(!imgEl || !imgEl.src || !link){ toast('Avval QR yarating', 'amber'); return; }
+  const name = document.getElementById('dl-name').value || '';
+  const shopName = (DB.shopName || "Do'kon");
+  const w = window.open('', '_blank');
+  if(!w){ toast("Chop etish oynasi ochilmadi (brauzer bloklagan bo'lishi mumkin)", 'red'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="uz"><head><meta charset="UTF-8">
+    <title>Mijoz QR — ${name.replace(/</g,'&lt;')}</title>
+    <style>
+      body{font-family:-apple-system,'Segoe UI',sans-serif;text-align:center;padding:2rem}
+      h2{margin-bottom:.2rem}
+      p{color:#555;margin:.3rem 0 1.2rem}
+      img{width:240px;height:240px}
+      .box{display:inline-block;border:1.5px dashed #999;border-radius:12px;padding:1.5rem}
+      small{display:block;margin-top:1rem;color:#888;word-break:break-all;max-width:280px}
+    </style></head><body>
+    <div class="box">
+      <h2>🏪 ${shopName}</h2>
+      <p>Xarid tarixi va qarzni ko'rish uchun<br>QR kodni skanerlang</p>
+      <img src="${imgEl.src}">
+      <div style="font-weight:700;margin-top:.75rem">${name}</div>
+      <small>${link}</small>
+    </div>
+    <script>window.onload=()=>{window.print();}<\/script>
+    </body></html>`);
+  w.document.close();
 }
 
 // YANGI: mijozga yuborish uchun login/parolni bitta bosishda buferga nusxalaydi.
@@ -5711,6 +6300,13 @@ window.doCartSell=async function(){
   }
   if(receiptItems.length){
     toast(`✓ Savdo yakunlandi — ${fmt(total)} so'm`,'green');
+    // YANGI: agar savat mijoz bilan bog'langan bo'lsa, shu xarid avtomatik
+    // ravishda uning tarixiga va ballariga qo'shiladi.
+    const cartCustomerId = document.getElementById('cart-customer-select')?.value;
+    if(cartCustomerId && typeof window.applyCustomerPurchase==='function'){
+      window.applyCustomerPurchase(cartCustomerId, total, saleGroupId);
+    }
+    const custSel = document.getElementById('cart-customer-select'); if(custSel) custSel.value='';
     // Butun savat (bir nechta tovar bo'lsa ham) BITTA umumiy receiptId
     // bilan chek sifatida saqlanadi — QR shu ID'ga ishora qiladi.
     openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total, saleGroupId));
@@ -6178,7 +6774,7 @@ window.exportDebtsCSV=function(){
   if(!DB.debts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
   let csv="Sana,Ism/Tashkilot,Turi,Telefon,Summa,Holat,Izoh\n";
   DB.debts.slice().reverse().forEach(d=>{
-    csv+=`"${timeStr(d.date)}","${d.debtorName}${d.org?' ('+d.org+')':''}",${d.type==='organization'?'Tashkilot':'Shaxs'},"${d.phone||''}",${d.total},"${d.paid?"To'langan":'Faol'}","${(d.note||'').replace(/"/g,'""')}"\n`;
+    csv+=`"${timeStr(d.date)}","${d.debtorName}${d.org?' ('+d.org+')':''}",${d.type==='organization'?'Tashkilot':'Shaxs'},"${d.phone||''}",${debtDisplayAmount(d)},"${debtStatusLabel(d)}","${(d.note||'').replace(/"/g,'""')}"\n`;
   });
   download(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
   toast(`✓ ${DB.debts.length} ta qarz yozuvi CSV formatda yuklandi`,'green');
@@ -6190,8 +6786,8 @@ window.exportDebtsExcel=function(){
   const headers=["Sana","Ism/Tashkilot","Turi","Telefon","Summa","Holat","Izoh"];
   const rows=DB.debts.slice().reverse().map(d=>[
     timeStr(d.date), d.debtorName+(d.org?' ('+d.org+')':''),
-    d.type==='organization'?'Tashkilot':'Shaxs', d.phone||'', d.total,
-    d.paid?"To'langan":'Faol', d.note||''
+    d.type==='organization'?'Tashkilot':'Shaxs', d.phone||'', debtDisplayAmount(d),
+    debtStatusLabel(d), d.note||''
   ]);
   if(exportToExcel(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.xlsx`,'Qarzlar',headers,rows)){
     toast(`✓ ${DB.debts.length} ta qarz yozuvi Excel formatda yuklandi`,'green');
@@ -6218,7 +6814,7 @@ window.printDebtsList=function(){
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
   list = list.slice().reverse();
 
-  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
   const activeCount = list.filter(d=>!d.paid).length;
   const headers = ['Sana','Ism/Tashkilot','Turi','Telefon','Summa','Holat','Izoh'];
   const rows = list.map(d=>[
@@ -6226,8 +6822,8 @@ window.printDebtsList=function(){
     d.debtorName+(d.org?' ('+d.org+')':''),
     d.org?'Tashkilot':'Shaxs',
     d.phone||'',
-    fmt(d.total)+" so'm",
-    d.paid?"To'langan":'Faol',
+    fmt(debtDisplayAmount(d))+" so'm",
+    debtStatusLabel(d),
     d.note||''
   ]);
   printTable("Qarzlar ro'yxati", [
@@ -6253,7 +6849,7 @@ window.printPersonDebt=function(org, debtorName){
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
-  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
   const totalPaid = list.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
   const activeCount = list.filter(d=>!d.paid).length;
   const phone = (list.find(d=>d.phone)||{}).phone || '';
@@ -6261,8 +6857,8 @@ window.printPersonDebt=function(org, debtorName){
   const rows = list.map(d=>[
     timeStr(d.date),
     (d.items||[]).map(i=>`${i.productName}${i.volume?' ('+i.volume+'L)':''} x${i.qty}`).join(', '),
-    fmt(d.total)+" so'm",
-    d.paid?"To'langan":'Faol',
+    fmt(debtDisplayAmount(d))+" so'm",
+    debtStatusLabel(d),
     d.note||''
   ]);
   const subtitleLines = [
@@ -6298,10 +6894,11 @@ window.printSingleDebt=function(id){
     `Sana: ${timeStr(d.date)}`,
     d.org ? `Tashkilot: ${d.org}` : "Shaxsiy qarzdor (tashkilotsiz)",
     d.phone ? `Telefon: ${d.phone}` : '',
-    `Holat: ${d.paid?"To'langan":'Faol'}`,
+    `Holat: ${debtStatusLabel(d)}`,
     (d.paid && d.paidDate) ? `To'langan sana: ${timeStr(d.paidDate)}` : '',
     d.note ? `Izoh: ${d.note}` : '',
-    `Jami: ${fmt(d.total)} so'm`
+    `Jami: ${fmt(d.total)} so'm`,
+    !d.paid && (d.paidAmount||0)>0 ? `To'langan: ${fmt(d.paidAmount)} so'm · Qoldiq: ${fmt(debtRemaining(d))} so'm` : null
   ].filter(Boolean);
   printTable(`Qarz cheki — ${d.debtorName}`, subtitleLines, headers, rows);
 }
@@ -6318,11 +6915,11 @@ window.printOrgDebt=function(org){
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
-  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
+  const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
   const activeCount = list.filter(d=>!d.paid).length;
   const peopleCount = new Set(list.map(d=>d.debtorName)).size;
   const headers = ['Sana','Ism','Summa','Holat'];
-  const rows = list.map(d=>[timeStr(d.date), d.debtorName, fmt(d.total)+" so'm", d.paid?"To'langan":'Faol']);
+  const rows = list.map(d=>[timeStr(d.date), d.debtorName, fmt(debtDisplayAmount(d))+" so'm", debtStatusLabel(d)]);
   printTable(`Tashkilot qarzi — ${org}`, [
     `Jami faol qarz: ${fmt(totalActive)} so'm`,
     `Qarzdorlar soni: ${peopleCount} kishi`,
@@ -6619,6 +7216,7 @@ window.savePins=function(){
       DB.pins.admin=ap;
       toast('Admin PIN saqlandi','green');
       document.getElementById('new-admin-pin').value='';
+      logAudit('admin_pin_change', '🔑 Admin PIN kodi o\'zgartirildi');
       fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
     });
     return;
@@ -6626,6 +7224,7 @@ window.savePins=function(){
   if(ap) DB.pins.admin=ap;
   toast('Admin PIN saqlandi','green');
   document.getElementById('new-admin-pin').value='';
+  if(ap) logAudit('admin_pin_change', '🔑 Admin PIN kodi o\'zgartirildi');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
@@ -6985,6 +7584,223 @@ function updateReceiptPreviewDraft(){
   };
   try{ localStorage.setItem(RECEIPT_PREVIEW_STORAGE_KEY, JSON.stringify(draft)); }catch(e){}
 }
+window.renderAuditLog = function(){
+  const wrap = document.getElementById('auditlog-list');
+  if(!wrap) return;
+  const filterVal = document.getElementById('auditlog-filter')?.value || '';
+  const list = (window.DB_AUDIT_LOG||[]).filter(e=>!filterVal || e.action===filterVal);
+  if(!list.length){ wrap.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem">Hozircha yozuv yo\'q</p>'; return; }
+  wrap.innerHTML = list.map(e=>`
+    <div style="display:flex;justify-content:space-between;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border2)">
+      <div style="font-size:13px">${esc(e.summary)}</div>
+      <div style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">${esc(e.actor)}<br>${timeStr(e.ts)}</div>
+    </div>`).join('');
+}
+
+// ================== TELEGRAM BOT BILDIRISHNOMALARI ==================
+// YANGI: past zaxira, muddati o'tgan qarz va kunlik hisobot haqida
+// Telegram orqali xabar yuborish — endi bir nechta adminga (DB.telegramAdmins
+// ro'yxatidagi har bir Chat ID'ga) yuboriladi. MUHIM CHEKLOV: bu sahifa
+// (brauzerda ishlaydigan statik veb-ilova) o'zi alohida serverga ega emas,
+// shuning uchun shu yerdagi funksiyalar xabarlarni FAQAT sahifa biror
+// qurilmada OCHIQ turgan paytda (admin kirganda va har 30 daqiqada)
+// tekshirib yuboradi — bu haqiqiy server-cron emas. Agar sahifa umuman
+// ochilmasa (masalan bir necha kun), o'sha kunlar uchun xabar yuborilmaydi.
+// TO'LIQ 24/7 ishlashi uchun repo ichidagi .github/workflows/telegram-notify.yml
+// (GitHub Actions) ishlatiladi — u sahifa yopiq bo'lsa ham muntazam ishga tushadi.
+function getTelegramChatIds(){
+  const ids = (DB.telegramAdmins||[]).map(a=>String(a.chatId||'').trim()).filter(Boolean);
+  // Eski (bitta) telegramChatId ham bo'lsa va adminlar ro'yxatida bo'lmasa, qo'shib yuboramiz
+  const legacy = (DB.telegramChatId||'').trim();
+  if(legacy && !ids.includes(legacy)) ids.push(legacy);
+  return [...new Set(ids)];
+}
+async function sendTelegramMessage(text){
+  const token = (DB.telegramBotToken||'').trim();
+  const chatIds = getTelegramChatIds();
+  if(!token || !chatIds.length) return {ok:false, error:"Bot token yoki hech bo'lmaganda bitta admin (Chat ID) kiritilmagan"};
+  let anyOk = false, lastError = '';
+  for(const chatId of chatIds){
+    try{
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode:'HTML' })
+      });
+      const data = await res.json();
+      if(!data.ok){ console.error('Telegram xatosi ('+chatId+'):', data); lastError = data.description||'Noma\'lum xatolik'; }
+      else anyOk = true;
+    }catch(e){
+      console.error('Telegram yuborishda xatolik ('+chatId+'):', e);
+      lastError = e.message;
+    }
+  }
+  if(anyOk) return {ok:true, partialError: lastError||null};
+  return {ok:false, error: lastError||'Xabar yuborib bo\'lmadi'};
+}
+window.addTelegramAdmin = function(){
+  const nameEl = document.getElementById('tg-admin-name');
+  const idEl = document.getElementById('tg-admin-chatid');
+  const name = (nameEl?.value||'').trim();
+  const chatId = (idEl?.value||'').trim();
+  if(!chatId){ toast('Chat ID kiriting','red'); return; }
+  if(!/^-?\d+$/.test(chatId)){ toast('Chat ID faqat raqamlardan iborat bo\'lishi kerak (masalan: 123456789)','red'); return; }
+  DB.telegramAdmins = DB.telegramAdmins||[];
+  if(DB.telegramAdmins.some(a=>String(a.chatId)===chatId)){ toast('Bu Chat ID allaqachon qo\'shilgan','amber'); return; }
+  DB.telegramAdmins.push({ id:'tg_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name: name||('Admin '+(DB.telegramAdmins.length+1)), chatId });
+  if(nameEl) nameEl.value=''; if(idEl) idEl.value='';
+  renderTelegramAdminsList();
+  toast('✓ Admin qo\'shildi — pastdagi "💾 Saqlash" tugmasini bosishni unutmang','green');
+}
+window.removeTelegramAdmin = function(id){
+  DB.telegramAdmins = (DB.telegramAdmins||[]).filter(a=>a.id!==id);
+  renderTelegramAdminsList();
+  saveTelegramSettings(true);
+}
+window.renderTelegramAdminsList = function(){
+  const wrap = document.getElementById('tg-admins-list');
+  if(!wrap) return;
+  const admins = DB.telegramAdmins||[];
+  if(!admins.length){
+    wrap.innerHTML = `<p style="font-size:12px;color:var(--text3)">Hali admin qo'shilmagan — pastdan qo'shing.</p>`;
+    return;
+  }
+  wrap.innerHTML = admins.map(a=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem">
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name||'Admin')}</div>
+        <div style="font-size:11.5px;color:var(--text3)">Chat ID: ${esc(a.chatId)}</div>
+      </div>
+      <button class="btn sm red" style="flex-shrink:0" onclick="removeTelegramAdmin('${a.id}')">🗑</button>
+    </div>`).join('');
+}
+window.sendTelegramTestMessage = async function(){
+  const token = document.getElementById('tg-bot-token')?.value.trim();
+  if(!token){ toast('Avval Bot token kiriting','red'); return; }
+  DB.telegramBotToken = token;
+  if(!getTelegramChatIds().length){ toast('Avval kamida bitta admin (Chat ID) qo\'shing','red'); return; }
+  const res = await sendTelegramMessage(`✅ <b>${esc(DB.shopName||"Do'kon")}</b> — Telegram bog'lanishi muvaffaqiyatli sozlandi!`);
+  if(res.ok) toast('✓ Sinov xabari yuborildi — Telegram\'ni tekshiring','green');
+  else toast('Xatolik: '+res.error,'red');
+}
+// Kuniga FAQAT BIR MARTA yuborish uchun (spam qilmaslik) — localStorage'da
+// oxirgi yuborilgan sana saqlanadi.
+function telegramAlreadySentToday(key){
+  const today = new Date().toISOString().slice(0,10);
+  return localStorage.getItem('dokon_tg_sent_'+key) === today;
+}
+function markTelegramSentToday(key){
+  localStorage.setItem('dokon_tg_sent_'+key, new Date().toISOString().slice(0,10));
+}
+window.checkAndSendTelegramAlerts = async function(){
+  if(!DB.telegramBotToken || !getTelegramChatIds().length) return;
+  if(DB.telegramNotifyLowStock && !telegramAlreadySentToday('lowstock')){
+    const low = (DB.products||[]).filter(p=>p.stock<=(DB.lowStockThreshold||5) && p.stock>0);
+    const empty = (DB.products||[]).filter(p=>p.stock===0);
+    if(low.length || empty.length){
+      let text = `⚠️ <b>Zaxira ogohlantirishi</b> — ${esc(DB.shopName||"Do'kon")}\n\n`;
+      if(empty.length) text += `🔴 Tugagan (${empty.length} ta): ${empty.slice(0,15).map(p=>esc(p.name)).join(', ')}\n`;
+      if(low.length) text += `🟡 Kam qolgan (${low.length} ta): ${low.slice(0,15).map(p=>esc(p.name)+' ('+p.stock+' ta)').join(', ')}`;
+      const r = await sendTelegramMessage(text);
+      if(r.ok) markTelegramSentToday('lowstock');
+    }
+  }
+  if(DB.telegramNotifyOverdueDebts && !telegramAlreadySentToday('overdue')){
+    const overdueDays = DB.overdueDaysGlobal||14;
+    const overdue = (DB.debts||[]).filter(d=>!d.paid && (Date.now()-new Date(d.date).getTime())>=overdueDays*86400000);
+    if(overdue.length){
+      const sum = overdue.reduce((a,d)=>a+debtRemaining(d),0);
+      const text = `⏰ <b>Muddati o'tgan qarzlar</b> — ${esc(DB.shopName||"Do'kon")}\n\n${overdue.length} ta qarzdor, jami ${fmt(sum)} so'm ${overdueDays} kundan ortiq to'lanmagan.`;
+      const r = await sendTelegramMessage(text);
+      if(r.ok) markTelegramSentToday('overdue');
+    }
+  }
+  if(DB.telegramNotifyDailyReport && !telegramAlreadySentToday('dailyreport')){
+    const todayStr = new Date().toISOString().slice(0,10);
+    const todaySales = (DB.sales||[]).filter(s=>!s.reverted && s.date.slice(0,10)===todayStr);
+    const revenue = todaySales.reduce((a,s)=>a+(s.total||0),0);
+    const profit = todaySales.reduce((a,s)=>a+((s.price-(s.cost||0))*s.qty),0);
+    const text = `📊 <b>Kunlik hisobot</b> — ${esc(DB.shopName||"Do'kon")}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} so'm\n📈 Foyda: ${fmt(profit)} so'm`;
+    const r = await sendTelegramMessage(text);
+    if(r.ok) markTelegramSentToday('dailyreport');
+  }
+}
+window.fillTelegramSettingsForm = function(){
+  const t=document.getElementById('tg-bot-token'); if(t && document.activeElement!==t) t.value=DB.telegramBotToken||'';
+  const l=document.getElementById('tg-notify-lowstock'); if(l) l.checked=!!DB.telegramNotifyLowStock;
+  const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
+  const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
+  if(typeof window.renderTelegramAdminsList==='function') window.renderTelegramAdminsList();
+}
+window.saveTelegramSettings = function(silent){
+  DB.telegramBotToken = (document.getElementById('tg-bot-token').value||'').trim();
+  DB.telegramNotifyLowStock = !!document.getElementById('tg-notify-lowstock').checked;
+  DB.telegramNotifyOverdueDebts = !!document.getElementById('tg-notify-overdue').checked;
+  DB.telegramNotifyDailyReport = !!document.getElementById('tg-notify-daily').checked;
+  if(!silent) toast('✓ Telegram sozlamalari saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  checkAndSendTelegramAlerts();
+}
+// Ilova ochiq turgan paytda 30 daqiqada bir tekshirib turadi (server-cron
+// o'rnini to'liq bosolmaydi, lekin ilova ochiq bo'lganda foydali).
+setInterval(()=>{ if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts(); }, 30*60*1000);
+
+// ===== ISH VAQTI JADVALI VA BILDIRISHNOMA SOZLAMALARI =====
+const SCHEDULE_DAYS = [
+  {key:'mon', label:'Dushanba'}, {key:'tue', label:'Seshanba'}, {key:'wed', label:"Chorshanba"},
+  {key:'thu', label:'Payshanba'}, {key:'fri', label:'Juma'}, {key:'sat', label:'Shanba'}, {key:'sun', label:'Yakshanba'}
+];
+function defaultWorkSchedule(){
+  const sched = {};
+  SCHEDULE_DAYS.forEach(d=> sched[d.key] = { open:true, from:'09:00', to:'20:00' });
+  return sched;
+}
+window.renderScheduleForm = function(){
+  const wrap = document.getElementById('schedule-days-wrap');
+  if(!wrap) return;
+  const sched = Object.assign(defaultWorkSchedule(), DB.workSchedule||{});
+  wrap.innerHTML = SCHEDULE_DAYS.map(d=>{
+    const s = sched[d.key] || {open:true, from:'09:00', to:'20:00'};
+    return `<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:.35rem;width:110px;font-size:13px"><input type="checkbox" id="sch-${d.key}-open" ${s.open?'checked':''} onchange="document.getElementById('sch-${d.key}-from').disabled=!this.checked;document.getElementById('sch-${d.key}-to').disabled=!this.checked">${d.label}</label>
+      <input type="time" id="sch-${d.key}-from" value="${s.from||'09:00'}" ${s.open?'':'disabled'} style="border:1.5px solid var(--border2);border-radius:8px;padding:.3rem .5rem;font-size:13px">
+      <span style="color:var(--text3);font-size:12px">—</span>
+      <input type="time" id="sch-${d.key}-to" value="${s.to||'20:00'}" ${s.open?'':'disabled'} style="border:1.5px solid var(--border2);border-radius:8px;padding:.3rem .5rem;font-size:13px">
+    </div>`;
+  }).join('');
+  const bd = document.getElementById('backup-reminder-days');
+  if(bd) bd.value = DB.backupReminderDays || 7;
+}
+window.saveScheduleSettings = function(){
+  const sched = {};
+  SCHEDULE_DAYS.forEach(d=>{
+    sched[d.key] = {
+      open: !!document.getElementById(`sch-${d.key}-open`)?.checked,
+      from: document.getElementById(`sch-${d.key}-from`)?.value || '09:00',
+      to: document.getElementById(`sch-${d.key}-to`)?.value || '20:00'
+    };
+  });
+  DB.workSchedule = sched;
+  DB.backupReminderDays = Math.max(1, Math.min(30, parseInt(document.getElementById('backup-reminder-days')?.value,10) || 7));
+  toast('✓ Ish jadvali saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+// YANGI: joriy vaqt ish jadvalidan tashqarida bo'lsa (dam olish kuni yoki
+// yopiq soat), adminga faqat ESLATMA sifatida ko'rsatiladi — kirish
+// bloklanmaydi (masalan admin favqulodda ishlashi kerak bo'lib qolishi mumkin).
+function isOutsideWorkSchedule(){
+  if(!DB.workSchedule) return false;
+  const dayKeys = ['sun','mon','tue','wed','thu','fri','sat'];
+  const now = new Date();
+  const s = DB.workSchedule[dayKeys[now.getDay()]];
+  if(!s) return false;
+  if(!s.open) return true;
+  const cur = now.getHours()*60+now.getMinutes();
+  const [fh,fm] = (s.from||'09:00').split(':').map(Number);
+  const [th,tm] = (s.to||'20:00').split(':').map(Number);
+  return cur < (fh*60+fm) || cur > (th*60+tm);
+}
+
 window.previewReceiptDesign = function(){
   updateReceiptPreviewDraft();
   const w = window.open('receipt.html?preview=1', 'dokon_receipt_preview');
@@ -7225,7 +8041,7 @@ window.shareDebtReminder = function(org, debtorName, viaWhatsapp){
   const list = DB.debts.filter(d=>d.debtorName===debtorName && (d.org||'')===(org||'') && !d.paid)
     .slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
   if(!list.length){ toast("Bu shaxsning faol qarzi yo'q",'amber'); return; }
-  const total = list.reduce((a,d)=>a+d.total,0);
+  const total = list.reduce((a,d)=>a+(d.paid?d.total:debtRemaining(d)),0);
   const shopName = DB.shopName || "Do'kon";
   const overdueDays = getOverdueDays();
   const lines = [];
@@ -7376,7 +8192,7 @@ window.renderCmdkResults = function(){
     if((d.debtorName||'').toLowerCase().includes(q) || (d.org||'').toLowerCase().includes(q)){
       const key = (d.debtorName||'')+'|'+(d.org||'');
       if(!debtorMap.has(key)) debtorMap.set(key, {name:d.debtorName||'', org:d.org||'', active:0});
-      if(!d.paid) debtorMap.get(key).active += (d.total||0);
+      if(!d.paid) debtorMap.get(key).active += debtRemaining(d);
     }
   });
   const debtorMatches = [...debtorMap.values()].slice(0,6);
@@ -11260,6 +12076,160 @@ window.backToLabelPrinterChoice = function(fromModalId){
   openModal('modal-print-choice');
 }
 
+// ================== BLUETOOTH TERMOPRINTERGA TO'G'RIDAN-TO'G'RI ULANISH ==================
+// YANGI: qog'oz chek/hisobotlarni brauzerning "Chop etish" oynasi orqali
+// emas, balki Bluetooth orqali ulangan termoprinterga TO'G'RIDAN-TO'G'RI
+// (ESC/POS buyruqlari bilan) yuborish.
+//
+// MUHIM CHEKLOVLAR (halol ogohlantirish):
+// 1) Bu FAQAT Bluetooth Low Energy (BLE) protokolli printerlar bilan
+//    ishlaydi. Ko'pgina arzon termoprinterlar "klassik" Bluetooth (SPP)
+//    protokolidan foydalanadi — brauzer (Web Bluetooth API) ULARGA UMUMAN
+//    ULANA OLMAYDI, bu veb-platformaning texnik cheklovi, xato emas.
+// 2) Faqat Android va Windows/Mac/Linux kompyuterlarda Chrome yoki Edge
+//    brauzerida ishlaydi. iPhone/iPad'da (Safari) Apple Web Bluetooth'ni
+//    umuman qo'llab-quvvatlamaydi — bu yerda ilojimiz yo'q.
+// 3) Agar printeringiz ulanmasa — bu ehtimol #1 sababli; brauzerning
+//    oddiy "🖨 Chop etish" (printReceipt) funksiyasidan foydalaning, u har
+//    qanday printerda (shu jumladan Bluetooth SPP orqali operatsion tizimga
+//    o'rnatilgan printerlarda ham) ishlaydi.
+let btPrinterDevice = null;
+let btPrinterCharacteristic = null;
+// Ko'plab umumiy Bluetooth termoprinterlarda ishlatiladigan taniqli
+// xizmat/xarakteristika UUID'lari — ketma-ket sinab ko'ramiz.
+const BT_PRINTER_SERVICE_CANDIDATES = [
+  '000018f0-0000-1000-8000-00805f9b34fb', // ko'p xitoy termoprinterlarida keng tarqalgan
+  '0000ff00-0000-1000-8000-00805f9b34fb',
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455'  // ba'zi ESP32-asosli modullar
+];
+async function connectBluetoothPrinter(){
+  if(!navigator.bluetooth){
+    toast("Bu brauzer Bluetooth'ni qo'llab-quvvatlamaydi (iPhone/iPad'da ishlamaydi — Chrome/Edge, Android yoki kompyuterda urinib ko'ring)",'red');
+    return false;
+  }
+  try{
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: BT_PRINTER_SERVICE_CANDIDATES
+    });
+    toast(`🔗 "${device.name||'Printer'}" bilan bog\'lanmoqda...`,'blue');
+    const server = await device.gatt.connect();
+    let foundChar = null;
+    for(const svcUuid of BT_PRINTER_SERVICE_CANDIDATES){
+      try{
+        const service = await server.getPrimaryService(svcUuid);
+        const chars = await service.getCharacteristics();
+        foundChar = chars.find(c=>c.properties.write || c.properties.writeWithoutResponse) || null;
+        if(foundChar) break;
+      }catch(e){ /* bu xizmat topilmadi — keyingisini sinaymiz */ }
+    }
+    // Agar taniqli UUID'lar orasida topilmasa — BARCHA xizmatlarni sinab ko'ramiz
+    if(!foundChar){
+      const services = await server.getPrimaryServices();
+      for(const service of services){
+        try{
+          const chars = await service.getCharacteristics();
+          foundChar = chars.find(c=>c.properties.write || c.properties.writeWithoutResponse) || null;
+          if(foundChar) break;
+        }catch(e){}
+      }
+    }
+    if(!foundChar){
+      toast("Bu qurilmada yozish mumkin bo'lgan xarakteristika topilmadi — printer BLE emas, klassik Bluetooth (SPP) bo'lishi mumkin",'red');
+      return false;
+    }
+    btPrinterDevice = device;
+    btPrinterCharacteristic = foundChar;
+    device.addEventListener('gattserverdisconnected', ()=>{ btPrinterDevice=null; btPrinterCharacteristic=null; });
+    toast(`✓ "${device.name||'Printer'}" ulandi`,'green');
+    localStorage.setItem('dokon_bt_printer_name', device.name||'');
+    return true;
+  }catch(e){
+    if(e.name==='NotFoundError'){ toast('Qurilma tanlanmadi','amber'); }
+    else { console.error('Bluetooth ulanish xatosi:', e); toast('Ulanishda xatolik: '+e.message,'red'); }
+    return false;
+  }
+}
+// ESC/POS: matnni termoprinter tushunadigan bayt buyruqlariga aylantiradi.
+function escposEncodeText(){
+  const enc = new TextEncoder();
+  const parts = [];
+  parts.push(new Uint8Array([0x1B,0x40])); // Init (printerni tozalash)
+  return {
+    center(){ parts.push(new Uint8Array([0x1B,0x61,0x01])); return this; },
+    left(){ parts.push(new Uint8Array([0x1B,0x61,0x00])); return this; },
+    bold(on){ parts.push(new Uint8Array([0x1B,0x45,on?1:0])); return this; },
+    doubleSize(on){ parts.push(new Uint8Array([0x1D,0x21,on?0x11:0x00])); return this; },
+    line(text=''){ parts.push(enc.encode(text+'\n')); return this; },
+    divider(){ parts.push(enc.encode('--------------------------------\n')); return this; },
+    feed(n=3){ parts.push(new Uint8Array([0x1B,0x64,n])); return this; },
+    cut(){ parts.push(new Uint8Array([0x1D,0x56,0x00])); return this; },
+    build(){
+      const totalLen = parts.reduce((a,p)=>a+p.length,0);
+      const out = new Uint8Array(totalLen);
+      let off=0; parts.forEach(p=>{ out.set(p,off); off+=p.length; });
+      return out;
+    }
+  };
+}
+// BLE yozishda ko'pincha ~180-512 baytlik MTU chegarasi bo'ladi — katta
+// ma'lumotni bo'lib-bo'lib (chunk) yuborish kerak, aks holda xato beradi.
+async function btWriteChunked(bytes){
+  const CHUNK = 180;
+  for(let i=0;i<bytes.length;i+=CHUNK){
+    const chunk = bytes.slice(i, i+CHUNK);
+    if(btPrinterCharacteristic.properties.writeWithoutResponse){
+      await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
+    } else {
+      await btPrinterCharacteristic.writeValue(chunk);
+    }
+    await new Promise(r=>setTimeout(r, 25)); // printer bufferiga "nafas oldirish"
+  }
+}
+window.printReceiptViaBluetooth = async function(){
+  if(!btPrinterDevice || !btPrinterDevice.gatt.connected){
+    toast('Printer ulanmagan — ulanmoqda...','blue');
+    const ok = await connectBluetoothPrinter();
+    if(!ok) return;
+  }
+  try{
+    const shopName = document.getElementById('receipt-shopname')?.textContent || "Do'kon";
+    const dateStr = document.getElementById('receipt-date')?.textContent || '';
+    const sellerStr = document.getElementById('receipt-seller')?.textContent || '';
+    const totalStr = document.getElementById('receipt-total')?.textContent || '';
+    const footerStr = document.getElementById('receipt-footer-text')?.textContent || '';
+    const itemRows = Array.from(document.querySelectorAll('#receipt-items > div')).map(row=>row.textContent.replace(/\s+/g,' ').trim());
+
+    const e = escposEncodeText();
+    e.center().doubleSize(true).bold(true).line(shopName).doubleSize(false).bold(false);
+    e.line(dateStr); if(sellerStr) e.line(sellerStr);
+    e.left().divider();
+    itemRows.forEach(r=>e.line(r));
+    e.divider();
+    e.bold(true).line('JAMI: '+totalStr).bold(false);
+    if(footerStr) e.center().line(footerStr);
+    e.feed(3).cut();
+
+    await btWriteChunked(e.build());
+    toast('✓ Bluetooth printerga yuborildi','green');
+  }catch(err){
+    console.error('Bluetooth chop etishda xatolik:', err);
+    toast('Chop etishda xatolik: '+err.message,'red');
+  }
+}
+window.testBluetoothPrinter = async function(){
+  const ok = btPrinterDevice && btPrinterDevice.gatt.connected ? true : await connectBluetoothPrinter();
+  if(!ok) return;
+  try{
+    const e = escposEncodeText();
+    e.center().bold(true).line("✓ Sinov chop etildi").bold(false);
+    e.line(new Date().toLocaleString('uz-UZ'));
+    e.feed(3).cut();
+    await btWriteChunked(e.build());
+    toast('✓ Sinov chek yuborildi','green');
+  }catch(err){ console.error(err); toast('Xatolik: '+err.message,'red'); }
+}
+
 // ===== XPRINTER (uzun lentali termoprinter) sozlamalari =====
 function applyLabelSettingsToForm(s){
   const widthPresets = ['30','40','50','58','80'];
@@ -11848,13 +12818,17 @@ window.doImportProducts = async function(){
 // qilinadigan holatlarni ko'radi.
 function computeNotifications(){
   const list = [];
+  if(typeof isOutsideWorkSchedule==='function' && isOutsideWorkSchedule()){
+    list.push({ id:'out_of_schedule', icon:'🌙', text:"Hozir belgilangan ish vaqtidan tashqari (dam olish kuni yoki yopiq soat)", action:()=>showPage('settings','admin') });
+  }
   // YANGI: agar 7 kundan buyon (yoki umuman hech qachon) zaxira nusxa
   // olinmagan bo'lsa va tizimda ma'lumot bo'lsa, adminga eslatma beriladi —
   // internet/qurilma muammosi holida ma'lumot yo'qolmasligi uchun.
   if((DB.products.length || DB.sales.length)){
     const lastBackup = parseInt(localStorage.getItem('dokon_last_backup')||'0', 10);
     const daysSince = lastBackup ? Math.floor((Date.now()-lastBackup)/86400000) : Infinity;
-    if(daysSince>=7){
+    const backupReminderDays = DB.backupReminderDays || 7;
+    if(daysSince>=backupReminderDays){
       list.push({
         id:'backup_reminder',
         icon:'💾',
@@ -11871,11 +12845,18 @@ function computeNotifications(){
       action:()=>showPage('products','admin')
     });
   });
-  (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{
+  // TUZATILDI: ilgari BARCHA to'lanmagan qarzlar (hatto bugun yozilgan
+  // qarz ham) alohida bildirishnoma sifatida chiqaverardi — bu ro'yxatni
+  // keraksiz uzun va shovqinli qilib yuborardi. Endi faqat MUDDATI O'TGAN
+  // (admin belgilagan kun sonidan ortiq to'lanmagan) qarzlar ko'rsatiladi —
+  // va endi to'liq summa emas, balki QOLDIQ (qisman to'lovlar hisobga
+  // olingan holda) ko'rsatiladi.
+  const notifOverdueDays = DB.overdueDaysGlobal || 14;
+  (DB.debts||[]).filter(d=>!d.paid && (Date.now()-new Date(d.date).getTime())>=notifOverdueDays*86400000).forEach(d=>{
     list.push({
       id:'debt_'+d.id,
       icon:'💳',
-      text:`${d.debtorName||d.org||'Qarzdor'} — ${fmt(d.total||0)} so'm qarzi bor`,
+      text:`${d.debtorName||d.org||'Qarzdor'} — ${fmt(debtRemaining(d))} so'm qarzi ${notifOverdueDays} kundan ortiq to'lanmagan`,
       action:()=>showPage('debts','admin')
     });
   });
@@ -12340,7 +13321,7 @@ function computeHealthScore(){
   const stockScore = products.length ? Math.max(0, 100 - (lowCount/products.length*100)) : 100;
 
   // c) Qarz nisbati (faol qarz / oxirgi 30 kunlik daromad)
-  const activeDebt = aiSum((DB.debts||[]).filter(d=>!d.paid), d=>d.total);
+  const activeDebt = aiSum((DB.debts||[]).filter(d=>!d.paid), d=>debtRemaining(d));
   const debtRatio = revenue30>0 ? (activeDebt/revenue30*100) : (activeDebt>0?100:0);
   const debtScore = Math.max(0, 100 - Math.min(100, debtRatio));
 
@@ -12456,7 +13437,7 @@ function generateAiInsights(){
   const overdueDays = parseInt(localStorage.getItem('dokon_overdue_days')||'14',10);
   const overdue = (DB.debts||[]).filter(d=>!d.paid && (Date.now()-new Date(d.date).getTime())>overdueDays*AI_DAY_MS);
   if(overdue.length){
-    const overdueSum = aiSum(overdue, d=>d.total);
+    const overdueSum = aiSum(overdue, d=>debtRemaining(d));
     insights.push({type:'warn', icon:'⏰', title:`${overdue.length} ta qarz ${overdueDays} kundan ortiq to'lanmagan`, text:`Jami ${fmt(overdueSum)} so'm muddati o'tgan qarz. Qarzdorlar bilan bog'lanib, to'lovni eslatish tavsiya etiladi.`});
   }
 
@@ -12585,14 +13566,14 @@ function askAiQuestion(qRaw){
 
   if(has('eng qarzdor','katta qarz')){
     const byDebtor = {};
-    (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{ byDebtor[d.debtorName]=(byDebtor[d.debtorName]||0)+d.total; });
+    (DB.debts||[]).filter(d=>!d.paid).forEach(d=>{ byDebtor[d.debtorName]=(byDebtor[d.debtorName]||0)+debtRemaining(d); });
     const top = Object.entries(byDebtor).sort((a,b)=>b[1]-a[1])[0];
     if(!top) return "Hozircha faol qarzlar yo'q.";
     return `Eng katta faol qarz: ${top[0]} — ${fmt(top[1])} so'm.`;
   }
 
   if(has('jami qarz','umumiy qarz')){
-    const total = aiSum((DB.debts||[]).filter(d=>!d.paid), d=>d.total);
+    const total = aiSum((DB.debts||[]).filter(d=>!d.paid), d=>debtRemaining(d));
     const count = (DB.debts||[]).filter(d=>!d.paid).length;
     return `Jami faol qarz: ${fmt(total)} so'm, ${count} ta qarzdorda.`;
   }
@@ -12925,9 +13906,28 @@ window.renderAiAssistant = function(){
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
+    window._deferredInstallPrompt = e; // YANGI: Sozlamalar sahifasidagi doimiy tugma uchun ham foydalanish mumkin
     if(localStorage.getItem('pwaInstallDismissed') === '1') return;
     showInstallBanner();
   });
+  // YANGI: agar foydalanuvchi banner'ni bir marta yopib yuborgan bo'lsa,
+  // ilovani o'rnatishning BOSHQA yo'li qolmasdi. Endi Sozlamalar
+  // sahifasida doimiy "📲 Ilovani o'rnatish" tugmasi bor — shu funksiya
+  // orqali istalgan vaqt qayta chaqirish mumkin.
+  window.triggerAppInstall = async function(){
+    if(isStandaloneNow()){ toast('✅ Ilova allaqachon o\'rnatilgan','green'); return; }
+    if(isIOSDevice()){
+      alert("📲 iOS'da o'rnatish uchun:\n\n1) Pastdagi \"Ulashish\" ⬆️ tugmasini bosing\n2) \"Bosh ekranga qo'shish\"ni tanlang\n3) \"Qo'shish\"ni bosing");
+      return;
+    }
+    if(window._deferredInstallPrompt){
+      window._deferredInstallPrompt.prompt();
+      await window._deferredInstallPrompt.userChoice;
+      window._deferredInstallPrompt = null;
+    } else {
+      toast("Brauzeringiz hali o'rnatishga tayyor emas — biroz kuting yoki brauzer menyusidan \"Ilovani o'rnatish\"ni tanlang", 'amber');
+    }
+  }
 
   // iOS Safari 'beforeinstallprompt' voqeasini QO'LLAB-QUVVATLAMAYDI, shu
   // sababli iPhone/iPad foydalanuvchilariga ilgari umuman o'rnatish taklifi
@@ -14162,13 +15162,30 @@ document.addEventListener('keydown', function(e){
   });
 
   // ================== 14.4 OVOZLI QIDIRUV (Web Speech API) ==================
+  // TUZATILDI (2026-07): ovozli qidiruv ILGARI hech qachon ishlamas edi,
+  // chunki tili qattiq "ru-RU" (rus tili) qilib yozilgan edi — foydalanuvchi
+  // o'zbek yoki boshqa tilda gapirsa, brauzer buni tanimay doim xatolik
+  // berardi. Endi tinglash tili qurilma/brauzer tiliga qarab AVTOMATIK
+  // tanlanadi (masalan qurilma "uz" bo'lsa "uz-UZ", aks holda "ru-RU" —
+  // chunki savdo nomlari ko'pincha ruscha aytiladi). Bundan tashqari,
+  // mikrofonga faqat XAVFSIZ manzilda (https:// yoki localhost) ruxsat
+  // berilishini brauzer talab qiladi — agar sahifa to'g'ridan-to'g'ri
+  // faylni ochish orqali (file://) ishlatilsa, ovozli qidiruv HECH QACHON
+  // ishlamaydi (bu brauzerning o'zining xavfsizlik cheklovi, kod xatosi
+  // emas) — shu holatda foydalanuvchiga aniq tushuntirish beriladi.
   window.startVoiceSearch = function(){
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SR){ safeToast("Bu brauzer ovozli qidiruvni qo'llab-quvvatlamaydi", 'red'); return; }
+    const isSecure = location.protocol === 'https:' || /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname);
+    if(!isSecure){
+      safeToast("Ovozli qidiruv faqat https:// manzilda ishlaydi. Ilovani saytga joylab, o'shandan oching.", 'red');
+      return;
+    }
     if(typeof window.openCommandPalette === 'function') window.openCommandPalette();
     try{
       const rec = new SR();
-      rec.lang = 'ru-RU';
+      const browserLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+      rec.lang = browserLang.startsWith('uz') ? 'uz-UZ' : 'ru-RU';
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       safeToast('🎤 Gapiring...', 'blue');
@@ -14177,7 +15194,10 @@ document.addEventListener('keydown', function(e){
         const input = document.getElementById('cmdk-input');
         if(input){ input.value = text; if(typeof window.renderCmdkResults==='function') window.renderCmdkResults(); }
       };
-      rec.onerror = function(e){ safeToast("Ovozli qidiruvda xatolik yuz berdi", 'red'); };
+      rec.onerror = function(e){
+        const reasons = { 'not-allowed':"Mikrofonga ruxsat berilmadi", 'no-speech':"Ovoz eshitilmadi, qayta urinib ko'ring", 'audio-capture':"Mikrofon topilmadi" };
+        safeToast(reasons[e.error] || "Ovozli qidiruvda xatolik yuz berdi", 'red');
+      };
       rec.start();
     }catch(e){ safeToast("Ovozli qidiruv ishga tushmadi", 'red'); }
   };
@@ -14286,18 +15306,30 @@ document.addEventListener('keydown', function(e){
     document.getElementById('cus-name').value=''; document.getElementById('cus-phone').value='';
     toast2("✓ Mijoz qo'shildi",'green');
   };
+  // YANGI: checkout paytida mijoz tanlansa, shu funksiya avtomatik
+  // chaqiriladi — endi har bir xarid c.purchases massivida ALOHIDA
+  // yozuv sifatida ham saqlanadi (sana + summa + qaysi chek), shunday
+  // qilib mijoz kartochkasida haqiqiy "xarid tarixi" ko'rsatish mumkin
+  // (ilgari faqat yig'indi raqamlar bor edi, individual xaridlar yo'q edi).
+  window.applyCustomerPurchase = function(customerId, amount, receiptId){
+    const c = DB.customers.find(x=>x.id===customerId);
+    if(!c || !amount || amount<=0) return;
+    const earned = Math.floor(amount/10000);
+    c.totalSpent = (c.totalSpent||0) + amount;
+    c.purchaseCount = (c.purchaseCount||0) + 1;
+    c.points = (c.points||0) + earned;
+    c.lastPurchaseAt = new Date().toISOString();
+    c.purchases = Array.isArray(c.purchases) ? c.purchases : [];
+    c.purchases = [{ date:c.lastPurchaseAt, amount, receiptId:receiptId||'', pointsEarned:earned }, ...c.purchases].slice(0,50);
+    fbSaveCustomer(c);
+  };
   window.logCustomerPurchase = function(id){
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
     const raw = prompt("Xarid summasi (so'm):", '');
     const amt = parseFloat(raw||'');
     if(!amt || amt<=0) return;
-    const earned = Math.floor(amt/10000);
-    c.totalSpent = (c.totalSpent||0) + amt;
-    c.purchaseCount = (c.purchaseCount||0) + 1;
-    c.points = (c.points||0) + earned;
-    c.lastPurchaseAt = new Date().toISOString();
-    fbSaveCustomer(c);
-    toast2(`✓ ${earned} ball qo'shildi`,'green');
+    window.applyCustomerPurchase(id, amt, '');
+    toast2(`✓ ${Math.floor(amt/10000)} ball qo'shildi`,'green');
   };
   window.redeemCustomerPoints = function(id){
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
@@ -14327,6 +15359,11 @@ document.addEventListener('keydown', function(e){
           <span class="badge ${tier.cls}">${tier.name}</span>
         </div>
         <div style="font-size:12px;color:var(--text3);margin-top:.3rem">Jami xarid: <b>${fmt2(c.totalSpent||0)} so'm</b> (${c.purchaseCount||0} marta) · Ball: <b>${c.points||0}</b></div>
+        ${Array.isArray(c.purchases) && c.purchases.length ? `<details style="margin-top:.4rem"><summary style="font-size:12px;color:var(--accent);cursor:pointer">🕐 Xarid tarixi (${c.purchases.length})</summary>
+          <div style="max-height:120px;overflow-y:auto;margin-top:.3rem">
+            ${c.purchases.slice(0,20).map(p=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:.2rem 0;border-bottom:1px dashed var(--border2)"><span>${new Date(p.date).toLocaleDateString('uz-UZ')}</span><span style="font-weight:600;color:var(--text2)">${fmt2(p.amount)} so'm${p.pointsEarned?' (+' +p.pointsEarned+' ball)':''}</span></div>`).join('')}
+          </div>
+        </details>` : ''}
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
           <button class="btn sm blue" onclick="window.logCustomerPurchase('${c.id}')">+ Xarid qayd etish</button>
           <button class="btn sm amber" onclick="window.redeemCustomerPoints('${c.id}')">🎁 Ballni ishlatish</button>
@@ -14511,9 +15548,15 @@ document.addEventListener('keydown', function(e){
   window.startAiVoiceInput = function(){
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SR){ if(typeof window.toast==='function') window.toast("Bu brauzer ovozli kiritishni qo'llab-quvvatlamaydi",'red'); return; }
+    const isSecure = location.protocol === 'https:' || /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname);
+    if(!isSecure){
+      if(typeof window.toast==='function') window.toast("Ovozli kiritish faqat https:// manzilda ishlaydi", 'red');
+      return;
+    }
     try{
       const rec = new SR();
-      rec.lang = 'ru-RU';
+      const browserLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+      rec.lang = browserLang.startsWith('uz') ? 'uz-UZ' : 'ru-RU';
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       if(typeof window.toast==='function') window.toast('🎤 Savolingizni ayting...', 'blue');
@@ -14535,9 +15578,14 @@ document.addEventListener('keydown', function(e){
 
 // ================== TO'LIQ ZAXIRA NUSXA (BACKUP / RESTORE) — parol bilan shifrlash + PIN tasdiqli tiklash ==================
 (function(){
+  // TUZATILDI (2026-07): bu ro'yxatda ilgari 'darkMode' va 'dokon_theme'
+  // degan kalitlar bor edi — ammo tungi rejim aslida 'dokon_dark_mode'
+  // nomi bilan saqlanadi ('dokon_theme' esa umuman ishlatilmaydi). Shu
+  // sabab zaxiradan tiklaganda tungi rejim sozlamasi hech qachon to'g'ri
+  // tiklanmas, sukut bo'yicha (yorug' rejim) qaytib qolar edi.
   const LOCAL_BACKUP_KEYS = [
     'dokon_sticky_notes','dokon_tasks','dokon_shift_current','dokon_shift_history',
-    'dokon_product_expiry','darkMode','soundEnabled','dokon_favs','dokon_theme'
+    'dokon_product_expiry','dokon_dark_mode','soundEnabled','dokon_favs'
   ];
   const LAST_BACKUP_KEY = 'dokon_last_backup_at';
   const REMINDER_DAYS_KEY = 'dokon_backup_reminder_days';
@@ -14701,6 +15749,14 @@ document.addEventListener('keydown', function(e){
       }
       const local = payload.local || {};
       Object.keys(local).forEach(k=>{ try{ localStorage.setItem(k, local[k]); }catch(e){} });
+      // TUZATILDI: tungi rejim kaliti to'g'ri tiklangach, uni DARHOL
+      // qo'llaymiz — aks holda sahifani qo'lda yangilamaguncha eski
+      // (yorug'/qorong'i) holat ko'rinib turardi.
+      try{
+        const isDark = localStorage.getItem('dokon_dark_mode')==='1';
+        document.body.classList.toggle('dark', isDark);
+        const btn=document.getElementById('dark-toggle'); if(btn) btn.textContent = isDark ? '☀️' : '🌙';
+      }catch(e){}
       await Promise.allSettled(tasks);
       if(typeof AuditLog!=='undefined' && AuditLog.record) AuditLog.record('RESTORE_BACKUP', 'backup', { exportedAt: payload.exportedAt||'' });
       if(typeof window.toast==='function') window.toast('✓ Zaxiradan muvaffaqiyatli tiklandi','green');
@@ -14843,7 +15899,7 @@ document.addEventListener('keydown', function(e){
     const products = DB.products||[];
     const lowStock = products.filter(p=>p.stock>0 && p.stock<=(DB.lowStockThreshold||5));
     const outStock = products.filter(p=>p.stock===0);
-    const activeDebt = sumBy((DB.debts||[]).filter(d=>!d.paid), d=>d.total);
+    const activeDebt = sumBy((DB.debts||[]).filter(d=>!d.paid), d=>debtRemaining(d));
     const expensesPeriod = sumBy((DB.expenses||[]).filter(e=>(Date.now()-new Date(e.date||e.createdAt).getTime())<days*DAY_MS), e=>e.amount);
     const anomalies = window.generateAiAnomalies ? window.generateAiAnomalies() : [];
 
@@ -14929,6 +15985,280 @@ document.addEventListener('keydown', function(e){
     } else if(typeof window.toast==='function') window.toast('Aksiya moduli topilmadi', 'red');
   };
 
+  // ================== 4) KELGUSI OY UCHUN SAVDO BASHORATI ==================
+  // So'nggi 6 oylik (tugallangan oylar + joriy oyning kunlik o'rtachaga
+  // asoslangan to'liq-oy bahosi) savdo qatoriga oddiy chiziqli regressiya
+  // qo'llab, keyingi oy uchun daromad/foyda taxmin qilinadi. Internetga
+  // ulanmasdan, faqat window.DB (mahalliy xotira) asosida ishlaydi.
+  window.generateMonthlyForecast = function(){
+    if(!window.DB) return null;
+    const sales = (DB.sales||[]).filter(s=>!s.reverted);
+    if(!sales.length) return null;
+    const now = new Date();
+    const monthsBack = 6;
+    const months = [];
+    for(let i=monthsBack-1;i>=0;i--){
+      const start = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth()-i+1, 1);
+      months.push({start, end, label: start.toLocaleDateString('uz-UZ',{month:'short', year:'2-digit'})});
+    }
+    const data = months.map(m=>{
+      const inM = sales.filter(s=>{ const t=new Date(s.date).getTime(); return t>=m.start.getTime() && t<m.end.getTime(); });
+      return { label:m.label, revenue: sumBy(inM, s=>s.total), profit: sumBy(inM, s=>(s.price-(s.cost||0))*s.qty) };
+    });
+
+    // Joriy (hali tugallanmagan) oyni kunlik o'rtachaga asoslanib to'liq
+    // oyga proporsional ko'paytiramiz — aks holda joriy oy sun'iy ravishda
+    // "pasaygan" bo'lib ko'rinib, tendentsiyani buzib yuboradi.
+    const daysInCurMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const dayOfMonth = Math.max(1, now.getDate());
+    const lastIdx = data.length-1;
+    const projectedCurrentRevenue = data[lastIdx].revenue/dayOfMonth*daysInCurMonth;
+    const projectedCurrentProfit = data[lastIdx].profit/dayOfMonth*daysInCurMonth;
+
+    const completedMonths = data.slice(0, lastIdx);
+    if(completedMonths.length < 2) return null; // bashorat uchun kamida 2-3 oylik tarix kerak
+
+    const series = completedMonths.map(m=>m.revenue).concat([projectedCurrentRevenue]);
+    const profitSeries = completedMonths.map(m=>m.profit).concat([projectedCurrentProfit]);
+
+    function linreg(ys){
+      const n = ys.length;
+      const xs = ys.map((_,i)=>i);
+      const sX = sumBy(xs,x=>x), sY = sumBy(ys,y=>y);
+      const sXY = xs.reduce((a,x,i)=>a+x*ys[i],0);
+      const sX2 = sumBy(xs,x=>x*x);
+      const denom = (n*sX2 - sX*sX) || 1;
+      const slope = (n*sXY - sX*sY)/denom;
+      const intercept = (sY - slope*sX)/n;
+      return {slope, intercept, n};
+    }
+
+    const revReg = linreg(series);
+    const profitReg = linreg(profitSeries);
+    const nextRevenue = Math.max(0, revReg.intercept + revReg.slope*revReg.n);
+    const nextProfit = profitReg.intercept + profitReg.slope*profitReg.n;
+
+    const avgRevenue = series.reduce((a,b)=>a+b,0)/series.length;
+    const growthPct = avgRevenue>0 ? ((nextRevenue-avgRevenue)/avgRevenue*100) : 0;
+
+    // Ishonch oralig'i — qoldiqlarning standart og'ishi asosida sodda taxmin
+    const residuals = series.map((y,i)=> y - (revReg.intercept+revReg.slope*i));
+    const variance = residuals.reduce((a,r)=>a+r*r,0)/Math.max(1,residuals.length);
+    const stdDev = Math.sqrt(variance);
+
+    const nextMonthLabel = new Date(now.getFullYear(), now.getMonth()+1, 1).toLocaleDateString('uz-UZ',{month:'long', year:'numeric'});
+
+    return {
+      chartData: data,
+      nextMonthLabel, nextMonthShort: new Date(now.getFullYear(), now.getMonth()+1, 1).toLocaleDateString('uz-UZ',{month:'short'}),
+      nextRevenue, nextProfit,
+      low: Math.max(0, nextRevenue-stdDev), high: nextRevenue+stdDev,
+      growthPct, monthsUsed: series.length
+    };
+  };
+
+  window.renderAiMonthlyForecast = function(){
+    const wrap = document.getElementById('ai-monthly-forecast-body');
+    if(!wrap) return;
+    const fc = window.generateMonthlyForecast();
+    if(!fc){ wrap.innerHTML = `<p style="color:var(--text3);font-size:13px;padding:1rem 0">Bashorat qilish uchun kamida 2-3 oylik savdo tarixi kerak.</p>`; return; }
+
+    const maxVal = Math.max(...fc.chartData.map(m=>m.revenue), fc.nextRevenue) || 1;
+    const bars = fc.chartData.map(m=>{
+      const h = Math.max(4, Math.round(m.revenue/maxVal*100));
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:.3rem;flex:1;min-width:40px">
+        <div style="font-size:10px;color:var(--text3)">${fmtA(m.revenue)}</div>
+        <div style="width:100%;max-width:36px;height:100px;display:flex;align-items:flex-end">
+          <div style="width:100%;height:${h}%;background:var(--accent-border);border-radius:4px 4px 0 0"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);font-weight:600">${escA(m.label)}</div>
+      </div>`;
+    }).join('');
+    const nh = Math.max(4, Math.round(fc.nextRevenue/maxVal*100));
+    const forecastBar = `<div style="display:flex;flex-direction:column;align-items:center;gap:.3rem;flex:1;min-width:40px">
+      <div style="font-size:10px;color:var(--gold-dark);font-weight:700">${fmtA(fc.nextRevenue)}?</div>
+      <div style="width:100%;max-width:36px;height:100px;display:flex;align-items:flex-end">
+        <div style="width:100%;height:${nh}%;background:repeating-linear-gradient(45deg,var(--gold),var(--gold) 4px,transparent 4px,transparent 8px);border:1.5px dashed var(--gold-dark);border-radius:4px 4px 0 0"></div>
+      </div>
+      <div style="font-size:11px;color:var(--gold-dark);font-weight:700">${escA(fc.nextMonthShort)}</div>
+    </div>`;
+
+    const trendTxt = fc.growthPct>=0
+      ? `so'nggi oylar o'rtachasiga nisbatan taxminan <b style="color:var(--green)">${fc.growthPct.toFixed(0)}% o'sish</b>`
+      : `so'nggi oylar o'rtachasiga nisbatan taxminan <b style="color:var(--red)">${Math.abs(fc.growthPct).toFixed(0)}% pasayish</b>`;
+
+    wrap.innerHTML = `
+      <div style="display:flex;gap:.4rem;align-items:flex-end;padding:.5rem 0 1rem;overflow-x:auto">${bars}${forecastBar}</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+        <p style="font-size:13.5px;line-height:1.6">
+          📅 <b>${escA(fc.nextMonthLabel)}</b> uchun taxminiy savdo: <b>${fmtA(fc.low)}–${fmtA(fc.high)} so'm</b> oralig'ida (o'rtacha taxmin: <b>${fmtA(fc.nextRevenue)} so'm</b>), taxminiy sof foyda: <b>${fmtA(fc.nextProfit)} so'm</b>. Bu ${trendTxt}.
+        </p>
+        <p style="font-size:11.5px;color:var(--text3);margin-top:.5rem">*Bashorat so'nggi ${fc.monthsUsed} oylik chiziqli tendentsiya asosida hisoblanadi, mavsumiylik yoki bir martalik omillarni hisobga olmaydi — yo'naltiruvchi taxmin sifatida qaralsin.</p>
+      </div>`;
+  };
+
+  // ================== 15) BIRGA SOTILADIGAN TOVARLAR ("combo") TAHLILI ==================
+  // Har bir chek (receiptId orqali guruhlangan sotuvlar) ichida bir vaqtda
+  // bo'lgan tovar juftliklarini sanaymiz — bu "savat tahlili" (market
+  // basket analysis) deb ataladi. Faqat MAVJUD DB.sales ma'lumotidan
+  // o'qiydi, hech narsa yozmaydi.
+  window.generateBasketAnalysis = function(){
+    const sales = (DB.sales||[]).filter(s=>!s.reverted && s.receiptId);
+    if(!sales.length) return [];
+    const groups = {};
+    sales.forEach(s=>{
+      const key = s.receiptId;
+      if(!groups[key]) groups[key] = new Set();
+      if(s.productName) groups[key].add(s.productName);
+    });
+    const pairCounts = {};
+    Object.values(groups).forEach(set=>{
+      if(set.size < 2) return;
+      const items = Array.from(set).sort();
+      for(let i=0;i<items.length;i++){
+        for(let j=i+1;j<items.length;j++){
+          const key = items[i]+'\u0000'+items[j];
+          pairCounts[key] = (pairCounts[key]||0)+1;
+        }
+      }
+    });
+    return Object.entries(pairCounts)
+      .map(([key,count])=>{ const [a,b]=key.split('\u0000'); return {a,b,count}; })
+      .filter(p=>p.count>=2) // tasodifiy bir martalik hodisalarni chiqarib tashlaymiz
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,10);
+  };
+
+  window.renderAiBasketAnalysis = function(){
+    const wrap = document.getElementById('ai-basket-body');
+    if(!wrap) return;
+    const pairs = window.generateBasketAnalysis();
+    if(!pairs.length){
+      wrap.innerHTML = `<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hozircha yetarli ma'lumot yo'q — bitta chekda kamida 2 xil tovar bir necha marta birga sotilishi kerak.</p>`;
+      return;
+    }
+    const maxCount = pairs[0].count;
+    wrap.innerHTML = pairs.map(p=>{
+      const pct = Math.max(6, Math.round(p.count/maxCount*100));
+      return `<div style="margin-bottom:.7rem">
+        <div style="display:flex;justify-content:space-between;gap:.5rem;font-size:13px;margin-bottom:.25rem">
+          <span style="min-width:0"><b>${escA(p.a)}</b> + <b>${escA(p.b)}</b></span>
+          <span style="color:var(--text3);white-space:nowrap;flex-shrink:0">${p.count} marta birga</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--accent)"></div>
+        </div>
+      </div>`;
+    }).join('') + `<p style="font-size:11.5px;color:var(--text3);margin-top:.5rem">💡 Sotuvchilar kassada shu tovarlarni birga taklif qilsa yoki javonda yonma-yon joylashtirilsa, o'rtacha chek summasi oshishi mumkin.</p>`;
+  };
+
+  // ================== 16) AI: "FOYDA NEGA O'ZGARDI?" TUSHUNTIRISHI ==================
+  // So'nggi 30 kunni undan oldingi 30 kun bilan solishtirib, o'zgarishga
+  // eng ko'p ta'sir qilgan omillarni (mahsulotlar, xarajatlar, o'rtacha
+  // chek, bekor qilingan savdolar) aniqlab, oddiy o'zbek tilida
+  // tushuntirib beradi.
+  window.generateProfitExplanation = function(){
+    const now = Date.now();
+    const curStart = now - 30*DAY_MS, prevStart = now - 60*DAY_MS;
+    const curSales = (DB.sales||[]).filter(s=>!s.reverted && new Date(s.date).getTime()>=curStart);
+    const prevSales = (DB.sales||[]).filter(s=>!s.reverted && new Date(s.date).getTime()>=prevStart && new Date(s.date).getTime()<curStart);
+    if(curSales.length<3 || prevSales.length<3) return null; // taqqoslash uchun yetarli tarix yo'q
+
+    const profitOf = s=>(s.price-(s.cost||0))*s.qty;
+    const curProfit = sumBy(curSales, profitOf), prevProfit = sumBy(prevSales, profitOf);
+    const curRevenue = sumBy(curSales, s=>s.total), prevRevenue = sumBy(prevSales, s=>s.total);
+    const delta = curProfit - prevProfit;
+    const deltaPct = prevProfit!==0 ? (delta/Math.abs(prevProfit)*100) : 0;
+
+    // Har bir mahsulot bo'yicha foyda ulushi o'zgarishi
+    const byProduct = (arr)=>{
+      const m = {};
+      arr.forEach(s=>{ m[s.productName] = (m[s.productName]||0) + profitOf(s); });
+      return m;
+    };
+    const curByP = byProduct(curSales), prevByP = byProduct(prevSales);
+    const allNames = new Set([...Object.keys(curByP), ...Object.keys(prevByP)]);
+    const productDeltas = Array.from(allNames).map(name=>({
+      name, delta: (curByP[name]||0) - (prevByP[name]||0)
+    })).sort((a,b)=> delta>=0 ? b.delta-a.delta : a.delta-b.delta);
+    // Foydaga eng ko'p SALBIY ta'sir qilgan (yoki musbatda eng ko'p yordam bergan) 3 tasi
+    const topContributors = delta>=0
+      ? productDeltas.filter(p=>p.delta>0).slice(0,3)
+      : productDeltas.filter(p=>p.delta<0).slice(0,3);
+
+    // Xarajatlar o'zgarishi
+    const curExp = sumBy((DB.expenses||[]).filter(e=>new Date(e.date).getTime()>=curStart), e=>e.amount||0);
+    const prevExp = sumBy((DB.expenses||[]).filter(e=>{ const t=new Date(e.date).getTime(); return t>=prevStart && t<curStart; }), e=>e.amount||0);
+
+    // Bekor qilingan (revert qilingan) savdolar soni
+    const curReverted = (DB.sales||[]).filter(s=>s.reverted && new Date(s.date).getTime()>=curStart).length;
+    const prevReverted = (DB.sales||[]).filter(s=>s.reverted && new Date(s.date).getTime()>=prevStart && new Date(s.date).getTime()<curStart).length;
+
+    // O'rtacha chek (receiptId bo'yicha guruhlab)
+    const avgCheck = (arr)=>{
+      const groups = {};
+      arr.forEach(s=>{ const k=s.receiptId||s.id; groups[k]=(groups[k]||0)+s.total; });
+      const vals = Object.values(groups);
+      return vals.length ? sumBy(vals,v=>v)/vals.length : 0;
+    };
+    const curAvgCheck = avgCheck(curSales), prevAvgCheck = avgCheck(prevSales);
+
+    return {
+      curProfit, prevProfit, delta, deltaPct, curRevenue, prevRevenue,
+      topContributors, curExp, prevExp, curReverted, prevReverted,
+      curAvgCheck, prevAvgCheck
+    };
+  };
+
+  window.renderAiProfitExplainer = function(){
+    const wrap = document.getElementById('ai-profit-explain-body');
+    if(!wrap) return;
+    wrap.innerHTML = `<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Tahlil qilinmoqda...</p>`;
+    const r = window.generateProfitExplanation();
+    if(!r){
+      wrap.innerHTML = `<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Taqqoslash uchun kamida 60 kunlik savdo tarixi kerak.</p>`;
+      return;
+    }
+    const up = r.delta>=0;
+    const headline = up
+      ? `Foyda so'nggi 30 kunda oldingi 30 kunga nisbatan <b style="color:var(--green)">${fmtA(Math.abs(r.delta))} so'mga (${Math.abs(r.deltaPct).toFixed(0)}%) oshdi</b>.`
+      : `Foyda so'nggi 30 kunda oldingi 30 kunga nisbatan <b style="color:var(--red)">${fmtA(Math.abs(r.delta))} so'mga (${Math.abs(r.deltaPct).toFixed(0)}%) kamaydi</b>.`;
+
+    const reasons = [];
+    if(r.topContributors.length){
+      const label = up ? "Eng ko'p yordam bergan tovarlar" : "Eng ko'p ta'sir qilgan (foydasi kamaygan) tovarlar";
+      const items = r.topContributors.map(p=>`${escA(p.name)} (${p.delta>=0?'+':''}${fmtA(p.delta)} so'm)`).join(', ');
+      reasons.push(`📦 <b>${label}:</b> ${items}.`);
+    }
+    if(Math.abs(r.curExp - r.prevExp) > Math.max(1, r.prevExp*0.1)){
+      reasons.push(r.curExp>r.prevExp
+        ? `💸 <b>Xarajatlar oshdi:</b> ${fmtA(r.prevExp)} so'mdan ${fmtA(r.curExp)} so'mga (+${fmtA(r.curExp-r.prevExp)} so'm).`
+        : `💸 <b>Xarajatlar kamaydi:</b> ${fmtA(r.prevExp)} so'mdan ${fmtA(r.curExp)} so'mga (−${fmtA(r.prevExp-r.curExp)} so'm).`);
+    }
+    if(r.curReverted !== r.prevReverted && (r.curReverted>=2 || r.prevReverted>=2)){
+      reasons.push(`↩️ <b>Bekor qilingan savdolar:</b> oldingi davrda ${r.prevReverted} ta, so'nggi davrda ${r.curReverted} ta.`);
+    }
+    if(Math.abs(r.curAvgCheck - r.prevAvgCheck) > r.prevAvgCheck*0.1 && r.prevAvgCheck>0){
+      reasons.push(r.curAvgCheck<r.prevAvgCheck
+        ? `🧾 <b>O'rtacha chek pasaydi:</b> ${fmtA(r.prevAvgCheck)} so'mdan ${fmtA(r.curAvgCheck)} so'mga — mijozlar bir xariddan kamroq tovar olmoqda.`
+        : `🧾 <b>O'rtacha chek oshdi:</b> ${fmtA(r.prevAvgCheck)} so'mdan ${fmtA(r.curAvgCheck)} so'mga.`);
+    }
+    if(!reasons.length){
+      reasons.push("Aniq bitta sabab ajralib chiqmadi — o'zgarish ko'plab kichik omillar yig'indisidan iborat bo'lishi mumkin.");
+    }
+
+    wrap.innerHTML = `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:.85rem">
+        <p style="font-size:13.5px;line-height:1.6">${headline}</p>
+        <p style="font-size:11.5px;color:var(--text3);margin-top:.4rem">So'nggi 30 kun: ${fmtA(r.curProfit)} so'm foyda (${fmtA(r.curRevenue)} so'm savdo) · Oldingi 30 kun: ${fmtA(r.prevProfit)} so'm foyda (${fmtA(r.prevRevenue)} so'm savdo)</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        ${reasons.map(t=>`<div class="insight-card ${up?'good':'warn'}"><div class="ic-icon">${up?'📈':'📉'}</div><div><div class="ic-text" style="font-size:13px;line-height:1.55">${t}</div></div></div>`).join('')}
+      </div>
+      <p style="font-size:11.5px;color:var(--text3);margin-top:.6rem">*Bu tahlil oddiy statistik taqqoslashga asoslangan, mavsumiylik yoki tashqi omillarni hisobga olmaydi — yo'naltiruvchi xulosa sifatida qaralsin.</p>`;
+  };
+
   // ================== renderAiAssistant'ni kengaytiramiz (mavjud kodga tegmasdan) ==================
   if(typeof window.renderAiAssistant === 'function'){
     const _origRenderAi2 = window.renderAiAssistant;
@@ -14936,6 +16266,12 @@ document.addEventListener('keydown', function(e){
       const r = _origRenderAi2.apply(this, arguments);
       try{ window.renderAiAnomalies(); }catch(e){ console.error(e); }
       try{ window.renderAiSlowMovers(); }catch(e){ console.error(e); }
+      try{ window.renderAiMonthlyForecast(); }catch(e){ console.error(e); }
+      try{ window.renderAiBasketAnalysis(); }catch(e){ console.error(e); }
+      // Eslatma: "Foyda nega o'zgardi?" tahlili avtomatik ishga tushmaydi
+      // (tugma orqali chaqiriladi) — chunki bu ikkita 30-kunlik davrni
+      // solishtirish biroz og'irroq hisob-kitob va foydalanuvchi buni
+      // o'zi xohlagan payt so'rashi maqsadga muvofiqroq.
       return r;
     };
   }
