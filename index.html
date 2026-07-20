@@ -1865,13 +1865,12 @@ body.dark table {
       <summary style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:600">📖 Qanday sozlanadi? (bosing)</summary>
       <ol style="font-size:12px;color:var(--text3);margin:.5rem 0 0 1.1rem;line-height:1.7">
         <li>Telegram'da <b>@BotFather</b>ga yozing → <code>/newbot</code> → bot nomini bering → sizga <b>Bot token</b> beriladi (uni pastga qo'ying)</li>
-        <li>Pastda tokenni kiriting, so'ng har bir admin uchun ism + <b>telefon raqami yoki Telegram username</b>ini "Admin qo'shish" orqali qo'shing (Chat ID bilmasangiz ham bo'ladi)</li>
-        <li>O'sha admin botni Telegram'da topib (bot nomi/havolasi orqali) birinchi marta <code>/start</code> yozsin — agar uning Telegram usernamesi siz kiritgan username bilan mos kelsa, u <b>darhol avtomatik admin sifatida tanilib faollashadi</b></li>
-        <li>Agar username emas, faqat telefon raqami bilan qo'shgan bo'lsangiz — o'sha admin /start bosgach chiqadigan "📱 Telefon raqamimni yuborish" tugmasini bossin, tizim raqamni solishtirib, uni admin sifatida avtomatik bog'laydi</li>
+        <li>Xabar olishni istagan har bir admin botga Telegram'da /start yozsin (yoki bot guruhga qo'shilsin)</li>
+        <li>Har bir adminning <b>Chat ID</b>sini bilish uchun o'sha admin <b>@userinfobot</b>ga yozadi — u ID raqamini ko'rsatadi</li>
+        <li>Pastda tokenni kiriting, so'ng har bir admin uchun ism + Chat ID'ni "Admin qo'shish" orqali qo'shing</li>
       </ol>
-      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⏳ Admin hali botga yozmagan bo'lsa, ro'yxatda <b>"Kutmoqda"</b> deb ko'rinadi — bu normal holat, u botga yozishi bilan avtomatik <b>"Faol"</b>ga o'tadi (hech narsani qo'lda "Chat ID" qidirib topishning hojati yo'q).</p>
-      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">🛠 <b>Adminlar botga buyruq yozib to'liq boshqarishi ham mumkin</b>: /qarzlar, /tolov, /statistika, /ombor, /mahsulot, /qarz_qoshish, /admin_qoshish va h.k. To'liq ro'yxat uchun botga <code>/yordam</code> deb yozing.</p>
-      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">👤 <b>Mijozlar uchun</b>: har qanday mijoz (qarzdor) botga <code>/start</code> yozib, telefon raqamini yuborsa, tizim uni o'z qarz yozuviga (telefon raqami bo'yicha) avtomatik bog'laydi — shundan keyin unga yangi qarz va to'lov haqida xabarlar shu bot orqali avtomatik boradi. Shuningdek, <b>Qarzdorlar</b> sahifasida har bir qarzdorning "🔐 Login yaratish" oynasida uning telefon raqami va/yoki Telegram username'ini oldindan kiritib qo'ysangiz, u botga <code>/start</code> yozgan zahoti (tugma bosmasdan ham) avtomatik tanilib, real vaqtda qarzini ko'ra oladi.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">🛠 <b>Adminlar botga buyruq yozib to'liq boshqarishi ham mumkin</b>: /qarzlar, /tolov, /statistika, /ombor, /mahsulot, /qarz_qoshish, /admin_qoshish va h.k. To'liq ro'yxat uchun botga <code>/yordam</code> deb yozing.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">👤 <b>Mijozlar uchun</b>: har qanday mijoz (qarzdor) botga <code>/start</code> yozib, telefon raqamini yuborsa, tizim uni o'z qarz yozuviga (telefon raqami bo'yicha) avtomatik bog'laydi — shundan keyin unga yangi qarz va to'lov haqida xabarlar shu bot orqali avtomatik boradi.</p>
       <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⚠️ Eslatma: bu sahifa (brauzer) ochiq turganda xabarlar har 30 daqiqada tekshirilib yuboriladi. Ilova umuman ochilmagan kunlarda ham 24/7 xabar kelishini va botga yozilgan buyruqlarga javob berilishini istasangiz, loyihaning GitHub repository'siga qo'shilgan "Telegram Notifier" va "Telegram Bot" ish oqimlaridan (GitHub Actions) foydalaning — ular alohida serversiz, repo ichida cron sifatida ishlaydi.</p>
     </details>
     <div class="field" style="margin-bottom:.6rem">
@@ -1885,15 +1884,9 @@ body.dark table {
       <div id="tg-admins-list" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem"></div>
       <div style="display:flex;gap:.4rem;flex-wrap:wrap">
         <input type="text" id="tg-admin-name" placeholder="Ism (masalan: Dilnoza)" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
-        <input type="text" id="tg-admin-phone" placeholder="Telefon (+998...)" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
-        <input type="text" id="tg-admin-username" placeholder="Telegram username (@bez...)" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
+        <input type="text" id="tg-admin-chatid" placeholder="Chat ID" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
         <button class="btn sm blue" onclick="addTelegramAdmin()">➕ Admin qo'shish</button>
       </div>
-      <details style="margin-top:.5rem">
-        <summary style="font-size:11px;color:var(--text3);cursor:pointer">Chat ID'ni allaqachon bilaman (ilg'or usul)</summary>
-        <input type="text" id="tg-admin-chatid" placeholder="Chat ID (ixtiyoriy)" style="width:100%;margin-top:.4rem;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
-      </details>
-      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">Telefon yoki username'dan kamida bittasini kiriting (yoki ikkalasini ham) — Chat ID shart emas, admin botga yozganda o'zi avtomatik aniqlanadi.</p>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.85rem">
@@ -2921,21 +2914,6 @@ body.dark table {
       <label>Tur</label>
       <input id="dl-type" readonly style="background:var(--surface2)">
     </div>
-
-    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
-      <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.5rem">📲 Telegram bog'lanish <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
-      <div class="field" style="margin-bottom:.6rem">
-        <label>Telefon</label>
-        <input id="dl-phone" type="tel" placeholder="+998 90 000 00 00">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label>Telegram username</label>
-        <input id="dl-tg-username" placeholder="masalan: dilnoza_a (@ belgisiz ham bo'ladi)">
-      </div>
-      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">Telefon yoki username'dan birini (yoki ikkalasini) kiritsangiz, bu qarzdor botga <code>/start</code> yozganda (yoki telefon raqamini ulashganda) avtomatik tanilib, real vaqtda qarz va to'lov xabarlarini oladi hamda istalgan vaqt <code>/qarzim</code> orqali qarzini ko'ra oladi.</p>
-      <p id="dl-tg-status" style="font-size:11px;margin-top:.4rem;font-weight:600"></p>
-    </div>
-
     <div class="field" style="margin-bottom:.85rem">
       <label>Login</label>
       <div style="display:flex;gap:.4rem">
@@ -6067,12 +6045,6 @@ window.openDebtorLogin = function(id){
   editingDebtorId = id;
   document.getElementById('dl-name').value = debtor.name + (debtor.org ? ' · '+debtor.org : '');
   document.getElementById('dl-type').value = debtor.org ? "👤 Shaxs (faqat O'ZINING qarzini ko'radi)" : '👤 Shaxs';
-  document.getElementById('dl-phone').value = debtor.phone||'';
-  document.getElementById('dl-tg-username').value = debtor.telegramUsername||'';
-  const statusEl = document.getElementById('dl-tg-status');
-  if(statusEl) statusEl.innerHTML = debtor.telegramChatId
-    ? '✅ Telegram bilan bog\'langan — botdan real vaqtli xabar olyapti'
-    : (debtor.phone||debtor.telegramUsername ? '⏳ Hali botga yozmagan — kutmoqda' : '');
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
   resetDebtorLoginQRPreview();
@@ -6102,12 +6074,6 @@ window.openOrgAccountLogin = function(org){
   editingDebtorId = id;
   document.getElementById('dl-name').value = '🏢 '+org;
   document.getElementById('dl-type').value = "🏢 Tashkilot (BUTUN tashkilotni, barcha xodimlarni ko'radi)";
-  document.getElementById('dl-phone').value = debtor.phone||'';
-  document.getElementById('dl-tg-username').value = debtor.telegramUsername||'';
-  const statusEl = document.getElementById('dl-tg-status');
-  if(statusEl) statusEl.innerHTML = debtor.telegramChatId
-    ? '✅ Telegram bilan bog\'langan — botdan real vaqtli xabar olyapti'
-    : (debtor.phone||debtor.telegramUsername ? '⏳ Hali botga yozmagan — kutmoqda' : '');
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
   resetDebtorLoginQRPreview();
@@ -6123,27 +6089,17 @@ function resetDebtorLoginQRPreview(){
 window.saveDebtorLogin = function(){
   const login = document.getElementById('dl-login').value.trim();
   const password = document.getElementById('dl-password').value.trim();
-  const phone = (document.getElementById('dl-phone')?.value||'').trim();
-  const telegramUsername = (document.getElementById('dl-tg-username')?.value||'').trim().replace(/^@/,'');
-  if((login && !password) || (!login && password)){ toast('Login va parolni ikkalasini ham kiriting (yoki ikkalasini ham bo\'sh qoldiring)','red'); return; }
+  if(!login || !password){ toast('Login va parolni kiriting','red'); return; }
   const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
   if(!debtor) return;
   // Bir xil login boshqa qarzdor/tashkilotda ishlatilmasligini tekshiramiz —
   // aks holda ikkita turli hisob bir xil login bilan to'qnashib, tizim
   // qaysi birini ochishni bilmay qolishi mumkin edi.
-  if(login){
-    const dup = DB.debtors.find(d=>d.id!==editingDebtorId && d.login && d.login===login);
-    if(dup){ toast(`Bu login allaqachon "${dup.name}"da ishlatilgan`,'red'); return; }
-  }
-  // Telefon yoki username o'zgargan bo'lsa, avvalgi Telegram bog'lanishi
-  // (telegramChatId) endi eskirgan bo'lishi mumkin — shu bois botga qayta
-  // /start yozishi kerak bo'ladi, buni tozalab qo'yamiz.
-  const phoneChanged = (debtor.phone||'') !== phone;
-  const usernameChanged = (debtor.telegramUsername||'') !== telegramUsername;
-  const telegramChatId = (phoneChanged || usernameChanged) ? '' : (debtor.telegramChatId||'');
+  const dup = DB.debtors.find(d=>d.id!==editingDebtorId && d.login && d.login===login);
+  if(dup){ toast(`Bu login allaqachon "${dup.name}"da ishlatilgan`,'red'); return; }
   closeModal('modal-debtor-login');
-  toast('Ma\'lumotlar yangilandi','green');
-  const p = fbSaveDebtor({...debtor, login, password, phone, telegramUsername, telegramChatId});
+  toast('Login/Parol yangilandi','green');
+  const p = fbSaveDebtor({...debtor, login, password});
   renderDebts();
   p.catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
@@ -7750,35 +7706,17 @@ function notifyDebtPayment(debt, payment, isFullyPaid, remainingAfter){
     }
   }catch(e){ console.error('notifyDebtPayment xatolik:', e); }
 }
-// Telegram usernamelarni solishtirish uchun: "@" belgisini olib tashlab,
-// kichik harflarga o'giradi.
-function tgUsernameKey(u){ return String(u||'').replace(/^@/,'').trim().toLowerCase(); }
-function tgPhoneKey(p){ return String(p||'').replace(/\D/g,'').slice(-9); }
-
 window.addTelegramAdmin = function(){
   const nameEl = document.getElementById('tg-admin-name');
-  const phoneEl = document.getElementById('tg-admin-phone');
-  const userEl = document.getElementById('tg-admin-username');
   const idEl = document.getElementById('tg-admin-chatid');
   const name = (nameEl?.value||'').trim();
-  const phone = (phoneEl?.value||'').trim();
-  const username = (userEl?.value||'').trim().replace(/^@/,'');
   const chatId = (idEl?.value||'').trim();
-
-  if(chatId && !/^-?\d+$/.test(chatId)){ toast('Chat ID faqat raqamlardan iborat bo\'lishi kerak (masalan: 123456789)','red'); return; }
-  if(!chatId && !phone && !username){ toast('Telefon raqami yoki Telegram username kiriting (yoki Chat ID)','red'); return; }
-
+  if(!chatId){ toast('Chat ID kiriting','red'); return; }
+  if(!/^-?\d+$/.test(chatId)){ toast('Chat ID faqat raqamlardan iborat bo\'lishi kerak (masalan: 123456789)','red'); return; }
   DB.telegramAdmins = DB.telegramAdmins||[];
-  if(chatId && DB.telegramAdmins.some(a=>String(a.chatId)===chatId)){ toast('Bu Chat ID allaqachon qo\'shilgan','amber'); return; }
-  if(phone && DB.telegramAdmins.some(a=>a.phone && tgPhoneKey(a.phone)===tgPhoneKey(phone))){ toast('Bu telefon raqami allaqachon qo\'shilgan','amber'); return; }
-  if(username && DB.telegramAdmins.some(a=>a.username && tgUsernameKey(a.username)===tgUsernameKey(username))){ toast('Bu username allaqachon qo\'shilgan','amber'); return; }
-
-  DB.telegramAdmins.push({
-    id:'tg_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    name: name||('Admin '+(DB.telegramAdmins.length+1)),
-    chatId, phone, username
-  });
-  if(nameEl) nameEl.value=''; if(phoneEl) phoneEl.value=''; if(userEl) userEl.value=''; if(idEl) idEl.value='';
+  if(DB.telegramAdmins.some(a=>String(a.chatId)===chatId)){ toast('Bu Chat ID allaqachon qo\'shilgan','amber'); return; }
+  DB.telegramAdmins.push({ id:'tg_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name: name||('Admin '+(DB.telegramAdmins.length+1)), chatId });
+  if(nameEl) nameEl.value=''; if(idEl) idEl.value='';
   renderTelegramAdminsList();
   toast('✓ Admin qo\'shildi — pastdagi "💾 Saqlash" tugmasini bosishni unutmang','green');
 }
@@ -7795,21 +7733,14 @@ window.renderTelegramAdminsList = function(){
     wrap.innerHTML = `<p style="font-size:12px;color:var(--text3)">Hali admin qo'shilmagan — pastdan qo'shing.</p>`;
     return;
   }
-  wrap.innerHTML = admins.map(a=>{
-    const active = !!a.chatId;
-    const via = [a.phone?esc(a.phone):'', a.username?('@'+esc(a.username)):''].filter(Boolean).join(' · ');
-    const statusBadge = active
-      ? `<span style="color:#16a34a;font-weight:600">✅ Faol</span>`
-      : `<span style="color:#d97706;font-weight:600">⏳ Kutmoqda</span>`;
-    return `
+  wrap.innerHTML = admins.map(a=>`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem">
       <div style="min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name||'Admin')} — ${statusBadge}</div>
-        <div style="font-size:11.5px;color:var(--text3)">${active ? ('Chat ID: '+esc(a.chatId)) : (via || 'Ma\'lumot yo\'q')}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name||'Admin')}</div>
+        <div style="font-size:11.5px;color:var(--text3)">Chat ID: ${esc(a.chatId)}</div>
       </div>
       <button class="btn sm red" style="flex-shrink:0" onclick="removeTelegramAdmin('${a.id}')">🗑</button>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 window.sendTelegramTestMessage = async function(){
   const token = document.getElementById('tg-bot-token')?.value.trim();
