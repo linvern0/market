@@ -11,10 +11,20 @@ name: Telegram Bot (interaktiv)
 
 on:
   schedule:
-    # Har 3 daqiqada ishga tushadi (GitHub cron aniq vaqtga kafolat bermaydi,
-    # odatda 1-5 daqiqa kechikish bo'lishi mumkin — bu normal holat)
-    - cron: '*/3 * * * *'
+    # Har 5 daqiqada ishga tushadi (GitHub cron aniq vaqtga kafolat bermaydi,
+    # ba'zida 5-15 daqiqa kechikish/o'tkazib yuborish bo'lishi mumkin — bu
+    # GitHub'ning o'zining cheklovi, normal holat)
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}   # "Actions" bo'limidan qo'lda ham ishga tushirish mumkin
+
+# MUHIM: ikkita run BIR VAQTDA ishlab ketmasligi uchun. Agar oldingi run hali
+# tugamagan bo'lsa (yoki siz qo'lda "Run workflow" bossangiz), Telegram bitta
+# bot tokeniga faqat BITTA getUpdates so'rovchisiga ruxsat beradi — ikkinchisi
+# "Conflict" xatosi bilan to'xtaydi. Shu sabab avvalgi run tugagunicha,
+# keyingisi navbatda kutadi (bekor qilinmaydi, faqat kutadi).
+concurrency:
+  group: telegram-bot-poll
+  cancel-in-progress: false
 
 jobs:
   run-bot:
