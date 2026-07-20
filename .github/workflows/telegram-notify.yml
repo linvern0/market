@@ -1,17 +1,23 @@
-name: Telegram Notifier (24/7)
+name: Telegram Bot (interaktiv)
 
-# Bu ish oqimi repo'ga push qilingandan keyin GitHub serverlarida ishlaydi —
-# sizning kompyuteringiz yoki telefoningizda ilova ochiq bo'lishi shart emas.
-# GitHub'ning cron jadvali ba'zan 5-15 daqiqa kechikishi mumkin (bu GitHub'ning
-# o'zining cheklovi, xatolik emas) — shu sababli har 15 daqiqada tekshiramiz.
+# telegram-notify.yml dan farqli — bu workflow scripts/telegram-bot.js ni
+# ishga tushiradi. Aynan shu skript botga kelgan /start va boshqa
+# xabarlarni o'qiydi, "kutayotgan" adminlarni (telefon/username bilan
+# qo'shilgan) Chat ID bilan bog'laydi va admin buyruqlariga
+# (/qarzlar, /tolov, /statistika va h.k.) javob beradi.
+#
+# Ushbu fayl bo'lmasa, "Admin qo'shish"da admin doim "⏳ Kutmoqda"da qolib
+# ketadi — chunki botga yozilgan xabarni hech kim o'qib, tasdiqlamaydi.
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # har 15 daqiqada (UTC vaqt bo'yicha)
-  workflow_dispatch: {}       # "Actions" bo'limidan qo'lda ham ishga tushirish mumkin
+    # Har 3 daqiqada ishga tushadi (GitHub cron aniq vaqtga kafolat bermaydi,
+    # odatda 1-5 daqiqa kechikish bo'lishi mumkin — bu normal holat)
+    - cron: '*/3 * * * *'
+  workflow_dispatch: {}   # "Actions" bo'limidan qo'lda ham ishga tushirish mumkin
 
 jobs:
-  notify:
+  run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Repo'ni yuklab olish
@@ -23,9 +29,9 @@ jobs:
           node-version: '20'
 
       - name: Bog'liqliklarni o'rnatish
-        run: npm install --omit=dev
+        run: npm install
 
-      - name: Telegram bildirishnomalarini tekshirish va yuborish
+      - name: Botni ishga tushirish
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: npm run notify
+        run: npm run bot
