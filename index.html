@@ -1860,7 +1860,7 @@ body.dark table {
 
   <div class="card" style="max-width:640px;margin-top:1rem" id="settings-telegram-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🤖 Telegram bot bildirishnomalari</h3>
-    <p style="font-size:13px;color:var(--text3);margin-bottom:.5rem">Kam qolgan tovar, muddati o'tgan qarz va kunlik hisobotni Telegram orqali olish uchun sozlang. Xabarlar qo'shilgan barcha adminlarga yuboriladi.</p>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.5rem">Kam qolgan tovar, muddati o'tgan qarz va kunlik hisobotni Telegram orqali olish uchun sozlang. Xabarlar qo'shilgan barcha adminlarga yuboriladi. Bundan tashqari, <b>yangi qarz yozilganda</b> va <b>to'lov qabul qilinganda</b> ham adminlarga (va bog'langan bo'lsa mijozning o'ziga ham) darhol xabar boradi.</p>
     <details style="margin-bottom:.85rem">
       <summary style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:600">📖 Qanday sozlanadi? (bosing)</summary>
       <ol style="font-size:12px;color:var(--text3);margin:.5rem 0 0 1.1rem;line-height:1.7">
@@ -1869,7 +1869,9 @@ body.dark table {
         <li>Har bir adminning <b>Chat ID</b>sini bilish uchun o'sha admin <b>@userinfobot</b>ga yozadi — u ID raqamini ko'rsatadi</li>
         <li>Pastda tokenni kiriting, so'ng har bir admin uchun ism + Chat ID'ni "Admin qo'shish" orqali qo'shing</li>
       </ol>
-      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⚠️ Eslatma: bu sahifa (brauzer) ochiq turganda xabarlar har 30 daqiqada tekshirilib yuboriladi. Ilova umuman ochilmagan kunlarda ham 24/7 xabar kelishini istasangiz, loyihaning GitHub repository'siga qo'shilgan avtomatik "Telegram Notifier" ish oqimidan (GitHub Actions) foydalaning — bu alohida serversiz, repo ichida cron sifatida ishlaydi.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">🛠 <b>Adminlar botga buyruq yozib to'liq boshqarishi ham mumkin</b>: /qarzlar, /tolov, /statistika, /ombor, /mahsulot, /qarz_qoshish, /admin_qoshish va h.k. To'liq ro'yxat uchun botga <code>/yordam</code> deb yozing.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">👤 <b>Mijozlar uchun</b>: har qanday mijoz (qarzdor) botga <code>/start</code> yozib, telefon raqamini yuborsa, tizim uni o'z qarz yozuviga (telefon raqami bo'yicha) avtomatik bog'laydi — shundan keyin unga yangi qarz va to'lov haqida xabarlar shu bot orqali avtomatik boradi.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⚠️ Eslatma: bu sahifa (brauzer) ochiq turganda xabarlar har 30 daqiqada tekshirilib yuboriladi. Ilova umuman ochilmagan kunlarda ham 24/7 xabar kelishini va botga yozilgan buyruqlarga javob berilishini istasangiz, loyihaning GitHub repository'siga qo'shilgan "Telegram Notifier" va "Telegram Bot" ish oqimlaridan (GitHub Actions) foydalaning — ular alohida serversiz, repo ichida cron sifatida ishlaydi.</p>
     </details>
     <div class="field" style="margin-bottom:.6rem">
       <label>Bot token</label>
@@ -4091,6 +4093,7 @@ async function fbApplyDebtPayment(id, amount, note){
   withRetry(()=>updateDoc(doc(db,'debts',id), patch))
     .catch(e=>{ setSyncError(); console.error(e); toast("To'lovni saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
+  notifyDebtPayment(d, payment, isFullyPaid, remaining-applied);
   return { applied, isFullyPaid };
 }
 // YANGI: qarz yozuvini BUTUNLAY o'chirish (masalan xato kiritilgan bo'lsa).
@@ -5718,7 +5721,13 @@ window.doDebtSell = async function(){
   const newDebtor = {
     id: debtorId, name, org: org||'', phone: phone||'',
     login: finalLogin, password: finalPass,
-    createdAt: debtor?.createdAt || now
+    createdAt: debtor?.createdAt || now,
+    // MUHIM: agar bu mijoz avval Telegram botga /start yozib telefon raqami
+    // orqali bog'langan bo'lsa (debtor.telegramChatId), bu yerda butun
+    // debtor obyekti qayta yozilgani uchun o'sha bog'lanish albatta
+    // saqlanishi kerak — aks holda mijoz Telegram xabarlarini olishni
+    // to'xtatib qo'yadi.
+    telegramChatId: debtor?.telegramChatId || ''
   };
 
   // LOCAL ga darhol yoz — UI zudlik bilan yangilansin
@@ -5752,6 +5761,7 @@ window.doDebtSell = async function(){
   cart={}; closeModal('modal-debt'); updateCartBtn(); renderSellGrid();
   if(currentRole==='seller') renderMySales();
   toast(`✓ Qarzga sotildi — ${fmt(total)} so'm · ${name}${org?' ('+org+')':''}`,'amber');
+  notifyNewDebtCreated(debt, newDebtor);
 
   // Firebase ga fonda yoz (kutmasdan)
   const writes = [
@@ -7637,6 +7647,64 @@ async function sendTelegramMessage(text){
   }
   if(anyOk) return {ok:true, partialError: lastError||null};
   return {ok:false, error: lastError||'Xabar yuborib bo\'lmadi'};
+}
+// Bitta aniq Chat ID'ga (masalan bitta mijozga) xabar yuborish uchun —
+// sendTelegramMessage() dan farqli, bu FAQAT bitta qabul qiluvchiga yozadi
+// (adminlarning barchasiga emas). Mijozning Chat ID'i "debtors" yozuvidagi
+// telegramChatId maydonida saqlanadi — u mijoz botga /start yozib, telefon
+// raqamini yuborganda (scripts/telegram-bot.js orqali) avtomatik to'ldiriladi.
+async function sendTelegramMessageToChatId(chatId, text){
+  const token = (DB.telegramBotToken||'').trim();
+  if(!token || !chatId) return {ok:false};
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode:'HTML' })
+    });
+    const data = await res.json();
+    if(!data.ok) console.error('Mijozga xabar yuborishda xatolik ('+chatId+'):', data);
+    return data;
+  }catch(e){ console.error('Mijozga xabar yuborishda xatolik:', e); return {ok:false}; }
+}
+// YANGI: mijoz tovarni QARZGA olganida — adminlarning HAMMASIGA va (agar
+// mijoz Telegram botga ulangan bo'lsa) o'sha mijozning o'ziga ham DARHOL
+// (kunlik/haftalik yig'indini kutmasdan) xabar boradi. Xatolik chiqsa ham
+// asosiy savdo jarayoniga ta'sir qilmasligi uchun try/catch bilan o'raladi.
+function notifyNewDebtCreated(debt, debtorObj){
+  try{
+    if(!DB.telegramBotToken) return;
+    const shopName = DB.shopName||"Do'kon";
+    if(getTelegramChatIds().length){
+      const adminText = `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}\n💰 Summa: ${fmt(debt.total)} so'm`;
+      sendTelegramMessage(adminText).catch(()=>{});
+    }
+    const chatId = debtorObj && debtorObj.telegramChatId;
+    if(chatId){
+      const custText = `🧾 <b>${esc(shopName)}</b>\n\nSizga ${fmt(debt.total)} so'm qarz yozildi.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
+      sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
+    }
+  }catch(e){ console.error('notifyNewDebtCreated xatolik:', e); }
+}
+// YANGI: qarzga to'lov qabul qilinganida — adminlarga va mijozning o'ziga
+// (agar bog'langan bo'lsa) darhol xabar boradi. To'liq yopilgan-yopilmaganiga
+// qarab xabar matni farqlanadi.
+function notifyDebtPayment(debt, payment, isFullyPaid, remainingAfter){
+  try{
+    if(!DB.telegramBotToken) return;
+    const shopName = DB.shopName||"Do'kon";
+    const who = `${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}`;
+    if(getTelegramChatIds().length){
+      const adminText = `💵 <b>To'lov qabul qilindi</b> — ${esc(shopName)}\n\n👤 ${who}\n➕ ${fmt(payment.amount)} so'm${isFullyPaid?"\n🎉 Qarz to'liq yopildi!":`\nQoldiq: ${fmt(remainingAfter)} so'm`}`;
+      sendTelegramMessage(adminText).catch(()=>{});
+    }
+    const debtorObj = DB.debtors.find(x=>x.id===debt.debtorId);
+    const chatId = debtorObj && debtorObj.telegramChatId;
+    if(chatId){
+      const custText = `✅ <b>${esc(shopName)}</b>\n\n${fmt(payment.amount)} so'm to'lovingiz qabul qilindi.${isFullyPaid?"\n🎉 Qarzingiz to'liq yopildi, rahmat!":`\nQolgan qarz: ${fmt(remainingAfter)} so'm`}`;
+      sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
+    }
+  }catch(e){ console.error('notifyDebtPayment xatolik:', e); }
 }
 window.addTelegramAdmin = function(){
   const nameEl = document.getElementById('tg-admin-name');

@@ -4,7 +4,8 @@
   "private": true,
   "description": "Do'kon Boshqaruvi ilovasi uchun 24/7 Telegram bildirishnoma skripti (GitHub Actions orqali ishga tushadi)",
   "scripts": {
-    "notify": "node scripts/telegram-notify.js"
+    "notify": "node scripts/telegram-notify.js",
+    "bot": "node scripts/telegram-bot.js"
   },
   "dependencies": {
     "firebase-admin": "^12.6.0"
