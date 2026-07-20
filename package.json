@@ -1,0 +1,15 @@
+{
+  "name": "dokon-telegram-notify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Do'kon Boshqaruvi ilovasi uchun 24/7 Telegram bildirishnoma skripti (GitHub Actions orqali ishga tushadi)",
+  "scripts": {
+    "notify": "node scripts/telegram-notify.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
