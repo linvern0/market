@@ -65,6 +65,16 @@ const CONTACT_KEYBOARD = {
   one_time_keyboard: true,
 };
 
+// Mini App (web_app) tugmasi uchun inline keyboard. URL'ni so'rov kelgan
+// host'dan avtomatik olamiz - shuning uchun alohida ENV o'zgaruvchi shart
+// emas (domen o'zgarsa ham ishlayveradi).
+function miniAppKeyboard(req) {
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
+  if (!host) return undefined;
+  const url = `https://${host}/miniapp.html`;
+  return { inline_keyboard: [[{ text: '📱 Mini-ilovani ochish', web_app: { url } }]] };
+}
+
 function isAdminChat(admins, chatId) { return admins.some((a) => String(a.chatId).trim() === String(chatId).trim()); }
 function findPendingAdminIndex(admins, { phone, username }) {
   const uKey = usernameKey(username);
@@ -94,19 +104,21 @@ function helpText(isAdmin) {
       `/tovar_narx &lt;nom&gt; &lt;yangi narx&gt; — tovar narxini yangilash\n` +
       `/adminlar — admin ro'yxati\n` +
       `/admin_qoshish &lt;chatId&gt; &lt;Ism&gt; — yangi admin qo'shish\n` +
-      `/admin_ochirish &lt;chatId&gt; — adminni o'chirish\n`;
+      `/admin_ochirish &lt;chatId&gt; — adminni o'chirish\n` +
+      `/ilova — Mini-ilovani (to'liq boshqaruv paneli) ochish\n`;
   } else {
     t += `Bu bot orqali qarzingiz va to'lovlaringiz haqida xabar olasiz.\n\n` +
       `📱 Ro'yxatdan o'tish uchun pastdagi tugma orqali telefon raqamingizni yuboring ` +
       `(agar do'kon administratori sizni Telegram username orqali oldindan qo'shgan bo'lsa, buning ham hojati yo'q — avtomatik tanildingiz).\n` +
       `(Agar do'kon administratori sizni admin sifatida telefon raqamingiz bilan qo'shgan bo'lsa, ` +
       `xuddi shu tugma orqali admin sifatida ham avtomatik tanilasiz.)\n` +
-      `/qarzim — joriy qarzingizni ko'rish`;
+      `/qarzim — joriy qarzingizni ko'rish\n` +
+      `/ilova — Mini-ilovada qarzingizni to'liq ko'rish`;
   }
   return t;
 }
 
-async function tryLinkAdminByContact(token, settingsRef, admins, msg) {
+async function tryLinkAdminByContact(token, settingsRef, admins, msg, kb) {
   const chatId = msg.chat.id;
   const phone = msg.contact && msg.contact.phone_number;
   if (!phone) return false;
@@ -116,11 +128,11 @@ async function tryLinkAdminByContact(token, settingsRef, admins, msg) {
   await linkPendingAdmin(settingsRef, admins, idx, chatId);
   await sendMessage(token, chatId,
     `✅ Xush kelibsiz, <b>${esc(name)}</b>! Siz admin sifatida tanildingiz va endi botni to'liq boshqarishingiz mumkin.\n\n` + helpText(true),
-    { reply_markup: { remove_keyboard: true } });
+    { reply_markup: kb || { remove_keyboard: true } });
   return true;
 }
 
-async function sendDebtorLinkedWelcome(db, token, chatId, matches) {
+async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb) {
   const batch = db.batch();
   matches.forEach((d) => batch.set(d.ref, { telegramChatId: String(chatId) }, { merge: true }));
   await batch.commit();
@@ -135,10 +147,11 @@ async function sendDebtorLinkedWelcome(db, token, chatId, matches) {
   } else {
     text += `Hozircha faol qarzingiz yo'q. 👍`;
   }
-  await sendMessage(token, chatId, text, { reply_markup: { remove_keyboard: true } });
+  text += `\n\n📱 Qarzingizni istalgan vaqt to'liq ko'rish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.`;
+  await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
 }
 
-async function handleCustomerContact(db, token, msg) {
+async function handleCustomerContact(db, token, msg, kb) {
   const chatId = msg.chat.id;
   const phone = msg.contact && msg.contact.phone_number;
   const key = phoneKey(phone);
@@ -149,17 +162,17 @@ async function handleCustomerContact(db, token, msg) {
     await sendMessage(token, chatId, "Bu raqam bo'yicha do'konda qarz yozuvi topilmadi. Agar bu xato bo'lsa, do'kon administratoriga murojaat qiling.", { reply_markup: { remove_keyboard: true } });
     return;
   }
-  await sendDebtorLinkedWelcome(db, token, chatId, matches);
+  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb);
 }
 
-async function tryLinkCustomerByUsername(db, token, msg) {
+async function tryLinkCustomerByUsername(db, token, msg, kb) {
   const chatId = msg.chat.id;
   const uKey = usernameKey(msg.from && msg.from.username);
   if (!uKey) return false;
   const debtorsSnap = await db.collection('debtors').get();
   const matches = debtorsSnap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
   if (!matches.length) return false;
-  await sendDebtorLinkedWelcome(db, token, chatId, matches);
+  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb);
   return true;
 }
 
@@ -178,10 +191,10 @@ async function handleCustomerMyDebts(db, token, chatId) {
   await sendMessage(token, chatId, text);
 }
 
-async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr) {
+async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb) {
   const shopName = (await settingsRef.get()).data()?.shopName || "Do'kon";
 
-  if (cmd === '/yordam' || cmd === '/start' || cmd === '/help') return sendMessage(token, chatId, helpText(true));
+  if (cmd === '/yordam' || cmd === '/start' || cmd === '/help') return sendMessage(token, chatId, helpText(true), kb ? { reply_markup: kb } : undefined);
 
   if (cmd === '/qarzlar') {
     const debtsSnap = await db.collection('debts').get();
@@ -361,26 +374,27 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 // Bitta kelgan update'ni (Telegram webhook'dan) qayta ishlaydi.
 // Eski polling (telegram-bot.js) dagi for-loop tanasi bilan bir xil mantiq —
 // farqi shu yerda faqat BITTA update keladi, offset/state boshqarish shart emas.
-async function processUpdate(db, token, settingsRef, admins, upd) {
+async function processUpdate(db, token, settingsRef, admins, upd, req) {
   const msg = upd.message;
   if (!msg) return;
   const chatId = msg.chat.id;
   let isAdmin = isAdminChat(admins, chatId);
+  const kb = miniAppKeyboard(req);
 
   if (!isAdmin && msg.from && msg.from.username) {
     const idx = findPendingAdminIndex(admins, { username: msg.from.username });
     if (idx !== -1) {
       const name = admins[idx].name || 'Admin';
       await linkPendingAdmin(settingsRef, admins, idx, chatId);
-      await sendMessage(token, chatId, `✅ Xush kelibsiz, <b>${esc(name)}</b>! Siz admin sifatida tanildingiz va endi botni to'liq boshqarishingiz mumkin.\n\n` + helpText(true));
+      await sendMessage(token, chatId, `✅ Xush kelibsiz, <b>${esc(name)}</b>! Siz admin sifatida tanildingiz va endi botni to'liq boshqarishingiz mumkin.\n\n` + helpText(true), kb ? { reply_markup: kb } : undefined);
       return;
     }
   }
 
   if (msg.contact) {
-    const linkedAsAdmin = await tryLinkAdminByContact(token, settingsRef, admins, msg);
+    const linkedAsAdmin = await tryLinkAdminByContact(token, settingsRef, admins, msg, kb);
     if (linkedAsAdmin) return;
-    await handleCustomerContact(db, token, msg);
+    await handleCustomerContact(db, token, msg, kb);
     return;
   }
 
@@ -389,20 +403,25 @@ async function processUpdate(db, token, settingsRef, admins, upd) {
 
   if (text === '/start') {
     if (!isAdmin) {
-      const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg);
+      const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg, kb);
       if (linkedByUsername) return;
     }
-    await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? undefined : { reply_markup: CONTACT_KEYBOARD });
+    await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? (kb ? { reply_markup: kb } : undefined) : { reply_markup: CONTACT_KEYBOARD });
     return;
   }
   if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId); return; }
+  if (text === '/ilova' || text === '/app') {
+    if (!kb) { await sendMessage(token, chatId, "Mini-ilova manzili aniqlanmadi."); return; }
+    await sendMessage(token, chatId, "📱 Quyidagi tugma orqali ilovani oching:", { reply_markup: kb });
+    return;
+  }
 
   if (text.startsWith('/')) {
     const spaceIdx = text.indexOf(' ');
     const cmd = (spaceIdx === -1 ? text : text.slice(0, spaceIdx)).toLowerCase();
     const argStr = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1);
     if (!isAdmin) { await sendMessage(token, chatId, "Bu buyruq faqat do'kon adminlari uchun. /start yozib ro'yxatdan o'ting yoki /qarzim orqali qarzingizni ko'ring."); return; }
-    await handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr);
+    await handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb);
     return;
   }
   await sendMessage(token, chatId, helpText(isAdmin));
@@ -429,7 +448,7 @@ module.exports = async (req, res) => {
     const admins = Array.isArray(s.telegramAdmins) ? s.telegramAdmins : [];
 
     const upd = req.body;
-    await processUpdate(db, token, settingsRef, admins, upd);
+    await processUpdate(db, token, settingsRef, admins, upd, req);
 
     res.status(200).json({ ok: true });
   } catch (e) {
