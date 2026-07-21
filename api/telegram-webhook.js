@@ -59,6 +59,68 @@ async function sendMessage(token, chatId, text, extra) {
   if (!data.ok) console.error(`Telegram xabar yuborishda xatolik (chat_id=${chatId}):`, data.description || data);
   return data;
 }
+// Inline tugma bosilganda Telegram "soatcha" belgisini yo'qotish uchun
+// javob berish shart (aks holda foydalanuvchi tugmasi "osilib qoladi").
+async function answerCallbackQuery(token, callbackQueryId, text, showAlert) {
+  return tgCall(token, 'answerCallbackQuery', { callback_query_id: callbackQueryId, text: text || undefined, show_alert: !!showAlert });
+}
+// Xabar matnini (masalan /qarzlar ro'yxatini) joyida, qayta yubormasdan
+// yangilash uchun — "✅ to'landi" bosilgach ro'yxat darhol yangilanadi.
+async function editMessageText(token, chatId, messageId, text, extra) {
+  const params = { chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' };
+  if (extra) Object.assign(params, extra);
+  return tgCall(token, 'editMessageText', params);
+}
+// CSV/matn faylni hujjat sifatida yuborish (masalan /export). Telegram
+// sendDocument multipart/form-data talab qiladi, shuning uchun tgCall
+// (JSON) o'rniga to'g'ridan-to'g'ri FormData ishlatamiz. Node 18+ da
+// global FormData/Blob mavjud.
+async function sendDocument(token, chatId, filename, content, caption) {
+  const form = new FormData();
+  form.append('chat_id', String(chatId));
+  if (caption) form.append('caption', caption);
+  form.append('document', new Blob([content], { type: 'text/csv;charset=utf-8' }), filename);
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, { method: 'POST', body: form });
+  const data = await res.json();
+  if (!data.ok) console.error(`Fayl yuborishda xatolik (chat_id=${chatId}):`, data.description || data);
+  return data;
+}
+// Botning "/" tugmasi bosilganda chiqadigan buyruqlar ro'yxati — har bir
+// chat (admin/qarzdor) uchun ALOHIDA sozlanadi, shunda odam tezroq va
+// xatosiz buyruq tanlay oladi (yozib xato qilmaydi).
+async function setCommandsForChat(token, chatId, isAdmin) {
+  const adminCommands = [
+    { command: 'ilova', description: "Boshqaruv panelini ochish" },
+    { command: 'qarzlar', description: 'Faol qarzlar ro\'yxati' },
+    { command: 'qarz', description: 'Mijoz bo\'yicha qarz qidirish' },
+    { command: 'tolov', description: 'Qarzga to\'lov qo\'shish' },
+    { command: 'qarz_qoshish', description: 'Yangi qarz yozish' },
+    { command: 'top', description: 'Eng katta qarzdorlar' },
+    { command: 'statistika', description: 'Bugungi savdo hisoboti' },
+    { command: 'haftalik', description: 'Haftalik hisobot' },
+    { command: 'oylik', description: 'Oylik hisobot' },
+    { command: 'ombor', description: "Kam qolgan/tugagan tovarlar" },
+    { command: 'mahsulot', description: 'Tovar narxi va qoldig\'i' },
+    { command: 'tovar_narx', description: 'Tovar narxini yangilash' },
+    { command: 'eslatma', description: 'Bitta mijozga qo\'lda eslatma' },
+    { command: 'broadcast', description: 'Barcha mijozlarga xabar' },
+    { command: 'export', description: 'Faol qarzlarni CSV qilib olish' },
+    { command: 'adminlar', description: 'Admin ro\'yxati' },
+    { command: 'yordam', description: 'Yordam' },
+  ];
+  const debtorCommands = [
+    { command: 'qarzim', description: "Joriy qarzim (tashkilot bo'lsa — barcha xodimlar bo'yicha)" },
+    { command: 'tarix', description: "To'lovlar tarixim" },
+    { command: 'ilova', description: 'Mini-ilovada batafsil ko\'rish' },
+    { command: 'yordam', description: 'Yordam' },
+  ];
+  try {
+    await tgCall(token, 'setMyCommands', {
+      commands: isAdmin ? adminCommands : debtorCommands,
+      scope: { type: 'chat', chat_id: chatId },
+    });
+  } catch (e) { console.error('setMyCommands xatolik:', e); }
+}
 // ESKI: telefon-tugmasi endi ishlatilmaydi (qarzdorlar avtomatik, tugmasiz
 // aniqlanadi — Telegram username va/yoki Telegram ID orqali). Funksiya
 // mos kelish uchun saqlab qolindi, lekin hech qayerda chaqirilmaydi.
@@ -96,14 +158,22 @@ function miniAppKeyboard(req, isAdmin) {
 // shaxsiy chat'iga (chat_id bo'yicha) o'rnatamiz — shunda ular botga hech
 // narsa yozmasdan ham, istalgan payt bitta bosish bilan to'liq boshqaruv
 // panelini ochishlari mumkin.
-async function setAdminMenuButton(token, chatId, req) {
+async function setAdminMenuButton(token, chatId, req) { return setMenuButtonFor(token, chatId, req, true); }
+// Endi debtor (qarzdor) uchun ham xuddi shunday DOIMIY menyu tugmasi
+// o'rnatiladi (avval faqat admin uchun bor edi — shu sabab qarzdor
+// tomonida menyu "yetarli emas" ko'rinardi). Debtor uchun tugma
+// index.html (to'liq boshqaruv paneli) emas, balki yengil miniapp.html
+// ga olib boradi.
+async function setMenuButtonFor(token, chatId, req, isAdmin) {
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
   if (!host) return;
-  const url = `https://${host}/index.html`;
+  const file = isAdmin ? 'index.html' : 'miniapp.html';
+  const text = isAdmin ? 'Boshqaruv paneli' : 'Mening qarzim';
+  const url = `https://${host}/${file}`;
   try {
     await tgCall(token, 'setChatMenuButton', {
       chat_id: chatId,
-      menu_button: { type: 'web_app', text: 'Boshqaruv paneli', web_app: { url } },
+      menu_button: { type: 'web_app', text, web_app: { url } },
     });
   } catch (e) { console.error('setChatMenuButton xatolik:', e); }
 }
@@ -136,19 +206,31 @@ function helpText(isAdmin) {
       `/tolov &lt;ID&gt; &lt;summa&gt; — qarzga to'lov qo'shish\n` +
       `/qarz_qoshish Ism; Telefon; Summa; Izoh — yangi qarz yozish\n` +
       `/statistika — bugungi savdo hisoboti\n` +
+      `/haftalik — oxirgi 7 kunlik hisobot\n` +
+      `/oylik — joriy oy hisoboti\n` +
+      `/top — eng katta 10 ta qarzdor (tezkor to'lov tugmasi bilan)\n` +
       `/ombor — kam qolgan/tugagan tovarlar\n` +
       `/mahsulot &lt;nom&gt; — tovar narxi va qoldig'ini ko'rish\n` +
       `/tovar_narx &lt;nom&gt; &lt;yangi narx&gt; — tovar narxini yangilash\n` +
+      `/eslatma &lt;ism yoki telefon&gt; — bitta mijozga qo'lda eslatma yuborish\n` +
+      `/broadcast &lt;matn&gt; — bog'langan barcha mijozlarga xabar yuborish\n` +
+      `/export — faol qarzlar ro'yxatini CSV fayl qilib olish\n` +
       `/adminlar — admin ro'yxati\n` +
       `/admin_qoshish &lt;chatId&gt; &lt;Ism&gt; — yangi admin qo'shish\n` +
-      `/admin_ochirish &lt;chatId&gt; — adminni o'chirish\n`;
+      `/admin_ochirish &lt;chatId&gt; — adminni o'chirish\n\n` +
+      `💡 /qarzlar va /qarz natijalarida endi har bir qarz ostida ` +
+      `"✅ To'liq to'landi" tugmasi bor — bosilsa, qo'lda summa yozmasdan ` +
+      `bir zumda to'liq yopiladi.`;
   } else {
     t += `Bu bot orqali qarzingiz va to'lovlaringiz haqida xabar olasiz.\n\n` +
       `✅ Hech qanday tugma bosish shart emas — do'kon administratori sizni ` +
       `Telegram username yoki Telegram ID orqali oldindan ro'yxatga qo'shgan bo'lsa, ` +
       `siz shunchaki shu botga <b>/start</b> yozishingiz bilan avtomatik tanilasiz.\n\n` +
-      `/qarzim — joriy qarzingizni ko'rish\n` +
-      `/ilova — Mini-ilovada qarzingizni to'liq ko'rish`;
+      `/qarzim — joriy qarzingizni ko'rish (agar tashkilot vakili bo'lsangiz — ` +
+      `tashkilotdagi HAR BIR xodimning qarzi alohida-alohida, batafsil ko'rsatiladi)\n` +
+      `/tarix — so'nggi to'lovlaringiz tarixi\n` +
+      `/ilova — Mini-ilovada qarzingizni to'liq (grafik, tarix, har bir qarz nima uchunligi bilan) ko'rish\n\n` +
+      `📌 Pastdagi (chap pastki burchakdagi) "Mening qarzim" menyu tugmasi orqali ham istalgan payt Mini-ilovani ochishingiz mumkin.`;
   }
   return t;
 }
@@ -161,13 +243,14 @@ async function tryLinkAdminByContact(token, settingsRef, admins, msg, kb) {
   if (idx === -1) return false;
   const name = admins[idx].name || 'Admin';
   await linkPendingAdmin(settingsRef, admins, idx, chatId);
+  await setCommandsForChat(token, chatId, true).catch(() => {});
   await sendMessage(token, chatId,
     `✅ Xush kelibsiz, <b>${esc(name)}</b>! Siz admin sifatida tanildingiz va endi botni to'liq boshqarishingiz mumkin.\n\n` + helpText(true),
     { reply_markup: kb || { remove_keyboard: true } });
   return true;
 }
 
-async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb) {
+async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req) {
   const batch = db.batch();
   matches.forEach((d) => batch.set(d.ref, { telegramChatId: String(chatId) }, { merge: true }));
   await batch.commit();
@@ -188,10 +271,12 @@ async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb) {
     text += `Hozircha faol qarzingiz yo'q. 👍`;
   }
   text += `\n\n📱 Qarzingizni istalgan vaqt to'liq (nima uchun qarzdorligingiz bilan birga) ko'rish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.`;
+  await setCommandsForChat(token, chatId, false).catch(() => {});
+  if (req) await setMenuButtonFor(token, chatId, req, false).catch(() => {});
   await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
 }
 
-async function handleCustomerContact(db, token, msg, kb) {
+async function handleCustomerContact(db, token, msg, kb, req) {
   const chatId = msg.chat.id;
   const phone = msg.contact && msg.contact.phone_number;
   const key = phoneKey(phone);
@@ -202,17 +287,17 @@ async function handleCustomerContact(db, token, msg, kb) {
     await sendMessage(token, chatId, "Bu raqam bo'yicha do'konda qarz yozuvi topilmadi. Agar bu xato bo'lsa, do'kon administratoriga murojaat qiling.", { reply_markup: { remove_keyboard: true } });
     return;
   }
-  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb);
+  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
 }
 
-async function tryLinkCustomerByUsername(db, token, msg, kb) {
+async function tryLinkCustomerByUsername(db, token, msg, kb, req) {
   const chatId = msg.chat.id;
   const uKey = usernameKey(msg.from && msg.from.username);
   if (!uKey) return false;
   const debtorsSnap = await db.collection('debtors').get();
   const matches = debtorsSnap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
   if (!matches.length) return false;
-  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb);
+  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
   return true;
 }
 
@@ -221,14 +306,14 @@ async function tryLinkCustomerByUsername(db, token, msg, kb) {
 // Telegram ID'sini (raqam) kiritgan bo'lsa, shu orqali ham hech qanday
 // tugmasiz avtomatik tanib olamiz — chunki Telegram ID har doim, hatto
 // username bo'lmasa ham, har bir xabarda botga avtomatik keladi.
-async function tryLinkCustomerByTelegramId(db, token, msg, kb) {
+async function tryLinkCustomerByTelegramId(db, token, msg, kb, req) {
   const chatId = msg.chat.id;
   const idKey = String((msg.from && msg.from.id) || '').trim();
   if (!idKey) return false;
   const debtorsSnap = await db.collection('debtors').get();
   const matches = debtorsSnap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
   if (!matches.length) return false;
-  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb);
+  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
   return true;
 }
 
@@ -277,13 +362,70 @@ async function handleCustomerMyDebts(db, token, chatId) {
     allDebts = snaps.flatMap((s) => s.docs.map((d) => d.data()));
   }
   const myDebts = allDebts;
-  if (!myDebts.length) { await sendMessage(token, chatId, "Faol qarzingiz yo'q. 👍"); return; }
+  if (!myDebts.length) {
+    await sendMessage(token, chatId, isOrgViewer ? `✅ "${esc(org)}" tashkilotining faol qarzi yo'q. 👍` : "Faol qarzingiz yo'q. 👍");
+    return;
+  }
   const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
-  let text = `💰 Joriy qarzingiz: <b>${fmt(total)} so'm</b>\n\n`;
-  myDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10).forEach((d) => {
-    text += (isOrgViewer ? `👤 ${esc(d.debtorName || '')}\n` : '') + debtDetailText(d) + '\n';
+  let text;
+  if (isOrgViewer) {
+    // Tashkilot vakili: avval HAR BIR xodim bo'yicha alohida yig'indi
+    // (mini-ilovadagi "byPerson" bilan bir xil mantiq), keyin so'nggi
+    // yozuvlar batafsil (nima uchun, qaysi tovar) ko'rsatiladi.
+    const byPerson = {};
+    myDebts.forEach((d) => {
+      const key = d.debtorName || "Noma'lum";
+      if (!byPerson[key]) byPerson[key] = { name: key, total: 0, count: 0 };
+      byPerson[key].total += debtRemaining(d);
+      byPerson[key].count += 1;
+    });
+    const sortedPeople = Object.values(byPerson).sort((a, b) => b.total - a.total);
+    text = `🏢 <b>${esc(org)}</b> — tashkilot umumiy qarzi: <b>${fmt(total)} so'm</b>\n\n`;
+    text += `👥 <b>Xodimlar bo'yicha taqsimot</b> (${sortedPeople.length} kishi):\n`;
+    sortedPeople.forEach((p) => { text += `• ${esc(p.name)} — <b>${fmt(p.total)} so'm</b> (${p.count} ta yozuv)\n`; });
+    text += `\n📝 <b>So'nggi yozuvlar (batafsil):</b>\n\n`;
+    myDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8).forEach((d) => {
+      text += `👤 ${esc(d.debtorName || '')}\n` + debtDetailText(d) + '\n';
+    });
+  } else {
+    text = `💰 Joriy qarzingiz: <b>${fmt(total)} so'm</b>\n\n`;
+    myDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10).forEach((d) => {
+      text += debtDetailText(d) + '\n';
+    });
+  }
+  text += `\n📱 Batafsil (jadval, grafik, to'lovlar tarixi bilan) ko'rish uchun "Mening qarzim" tugmasidan (Mini-ilova) foydalaning.`;
+  await sendMessage(token, chatId, text);
+}
+
+// Tashkilot vakili yoki oddiy mijoz — so'nggi to'lovlar tarixini
+// ko'rsatadi (mini-ilovadagi "payments" bilan bir xil manba).
+async function handleCustomerPaymentHistory(db, token, chatId) {
+  const debtorsSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).get();
+  if (debtorsSnap.empty) { await sendMessage(token, chatId, "Siz hali ro'yxatdan o'tmagansiz. /start yozib qayta urinib ko'ring."); return; }
+  const debtorDocs = debtorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const org = debtorDocs.find((d) => d.org)?.org || '';
+  const isOrgViewer = !!org && debtorDocs.some((d) => d.org === org && d.viewScope === 'org');
+  let debts;
+  if (isOrgViewer) {
+    const snap = await db.collection('debts').where('org', '==', org).get();
+    debts = snap.docs.map((d) => d.data());
+  } else {
+    const ids = debtorDocs.map((x) => x.id);
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+    const snaps = await Promise.all(chunks.map((c) => db.collection('debts').where('debtorId', 'in', c).get()));
+    debts = snaps.flatMap((s) => s.docs.map((d) => d.data()));
+  }
+  const payments = debts
+    .flatMap((d) => (Array.isArray(d.payments) ? d.payments.map((p) => ({ ...p, debtorName: d.debtorName || d.org })) : []))
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 15);
+  if (!payments.length) { await sendMessage(token, chatId, "Hali to'lov tarixi yo'q."); return; }
+  let text = `🧾 <b>So'nggi to'lovlar</b>\n\n`;
+  payments.forEach((p) => {
+    text += `• ${new Date(p.date).toLocaleDateString('uz-UZ')} — <b>${fmt(p.amount)} so'm</b>` + (isOrgViewer ? ` (${esc(p.debtorName || '')})` : '') + `\n`;
   });
-  text += `\n📱 Batafsil ko'rish uchun "Mini-ilovani ochish" tugmasidan foydalaning.`;
+  text += `\n📱 To'liq tarix uchun Mini-ilovadan foydalaning.`;
   await sendMessage(token, chatId, text);
 }
 
@@ -298,8 +440,9 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!active.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q.");
     let text = `📋 <b>Faol qarzlar</b> (eng kattadan)\n\n`;
     active.forEach((d) => { text += `• ${esc(d.debtorName || d.org || '?')} — ${fmt(debtRemaining(d))} so'm\n  ID: <code>${esc(d.id)}</code>\n`; });
-    text += `\nTo'lov qo'shish: <code>/tolov ID summa</code>`;
-    return sendMessage(token, chatId, text);
+    text += `\nQisman to'lov: <code>/tolov ID summa</code>\nYoki pastdagi tugma orqali bir zumda to'liq yoping:`;
+    const keyboard = { inline_keyboard: active.map((d) => [{ text: `✅ ${(d.debtorName || d.org || '?').slice(0, 20)} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
+    return sendMessage(token, chatId, text, { reply_markup: keyboard });
   }
 
   if (cmd === '/qarz') {
@@ -310,8 +453,10 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!found.length) return sendMessage(token, chatId, "Hech narsa topilmadi.");
     const total = found.reduce((a, d) => a + debtRemaining(d), 0);
     let text = `🔎 "${esc(argStr.trim())}" bo'yicha: <b>${fmt(total)} so'm</b>\n\n`;
-    found.slice(0, 15).forEach((d) => { text += `• ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm (ID: <code>${esc(d.id)}</code>)\n`; });
-    return sendMessage(token, chatId, text);
+    const shown = found.slice(0, 15);
+    shown.forEach((d) => { text += `• ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm (ID: <code>${esc(d.id)}</code>)\n`; });
+    const keyboard = { inline_keyboard: shown.map((d) => [{ text: `✅ ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
+    return sendMessage(token, chatId, text, { reply_markup: keyboard });
   }
 
   if (cmd === '/tolov') {
@@ -360,13 +505,84 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     return;
   }
 
-  if (cmd === '/statistika') {
-    const todayStr = new Date().toISOString().slice(0, 10);
+  if (cmd === '/statistika' || cmd === '/haftalik' || cmd === '/oylik') {
+    const now = new Date();
+    let fromStr, label;
+    if (cmd === '/statistika') { fromStr = now.toISOString().slice(0, 10); label = 'Bugungi hisobot'; }
+    else if (cmd === '/haftalik') { const from = new Date(now); from.setDate(from.getDate() - 6); fromStr = from.toISOString().slice(0, 10); label = "Oxirgi 7 kunlik hisobot"; }
+    else { fromStr = now.toISOString().slice(0, 8) + '01'; label = "Joriy oy hisoboti"; }
     const salesSnap = await db.collection('sales').get();
-    const todaySales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted && (s.date || '').slice(0, 10) === todayStr);
-    const revenue = todaySales.reduce((a, s) => a + (s.total || 0), 0);
-    const profit = todaySales.reduce((a, s) => a + (s.price - (s.cost || 0)) * s.qty, 0);
-    return sendMessage(token, chatId, `📊 <b>Bugungi hisobot</b> — ${esc(shopName)}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} so'm\n📈 Foyda: ${fmt(profit)} so'm`);
+    const periodSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted && (s.date || '').slice(0, 10) >= fromStr);
+    const revenue = periodSales.reduce((a, s) => a + (s.total || 0), 0);
+    const profit = periodSales.reduce((a, s) => a + (s.price - (s.cost || 0)) * s.qty, 0);
+    const debtsSnap = await db.collection('debts').get();
+    const newDebts = debtsSnap.docs.map((d) => d.data()).filter((d) => (d.date || '').slice(0, 10) >= fromStr);
+    const newDebtTotal = newDebts.reduce((a, d) => a + (d.total || 0), 0);
+    return sendMessage(token, chatId, `📊 <b>${label}</b> — ${esc(shopName)}\n\n🧾 Savdolar: ${periodSales.length} ta\n💰 Tushum: ${fmt(revenue)} so'm\n📈 Foyda: ${fmt(profit)} so'm\n📝 Yangi qarzga sotish: ${newDebts.length} ta (${fmt(newDebtTotal)} so'm)`);
+  }
+
+  if (cmd === '/top') {
+    const debtsSnap = await db.collection('debts').get();
+    const active = debtsSnap.docs.map((d) => d.data()).filter((d) => !d.paid);
+    const byPerson = new Map();
+    active.forEach((d) => {
+      const key = d.debtorId || d.debtorName || d.org || '?';
+      const cur = byPerson.get(key) || { name: d.debtorName || d.org || '?', total: 0, ids: [] };
+      cur.total += debtRemaining(d);
+      cur.ids.push(d.id);
+      byPerson.set(key, cur);
+    });
+    const top = [...byPerson.values()].sort((a, b) => b.total - a.total).slice(0, 10);
+    if (!top.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q.");
+    let text = `🏆 <b>Eng katta 10 ta qarzdor</b>\n\n`;
+    top.forEach((p, i) => { text += `${i + 1}. ${esc(p.name)} — <b>${fmt(p.total)} so'm</b> (${p.ids.length} ta yozuv)\n`; });
+    return sendMessage(token, chatId, text);
+  }
+
+  if (cmd === '/eslatma') {
+    const q = argStr.trim().toLowerCase();
+    if (!q) return sendMessage(token, chatId, "Foydalanish: /eslatma Aziz (ism yoki telefon)");
+    const debtorsSnap = await db.collection('debtors').get();
+    const matches = debtorsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q) || phoneKey(d.data().phone) === phoneKey(q));
+    if (!matches.length) return sendMessage(token, chatId, "Bunday mijoz topilmadi.");
+    if (matches.length > 1) return sendMessage(token, chatId, `Bir nechta mos keldi, aniqroq yozing:\n${matches.slice(0, 10).map((d) => '• ' + esc(d.data().name)).join('\n')}`);
+    const debtor = matches[0].data();
+    const cid = debtor.telegramChatId;
+    if (!cid) return sendMessage(token, chatId, "Bu mijoz botga hali ulanmagan (Telegram username/ID kiritilmagan yoki hali /start yozmagan).");
+    const debtsSnap = await db.collection('debts').where('debtorId', '==', matches[0].id).where('paid', '==', false).get();
+    const myDebts = debtsSnap.docs.map((d) => d.data());
+    const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
+    if (total <= 0) return sendMessage(token, chatId, "Bu mijozning faol qarzi yo'q.");
+    await sendMessage(token, cid, `🔔 <b>${esc(shopName)}</b>\n\nEslatma: sizning joriy qarzingiz — <b>${fmt(total)} so'm</b>.\nTo'lov uchun do'konga murojaat qiling. Batafsil: /qarzim`);
+    return sendMessage(token, chatId, `✅ ${esc(debtor.name)}ga eslatma yuborildi (${fmt(total)} so'm).`);
+  }
+
+  if (cmd === '/broadcast') {
+    const text = argStr.trim();
+    if (!text) return sendMessage(token, chatId, "Foydalanish: /broadcast Xabar matni\nMasalan: /broadcast Ertaga do'kon dam olish kuni, ishlamaymiz.");
+    const debtorsSnap = await db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => db.collection('debtors').get());
+    const targets = [...new Set(debtorsSnap.docs.map((d) => d.data().telegramChatId).filter(Boolean))];
+    if (!targets.length) return sendMessage(token, chatId, "Botga ulangan mijoz topilmadi.");
+    await sendMessage(token, chatId, `⏳ ${targets.length} ta mijozga yuborilmoqda...`);
+    let sent = 0;
+    const CHUNK = 20;
+    for (let i = 0; i < targets.length; i += CHUNK) {
+      const chunk = targets.slice(i, i + CHUNK);
+      const results = await Promise.allSettled(chunk.map((cid) => sendMessage(token, cid, `📢 <b>${esc(shopName)}</b>\n\n${esc(text)}`)));
+      sent += results.filter((r) => r.status === 'fulfilled' && r.value && r.value.ok).length;
+    }
+    return sendMessage(token, chatId, `✅ Xabar ${sent}/${targets.length} ta mijozga yetkazildi.`);
+  }
+
+  if (cmd === '/export') {
+    const debtsSnap = await db.collection('debts').get();
+    const active = debtsSnap.docs.map((d) => d.data()).filter((d) => !d.paid).sort((a, b) => debtRemaining(b) - debtRemaining(a));
+    if (!active.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q, eksport qilinadigan narsa yo'q.");
+    const rows = [['Ism/Tashkilot', 'Telefon', 'Sana', 'Jami', "To'langan", 'Qoldiq', 'ID']];
+    active.forEach((d) => rows.push([d.debtorName || d.org || '', d.phone || '', (d.date || '').slice(0, 10), d.total || 0, d.paidAmount || 0, debtRemaining(d), d.id]));
+    const csv = '\uFEFF' + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    await sendDocument(token, chatId, `qarzlar-${new Date().toISOString().slice(0, 10)}.csv`, csv, `📄 Faol qarzlar (${active.length} ta)`);
+    return;
   }
 
   if (cmd === '/ombor') {
@@ -442,6 +658,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (newAdmin.chatId) {
       await sendMessage(token, chatId, `✅ Yangi admin qo'shildi: ${esc(name)} (${esc(newAdmin.chatId)})`);
       await setAdminMenuButton(token, newAdmin.chatId, req).catch(() => {});
+      await setCommandsForChat(token, newAdmin.chatId, true).catch(() => {});
       await sendMessage(token, newAdmin.chatId, `👋 Siz "${esc(shopName)}" do'konining Telegram admini etib tayinlandingiz. /yordam yozib buyruqlar ro'yxatini ko'ring.`).catch(() => {});
     } else {
       await sendMessage(token, chatId, `✅ ${esc(name)} "kutayotgan admin" sifatida qo'shildi.\nU botga birinchi marta yozganda (yoki telefon raqamini yuborganda) avtomatik faollashadi.`);
@@ -468,10 +685,49 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   return sendMessage(token, chatId, "Noma'lum buyruq. /yordam yozing.");
 }
 
+// "✅ To'landi" inline tugmasi bosilganda ishlaydi (callback_query).
+// Faqat admin bosgan taqdirdagina ishlaydi — boshqa hech kim (hatto o'sha
+// xabarni ko'rgan bo'lsa ham) qarzni yopa olmaydi.
+async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
+  const chatId = cq.message && cq.message.chat && cq.message.chat.id;
+  const data = cq.data || '';
+  if (!chatId || !isAdminChat(admins, chatId)) {
+    await answerCallbackQuery(token, cq.id, "Bu amal faqat admin uchun.", true);
+    return;
+  }
+  if (!data.startsWith('pay_full:')) { await answerCallbackQuery(token, cq.id); return; }
+  const debtId = data.slice('pay_full:'.length);
+  const debtRef = db.collection('debts').doc(debtId);
+  const debtSnap = await debtRef.get();
+  if (!debtSnap.exists) { await answerCallbackQuery(token, cq.id, "Bu qarz topilmadi (o'chirilgan bo'lishi mumkin).", true); return; }
+  const d = debtSnap.data();
+  const remaining = debtRemaining(d);
+  if (remaining <= 0) { await answerCallbackQuery(token, cq.id, "Bu qarz allaqachon to'liq to'langan."); return; }
+  const shopName = (await settingsRef.get()).data()?.shopName || "Do'kon";
+  const payment = { amount: remaining, date: new Date().toISOString(), note: "Telegram bot orqali (tez tugma)", by: 'Telegram admin' };
+  await debtRef.update({
+    paidAmount: admin.firestore.FieldValue.increment(remaining),
+    payments: admin.firestore.FieldValue.arrayUnion(payment),
+    paid: true,
+    paidDate: payment.date,
+  });
+  await answerCallbackQuery(token, cq.id, `✅ ${fmt(remaining)} so'm — to'liq yopildi!`);
+  if (cq.message && cq.message.text) {
+    const newText = cq.message.text + `\n\n✅ <b>${esc(d.debtorName || d.org || '?')}</b> qarzi (${fmt(remaining)} so'm) hozir to'liq yopildi.`;
+    await editMessageText(token, chatId, cq.message.message_id, newText).catch(() => {});
+  }
+  if (d.debtorId) {
+    const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
+    const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
+    if (cid) await sendMessage(token, cid, `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(remaining)} so'm to'lovingiz qabul qilindi.\n🎉 Qarzingiz to'liq yopildi!`).catch(() => {});
+  }
+}
+
 // Bitta kelgan update'ni (Telegram webhook'dan) qayta ishlaydi.
 // Eski polling (telegram-bot.js) dagi for-loop tanasi bilan bir xil mantiq —
 // farqi shu yerda faqat BITTA update keladi, offset/state boshqarish shart emas.
 async function processUpdate(db, token, settingsRef, admins, upd, req) {
+  if (upd.callback_query) { await handleCallbackQuery(db, token, settingsRef, admins, upd.callback_query, req); return; }
   const msg = upd.message;
   if (!msg) return;
   const chatId = msg.chat.id;
@@ -486,6 +742,7 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
       const name = admins[idx].name || 'Admin';
       await linkPendingAdmin(settingsRef, admins, idx, chatId);
       await setAdminMenuButton(token, chatId, req);
+      await setCommandsForChat(token, chatId, true).catch(() => {});
       await sendMessage(token, chatId, `✅ Xush kelibsiz, <b>${esc(name)}</b>! Siz admin sifatida tanildingiz va endi botni to'liq boshqarishingiz mumkin.\n\n` + helpText(true), kbAdmin ? { reply_markup: kbAdmin } : undefined);
       return;
     }
@@ -498,7 +755,7 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
   if (msg.contact) {
     const linkedAsAdmin = await tryLinkAdminByContact(token, settingsRef, admins, msg, kbAdmin);
     if (linkedAsAdmin) { await setAdminMenuButton(token, chatId, req); return; }
-    await handleCustomerContact(db, token, msg, kbDebtor);
+    await handleCustomerContact(db, token, msg, kbDebtor, req);
     return;
   }
 
@@ -516,9 +773,9 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
     const alreadyLinkedSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).limit(1).get();
     isKnownDebtor = !alreadyLinkedSnap.empty;
     if (!isKnownDebtor) {
-      const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg, kbDebtor);
+      const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg, kbDebtor, req);
       if (linkedByUsername) return;
-      const linkedById = await tryLinkCustomerByTelegramId(db, token, msg, kbDebtor);
+      const linkedById = await tryLinkCustomerByTelegramId(db, token, msg, kbDebtor, req);
       if (linkedById) return;
     }
   }
@@ -531,6 +788,8 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
       // Avvaldan ulangan (telegramChatId saqlangan) bo'lsa oddiy salomlashuv,
       // aks holda administratorga berish uchun ID/username ko'rsatiladi.
       if (isKnownDebtor) {
+        await setCommandsForChat(token, chatId, false).catch(() => {});
+        await setMenuButtonFor(token, chatId, req, false).catch(() => {});
         await sendMessage(token, chatId, helpText(false), { reply_markup: kbDebtor || { remove_keyboard: true } });
         return;
       }
@@ -538,10 +797,12 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
       return;
     }
     await setAdminMenuButton(token, chatId, req);
+    await setCommandsForChat(token, chatId, true).catch(() => {});
     await sendMessage(token, chatId, helpText(isAdmin), kbAdmin ? { reply_markup: kbAdmin } : undefined);
     return;
   }
   if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId); return; }
+  if (text === '/tarix' && !isAdmin) { await handleCustomerPaymentHistory(db, token, chatId); return; }
   if (!isAdmin && !isKnownDebtor && !text.startsWith('/')) {
     // Hali tanilmagan (ro'yxatdan o'tmagan) kishi /start dan boshqa narsa
     // yozdi — umumiy yordam matni o'rniga, uni tanib olish uchun kerakli
