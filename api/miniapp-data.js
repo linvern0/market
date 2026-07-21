@@ -125,6 +125,18 @@ async function buildAdminPayload(db, settings) {
   };
 }
 
+// Firestore 'in' operator xohlaganda ko'pi bilan 30 ta qiymatni qabul
+// qiladi - shu sababli katta ro'yxatlarni 10 talik bo'laklarga bo'lib,
+// parallel so'rov yuboramiz (bitta odamda odatda 1 ta yozuv bo'ladi, lekin
+// tashkilot holatlarida bir nechta bo'lishi mumkin).
+async function fetchDebtsByDebtorIds(db, ids) {
+  if (!ids.length) return [];
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+  const snaps = await Promise.all(chunks.map((c) => db.collection('debts').where('debtorId', 'in', c).get()));
+  return snaps.flatMap((s) => s.docs.map((d) => d.data()));
+}
+
 async function buildDebtorPayload(db, settings, chatId) {
   const debtorsSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).get();
   if (debtorsSnap.empty) return { role: 'guest' };
@@ -137,15 +149,16 @@ async function buildDebtorPayload(db, settings, chatId) {
   // Aks holda (default) - faqat o'ziga tegishli qarzlarni ko'radi.
   const isOrgViewer = !!org && debtorDocs.some((d) => d.org === org && d.viewScope === 'org');
 
-  const allSnap = await db.collection('debts').get();
-  const allDebts = allSnap.docs.map((d) => d.data());
-
+  // TEZLIK: butun "debts" kolleksiyasini o'qib chiqish o'rniga (bu do'kon
+  // kattalashgani sayin sekinlashadi va ortiqcha o'qish xarajati qiladi),
+  // faqat kerakli qarzlarnigina to'g'ridan-to'g'ri so'raymiz.
   let debts;
   if (isOrgViewer) {
-    debts = allDebts.filter((d) => d.org === org);
+    const snap = await db.collection('debts').where('org', '==', org).get();
+    debts = snap.docs.map((d) => d.data());
   } else {
     const myIds = debtorDocs.map((d) => d.id);
-    debts = allDebts.filter((d) => myIds.includes(d.debtorId));
+    debts = await fetchDebtsByDebtorIds(db, myIds);
   }
 
   const activeDebts = debts.filter((d) => !d.paid);
