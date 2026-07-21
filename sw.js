@@ -5,8 +5,8 @@
 // allaqachon ilova ichida `persistentLocalCache` orqali offline saqlanadi.
 // Bu service worker faqat statik fayllarga tegishli.
 
-const CACHE_VERSION = 'dokon-shell-v2';
-const RUNTIME_CACHE = 'dokon-runtime-v2';
+const CACHE_VERSION = 'dokon-shell-v3';
+const RUNTIME_CACHE = 'dokon-runtime-v3';
 
 // Ilova qobig'i uchun asosiy fayllar. Fayl nomi boshqacha bo'lsa
 // (masalan index.html o'rniga boshqa nom), shu ro'yxatni moslashtiring.
@@ -68,22 +68,24 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (isBypassRequest(url)) return; // tarmoqqa to'g'ridan-to'g'ri o'tkazamiz
 
-  // Ilova qobig'i (o'zimizning domenimiz): cache-first, keyin tarmoqdan
-  // yangilab, keshni fon rejimida yangilaymiz (stale-while-revalidate).
+  // Ilova qobig'i (o'zimizning domenimiz): TUZATILDI — avval "cache-first"
+  // edi, ya'ni siz yangilanish chiqarganingizda ham adminlar/qarzdorlar
+  // ESKI (ba'zan xato bo'lgan) versiyani ko'raverar edi, chunki kesh doim
+  // tarmoqdan OLDIN qaytarilardi va faqat FON rejimida (keyingi safar uchun)
+  // yangilanardi. Endi "network-first": internet bo'lsa har doim ENG YANGI
+  // versiya olinadi va keshga yoziladi; faqat internet yo'q/uzilgan
+  // vaqtdagina keshdagi (oxirgi muvaffaqiyatli) versiya ko'rsatiladi.
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(req).then((cached) => {
-        const fetchPromise = fetch(req)
-          .then((networkRes) => {
-            if (networkRes && networkRes.status === 200) {
-              const clone = networkRes.clone();
-              caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone));
-            }
-            return networkRes;
-          })
-          .catch(() => cached); // internet yo'q bo'lsa, keshdagisi bilan qolamiz
-        return cached || fetchPromise;
-      })
+      fetch(req)
+        .then((networkRes) => {
+          if (networkRes && networkRes.status === 200) {
+            const clone = networkRes.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone));
+          }
+          return networkRes;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }

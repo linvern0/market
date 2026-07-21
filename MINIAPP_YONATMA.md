@@ -2,6 +2,21 @@
 
 ## YANGILANISH (ushbu versiyada)
 
+0. **Admin uchun Mini App endi to'liq veb-panel (index.html) bilan BIR XIL.**
+   Ilgari admin ham "miniapp.html" degan soddalashtirilgan (cheklangan)
+   paneldan foydalanardi. Endi admin botga `/start` yozganda yoki pastdagi
+   doimiy "Boshqaruv paneli" menyu tugmasini bossa — TO'G'RIDAN-TO'G'RI
+   `index.html` (veb-brauzerdagi bilan AYNAN BIR XIL boshqaruv paneli)
+   Telegram ichida ochiladi. Bu degani: alohida ikkita interfeys emas,
+   BITTA manba — qanday funksiya veb-saytda bo'lsa, xuddi shundayligicha
+   Telegram Mini App'da ham bor (hisobot, ombor, xarajat, mijozlar,
+   promo-aksiyalar va h.k.), va admin buyruq yozmasdan hammasini shu yerda
+   qila oladi. Kirish xuddi veb-saytdagidek — Admin PIN orqali (bir marta
+   kiritilgach, kun oxirigacha qayta so'ralmaydi).
+   Qarzdorlar uchun esa hamon yengil, faqat o'z qarzini ko'rsatuvchi
+   `miniapp.html` ochiladi (ularga to'liq admin panelini ko'rsatish xavfsiz
+   emas).
+
 1. **Qarzdorlar endi tugmasiz, avtomatik aniqlanadi.** "Telefon raqamimni yuborish" tugmasi butunlay olib tashlandi. Qarzdor botga `/start` yozganda:
    - Avval **Telegram username** bo'yicha (agar admin uni qarzdor kartochkasida kiritgan bo'lsa),
    - Bo'lmasa **Telegram ID** bo'yicha (agar admin uni kiritgan bo'lsa) avtomatik tanib olinadi.

@@ -34,6 +34,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <!-- Mahsulot shtrix-kod yorliqlarini chop etish uchun (faqat "Yorliq chop etish" funksiyasida ishlatiladi) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
+<!-- YANGI: Telegram Mini App integratsiyasi. Bu sahifa (index.html) endi
+     ODDIY BRAUZERDA ham, TELEGRAM BOT ICHIDA (admin uchun "Boshqaruv
+     panelini ochish" tugmasi/menyu orqali) ham AYNAN BIR XIL fayldan
+     ishlaydi — alohida, soddalashtirilgan admin-mini-app shart emas.
+     Bu skript brauzerda oddiy ochilganda hech narsaga ta'sir qilmaydi
+     (window.Telegram mavjud bo'lmaydi), faqat Telegram ichida ochilganda
+     ishga tushadi. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- TEZLASHTIRISH (2026-07): chek uchun QR kodni endi TARMOQQA MUROJAAT QILMASDAN,
      to'g'ridan-to'g'ri brauzerda (mahalliy) yaratamiz. Ilgari har bir sotuvda
      api.qrserver.com'ga tashqi so'rov yuborilardi — internet sekin/beqaror bo'lganda
@@ -840,6 +848,21 @@
 </style>
 </head>
 <body>
+<script>
+  // Telegram Mini App bo'lsa — to'liq ekranga yoyish, tayyor ekanini
+  // bildirish. Oddiy brauzerda (tg === undefined) hech narsa qilinmaydi.
+  (function(){
+    try{
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
+        document.documentElement.classList.add('in-telegram-miniapp');
+      }
+    }catch(e){ console.error('Telegram WebApp init xatolik:', e); }
+  })();
+</script>
 
 <button id="scroll-top-btn" type="button" title="Yuqoriga" aria-label="Yuqoriga qaytish">⬆</button>
 
@@ -1990,6 +2013,7 @@ body.dark table {
 <div class="page" id="page-debts">
   <div class="section-header">
     <div><h2>💳 Qarzlar boshqaruvi</h2><p>Tashkilot va shaxslar bo'yicha</p></div>
+    <button class="btn amber" onclick="openCashLoanModal()" title="Tovar sotmasdan, kassadan to'g'ridan-to'g'ri naqd pul berib, buni qarz sifatida yozish">💵 Kassadan naqd qarz berish</button>
   </div>
   <div class="filter-bar">
     <button class="btn sm" id="db-btn-all" onclick="setDebtFilter('all')">Barchasi</button>
@@ -2463,6 +2487,58 @@ body.dark table {
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-debt')">Bekor qilish</button>
       <button class="btn amber" onclick="doDebtSell()">💳 Qarzga sotish</button>
+    </div>
+  </div>
+</div>
+
+<!-- KASSADAN NAQD PUL QARZGA BERISH MODAL -->
+<div class="modal-overlay hidden" id="modal-cash-loan">
+  <div class="modal" style="max-width:500px">
+    <h3>💵 Kassadan naqd pul qarzga berish</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.4rem;margin-bottom:1rem">Tovar sotilmaydi — kassadan mijozga to'g'ridan-to'g'ri naqd pul beriladi va shu summa uning qarziga yoziladi. Ombor/tovar qoldig'iga tegmaydi.</p>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Tashkilot nomi <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <input id="cl-org" placeholder="Masalan: Anvar Market" autocomplete="off" oninput="clOrgInput(this)">
+      <div id="cl-org-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:var(--surface2);box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Qarz oluvchi ismi *</label>
+      <input id="cl-name" placeholder="Ism va familiya" autocomplete="off" oninput="clNameInput(this)">
+      <div id="cl-name-suggestions" style="display:none;border:1px solid var(--border);border-radius:8px;background:var(--surface2);box-shadow:var(--shadow);max-height:140px;overflow-y:auto;margin-top:2px"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Telefon <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <input id="cl-phone" type="tel" placeholder="+998 90 000 00 00">
+    </div>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Telegram username <span style="color:var(--text3);font-weight:400">(ixtiyoriy, @siz)</span></label>
+      <input id="cl-username" type="text" placeholder="masalan: azizkarimov" autocomplete="off">
+    </div>
+
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Berilayotgan naqd summa (so'm) *</label>
+      <input id="cl-amount" type="number" min="0" step="1000" placeholder="0" oninput="clAmountInput()">
+    </div>
+
+    <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;color:#92400e;font-weight:600">Qarz sifatida yoziladi:</span>
+        <span style="font-size:22px;font-weight:700;color:var(--amber)" id="cl-amount-show">0 so'm</span>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Izoh <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+      <input id="cl-note" placeholder="Qo'shimcha ma'lumot">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-cash-loan')">Bekor qilish</button>
+      <button class="btn amber" onclick="doCashLoan()">💵 Naqd pul qarzga berish</button>
     </div>
   </div>
 </div>
@@ -5789,6 +5865,139 @@ window.doDebtSell = async function(){
     // bilan to'qnashib, ma'lumot yo'qolib qolmasligi uchun).
     writes.push(withRetry(()=>updateDoc(doc(db,'products',id), {stock: increment(-qty)})));
   });
+  Promise.all(writes).catch(e=>{ console.error(e); setSyncError(); toast('Firebase saqlashda xatolik','red'); });
+}
+
+// ===== KASSADAN NAQD PUL QARZGA BERISH =====
+// Mini App'dagi "cash_loan" bilan BIR XIL mantiq: tovar sotilmaydi, faqat
+// kassadan naqd pul beriladi va bu summa o'sha odamning qarziga yoziladi.
+// Firestore'da xuddi Mini App kabi 'debts' (isCashLoan:true) va alohida
+// 'cashLoans' kolleksiyasiga yoziladi — shu sababli bot orqali (Mini App)
+// berilgan naqd qarzlar ham, veb-panel orqali berilganlari ham BIR XIL
+// joyda, bitta hisobotda ko'rinadi.
+window.openCashLoanModal = function(){
+  ['cl-org','cl-name','cl-phone','cl-username','cl-amount','cl-note'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('cl-amount-show').textContent = "0 so'm";
+  openModal('modal-cash-loan');
+  setTimeout(()=>document.getElementById('cl-name').focus(), 100);
+}
+
+window.clAmountInput = function(){
+  const v = parseFloat(document.getElementById('cl-amount').value) || 0;
+  document.getElementById('cl-amount-show').textContent = fmt(v)+" so'm";
+}
+
+window.clOrgInput = function(input){
+  const q = input.value.toLowerCase().trim();
+  const sug = document.getElementById('cl-org-suggestions');
+  if(!q){ sug.style.display='none'; return; }
+  const orgs = [...new Set(DB.debtors.filter(d=>d.org).map(d=>d.org))].filter(o=>o.toLowerCase().includes(q));
+  if(!orgs.length){ sug.style.display='none'; return; }
+  sug.innerHTML = orgs.map(o=>`<div onclick="selectClOrg('${o.replace(/'/g,"\\'")}')" style="padding:.55rem 1rem;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)">${o}</div>`).join('');
+  sug.style.display='block';
+}
+window.selectClOrg = function(org){
+  document.getElementById('cl-org').value = org;
+  document.getElementById('cl-org-suggestions').style.display='none';
+  document.getElementById('cl-name').value = '';
+  document.getElementById('cl-phone').value = '';
+  document.getElementById('cl-username').value = '';
+  document.getElementById('cl-name').focus();
+}
+window.clNameInput = function(input){
+  const q = input.value.toLowerCase().trim();
+  const sug = document.getElementById('cl-name-suggestions');
+  if(!q){ sug.style.display='none'; return; }
+  const org = document.getElementById('cl-org').value.trim();
+  let names = [];
+  if(org){
+    names = [...new Set(DB.debtors.filter(d=>d.org===org).map(d=>d.name))].filter(n=>n.toLowerCase().includes(q));
+  } else {
+    names = [...new Set(DB.debtors.filter(d=>d.name).map(d=>d.name))].filter(n=>n.toLowerCase().includes(q));
+  }
+  if(!names.length){ sug.style.display='none'; return; }
+  sug.innerHTML = names.map(n=>`<div onclick="selectClName('${n.replace(/'/g,"\\'")}')" style="padding:.55rem 1rem;cursor:pointer;font-size:14px;border-bottom:1px solid var(--border)">${n}</div>`).join('');
+  sug.style.display='block';
+}
+window.selectClName = function(name){
+  document.getElementById('cl-name').value = name;
+  document.getElementById('cl-name-suggestions').style.display='none';
+  const org = document.getElementById('cl-org').value.trim();
+  let debtor;
+  if(org){
+    debtor = DB.debtors.find(d=>d.org===org && d.name===name && !d.isOrgAccount);
+  } else {
+    debtor = DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
+  }
+  if(debtor){
+    if(debtor.phone) document.getElementById('cl-phone').value = debtor.phone||'';
+    document.getElementById('cl-username').value = debtor.telegramUsername||'';
+  }
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#cl-org') && !e.target.closest('#cl-org-suggestions'))
+    document.getElementById('cl-org-suggestions').style.display='none';
+  if(!e.target.closest('#cl-name') && !e.target.closest('#cl-name-suggestions'))
+    document.getElementById('cl-name-suggestions').style.display='none';
+});
+
+window.doCashLoan = async function(){
+  const name = document.getElementById('cl-name').value.trim();
+  const org = document.getElementById('cl-org').value.trim();
+  const phone = document.getElementById('cl-phone').value.trim();
+  const username = document.getElementById('cl-username').value.trim().replace(/^@/,'').toLowerCase();
+  const note = document.getElementById('cl-note').value.trim();
+  const amount = parseFloat(document.getElementById('cl-amount').value);
+
+  if(!name){ toast('Qarz oluvchi ismini kiriting','red'); document.getElementById('cl-name').focus(); return; }
+  if(!amount || amount<=0){ toast("To'g'ri summa kiriting",'red'); document.getElementById('cl-amount').focus(); return; }
+
+  const now = new Date().toISOString();
+
+  let debtor = org
+    ? DB.debtors.find(d=>d.org===org && d.name===name && !d.isOrgAccount)
+    : DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
+  if(!debtor && org) debtor = DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
+
+  const debtorId = debtor ? debtor.id : uid();
+  const newDebtor = {
+    id: debtorId, name, org: org||'', phone: phone||debtor?.phone||'',
+    login: debtor?.login||'', password: debtor?.password||'',
+    createdAt: debtor?.createdAt || now,
+    telegramChatId: debtor?.telegramChatId || '',
+    telegramUsername: username || debtor?.telegramUsername || ''
+  };
+
+  const di = DB.debtors.findIndex(x=>x.id===debtorId);
+  if(di>=0) DB.debtors[di]=newDebtor; else DB.debtors.push(newDebtor);
+
+  const debtId = uid();
+  const debt = {
+    id: debtId, debtorId, debtorName: name, org: org||'', phone: phone||'',
+    items: [], total: amount, paid: false, paidDate: null,
+    date: now, note: note || "Kassadan naqd pul qarzga olindi",
+    seller: currentRole==='admin'?'Admin (naqd pul)':((currentSellerName||'Sotuvchi')+' (naqd pul)'),
+    type: org ? 'organization' : 'person', isCashLoan: true
+  };
+  const cashLoanDoc = {
+    id: debtId, debtId, debtorId, debtorName: name, org: org||'',
+    amount, date: now, note: note||'', by: currentRole==='admin'?'Admin (veb-panel)':((currentSellerName||'Sotuvchi')+' (veb-panel)')
+  };
+
+  DB.debts.unshift(debt);
+  if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
+
+  cart={}; closeModal('modal-cash-loan');
+  toast(`✓ ${fmt(amount)} so'm naqd pul qarzga berildi — ${name}${org?' ('+org+')':''}`,'amber');
+  notifyNewDebtCreated(debt, newDebtor);
+
+  const writes = [
+    withRetry(()=>setDoc(doc(db,'debtors',debtorId), newDebtor)),
+    withRetry(()=>setDoc(doc(db,'debts',debtId), debt)),
+    withRetry(()=>setDoc(doc(db,'cashLoans',debtId), cashLoanDoc))
+  ];
   Promise.all(writes).catch(e=>{ console.error(e); setSyncError(); toast('Firebase saqlashda xatolik','red'); });
 }
 

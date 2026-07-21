@@ -95,7 +95,15 @@ const API_BASE = location.origin;
 let STATE = { data: null, tab: 'main', cart: {} };
 
 function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' '); }
-function esc(s){ return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+// MUHIM: bu yerda faqat &, <, > va " belgilari escape qilinadi (lekin '
+// emas) — chunki bir nechta joyda (masalan onclick="...') ichida) apostrof
+// alohida .replace(/'/g,"\\'") orqali JS satri uchun maxsus escape qilinadi;
+// agar shu yerda ham '  ni entity'ga aylantirsak, o'sha keyingi escape
+// ishlamay qoladi va ism ichida apostrof bo'lgan hollarda (masalan
+// "O'ktam" kabi juda keng tarqalgan o'zbekcha ismlar/so'zlar) tugma bosilganda
+// JS xatosi chiqadi. " belgisi HTML atributlarni (value="...") buzmasligi
+// uchun endi to'g'ri escape qilinadi.
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function cs(){ return esc(STATE.data.currencySymbol || "so'm"); }
 
 async function loadData(){
