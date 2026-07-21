@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Do'kon</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg: var(--tg-theme-bg-color, #0f1419);
+    --sec-bg: var(--tg-theme-secondary-bg-color, #17202a);
+    --text: var(--tg-theme-text-color, #ffffff);
+    --hint: var(--tg-theme-hint-color, #8b98a5);
+    --link: var(--tg-theme-link-color, #4f9eea);
+    --button: var(--tg-theme-button-color, #4f46e5);
+    --button-text: var(--tg-theme-button-text-color, #ffffff);
+    --accent: #10b981;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:80px}
+  .container{padding:12px}
+  .center-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;padding:24px;gap:10px}
+  .center-msg .icon{font-size:48px}
+  .card{background:var(--sec-bg);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+  .hero{background:linear-gradient(135deg,var(--button),#10302b);border-radius:16px;padding:18px;margin-bottom:14px;color:#fff}
+  .hero .label{font-size:13px;opacity:.85}
+  .hero .amount{font-size:28px;font-weight:800;margin-top:2px}
+  .hero .sub{font-size:12px;opacity:.75;margin-top:4px}
+  .section-title{font-size:14px;font-weight:700;color:var(--hint);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .name{font-weight:600;font-size:15px}
+  .meta{font-size:12px;color:var(--hint);margin-top:2px}
+  .amount-red{color:var(--danger);font-weight:700}
+  .amount-green{color:var(--accent);font-weight:700}
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--sec-bg);border-top:1px solid rgba(255,255,255,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tab{flex:1;text-align:center;padding:8px 2px;border-radius:10px;font-size:11px;color:var(--hint);cursor:pointer}
+  .tab.active{color:var(--button);background:rgba(79,70,229,.12)}
+  .tab .ic{font-size:20px;display:block;margin-bottom:2px}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .stat-box{background:var(--sec-bg);border-radius:12px;padding:12px}
+  .stat-box .v{font-size:19px;font-weight:800}
+  .stat-box .l{font-size:11px;color:var(--hint);margin-top:2px}
+  .btn{background:var(--button);color:var(--button-text);border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600}
+  .btn.small{padding:6px 10px;font-size:12px}
+  .btn-outline{background:transparent;border:1px solid var(--button);color:var(--button)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+  .pill.low{background:rgba(245,158,11,.15);color:var(--warn)}
+  .pill.out{background:rgba(239,68,68,.15);color:var(--danger)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:50}
+  .modal{background:var(--sec-bg);width:100%;border-radius:16px 16px 0 0;padding:18px;max-height:80vh;overflow:auto}
+  input[type=number],input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:15px;margin-top:6px}
+  .hidden{display:none!important}
+  .spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--button);border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loading" class="center-msg"><div class="spinner"></div><div>Yuklanmoqda...</div></div>
+
+<div id="guest" class="center-msg hidden">
+  <div class="icon">🔒</div>
+  <div style="font-size:16px;font-weight:600">Siz ro'yxatdan o'tmagansiz</div>
+  <div style="color:var(--hint);font-size:13px;max-width:280px">Botga qaytib <b>/start</b> yozing va telefon raqamingizni yuboring, so'ng bu ilova avtomatik ochiladi.</div>
+</div>
+
+<div id="app" class="container hidden"></div>
+
+<div id="tabs" class="tabs hidden"></div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const API_BASE = location.origin;
+let STATE = { data: null, tab: 'main' };
+
+function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' '); }
+function esc(s){ return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+async function loadData(){
+  const initData = tg ? tg.initData : '';
+  if (!initData) { showGuest("Bu ilova faqat Telegram ichida ishlaydi."); return; }
+  try{
+    const res = await fetch(API_BASE + '/api/miniapp-data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ initData })
+    });
+    const data = await res.json();
+    if (!data || data.role === 'guest') { showGuest(); return; }
+    STATE.data = data;
+    render();
+  }catch(e){
+    showGuest("Ma'lumot yuklanmadi. Birozdan so'ng qayta urinib ko'ring.");
+  }
+}
+
+function showGuest(msg){
+  document.getElementById('loading').classList.add('hidden');
+  const g = document.getElementById('guest');
+  g.classList.remove('hidden');
+  if (msg) g.querySelector('div[style]').textContent = msg;
+}
+
+function show(el){ document.getElementById(el).classList.remove('hidden'); }
+function hide(el){ document.getElementById(el).classList.add('hidden'); }
+
+function render(){
+  hide('loading');
+  show('app'); show('tabs');
+  if (tg && tg.setHeaderColor) try{ tg.setHeaderColor('secondary_bg_color'); }catch(e){}
+  if (STATE.data.role === 'admin') renderAdmin();
+  else renderDebtor();
+}
+
+// ---------------- MIJOZ / QARZDOR KO'RINISHI ----------------
+function renderDebtor(){
+  const d = STATE.data;
+  document.getElementById('tabs').innerHTML = '';
+  const app = document.getElementById('app');
+  let html = `
+    <div class="hero">
+      <div class="label">${d.isOrg ? '🏢 ' + esc(d.name) + ' — tashkilot qarzi' : 'Mening qarzim'}</div>
+      <div class="amount">${fmt(d.total)} ${esc(d.currencySymbol)}</div>
+      <div class="sub">${esc(d.shopName)}</div>
+    </div>`;
+
+  if (d.isOrg && d.byPerson && d.byPerson.length){
+    html += `<div class="section-title">Xodimlar bo'yicha</div>`;
+    d.byPerson.forEach(p=>{
+      html += `<div class="card row"><div class="name">${esc(p.name)}</div><div class="amount-red">${fmt(p.total)} ${esc(d.currencySymbol)}</div></div>`;
+    });
+  }
+
+  html += `<div class="section-title">Qarz tarixi</div>`;
+  if (!d.debts.length){
+    html += `<div class="card" style="text-align:center;color:var(--hint)">✅ Faol qarz yo'q</div>`;
+  } else {
+    d.debts.forEach(x=>{
+      html += `<div class="card">
+        <div class="row">
+          <div>
+            <div class="name">${esc(x.name||'')}</div>
+            <div class="meta">${new Date(x.date).toLocaleDateString('uz-UZ')}${x.note?' · '+esc(x.note):''}</div>
+          </div>
+          <div class="amount-red">${fmt(x.remaining)} ${esc(d.currencySymbol)}</div>
+        </div>
+      </div>`;
+    });
+  }
+  app.innerHTML = html;
+}
+
+// ---------------- ADMIN KO'RINISHI ----------------
+function renderAdmin(){
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = `
+    <div class="tab ${STATE.tab==='main'?'active':''}" onclick="switchTab('main')"><span class="ic">📊</span>Bosh</div>
+    <div class="tab ${STATE.tab==='debts'?'active':''}" onclick="switchTab('debts')"><span class="ic">📋</span>Qarzlar</div>
+    <div class="tab ${STATE.tab==='stock'?'active':''}" onclick="switchTab('stock')"><span class="ic">📦</span>Ombor</div>
+  `;
+  const app = document.getElementById('app');
+  const d = STATE.data;
+
+  if (STATE.tab === 'main'){
+    app.innerHTML = `
+      <div class="hero"><div class="label">${esc(d.shopName)}</div><div class="amount">${fmt(d.stats.revenue)} ${esc(d.currencySymbol)}</div><div class="sub">Bugungi tushum</div></div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="v">${d.stats.salesCount}</div><div class="l">Bugungi savdolar</div></div>
+        <div class="stat-box"><div class="v">${fmt(d.stats.profit)}</div><div class="l">Bugungi foyda</div></div>
+        <div class="stat-box"><div class="v" style="color:var(--danger)">${fmt(d.totalDebt)}</div><div class="l">Jami faol qarz</div></div>
+        <div class="stat-box"><div class="v" style="color:var(--warn)">${d.stock.low.length + d.stock.out.length}</div><div class="l">Ombordagi ogohlantirish</div></div>
+      </div>`;
+  }
+
+  if (STATE.tab === 'debts'){
+    let html = `<div class="section-title">Faol qarzlar (${d.debts.length})</div>`;
+    if (!d.debts.length) html += `<div class="card" style="text-align:center;color:var(--hint)">✅ Faol qarz yo'q</div>`;
+    d.debts.forEach(x=>{
+      html += `<div class="card">
+        <div class="row">
+          <div><div class="name">${esc(x.name)}${x.org?' <span class="meta">🏢</span>':''}</div><div class="meta">${new Date(x.date).toLocaleDateString('uz-UZ')}</div></div>
+          <div class="amount-red">${fmt(x.remaining)}</div>
+        </div>
+        <div style="margin-top:8px;text-align:right"><button class="btn small" onclick="openPayModal('${x.id}','${esc(x.name).replace(/'/g,"\\'")}',${x.remaining})">💵 To'lov qo'shish</button></div>
+      </div>`;
+    });
+    app.innerHTML = html;
+  }
+
+  if (STATE.tab === 'stock'){
+    let html = '';
+    if (d.stock.out.length){
+      html += `<div class="section-title">🔴 Tugagan</div>`;
+      d.stock.out.forEach(p=>{ html += `<div class="card row"><div class="name">${esc(p.name)}</div><span class="pill out">Tugagan</span></div>`; });
+    }
+    if (d.stock.low.length){
+      html += `<div class="section-title">🟡 Kam qolgan</div>`;
+      d.stock.low.forEach(p=>{
+        html += `<div class="card">
+          <div class="row"><div><div class="name">${esc(p.name)}</div><div class="meta">Qoldiq: ${p.stock} ta · ${fmt(p.price)} ${esc(d.currencySymbol)}</div></div>
+          <span class="pill low">Kam</span></div>
+          <div style="margin-top:8px;text-align:right"><button class="btn small btn-outline" onclick="openPriceModal('${esc(p.name).replace(/'/g,"\\'")}',${p.price})">✏️ Narx</button></div>
+        </div>`;
+      });
+    }
+    if (!d.stock.out.length && !d.stock.low.length) html = `<div class="card" style="text-align:center;color:var(--hint)">✅ Barcha tovarlar yetarli</div>`;
+    app.innerHTML = html;
+  }
+}
+
+function switchTab(t){ STATE.tab = t; renderAdmin(); }
+
+// ---------------- MODALLAR (to'lov / narx) ----------------
+function openPayModal(debtId, name, remaining){
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(name)}</div>
+    <div style="color:var(--hint);font-size:13px;margin-bottom:10px">Qoldiq: ${fmt(remaining)}</div>
+    <input type="number" id="pay-amount" placeholder="Summa" value="${remaining}">
+    <button class="btn" style="width:100%;margin-top:12px" onclick="submitPay('${debtId}')">To'lovni saqlash</button>
+  `);
+}
+function openPriceModal(name, price){
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(name)} — narxni yangilash</div>
+    <input type="number" id="new-price" value="${price}">
+    <button class="btn" style="width:100%;margin-top:12px" onclick="submitPrice('${name.replace(/'/g,"\\'")}')">Saqlash</button>
+  `);
+}
+function showModal(inner){
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg'; bg.id = 'modal-bg';
+  bg.onclick = (e)=>{ if(e.target.id==='modal-bg') closeModal(); };
+  bg.innerHTML = `<div class="modal">${inner}</div>`;
+  document.body.appendChild(bg);
+}
+function closeModal(){ const m = document.getElementById('modal-bg'); if(m) m.remove(); }
+
+async function callAction(action, payload){
+  const initData = tg ? tg.initData : '';
+  const res = await fetch(API_BASE + '/api/miniapp-action', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ initData, action, payload })
+  });
+  return res.json();
+}
+
+async function submitPay(debtId){
+  const amount = document.getElementById('pay-amount').value;
+  const r = await callAction('pay_debt', { debtId, amount });
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+async function submitPrice(productName){
+  const price = document.getElementById('new-price').value;
+  const r = await callAction('update_price', { productName, price });
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+
+loadData();
+</script>
+</body>
+</html>
