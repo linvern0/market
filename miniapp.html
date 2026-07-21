@@ -28,32 +28,49 @@
   .hero .label{font-size:13px;opacity:.85}
   .hero .amount{font-size:28px;font-weight:800;margin-top:2px}
   .hero .sub{font-size:12px;opacity:.75;margin-top:4px}
-  .section-title{font-size:14px;font-weight:700;color:var(--hint);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+  .section-title{font-size:14px;font-weight:700;color:var(--hint);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:center}
   .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
   .name{font-weight:600;font-size:15px}
   .meta{font-size:12px;color:var(--hint);margin-top:2px}
   .amount-red{color:var(--danger);font-weight:700}
   .amount-green{color:var(--accent);font-weight:700}
-  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--sec-bg);border-top:1px solid rgba(255,255,255,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
-  .tab{flex:1;text-align:center;padding:8px 2px;border-radius:10px;font-size:11px;color:var(--hint);cursor:pointer}
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--sec-bg);border-top:1px solid rgba(255,255,255,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom));overflow-x:auto}
+  .tab{flex:1;min-width:56px;text-align:center;padding:8px 2px;border-radius:10px;font-size:10.5px;color:var(--hint);cursor:pointer}
   .tab.active{color:var(--button);background:rgba(79,70,229,.12)}
-  .tab .ic{font-size:20px;display:block;margin-bottom:2px}
+  .tab .ic{font-size:19px;display:block;margin-bottom:2px}
   .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
   .stat-box{background:var(--sec-bg);border-radius:12px;padding:12px}
   .stat-box .v{font-size:19px;font-weight:800}
   .stat-box .l{font-size:11px;color:var(--hint);margin-top:2px}
-  .btn{background:var(--button);color:var(--button-text);border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600}
+  .btn{background:var(--button);color:var(--button-text);border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
   .btn.small{padding:6px 10px;font-size:12px}
+  .btn.wide{width:100%;margin-top:12px;padding:11px}
+  .btn.danger{background:var(--danger)}
   .btn-outline{background:transparent;border:1px solid var(--button);color:var(--button)}
   .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
   .pill.low{background:rgba(245,158,11,.15);color:var(--warn)}
   .pill.out{background:rgba(239,68,68,.15);color:var(--danger)}
+  .pill.org{background:rgba(79,158,234,.15);color:var(--link)}
   .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:50}
-  .modal{background:var(--sec-bg);width:100%;border-radius:16px 16px 0 0;padding:18px;max-height:80vh;overflow:auto}
-  input[type=number],input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:15px;margin-top:6px}
+  .modal{background:var(--sec-bg);width:100%;border-radius:16px 16px 0 0;padding:18px;max-height:85vh;overflow:auto}
+  input[type=number],input[type=text],select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:15px;margin-top:6px;font-family:inherit}
+  label.f{display:block;font-size:12px;color:var(--hint);margin-top:10px}
+  label.f:first-child{margin-top:0}
   .hidden{display:none!important}
   .spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--button);border-radius:50%;animation:spin 0.8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
+  .switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .switch-row:last-child{border-bottom:none}
+  .toggle{width:44px;height:26px;border-radius:20px;background:rgba(255,255,255,.15);position:relative;cursor:pointer;flex-shrink:0}
+  .toggle.on{background:var(--accent)}
+  .toggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+  .toggle.on .knob{left:21px}
+  .qty-ctrl{display:flex;align-items:center;gap:8px}
+  .qty-ctrl button{width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:16px;cursor:pointer}
+  .cart-bar{position:fixed;bottom:64px;left:0;right:0;background:var(--button);color:var(--button-text);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;z-index:20;cursor:pointer}
+  .empty{text-align:center;color:var(--hint);padding:18px}
+  .chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;background:rgba(255,255,255,.08);color:var(--hint);margin:2px 4px 2px 0;cursor:pointer}
+  .chip.active{background:var(--button);color:var(--button-text)}
 </style>
 </head>
 <body>
@@ -63,7 +80,7 @@
 <div id="guest" class="center-msg hidden">
   <div class="icon">🔒</div>
   <div style="font-size:16px;font-weight:600">Siz ro'yxatdan o'tmagansiz</div>
-  <div style="color:var(--hint);font-size:13px;max-width:280px">Botga qaytib <b>/start</b> yozing va telefon raqamingizni yuboring, so'ng bu ilova avtomatik ochiladi.</div>
+  <div id="guest-msg" style="color:var(--hint);font-size:13px;max-width:280px">Botga qaytib <b>/start</b> yozing. Agar do'kon administratori sizni Telegram username yoki ID orqali ro'yxatga qo'shgan bo'lsa, hech qanday tugmasiz avtomatik tanilasiz.</div>
 </div>
 
 <div id="app" class="container hidden"></div>
@@ -75,10 +92,11 @@ const tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 const API_BASE = location.origin;
-let STATE = { data: null, tab: 'main' };
+let STATE = { data: null, tab: 'main', cart: {} };
 
 function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' '); }
 function esc(s){ return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function cs(){ return esc(STATE.data.currencySymbol || "so'm"); }
 
 async function loadData(){
   const initData = tg ? tg.initData : '';
@@ -90,6 +108,7 @@ async function loadData(){
     });
     const data = await res.json();
     if (!data || data.role === 'guest') { showGuest(); return; }
+    if (data.ok === false) { showGuest('Xatolik: ' + (data.error||'')); return; }
     STATE.data = data;
     render();
   }catch(e){
@@ -101,7 +120,7 @@ function showGuest(msg){
   document.getElementById('loading').classList.add('hidden');
   const g = document.getElementById('guest');
   g.classList.remove('hidden');
-  if (msg) g.querySelector('div[style]').textContent = msg;
+  if (msg) document.getElementById('guest-msg').textContent = msg;
 }
 
 function show(el){ document.getElementById(el).classList.remove('hidden'); }
@@ -115,118 +134,545 @@ function render(){
   else renderDebtor();
 }
 
-// ---------------- MIJOZ / QARZDOR KO'RINISHI ----------------
+// ================= MIJOZ / QARZDOR KO'RINISHI =================
 function renderDebtor(){
   const d = STATE.data;
   document.getElementById('tabs').innerHTML = '';
   const app = document.getElementById('app');
   let html = `
     <div class="hero">
-      <div class="label">${d.isOrg ? '🏢 ' + esc(d.name) + ' — tashkilot qarzi' : 'Mening qarzim'}</div>
-      <div class="amount">${fmt(d.total)} ${esc(d.currencySymbol)}</div>
+      <div class="label">${d.isOrgViewer ? '🏢 ' + esc(d.name) + ' — butun tashkilot qarzi' : (d.org ? '👤 ' + esc(d.name) + ' — sizning shaxsiy qarzingiz' : 'Mening qarzim')}</div>
+      <div class="amount">${fmt(d.total)} ${cs()}</div>
       <div class="sub">${esc(d.shopName)}</div>
     </div>`;
 
-  if (d.isOrg && d.byPerson && d.byPerson.length){
+  if (d.org && !d.isOrgViewer){
+    html += `<div class="card" style="font-size:12px;color:var(--hint)">🏢 Tashkilot: ${esc(d.org)} — bu yerda faqat SIZGA tegishli qarzlar ko'rsatilmoqda.</div>`;
+  }
+
+  if (d.isOrgViewer && d.byPerson && d.byPerson.length){
     html += `<div class="section-title">Xodimlar bo'yicha</div>`;
     d.byPerson.forEach(p=>{
-      html += `<div class="card row"><div class="name">${esc(p.name)}</div><div class="amount-red">${fmt(p.total)} ${esc(d.currencySymbol)}</div></div>`;
+      html += `<div class="card row"><div class="name">${esc(p.name)}</div><div class="amount-red">${fmt(p.total)} ${cs()}</div></div>`;
     });
   }
 
-  html += `<div class="section-title">Qarz tarixi</div>`;
-  if (!d.debts.length){
-    html += `<div class="card" style="text-align:center;color:var(--hint)">✅ Faol qarz yo'q</div>`;
+  html += `<div class="section-title">
+    <span>Qarzlarim</span>
+    <span><span class="chip ${STATE.debtorView!=='history'?'active':''}" onclick="setDebtorView('active')">Faol</span><span class="chip ${STATE.debtorView==='history'?'active':''}" onclick="setDebtorView('history')">Tarix</span></span>
+  </div>`;
+  const list = STATE.debtorView==='history' ? (d.historyDebts||[]) : d.debts;
+  if (!list.length){
+    html += `<div class="card empty">${STATE.debtorView==='history' ? "To'langan qarz tarixi yo'q" : "✅ Faol qarz yo'q"}</div>`;
   } else {
-    d.debts.forEach(x=>{
+    list.forEach(x=>{
       html += `<div class="card">
         <div class="row">
           <div>
-            <div class="name">${esc(x.name||'')}</div>
-            <div class="meta">${new Date(x.date).toLocaleDateString('uz-UZ')}${x.note?' · '+esc(x.note):''}</div>
+            <div class="name">${x.isCashLoan?'💵 ':''}${d.isOrgViewer ? esc(x.name||'') : new Date(x.date).toLocaleDateString('uz-UZ')}</div>
+            ${d.isOrgViewer ? `<div class="meta">${new Date(x.date).toLocaleDateString('uz-UZ')}</div>` : ''}
           </div>
-          <div class="amount-red">${fmt(x.remaining)} ${esc(d.currencySymbol)}</div>
+          <div class="${x.paid?'amount-green':'amount-red'}">${x.paid ? "✅ To'langan" : fmt(x.remaining) + ' ' + cs()}</div>
         </div>
+        ${x.items && x.items.length ? `<div style="margin-top:8px;font-size:12.5px;color:var(--hint)">${x.items.map(it=>`• ${esc(it.name)} — ${it.qty} ta × ${fmt(it.price)} ${cs()}`).join('<br>')}</div>` : ''}
+        ${x.dueDate ? `<div style="margin-top:6px;font-size:11.5px;color:var(--hint)">📅 Muddat: ${new Date(x.dueDate).toLocaleDateString('uz-UZ')}</div>` : ''}
+        ${x.note ? `<div style="margin-top:6px;font-size:12px;color:var(--hint)">📝 ${esc(x.note)}</div>` : ''}
       </div>`;
+    });
+  }
+  if (d.payments && d.payments.length){
+    html += `<div class="section-title">To'lovlarim tarixi</div>`;
+    d.payments.slice(0,15).forEach(pmt=>{
+      html += `<div class="card row"><div class="meta">${new Date(pmt.date).toLocaleDateString('uz-UZ')}</div><div class="amount-green">${fmt(pmt.amount)} ${cs()}</div></div>`;
     });
   }
   app.innerHTML = html;
 }
+function setDebtorView(v){ STATE.debtorView = v; renderDebtor(); }
 
-// ---------------- ADMIN KO'RINISHI ----------------
+// ================= ADMIN KO'RINISHI =================
+const ADMIN_TABS = [
+  ['main','📊','Bosh'], ['sell','🛒','Sotish'], ['debts','📋','Qarzlar'],
+  ['stock','📦','Tovarlar'], ['debtors','👥','Qarzdorlar'], ['settings','⚙️','Sozlama'],
+];
+
 function renderAdmin(){
   const tabsEl = document.getElementById('tabs');
-  tabsEl.innerHTML = `
-    <div class="tab ${STATE.tab==='main'?'active':''}" onclick="switchTab('main')"><span class="ic">📊</span>Bosh</div>
-    <div class="tab ${STATE.tab==='debts'?'active':''}" onclick="switchTab('debts')"><span class="ic">📋</span>Qarzlar</div>
-    <div class="tab ${STATE.tab==='stock'?'active':''}" onclick="switchTab('stock')"><span class="ic">📦</span>Ombor</div>
-  `;
+  tabsEl.innerHTML = ADMIN_TABS.map(([key,ic,label])=>
+    `<div class="tab ${STATE.tab===key?'active':''}" onclick="switchTab('${key}')"><span class="ic">${ic}</span>${label}</div>`
+  ).join('');
   const app = document.getElementById('app');
   const d = STATE.data;
 
-  if (STATE.tab === 'main'){
-    app.innerHTML = `
-      <div class="hero"><div class="label">${esc(d.shopName)}</div><div class="amount">${fmt(d.stats.revenue)} ${esc(d.currencySymbol)}</div><div class="sub">Bugungi tushum</div></div>
-      <div class="stat-grid">
-        <div class="stat-box"><div class="v">${d.stats.salesCount}</div><div class="l">Bugungi savdolar</div></div>
-        <div class="stat-box"><div class="v">${fmt(d.stats.profit)}</div><div class="l">Bugungi foyda</div></div>
-        <div class="stat-box"><div class="v" style="color:var(--danger)">${fmt(d.totalDebt)}</div><div class="l">Jami faol qarz</div></div>
-        <div class="stat-box"><div class="v" style="color:var(--warn)">${d.stock.low.length + d.stock.out.length}</div><div class="l">Ombordagi ogohlantirish</div></div>
-      </div>`;
-  }
-
-  if (STATE.tab === 'debts'){
-    let html = `<div class="section-title">Faol qarzlar (${d.debts.length})</div>`;
-    if (!d.debts.length) html += `<div class="card" style="text-align:center;color:var(--hint)">✅ Faol qarz yo'q</div>`;
-    d.debts.forEach(x=>{
-      html += `<div class="card">
-        <div class="row">
-          <div><div class="name">${esc(x.name)}${x.org?' <span class="meta">🏢</span>':''}</div><div class="meta">${new Date(x.date).toLocaleDateString('uz-UZ')}</div></div>
-          <div class="amount-red">${fmt(x.remaining)}</div>
-        </div>
-        <div style="margin-top:8px;text-align:right"><button class="btn small" onclick="openPayModal('${x.id}','${esc(x.name).replace(/'/g,"\\'")}',${x.remaining})">💵 To'lov qo'shish</button></div>
-      </div>`;
-    });
-    app.innerHTML = html;
-  }
-
-  if (STATE.tab === 'stock'){
-    let html = '';
-    if (d.stock.out.length){
-      html += `<div class="section-title">🔴 Tugagan</div>`;
-      d.stock.out.forEach(p=>{ html += `<div class="card row"><div class="name">${esc(p.name)}</div><span class="pill out">Tugagan</span></div>`; });
-    }
-    if (d.stock.low.length){
-      html += `<div class="section-title">🟡 Kam qolgan</div>`;
-      d.stock.low.forEach(p=>{
-        html += `<div class="card">
-          <div class="row"><div><div class="name">${esc(p.name)}</div><div class="meta">Qoldiq: ${p.stock} ta · ${fmt(p.price)} ${esc(d.currencySymbol)}</div></div>
-          <span class="pill low">Kam</span></div>
-          <div style="margin-top:8px;text-align:right"><button class="btn small btn-outline" onclick="openPriceModal('${esc(p.name).replace(/'/g,"\\'")}',${p.price})">✏️ Narx</button></div>
-        </div>`;
-      });
-    }
-    if (!d.stock.out.length && !d.stock.low.length) html = `<div class="card" style="text-align:center;color:var(--hint)">✅ Barcha tovarlar yetarli</div>`;
-    app.innerHTML = html;
-  }
+  if (STATE.tab === 'main') renderMain(app, d);
+  if (STATE.tab === 'sell') renderSell(app, d);
+  if (STATE.tab === 'debts') renderDebts(app, d);
+  if (STATE.tab === 'stock') renderStock(app, d);
+  if (STATE.tab === 'debtors') renderDebtorsTab(app, d);
+  if (STATE.tab === 'settings') renderSettings(app, d);
 }
 
 function switchTab(t){ STATE.tab = t; renderAdmin(); }
 
-// ---------------- MODALLAR (to'lov / narx) ----------------
+function renderMain(app, d){
+  app.innerHTML = `
+    <div class="hero"><div class="label">${esc(d.shopName)}</div><div class="amount">${fmt(d.stats.revenue)} ${cs()}</div><div class="sub">Bugungi tushum</div></div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="v">${d.stats.salesCount}</div><div class="l">Bugungi savdolar</div></div>
+      <div class="stat-box"><div class="v">${fmt(d.stats.profit)}</div><div class="l">Bugungi foyda</div></div>
+      <div class="stat-box"><div class="v" style="color:var(--danger)">${fmt(d.totalDebt)}</div><div class="l">Jami faol qarz</div></div>
+      <div class="stat-box"><div class="v" style="color:var(--warn)">${d.stock.low.length + d.stock.out.length}</div><div class="l">Ombordagi ogohlantirish</div></div>
+    </div>
+    <div class="section-title">Oxirgi 7 kun — savdo</div>
+    <div class="card">${renderWeekChart(d.last7Days||[])}</div>`;
+}
+function renderWeekChart(days){
+  if (!days.length) return '<div class="empty">Ma\'lumot yo\'q</div>';
+  const max = Math.max(1, ...days.map(x=>x.revenue));
+  const w = 300, h = 120, barW = w/days.length - 8;
+  let bars = '';
+  days.forEach((x,i)=>{
+    const bh = Math.max(2, (x.revenue/max)*(h-24));
+    const bx = i*(w/days.length) + 4;
+    const by = h - bh - 18;
+    bars += `<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" rx="3" fill="var(--button)"></rect>
+      <text x="${bx+barW/2}" y="${h-4}" font-size="8" fill="var(--hint)" text-anchor="middle">${x.date.slice(5)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">${bars}</svg>
+    <div style="text-align:center;font-size:11px;color:var(--hint);margin-top:4px">Kunlik tushum (${fmt(max)} ${cs()} — eng yuqori kun)</div>`;
+}
+
+// ---------------- SOTISH ----------------
+function renderSell(app, d){
+  let html = `<div class="section-title">Tovar tanlang</div>`;
+  if (!d.products.length){ html += `<div class="card empty">Tovarlar yo'q. "Tovarlar" bo'limidan qo'shing.</div>`; }
+  d.products.forEach(p=>{
+    const qty = STATE.cart[p.id] || 0;
+    html += `<div class="card row">
+      <div><div class="name">${esc(p.name)}</div><div class="meta">${fmt(p.price)} ${cs()} · qoldiq: ${p.stock}</div></div>
+      <div class="qty-ctrl">
+        <button onclick="changeCartQty('${p.id}',-1)">−</button>
+        <span style="min-width:18px;text-align:center">${qty}</span>
+        <button onclick="changeCartQty('${p.id}',1)">+</button>
+      </div>
+    </div>`;
+  });
+  app.innerHTML = html;
+  renderCartBar(d);
+}
+function changeCartQty(id, delta){
+  const d = STATE.data;
+  const p = d.products.find(x=>x.id===id);
+  if (!p) return;
+  const cur = STATE.cart[id] || 0;
+  let next = cur + delta;
+  if (next < 0) next = 0;
+  if (next > p.stock) { if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('error'); next = p.stock; }
+  if (next === 0) delete STATE.cart[id]; else STATE.cart[id] = next;
+  renderSell(document.getElementById('app'), d);
+}
+function cartTotal(){
+  const d = STATE.data;
+  return Object.entries(STATE.cart).reduce((a,[id,qty])=>{ const p=d.products.find(x=>x.id===id); return a + (p?p.price*qty:0); },0);
+}
+function renderCartBar(d){
+  let bar = document.getElementById('cart-bar');
+  const count = Object.values(STATE.cart).reduce((a,b)=>a+b,0);
+  if (bar) bar.remove();
+  if (!count) return;
+  bar = document.createElement('div');
+  bar.id = 'cart-bar'; bar.className = 'cart-bar';
+  bar.onclick = openCheckoutModal;
+  bar.innerHTML = `<span>🛒 ${count} ta tovar</span><span>${fmt(cartTotal())} ${cs()} →</span>`;
+  document.body.appendChild(bar);
+}
+function openCheckoutModal(){
+  const d = STATE.data;
+  const total = cartTotal();
+  const orgList = [...new Set(d.debtors.map(x=>x.org).filter(Boolean))];
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">Sotish — ${fmt(total)} ${cs()}</div>
+    <div class="chip active" id="mode-cash" onclick="setSellMode('cash')">💵 Naqd</div>
+    <div class="chip" id="mode-debt" onclick="setSellMode('debt')">📒 Qarzga (nasiya)</div>
+    <div id="debt-fields" class="hidden" style="margin-top:8px">
+      <label class="f">Qarzdor (mavjud bo'lsa tanlang)</label>
+      <select id="sell-existing-debtor" onchange="fillDebtorFields(this.value)">
+        <option value="">— Yangi kiritish —</option>
+        ${d.debtors.map(x=>`<option value="${x.id}">${esc(x.org?x.org+' / ':'')}${esc(x.name)}</option>`).join('')}
+      </select>
+      <label class="f">Ism *</label>
+      <input type="text" id="sell-name" placeholder="Mijoz ismi">
+      <label class="f">Tashkilot (ixtiyoriy)</label>
+      <input type="text" id="sell-org" placeholder="Masalan: &quot;Nur&quot; MChJ" list="org-list">
+      <datalist id="org-list">${orgList.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>
+      <label class="f">Telefon (ixtiyoriy)</label>
+      <input type="text" id="sell-phone" placeholder="+998...">
+      <label class="f">Izoh — nimaga sotilyapti (qarzdorga ko'rinadi)</label>
+      <textarea id="sell-note" rows="2" placeholder="Masalan: iyul oyi uchun oziq-ovqat"></textarea>
+      <label class="f">To'lov muddati (ixtiyoriy — kelganda avtomatik eslatma yuboriladi)</label>
+      <input type="date" id="sell-due">
+    </div>
+    <button class="btn wide" onclick="submitSell()">✅ Sotishni yakunlash</button>
+  `);
+}
+function setSellMode(mode){
+  document.getElementById('mode-cash').classList.toggle('active', mode==='cash');
+  document.getElementById('mode-debt').classList.toggle('active', mode==='debt');
+  document.getElementById('debt-fields').classList.toggle('hidden', mode!=='debt');
+  STATE.sellMode = mode;
+}
+function fillDebtorFields(id){
+  const d = STATE.data.debtors.find(x=>x.id===id);
+  document.getElementById('sell-name').value = d ? d.name : '';
+  document.getElementById('sell-org').value = d ? d.org : '';
+  document.getElementById('sell-phone').value = d ? d.phone : '';
+}
+async function submitSell(){
+  const items = Object.entries(STATE.cart).map(([productId,qty])=>({productId,qty}));
+  const mode = STATE.sellMode || 'cash';
+  const payload = { items, mode };
+  if (mode === 'debt'){
+    const existingId = document.getElementById('sell-existing-debtor').value;
+    payload.debtorId = existingId || undefined;
+    payload.name = document.getElementById('sell-name').value.trim();
+    payload.org = document.getElementById('sell-org').value.trim();
+    payload.phone = document.getElementById('sell-phone').value.trim();
+    payload.note = document.getElementById('sell-note').value.trim();
+    payload.dueDate = document.getElementById('sell-due').value || undefined;
+    if (!payload.debtorId && !payload.name){ alert('Ism kiriting yoki mavjud qarzdorni tanlang.'); return; }
+  }
+  const r = await callAction('sell', payload);
+  closeModal();
+  if (r.ok){
+    if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
+    STATE.cart = {};
+    await loadData();
+    STATE.tab = 'sell'; renderAdmin();
+  } else {
+    alert('Xatolik: ' + (r.error||'') + (r.productName?(' — '+r.productName):''));
+  }
+}
+
+// ---------------- QARZLAR ----------------
+function renderDebts(app, d){
+  let html = `<div class="section-title">Faol qarzlar (${d.debts.length})
+    <span><button class="btn small btn-outline" onclick="exportDebtsCsv()">📤 Excel</button>
+    <button class="btn small" onclick="openCashLoanModal()">💵 + Naqd pul qarz</button></span></div>`;
+  if (!d.debts.length) html += `<div class="card empty">✅ Faol qarz yo'q</div>`;
+  const todayStr = new Date().toISOString().slice(0,10);
+  d.debts.forEach(x=>{
+    const overdue = x.dueDate && x.dueDate.slice(0,10) < todayStr;
+    const dueSoon = x.dueDate && !overdue;
+    html += `<div class="card">
+      <div class="row">
+        <div><div class="name">${x.isCashLoan?'💵 ':''}${esc(x.name)}${x.org?' <span class="pill org">🏢 '+esc(x.org)+'</span>':''}</div><div class="meta">${new Date(x.date).toLocaleDateString('uz-UZ')}${x.note?' · '+esc(x.note):''}</div></div>
+        <div class="amount-red">${fmt(x.remaining)}</div>
+      </div>
+      ${x.items && x.items.length ? `<div style="margin-top:6px;font-size:12px;color:var(--hint)">${x.items.map(it=>`${esc(it.name)} ×${it.qty}`).join(', ')}</div>` : ''}
+      ${x.dueDate ? `<div style="margin-top:6px"><span class="pill ${overdue?'out':'low'}">${overdue?"⏰ Muddati o'tgan":'📅 Muddat'}: ${new Date(x.dueDate).toLocaleDateString('uz-UZ')}</span></div>` : ''}
+      <div style="margin-top:8px;text-align:right;display:flex;gap:8px;justify-content:flex-end">
+        ${x.debtorId ? `<button class="btn small btn-outline" onclick="remindDebtor('${x.debtorId}')">🔔 Eslatma</button>` : ''}
+        <button class="btn small" onclick="openPayModal('${x.id}','${esc(x.name).replace(/'/g,"\\'")}',${x.remaining})">💵 To'lov qo'shish</button>
+      </div>
+    </div>`;
+  });
+  app.innerHTML = html;
+}
+
+// ---------------- KASSADAN NAQD PUL QARZGA BERISH ----------------
+function openCashLoanModal(){
+  const d = STATE.data;
+  const orgList = [...new Set(d.debtors.map(x=>x.org).filter(Boolean))];
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">💵 Kassadan naqd pul qarzga berish</div>
+    <label class="f">Qarzdor (mavjud bo'lsa tanlang)</label>
+    <select id="cl-existing-debtor" onchange="fillCashLoanFields(this.value)">
+      <option value="">— Yangi kiritish —</option>
+      ${d.debtors.map(x=>`<option value="${x.id}">${esc(x.org?x.org+' / ':'')}${esc(x.name)}</option>`).join('')}
+    </select>
+    <label class="f">Ism *</label>
+    <input type="text" id="cl-name" placeholder="Qarzdor ismi">
+    <label class="f">Tashkilot (ixtiyoriy)</label>
+    <input type="text" id="cl-org" placeholder="Masalan: &quot;Nur&quot; MChJ" list="cl-org-list">
+    <datalist id="cl-org-list">${orgList.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>
+    <label class="f">Telefon (ixtiyoriy)</label>
+    <input type="text" id="cl-phone" placeholder="+998...">
+    <label class="f">Summa *</label>
+    <input type="number" id="cl-amount" placeholder="Masalan: 200000">
+    <label class="f">Izoh</label>
+    <textarea id="cl-note" rows="2" placeholder="Masalan: shaxsiy ehtiyoj uchun"></textarea>
+    <label class="f">To'lov muddati (ixtiyoriy)</label>
+    <input type="date" id="cl-due">
+    <button class="btn wide" onclick="submitCashLoan()">✅ Qarzga yozish</button>
+  `);
+}
+function fillCashLoanFields(id){
+  const d = STATE.data.debtors.find(x=>x.id===id);
+  document.getElementById('cl-name').value = d ? d.name : '';
+  document.getElementById('cl-org').value = d ? d.org : '';
+  document.getElementById('cl-phone').value = d ? d.phone : '';
+}
+async function submitCashLoan(){
+  const existingId = document.getElementById('cl-existing-debtor').value;
+  const payload = {
+    debtorId: existingId || undefined,
+    name: document.getElementById('cl-name').value.trim(),
+    org: document.getElementById('cl-org').value.trim(),
+    phone: document.getElementById('cl-phone').value.trim(),
+    amount: document.getElementById('cl-amount').value,
+    note: document.getElementById('cl-note').value.trim(),
+    dueDate: document.getElementById('cl-due').value || undefined,
+  };
+  if (!payload.debtorId && !payload.name){ alert('Ism kiriting yoki mavjud qarzdorni tanlang.'); return; }
+  if (!payload.amount || parseFloat(payload.amount) <= 0){ alert('Summani kiriting.'); return; }
+  const r = await callAction('cash_loan', payload);
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Qarz yozildi ✅'); await loadData(); STATE.tab='debts'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+
+// ---------------- EXCEL (CSV) EKSPORT ----------------
+function exportDebtsCsv(){
+  const d = STATE.data;
+  const rows = [['Ism','Tashkilot','Summa','Qoldiq','Sana','Muddat','Izoh']];
+  d.debts.forEach(x=>{
+    rows.push([x.name, x.org||'', x.total, x.remaining, new Date(x.date).toLocaleDateString('uz-UZ'), x.dueDate?new Date(x.dueDate).toLocaleDateString('uz-UZ'):'', x.note||'']);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `qarzlar_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+async function remindDebtor(debtorId){
+  const r = await callAction('send_debt_reminder', { debtorId });
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Eslatma yuborildi ✅'); }
+  else alert('Yuborib bo\'lmadi: ' + (r.error==='not_linked' ? 'bu odam botga hali ulanmagan' : r.error||''));
+}
+function toastMsg(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sec-bg);color:var(--text);padding:8px 16px;border-radius:20px;font-size:13px;z-index:60;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2200);
+}
+
+// ---------------- TOVARLAR (OMBOR) ----------------
+function renderStock(app, d){
+  let html = `<div class="section-title">Tovarlar (${d.products.length}) <button class="btn small" onclick="openProductModal()">+ Qo'shish</button></div>`;
+  if (!d.products.length) html += `<div class="card empty">Hali tovar qo'shilmagan</div>`;
+  d.products.forEach(p=>{
+    const low = p.stock <= (d.settings.lowStockThreshold||5);
+    html += `<div class="card">
+      <div class="row">
+        <div><div class="name">${esc(p.name)}</div><div class="meta">${fmt(p.price)} ${cs()} ${p.cost?('· tannarx '+fmt(p.cost)+' '+cs()):''}</div></div>
+        <span class="pill ${p.stock===0?'out':(low?'low':'')}" style="${p.stock>0 && !low?'background:rgba(16,185,129,.15);color:var(--accent)':''}">${p.stock} ta</span>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn small btn-outline" onclick="openRestockModal('${p.id}','${esc(p.name).replace(/'/g,"\\'")}')">📦 Kirim</button>
+        <button class="btn small btn-outline" onclick="openProductModal('${p.id}')">✏️ Tahrirlash</button>
+        <button class="btn small danger" onclick="deleteProduct('${p.id}','${esc(p.name).replace(/'/g,"\\'")}')">🗑</button>
+      </div>
+    </div>`;
+  });
+  app.innerHTML = html;
+}
+function openProductModal(id){
+  const d = STATE.data;
+  const p = id ? d.products.find(x=>x.id===id) : null;
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px">${p?'Tovarni tahrirlash':'Yangi tovar'}</div>
+    <label class="f">Nomi *</label><input type="text" id="pf-name" value="${p?esc(p.name):''}">
+    <label class="f">Narxi (sotish) *</label><input type="number" id="pf-price" value="${p?p.price:''}">
+    <label class="f">Tannarx</label><input type="number" id="pf-cost" value="${p?p.cost:''}">
+    <label class="f">Qoldiq (soni)</label><input type="number" id="pf-stock" value="${p?p.stock:0}">
+    <label class="f">Hajm/o'lcham (ixtiyoriy)</label><input type="text" id="pf-volume" value="${p?esc(p.volume):''}">
+    <label class="f">Izoh</label><textarea id="pf-note" rows="2">${p?esc(p.note):''}</textarea>
+    <button class="btn wide" onclick="submitProduct(${p?`'${id}'`:'null'})">Saqlash</button>
+  `);
+}
+async function submitProduct(id){
+  const patch = {
+    name: document.getElementById('pf-name').value.trim(),
+    price: document.getElementById('pf-price').value,
+    cost: document.getElementById('pf-cost').value,
+    stock: document.getElementById('pf-stock').value,
+    volume: document.getElementById('pf-volume').value.trim(),
+    note: document.getElementById('pf-note').value.trim(),
+  };
+  if (!patch.name || patch.price===''){ alert("Nomi va narxini kiriting."); return; }
+  const r = id ? await callAction('update_product', { id, patch }) : await callAction('create_product', patch);
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='stock'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+async function deleteProduct(id, name){
+  if (!confirm(`"${name}" o'chirilsinmi?`)) return;
+  const r = await callAction('delete_product', { id });
+  if (r.ok){ await loadData(); STATE.tab='stock'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+}
+function openRestockModal(id, name){
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(name)} — kirim</div>
+    <label class="f">Necha dona qo'shiladi</label>
+    <input type="number" id="restock-qty" placeholder="Masalan: 20">
+    <button class="btn wide" onclick="submitRestock('${id}')">Saqlash</button>
+  `);
+}
+async function submitRestock(id){
+  const qty = document.getElementById('restock-qty').value;
+  const r = await callAction('restock', { id, qty });
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='stock'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+
+// ---------------- QARZDORLAR ----------------
+function renderDebtorsTab(app, d){
+  let html = `<div class="section-title">Qarzdorlar (${d.debtors.length}) <button class="btn small" onclick="openDebtorModal()">+ Qo'shish</button></div>`;
+  html += `<div class="card" style="font-size:12px;color:var(--hint)">Tashkilot xodimiga Telegram usernameini kiritsangiz, u odam FAQAT O'ZINING qarzini ko'radi. Butun tashkilot qarzini (barcha xodimlar bo'yicha) ko'rishi kerak bo'lgan shaxsni (masalan buxgalter) "Ko'rish huquqi: Butun tashkilot" qilib alohida kiriting.</div>`;
+  if (!d.debtors.length) html += `<div class="card empty">Hali qarzdor yo'q</div>`;
+  const sorted = [...d.debtors].sort((a,b)=> (a.org||'').localeCompare(b.org||'') || a.name.localeCompare(b.name));
+  sorted.forEach(x=>{
+    html += `<div class="card">
+      <div class="row">
+        <div>
+          <div class="name">${esc(x.name)}${x.org?' <span class="pill org">🏢 '+esc(x.org)+'</span>':''}</div>
+          <div class="meta">${x.phone?esc(x.phone)+' · ':''}${x.telegramUsername?'@'+esc(x.telegramUsername):(x.telegramUserId?('ID: '+esc(x.telegramUserId)):'Telegram username/ID kiritilmagan')}</div>
+        </div>
+        <span class="pill" style="${x.linked?'background:rgba(16,185,129,.15);color:var(--accent)':'background:rgba(245,158,11,.15);color:var(--warn)'}">${x.linked?'✅ Ulangan':'⏳ Kutilmoqda'}</span>
+      </div>
+      ${x.org ? `<div class="meta" style="margin-top:6px">Ko'rish huquqi: <b>${x.viewScope==='org'?'🏢 Butun tashkilot':"👤 Faqat o'zi"}</b></div>` : ''}
+      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn small btn-outline" onclick='openDebtorModal(${JSON.stringify(x.id)})'>✏️ Tahrirlash</button>
+        <button class="btn small danger" onclick="deleteDebtor('${x.id}','${esc(x.name).replace(/'/g,"\\'")}')">🗑</button>
+      </div>
+    </div>`;
+  });
+  app.innerHTML = html;
+}
+function openDebtorModal(id){
+  const d = STATE.data;
+  const x = id ? d.debtors.find(v=>v.id===id) : null;
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px">${x?'Qarzdorni tahrirlash':'Yangi qarzdor'}</div>
+    <label class="f">Ism *</label><input type="text" id="df-name" value="${x?esc(x.name):''}">
+    <label class="f">Tashkilot (bo'sh — jismoniy shaxs)</label><input type="text" id="df-org" value="${x?esc(x.org):''}">
+    <label class="f">Telefon</label><input type="text" id="df-phone" value="${x?esc(x.phone):''}">
+    <label class="f">Telegram username (@ siz)</label><input type="text" id="df-username" value="${x?esc(x.telegramUsername):''}" placeholder="masalan: aziz_dev">
+    <label class="f">Telegram ID (username bo'lmasa shuni kiriting)</label><input type="text" id="df-tguid" value="${x&&x.telegramUserId?esc(x.telegramUserId):''}" placeholder="masalan: 123456789">
+    <div style="font-size:11px;color:var(--hint);margin-top:4px">Username yoki Telegram ID kiritilsa — qarzdor botga /start yozganda hech qanday tugmasiz avtomatik tanilaydi. Ikkalasi ham bo'sh bo'lsa, u administratorga o'z ID/username'ini yuboradi.</div>
+    <label class="f">Ko'rish huquqi</label>
+    <select id="df-scope">
+      <option value="own" ${(!x||x.viewScope!=='org')?'selected':''}>Faqat o'zining qarzi</option>
+      <option value="org" ${x&&x.viewScope==='org'?'selected':''}>Butun tashkilot qarzi (batafsil)</option>
+    </select>
+    <button class="btn wide" onclick="submitDebtor(${x?`'${id}'`:'null'})">Saqlash</button>
+  `);
+}
+async function submitDebtor(id){
+  const payload = {
+    id: id || undefined,
+    name: document.getElementById('df-name').value.trim(),
+    org: document.getElementById('df-org').value.trim(),
+    phone: document.getElementById('df-phone').value.trim(),
+    telegramUsername: document.getElementById('df-username').value.trim(),
+    telegramUserId: document.getElementById('df-tguid').value.trim(),
+    viewScope: document.getElementById('df-scope').value,
+  };
+  if (!payload.name){ alert('Ismni kiriting.'); return; }
+  const r = await callAction('upsert_debtor', payload);
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='debtors'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+async function deleteDebtor(id, name){
+  if (!confirm(`"${name}" ro'yxatdan o'chirilsinmi? (Qarz yozuvlari o'chmaydi)`)) return;
+  const r = await callAction('delete_debtor', { id });
+  if (r.ok){ await loadData(); STATE.tab='debtors'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+}
+
+// ---------------- SOZLAMALAR ----------------
+function renderSettings(app, d){
+  const s = d.settings;
+  let html = `
+    <div class="section-title">Do'kon sozlamalari</div>
+    <div class="card">
+      <label class="f">Do'kon nomi</label><input type="text" id="s-shopName" value="${esc(s.shopName)}">
+      <label class="f">Valyuta belgisi</label><input type="text" id="s-currencySymbol" value="${esc(s.currencySymbol)}">
+      <label class="f">Kam qolgan tovar chegarasi (dona)</label><input type="number" id="s-lowStockThreshold" value="${s.lowStockThreshold}">
+      <label class="f">Necha kundan qarz "muddati o'tgan" hisoblanadi</label><input type="number" id="s-overdueDaysGlobal" value="${s.overdueDaysGlobal}">
+      <button class="btn wide" onclick="submitSettings()">Saqlash</button>
+    </div>
+    <div class="section-title">Telegram bildirishnomalari (adminlarga)</div>
+    <div class="card">
+      <div class="switch-row"><span>Kam qolgan tovar haqida</span><div class="toggle ${s.telegramNotifyLowStock?'on':''}" onclick="toggleNotif('telegramNotifyLowStock',this)"><div class="knob"></div></div></div>
+      <div class="switch-row"><span>Muddati o'tgan qarzlar haqida</span><div class="toggle ${s.telegramNotifyOverdueDebts?'on':''}" onclick="toggleNotif('telegramNotifyOverdueDebts',this)"><div class="knob"></div></div></div>
+      <div class="switch-row"><span>Kunlik hisobot</span><div class="toggle ${s.telegramNotifyDailyReport?'on':''}" onclick="toggleNotif('telegramNotifyDailyReport',this)"><div class="knob"></div></div></div>
+    </div>
+    <div class="section-title">Adminlar (${s.telegramAdmins.length}) <button class="btn small" onclick="openAdminModal()">+ Qo'shish</button></div>`;
+  s.telegramAdmins.forEach(a=>{
+    html += `<div class="card row">
+      <div><div class="name">${esc(a.name)}</div><div class="meta">${a.username?'@'+esc(a.username):(a.phone?esc(a.phone):'')} · ${a.linked?'✅ ulangan':'⏳ kutilmoqda'}</div></div>
+      <button class="btn small danger" onclick='removeAdmin(${JSON.stringify(a.chatId)},${JSON.stringify(a.username)},${JSON.stringify(a.phone)},${JSON.stringify(a.name)})'>🗑</button>
+    </div>`;
+  });
+  html += `<div class="card" style="font-size:11.5px;color:var(--hint)">Bot tokeni xavfsizlik uchun mini ilovadan o'zgartirilmaydi — u faqat kompyuterdagi to'liq boshqaruv panelidan sozlanadi.</div>`;
+  app.innerHTML = html;
+}
+async function toggleNotif(key, el){
+  const val = !el.classList.contains('on');
+  el.classList.toggle('on', val);
+  const r = await callAction('update_settings', { patch: { [key]: val } });
+  if (!r.ok) { el.classList.toggle('on', !val); alert('Xatolik: ' + (r.error||'')); }
+  else STATE.data.settings[key] = val;
+}
+async function submitSettings(){
+  const patch = {
+    shopName: document.getElementById('s-shopName').value.trim(),
+    currencySymbol: document.getElementById('s-currencySymbol').value.trim(),
+    lowStockThreshold: document.getElementById('s-lowStockThreshold').value,
+    overdueDaysGlobal: document.getElementById('s-overdueDaysGlobal').value,
+  };
+  const r = await callAction('update_settings', { patch });
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Saqlandi ✅'); await loadData(); STATE.tab='settings'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+function openAdminModal(){
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px">Yangi admin qo'shish</div>
+    <label class="f">Ism *</label><input type="text" id="af-name">
+    <label class="f">Telegram username (@ siz)</label><input type="text" id="af-username" placeholder="masalan: aziz_dev">
+    <label class="f">Telefon (username o'rniga ham bo'ladi)</label><input type="text" id="af-phone" placeholder="+998...">
+    <div style="font-size:11.5px;color:var(--hint);margin-top:8px">Qo'shilgach, o'sha odam botga /start yozib telefon raqamini yuborishi yoki shu usernamedan birinchi marta yozishi bilan avtomatik admin bo'lib ulanadi.</div>
+    <button class="btn wide" onclick="submitAdmin()">Qo'shish</button>
+  `);
+}
+async function submitAdmin(){
+  const name = document.getElementById('af-name').value.trim();
+  const username = document.getElementById('af-username').value.trim();
+  const phone = document.getElementById('af-phone').value.trim();
+  if (!name || (!username && !phone)){ alert('Ism va (username yoki telefon) kiriting.'); return; }
+  const r = await callAction('upsert_admin', { name, username, phone });
+  closeModal();
+  if (r.ok){ await loadData(); STATE.tab='settings'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+}
+async function removeAdmin(chatId, username, phone, name){
+  if (!confirm(`"${name}" adminlikdan o'chirilsinmi?`)) return;
+  const r = await callAction('remove_admin', { chatId, username, phone });
+  if (r.ok){ await loadData(); STATE.tab='settings'; renderAdmin(); }
+  else alert(r.error==='cannot_remove_self' ? "O'zingizni o'chira olmaysiz." : ('Xatolik: ' + (r.error||'')));
+}
+
+// ---------------- MODALLAR (umumiy) / TO'LOV ----------------
 function openPayModal(debtId, name, remaining){
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(name)}</div>
     <div style="color:var(--hint);font-size:13px;margin-bottom:10px">Qoldiq: ${fmt(remaining)}</div>
     <input type="number" id="pay-amount" placeholder="Summa" value="${remaining}">
-    <button class="btn" style="width:100%;margin-top:12px" onclick="submitPay('${debtId}')">To'lovni saqlash</button>
-  `);
-}
-function openPriceModal(name, price){
-  showModal(`
-    <div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(name)} — narxni yangilash</div>
-    <input type="number" id="new-price" value="${price}">
-    <button class="btn" style="width:100%;margin-top:12px" onclick="submitPrice('${name.replace(/'/g,"\\'")}')">Saqlash</button>
+    <button class="btn wide" onclick="submitPay('${debtId}')">To'lovni saqlash</button>
   `);
 }
 function showModal(inner){
@@ -251,14 +697,7 @@ async function submitPay(debtId){
   const amount = document.getElementById('pay-amount').value;
   const r = await callAction('pay_debt', { debtId, amount });
   closeModal();
-  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); }
-  else alert('Xatolik: ' + (r.error||''));
-}
-async function submitPrice(productName){
-  const price = document.getElementById('new-price').value;
-  const r = await callAction('update_price', { productName, price });
-  closeModal();
-  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); }
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='debts'; renderAdmin(); }
   else alert('Xatolik: ' + (r.error||''));
 }
 
