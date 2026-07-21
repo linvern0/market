@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -2987,7 +2988,7 @@ body.dark table {
 <!-- Qarzdor login/parol tahrirlash modal -->
 <div class="modal-overlay hidden" id="modal-debtor-login">
   <div class="modal" style="max-width:420px">
-    <h3>🔐 Login/Parol tahrirlash</h3>
+    <h3>🔐 Portal login va 🤖 Telegram bot ulash</h3>
     <div class="field" style="margin-bottom:.85rem">
       <label>Qarzdor</label>
       <input id="dl-name" readonly style="background:var(--surface2);font-weight:600">
@@ -3013,7 +3014,22 @@ body.dark table {
     </div>
     <p style="font-size:12px;color:var(--text3);margin-top:-.5rem;margin-bottom:.85rem">🎲 — tasodifiy xavfsiz parol yaratadi. 📋 — maydondagi matnni nusxalaydi (mijozga yuborish uchun qulay).</p>
 
-    <!-- YANGI: QR KOD ORQALI MIJOZ PORTALI — mijoz login/parolni QO'LDA
+    <!-- YANGI: TELEGRAM BOTGA BIRIKTIRISH — bu odam (yoki butun tashkilot
+         vakili) shu yerga Telegram username/ID kiritilsa, botga "/start"
+         yozganda hech qanday tugmasiz avtomatik tanib olinadi va o'z
+         qarzi (tashkilot bo'lsa — BARCHA xodimlar bo'yicha, alohida-alohida
+         batafsil) haqida xabar oladi. -->
+    <div class="field" style="margin-bottom:.85rem">
+      <label>🤖 Telegram username (@ siz)</label>
+      <input id="dl-tg-username" placeholder="masalan: aziz_dev">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>🤖 Telegram ID (username bo'lmasa)</label>
+      <input id="dl-tg-userid" placeholder="masalan: 123456789">
+    </div>
+    <p id="dl-tg-hint" style="font-size:12px;color:var(--text3);margin-top:-.5rem;margin-bottom:.85rem">Ikkalasidan kamida bittasini kiriting — shunda bu odam botga <code>/start</code> yozganda avtomatik tanib olinadi.</p>
+
+    <!-- QR KOD ORQALI MIJOZ PORTALI — mijoz login/parolni QO'LDA
          KIRITMASDAN, shu QR-ni skanerlab, o'z xarid tarixi/qarzini
          to'g'ridan-to'g'ri ko'radi. Chekka yopishtirish yoki bosib
          berish uchun qulay. -->
@@ -6269,6 +6285,10 @@ window.openDebtorLogin = function(id){
   document.getElementById('dl-type').value = debtor.org ? "👤 Shaxs (faqat O'ZINING qarzini ko'radi)" : '👤 Shaxs';
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
+  document.getElementById('dl-tg-username').value = debtor.telegramUsername||'';
+  document.getElementById('dl-tg-userid').value = debtor.telegramUserId||'';
+  const dlHint = document.getElementById('dl-tg-hint');
+  if(dlHint) dlHint.innerHTML = "Ikkalasidan kamida bittasini kiriting — shunda bu odam botga <code>/start</code> yozganda avtomatik tanib olinadi.";
   resetDebtorLoginQRPreview();
   openModal('modal-debtor-login');
 }
@@ -6298,6 +6318,10 @@ window.openOrgAccountLogin = function(org){
   document.getElementById('dl-type').value = "🏢 Tashkilot (BUTUN tashkilotni, barcha xodimlarni ko'radi)";
   document.getElementById('dl-login').value = debtor.login||'';
   document.getElementById('dl-password').value = debtor.password||'';
+  document.getElementById('dl-tg-username').value = debtor.telegramUsername||'';
+  document.getElementById('dl-tg-userid').value = debtor.telegramUserId||'';
+  const hint = document.getElementById('dl-tg-hint');
+  if(hint) hint.innerHTML = `Bu — <b>butun "${org}" tashkilotini</b> Telegram botga biriktirish. Shu yerga tashkilot rahbari/buxgalterining Telegram username yoki ID'sini kiriting — u botga <code>/start</code> yozganda BARCHA xodimlarning qarzini, har biri alohida-alohida (kim qancha), ko'radi.`;
   resetDebtorLoginQRPreview();
   openModal('modal-debtor-login');
 }
@@ -6311,7 +6335,10 @@ function resetDebtorLoginQRPreview(){
 window.saveDebtorLogin = function(){
   const login = document.getElementById('dl-login').value.trim();
   const password = document.getElementById('dl-password').value.trim();
-  if(!login || !password){ toast('Login va parolni kiriting','red'); return; }
+  const tgUsername = document.getElementById('dl-tg-username').value.trim().replace(/^@/,'').toLowerCase();
+  const tgUserId = document.getElementById('dl-tg-userid').value.trim().replace(/\D/g,'');
+  if((login && !password) || (!login && password)){ toast('Login va parolni ikkalasini ham kiriting (yoki ikkalasini ham bo\'sh qoldiring)','red'); return; }
+  if(!login && !password && !tgUsername && !tgUserId){ toast('Login/parol yoki Telegram username/ID — kamida bittasini kiriting','red'); return; }
   const debtor = DB.debtors.find(d=>d.id===editingDebtorId);
   if(!debtor) return;
   // Bir xil login boshqa qarzdor/tashkilotda ishlatilmasligini tekshiramiz —
@@ -6319,9 +6346,28 @@ window.saveDebtorLogin = function(){
   // qaysi birini ochishni bilmay qolishi mumkin edi.
   const dup = DB.debtors.find(d=>d.id!==editingDebtorId && d.login && d.login===login);
   if(dup){ toast(`Bu login allaqachon "${dup.name}"da ishlatilgan`,'red'); return; }
+  // Telegram username/ID ham boshqa birortasida band bo'lmasligi kerak —
+  // aks holda bot kimni tanishini aniqlay olmay qoladi.
+  if(tgUsername){
+    const dupU = DB.debtors.find(d=>d.id!==editingDebtorId && (d.telegramUsername||'').toLowerCase()===tgUsername);
+    if(dupU){ toast(`Bu Telegram username allaqachon "${dupU.name}"da ishlatilgan`,'red'); return; }
+  }
+  if(tgUserId){
+    const dupId = DB.debtors.find(d=>d.id!==editingDebtorId && String(d.telegramUserId||'')===tgUserId);
+    if(dupId){ toast(`Bu Telegram ID allaqachon "${dupId.name}"da ishlatilgan`,'red'); return; }
+  }
   closeModal('modal-debtor-login');
   toast('Login/Parol yangilandi','green');
-  const p = fbSaveDebtor({...debtor, login, password});
+  const patch = {
+    ...debtor, login, password,
+    telegramUsername: tgUsername,
+    telegramUserId: tgUserId,
+    // Tashkilot hisobi (isOrgAccount) uchun har doim "butun tashkilotni
+    // ko'rish" huquqi majburiy — shu belgi bo'lmasa, bot uni oddiy shaxs
+    // deb hisoblab, faqat o'ziga (bo'sh) yozuvni ko'rsatib qo'yardi.
+    viewScope: debtor.isOrgAccount ? 'org' : (debtor.viewScope || 'own'),
+  };
+  const p = fbSaveDebtor(patch);
   renderDebts();
   p.catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
