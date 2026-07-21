@@ -110,11 +110,38 @@ async function runNotify() {
       (d) => !d.paid && Date.now() - new Date(d.date).getTime() >= overdueDays * 86400000
     );
     if (overdue.length) {
-      const remaining = (d) => (d.amount || 0) - (d.paidAmount || 0);
+      const remaining = (d) => (d.total || 0) - (d.paidAmount || 0);
       const sum = overdue.reduce((a, d) => a + remaining(d), 0);
       const text = `⏰ <b>Muddati o'tgan qarzlar</b> — ${esc(shopName)}\n\n${overdue.length} ta qarzdor, jami ${fmt(sum)} so'm ${overdueDays} kundan ortiq to'lanmagan.`;
       const ok = await sendToAllAdmins(token, chatIds, text);
       if (ok) patch.overdue = todayStr;
+    }
+  }
+
+  // ---------- 2.5) Muddati belgilangan (dueDate) qarzlar — qarzdorga
+  // to'g'ridan-to'g'ri avtomatik eslatma (bir marta, muddat kelgan/o'tgan
+  // kunda, kuniga 1 marta) ----------
+  {
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
+    const dueToday = debtsSnap.docs.filter((docSnap) => {
+      const d = docSnap.data();
+      if (!d.dueDate) return false;
+      if (d.dueDate.slice(0, 10) > todayStr) return false; // muddat hali kelmagan
+      return d.lastAutoReminderDate !== todayStr; // bugun hali yuborilmagan
+    });
+    for (const docSnap of dueToday) {
+      const d = docSnap.data();
+      const remaining = (d.total || 0) - (d.paidAmount || 0);
+      if (remaining <= 0.5) continue;
+      let cid = null;
+      if (d.debtorId) {
+        const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
+        cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
+      }
+      const overdue = d.dueDate.slice(0, 10) < todayStr;
+      const text = `⏰ <b>${esc(shopName)}</b>\n\n${overdue ? "Qarzingizni to'lash muddati o'tib ketdi." : "Bugun qarzingizni to'lash muddati keldi."}\n💰 Qoldiq: <b>${fmt(remaining)} so'm</b>${d.note ? `\n📝 ${esc(d.note)}` : ''}`;
+      if (cid) await sendTelegramMessage(token, cid, text);
+      await docSnap.ref.update({ lastAutoReminderDate: todayStr });
     }
   }
 

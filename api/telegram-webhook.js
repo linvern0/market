@@ -59,6 +59,9 @@ async function sendMessage(token, chatId, text, extra) {
   if (!data.ok) console.error(`Telegram xabar yuborishda xatolik (chat_id=${chatId}):`, data.description || data);
   return data;
 }
+// ESKI: telefon-tugmasi endi ishlatilmaydi (qarzdorlar avtomatik, tugmasiz
+// aniqlanadi — Telegram username va/yoki Telegram ID orqali). Funksiya
+// mos kelish uchun saqlab qolindi, lekin hech qayerda chaqirilmaydi.
 const CONTACT_KEYBOARD = {
   keyboard: [[{ text: '📱 Telefon raqamimni yuborish', request_contact: true }]],
   resize_keyboard: true,
@@ -108,10 +111,9 @@ function helpText(isAdmin) {
       `/ilova — Mini-ilovani (to'liq boshqaruv paneli) ochish\n`;
   } else {
     t += `Bu bot orqali qarzingiz va to'lovlaringiz haqida xabar olasiz.\n\n` +
-      `📱 Ro'yxatdan o'tish uchun pastdagi tugma orqali telefon raqamingizni yuboring ` +
-      `(agar do'kon administratori sizni Telegram username orqali oldindan qo'shgan bo'lsa, buning ham hojati yo'q — avtomatik tanildingiz).\n` +
-      `(Agar do'kon administratori sizni admin sifatida telefon raqamingiz bilan qo'shgan bo'lsa, ` +
-      `xuddi shu tugma orqali admin sifatida ham avtomatik tanilasiz.)\n` +
+      `✅ Hech qanday tugma bosish shart emas — do'kon administratori sizni ` +
+      `Telegram username yoki Telegram ID orqali oldindan ro'yxatga qo'shgan bo'lsa, ` +
+      `siz shunchaki shu botga <b>/start</b> yozishingiz bilan avtomatik tanilasiz.\n\n` +
       `/qarzim — joriy qarzingizni ko'rish\n` +
       `/ilova — Mini-ilovada qarzingizni to'liq ko'rish`;
   }
@@ -139,15 +141,20 @@ async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb) {
   const debtsSnap = await db.collection('debts').get();
   const names = [...new Set(matches.map((d) => d.data().name))];
   let text = `✅ Ro'yxatdan o'tdingiz: <b>${esc(names.join(', '))}</b>\n\nEndi qarz va to'lovlaringiz haqida shu yerga xabar keladi.\n\n`;
+  const org = matches.find((d) => d.data().org)?.data().org || '';
+  const isOrgViewer = !!org && matches.some((d) => d.data().org === org && d.data().viewScope === 'org');
   const debtorIds = matches.map((d) => d.id);
-  const myDebts = debtsSnap.docs.map((d) => d.data()).filter((d) => debtorIds.includes(d.debtorId) && !d.paid);
+  const allDebts = debtsSnap.docs.map((d) => d.data());
+  const myDebts = isOrgViewer
+    ? allDebts.filter((d) => d.org === org && !d.paid)
+    : allDebts.filter((d) => debtorIds.includes(d.debtorId) && !d.paid);
   if (myDebts.length) {
     const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
     text += `💰 Joriy qarzingiz: <b>${fmt(total)} so'm</b> (${myDebts.length} ta yozuv)`;
   } else {
     text += `Hozircha faol qarzingiz yo'q. 👍`;
   }
-  text += `\n\n📱 Qarzingizni istalgan vaqt to'liq ko'rish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.`;
+  text += `\n\n📱 Qarzingizni istalgan vaqt to'liq (nima uchun qarzdorligingiz bilan birga) ko'rish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.`;
   await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
 }
 
@@ -176,18 +183,65 @@ async function tryLinkCustomerByUsername(db, token, msg, kb) {
   return true;
 }
 
+// Telegram username bo'lmasa ham (yoki mos kelmasa) ishlaydigan ikkinchi
+// avtomatik usul: admin qarzdorni ro'yxatga qo'shayotganda uning haqiqiy
+// Telegram ID'sini (raqam) kiritgan bo'lsa, shu orqali ham hech qanday
+// tugmasiz avtomatik tanib olamiz — chunki Telegram ID har doim, hatto
+// username bo'lmasa ham, har bir xabarda botga avtomatik keladi.
+async function tryLinkCustomerByTelegramId(db, token, msg, kb) {
+  const chatId = msg.chat.id;
+  const idKey = String((msg.from && msg.from.id) || '').trim();
+  if (!idKey) return false;
+  const debtorsSnap = await db.collection('debtors').get();
+  const matches = debtorsSnap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
+  if (!matches.length) return false;
+  await sendDebtorLinkedWelcome(db, token, chatId, matches, kb);
+  return true;
+}
+
+// Hech qanday moslik topilmasa — tugma taklif qilish o'rniga, shaxsning
+// o'z username/ID'sini ko'rsatib, buni administratorga berishini so'raymiz
+// (administrator shu ma'lumot bilan Mini-ilovada qarzdorni ro'yxatga oladi).
+async function sendNotRecognizedNotice(token, msg, kb) {
+  const chatId = msg.chat.id;
+  const uname = msg.from && msg.from.username;
+  let text = `👋 Siz hali do'kon ro'yxatida topilmadingiz.\n\nAdministratorga quyidagi ma'lumotni bering, shunda keyingi safar (hech qanday tugmasiz) avtomatik tanilasiz:\n\n`;
+  text += uname ? `• Telegram username: <code>@${esc(uname)}</code>\n` : '';
+  text += `• Telegram ID: <code>${esc(chatId)}</code>`;
+  await sendMessage(token, chatId, text, kb ? { reply_markup: kb } : { remove_keyboard: true });
+}
+
+// Bitta qarz uchun "nima uchun qarzdorligi" batafsil matnini quradi: tovar
+// nomlari, miqdori va narxi bilan (agar shu ma'lumot saqlangan bo'lsa).
+function debtDetailText(d) {
+  let text = `📅 ${new Date(d.date).toLocaleDateString('uz-UZ')} — <b>${fmt(debtRemaining(d))} so'm</b>\n`;
+  if (Array.isArray(d.items) && d.items.length) {
+    d.items.forEach((it) => {
+      text += `   • ${esc(it.productName)} — ${it.qty} ta × ${fmt(it.price)} = ${fmt(it.subtotal || it.qty * it.price)} so'm\n`;
+    });
+  }
+  if (d.note) text += `   📝 Izoh: ${esc(d.note)}\n`;
+  return text;
+}
+
 async function handleCustomerMyDebts(db, token, chatId) {
   const debtorsSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).get();
   if (debtorsSnap.empty) { await sendMessage(token, chatId, "Siz hali ro'yxatdan o'tmagansiz. /start yozib telefon raqamingizni yuboring."); return; }
-  const debtorIds = debtorsSnap.docs.map((d) => d.id);
+  const debtorDocs = debtorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const org = debtorDocs.find((d) => d.org)?.org || '';
+  const isOrgViewer = !!org && debtorDocs.some((d) => d.org === org && d.viewScope === 'org');
   const debtsSnap = await db.collection('debts').get();
-  const myDebts = debtsSnap.docs.map((d) => d.data()).filter((d) => debtorIds.includes(d.debtorId) && !d.paid);
+  const allDebts = debtsSnap.docs.map((d) => d.data());
+  const myDebts = isOrgViewer
+    ? allDebts.filter((d) => d.org === org && !d.paid)
+    : allDebts.filter((d) => debtorDocs.map((x) => x.id).includes(d.debtorId) && !d.paid);
   if (!myDebts.length) { await sendMessage(token, chatId, "Faol qarzingiz yo'q. 👍"); return; }
   const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
   let text = `💰 Joriy qarzingiz: <b>${fmt(total)} so'm</b>\n\n`;
   myDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10).forEach((d) => {
-    text += `• ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm\n`;
+    text += (isOrgViewer ? `👤 ${esc(d.debtorName || '')}\n` : '') + debtDetailText(d) + '\n';
   });
+  text += `\n📱 Batafsil ko'rish uchun "Mini-ilovani ochish" tugmasidan foydalaning.`;
   await sendMessage(token, chatId, text);
 }
 
@@ -391,6 +445,10 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
     }
   }
 
+  // Eslatma: telefon-tugmasi (request_contact) endi hech qayerda
+  // ko'rsatilmaydi. Agar shunga qaramay kimdir kontakt yuborsa (masalan,
+  // eski xabar tugmasidan), moslik bo'lsa baribir ishlaydi — lekin bu
+  // endi asosiy oqim emas.
   if (msg.contact) {
     const linkedAsAdmin = await tryLinkAdminByContact(token, settingsRef, admins, msg, kb);
     if (linkedAsAdmin) return;
@@ -405,8 +463,19 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
     if (!isAdmin) {
       const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg, kb);
       if (linkedByUsername) return;
+      const linkedById = await tryLinkCustomerByTelegramId(db, token, msg, kb);
+      if (linkedById) return;
+      // Avvaldan ulangan (telegramChatId saqlangan) bo'lsa oddiy salomlashuv,
+      // aks holda administratorga berish uchun ID/username ko'rsatiladi.
+      const alreadyLinkedSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).limit(1).get();
+      if (!alreadyLinkedSnap.empty) {
+        await sendMessage(token, chatId, helpText(false), { reply_markup: kb || { remove_keyboard: true } });
+        return;
+      }
+      await sendNotRecognizedNotice(token, msg, kb);
+      return;
     }
-    await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? (kb ? { reply_markup: kb } : undefined) : { reply_markup: CONTACT_KEYBOARD });
+    await sendMessage(token, chatId, helpText(isAdmin), kb ? { reply_markup: kb } : undefined);
     return;
   }
   if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId); return; }

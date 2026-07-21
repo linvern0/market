@@ -1,20 +1,18 @@
 // api/_miniapp-auth.js
 // ----------------------------------------------------------------------------
-// Telegram Mini App'dan (WebApp) kelgan "initData"ni tekshirish uchun umumiy
-// yordamchi funksiyalar. Bu fayl to'g'ridan-to'g'ri API endpoint emas — uni
-// boshqa api/*.js fayllar "require" qiladi.
-//
-// Telegram hujjatiga ko'ra initData haqiqiyligini quyidagicha tekshirish
-// kerak: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+// Telegram Mini App yuboradigan `initData` satrini bot tokeni yordamida
+// raqamli tekshiradi (Telegram rasmiy hujjatidagi algoritm bo'yicha).
+// Agar imzo noto'g'ri bo'lsa yoki ma'lumot muddati juda eski bo'lsa (>24soat),
+// null qaytaradi - shunda so'rov chaqiruvchi tomonidan rad etiladi.
 // ----------------------------------------------------------------------------
 
 const crypto = require('crypto');
 
-// initData satrini tekshiradi va ichidagi "user" obyektini qaytaradi.
-// Agar noto'g'ri/soxta bo'lsa -> null qaytaradi.
+const MAX_AGE_SECONDS = 24 * 60 * 60; // 24 soat
+
 function verifyInitData(initData, botToken) {
-  if (!initData || !botToken) return null;
   try {
+    if (!initData || !botToken) return null;
     const params = new URLSearchParams(initData);
     const hash = params.get('hash');
     if (!hash) return null;
@@ -30,15 +28,19 @@ function verifyInitData(initData, botToken) {
 
     if (computedHash !== hash) return null;
 
-    // auth_date 24 soatdan eski bo'lsa - rad etamiz (eski/o'g'irlangan link ishlatilmasin)
     const authDate = parseInt(params.get('auth_date') || '0', 10);
-    if (!authDate || (Date.now() / 1000 - authDate) > 60 * 60 * 24) return null;
+    if (!authDate) return null;
+    const now = Math.floor(Date.now() / 1000);
+    if (now - authDate > MAX_AGE_SECONDS) return null;
 
     const userRaw = params.get('user');
     if (!userRaw) return null;
     const user = JSON.parse(userRaw);
-    return user; // { id, first_name, username, ... }
+    if (!user || !user.id) return null;
+
+    return user;
   } catch (e) {
+    console.error('verifyInitData xatolik:', e);
     return null;
   }
 }
