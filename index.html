@@ -1863,14 +1863,10 @@ body.dark table {
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">⏰ Ish vaqti va bildirishnomalar</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Haftalik ish jadvalini belgilang — dam olish kunida yoki ish vaqtidan tashqarida tizimga kirilsa, ogohlantirish ko'rsatiladi (kirish bloklanmaydi, faqat eslatma).</p>
     <div id="schedule-days-wrap" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem"></div>
-    <div class="field" style="margin-bottom:.85rem;max-width:260px">
-      <label>Zaxira nusxa eslatmasi (necha kunda)</label>
-      <input type="number" id="backup-reminder-days" min="1" max="30" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
-    </div>
     <button class="btn sm blue" onclick="saveScheduleSettings()">💾 Saqlash</button>
   </div>
 
-  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-auditlog-card">
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-auditlog-history-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">📜 Amallar tarixi (audit)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Tovar o'chirish, qarz to'lovi/o'chirish kabi muhim amallarning kim, qachon bajarganini ko'rsatadi. So'nggi 200 ta yozuv saqlanadi.</p>
     <select id="auditlog-filter" onchange="renderAuditLog()" style="margin-bottom:.75rem;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:13px;background:var(--surface2)">
@@ -3407,8 +3403,8 @@ body.dark table {
 <div class="modal-overlay hidden" id="modal-auditlog">
   <div class="modal" style="max-width:560px">
     <h3>🕵️ Amallar jurnali (joriy sessiya)</h3>
-    <div id="auditlog-list" style="display:flex;flex-direction:column;gap:.35rem;max-height:55vh;overflow-y:auto;font-size:13px"></div>
-    <p id="auditlog-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Jurnal bo'sh.</p>
+    <div id="auditlog-list-modal" style="display:flex;flex-direction:column;gap:.35rem;max-height:55vh;overflow-y:auto;font-size:13px"></div>
+    <p id="auditlog-empty-modal" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Jurnal bo'sh.</p>
     <div class="modal-footer">
       <button class="btn green" onclick="window.exportAuditLog && window.exportAuditLog()">⬇ Eksport (JSON)</button>
       <button class="btn" onclick="closeModal('modal-auditlog')">Yopish</button>
@@ -3486,6 +3482,33 @@ body.dark table {
     <p id="customers-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Hozircha mijoz qo'shilmagan.</p>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-customers')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: Mijoz (sodiqlik dasturi)ni Telegram botga biriktirish — xuddi
+     qarzdorlardagi "Telegram bot ulash" bilan bir xil mantiq: telefon,
+     username yoki Telegram ID orqali, bot /start yozganda avtomatik
+     tanib oladi va ball/chegirma holatini ko'rsatadi. -->
+<div class="modal-overlay hidden" id="modal-customer-link">
+  <div class="modal" style="max-width:420px">
+    <h3>🤖 Mijozni Telegram botga ulash</h3>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Mijoz</label>
+      <input id="cul-name" readonly style="background:var(--surface2);font-weight:600">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>🤖 Telegram username (@ siz)</label>
+      <input id="cul-tg-username" placeholder="masalan: aziz_dev">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>🤖 Telegram ID (username bo'lmasa)</label>
+      <input id="cul-tg-userid" placeholder="masalan: 123456789">
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.5rem;margin-bottom:.85rem">Telefon raqami avtomatik ham ishlatiladi (mijoz botga o'z raqamini yuborganda). Username/ID'dan kamida bittasini kiritsangiz, mijoz botga <code>/start</code> yozganda avtomatik tanib olinadi va <code>/ballarim</code> orqali ball holatini ko'radi.</p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-customer-link')">Bekor qilish</button>
+      <button class="btn blue" onclick="saveCustomerLink()">Saqlash</button>
     </div>
   </div>
 </div>
@@ -3806,16 +3829,57 @@ window.cartSerialCodes = {}; // { productId: [code, code, ...] }
 let knownSaleIds = null;
 let debtFilter = 'active';
 let editingDebtorId = null;
+let editingCustomerLinkId = null;
 const recentScans = new Map();
 const SCAN_BLOCK_TIME = 800;
 
 let _pendingWrites = 0;
+// YANGI: TUZATILDI ("mijoz/qarzdor ertasi kuni ro'yxatdan yo'qolib qoladi"
+// muammosi) — ESKI _pendingWrites hisoblagichi FAQAT setDoc/updateDoc
+// PROMISE'i qancha davom etganini bildiradi. Lekin Firestore offline
+// keshi (persistentLocalCache) yoqilgani sababli, internet bo'lmasa ham
+// setDoc() DARHOL "muvaffaqiyatli" bo'lib qaytadi (faqat mahalliy
+// IndexedDB'ga yozadi) — _pendingWrites tezda 0'ga tushib, sync-dot
+// yashil bo'lib qoladi, ADMIN ESA HAQIQATDA yozuv SERVERGA (Firebase'ga)
+// hali YETMAGANINI BILMAYDI. Agar shu tabni yopib, internetga hech qachon
+// ulanmasa (yoki boshqa qurilma/brauzerda ochsa) — yozuv ABADIY yo'qoladi.
+//
+// Buning oldini olish uchun HAR BIR onSnapshot endi {includeMetadataChanges:true}
+// bilan tinglaydi va har bir hujjatning haqiqiy holatini (d.metadata.hasPendingWrites
+// — hali serverga tasdiqlanmagan) shu Map'da kuzatadi. sync-dot va
+// Sinxronizatsiya paneli endi ANIQ holatni ko'rsatadi.
+window._unsyncedDocs = new Map(); // key: "kolleksiya/id" -> {label, collection}
+function trackDocSyncState(collectionName, docSnap, label){
+  const key = collectionName+'/'+docSnap.id;
+  if(docSnap.metadata && docSnap.metadata.hasPendingWrites){
+    window._unsyncedDocs.set(key, { label: label||docSnap.id, collection: collectionName });
+  } else {
+    window._unsyncedDocs.delete(key);
+  }
+}
+function updateSyncDot(){
+  const d=document.getElementById('sync-dot');
+  if(!d) return;
+  if(_pendingWrites>0 || window._unsyncedDocs.size>0) d.className = 'syncing';
+  else if(d.className==='syncing') d.className='';
+  if(typeof window.renderSyncConflictBadge==='function') window.renderSyncConflictBadge();
+}
 function setSyncing(on){
   _pendingWrites += on ? 1 : -1;
   if(_pendingWrites < 0) _pendingWrites = 0;
-  const d=document.getElementById('sync-dot'); if(d) d.className = _pendingWrites>0 ? 'syncing' : '';
+  updateSyncDot();
 }
 function setSyncError(){ const d=document.getElementById('sync-dot'); if(d) d.className='error'; }
+// Yozuvlar hali serverga yetmagan bo'lsa, tabni/oynani yopishdan oldin
+// ogohlantiramiz — aks holda aynan shu daqiqada saqlangan mijoz/qarzdor
+// FIREBASE'GA UMUMAN YETMAGAN bo'lib, "ertasi kuni yo'qolib qoladi".
+window.addEventListener('beforeunload', function(e){
+  if(window._unsyncedDocs.size>0){
+    e.preventDefault();
+    e.returnValue = "Ba'zi yozuvlar hali Firebase serveriga yuborilmagan (internet yo'q bo'lishi mumkin). Hozir chiqib ketsangiz, ular yo'qolishi mumkin!";
+    return e.returnValue;
+  }
+});
 
 // Fon yozuvlari (Firebase'ga setDoc/updateDoc/deleteDoc) uchun avtomatik
 // qayta urinish. Wi-Fi/mobil internet vaqtincha "tebranib" turganda
@@ -3904,7 +3968,9 @@ window.renderSyncConflictBadge = function(){
   if(!el) return;
   let count = 0;
   try{ count = (JSON.parse(localStorage.getItem('dokon_sync_conflicts')||'[]')).length; }catch(e){}
-  if(count>0){ el.textContent = '⚠️'+count; el.style.display='inline-flex'; }
+  const unsyncedCount = window._unsyncedDocs ? window._unsyncedDocs.size : 0;
+  const total = count + unsyncedCount;
+  if(total>0){ el.textContent = '⚠️'+total; el.style.display='inline-flex'; el.title = unsyncedCount>0 ? `${unsyncedCount} ta yozuv hali serverga yetmagan!` : 'Ziddiyatlar aniqlangan'; }
   else{ el.style.display='none'; }
 };
 window.showSyncPanel = function(){
@@ -3915,6 +3981,7 @@ window.showSyncPanel = function(){
   const lastSyncTxt = lastSync ? new Date(lastSync).toLocaleString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : "Hali aniqlanmagan";
   const statusTxt = navigator.onLine ? '🟢 Onlayn' : '🔴 Offline (internet yo\'q)';
   const pendingTxt = _pendingWrites>0 ? `${_pendingWrites} ta yozuv kutilmoqda...` : 'Barcha o\'zgarishlar saqlangan';
+  const unsynced = window._unsyncedDocs ? Array.from(window._unsyncedDocs.values()) : [];
 
   const body = document.getElementById('sync-panel-body');
   if(body){
@@ -3924,6 +3991,13 @@ window.showSyncPanel = function(){
         <div class="stat" style="padding:.85rem"><div class="val" style="font-size:15px">${escA(pendingTxt)}</div><div class="lbl">Yozuvlar navbati</div></div>
       </div>
       <p style="font-size:12.5px;color:var(--text3);margin-bottom:1rem">🕓 Oxirgi muvaffaqiyatli sinxronizatsiya: <b>${lastSyncTxt}</b></p>
+      ${unsynced.length ? `<div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.65rem .8rem;margin-bottom:1rem">
+        <div style="font-weight:700;font-size:13px;margin-bottom:.35rem">🟠 ${unsynced.length} ta yozuv HALI Firebase serveriga yetmagan!</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:.4rem">Internet aloqasi yo'q yoki juda sekin bo'lishi mumkin. Bu qurilmada internet tiklanmaguncha va shu tab ochiq turmaguncha, quyidagilar boshqa qurilmalarga (jumladan Telegram botga) yetib bormaydi:</div>
+        <ul style="margin:0;padding-left:1.1rem;font-size:12.5px;color:var(--text2)">
+          ${unsynced.map(u=>`<li>${escA(u.label)} <span style="color:var(--text3)">(${escA(u.collection)})</span></li>`).join('')}
+        </ul>
+      </div>` : ''}
       <h4 style="font-size:14px;font-weight:700;margin-bottom:.5rem">⚠️ Aniqlangan ziddiyatlar (${conflicts.length})</h4>
       ${conflicts.length ? `<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem">
         ${conflicts.map(c=>`<div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:.6rem .75rem;font-size:12.5px">
@@ -4130,7 +4204,13 @@ async function fbSaveDebtor(d){
   const i=DB.debtors.findIndex(x=>x.id===d.id);
   if(i>=0) DB.debtors[i]=d; else DB.debtors.push(d);
   setSyncing(true);
-  withRetry(()=>setDoc(doc(db,'debtors',d.id),d))
+  // TUZATILDI: merge:true — aks holda (masalan) admin telefon raqamini
+  // tahrirlab saqlaganda, agar shu paytda bot mijozni allaqachon
+  // telegramChatId bilan biriktirgan bo'lsa-yu, admin ekranidagi eskirgan
+  // (hali onSnapshot orqali yangilanmagan) nusxada bu maydon bo'lmasa,
+  // setDoc(merge:false) BUTUN hujjatni almashtirib, telegramChatId'ni
+  // O'CHIRIB YUBORARDI — mijoz botdan "chiqarilib" qolardi.
+  withRetry(()=>setDoc(doc(db,'debtors',d.id),d,{merge:true}))
     .catch(e=>{ setSyncError(); console.error(e); toast("Qarzdor ma'lumotini saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -4244,7 +4324,10 @@ async function fbSaveCustomer(c){
   if(i>=0) DB.customers[i]=c; else DB.customers.push(c);
   if(typeof window.renderCustomersList==='function') window.renderCustomersList();
   setSyncing(true);
-  withRetry(()=>setDoc(doc(db,'customers',c.id),c))
+  // TUZATILDI: merge:true — botga biriktirilgan mijozning telegramChatId'i
+  // (yoki boshqa qurilmada qilingan o'zgarish) shu yerdagi eskirgan
+  // nusxa bilan to'liq almashtirib yuborilmasin.
+  withRetry(()=>setDoc(doc(db,'customers',c.id),c,{merge:true}))
     .catch(e=>{ setSyncError(); console.error(e); toast("Mijozni saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
 }
@@ -4449,8 +4532,11 @@ function startListeners(){
       if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
     },120);
   });
-  onSnapshot(collection(db,'debtors'), snap=>{
+  onSnapshot(collection(db,'debtors'), { includeMetadataChanges: true }, snap=>{
     DB.debtors = snap.docs.map(d=>d.data());
+    snap.docs.forEach(d=> trackDocSyncState('debtors', d, d.data().name||'Qarzdor'));
+    updateSyncDot();
+    if(document.getElementById('page-debts')?.classList.contains('active') && typeof window.debouncedRenderDebts==='function') window.debouncedRenderDebts();
   });
   // YANGI: Xarajatlar (10.1-bo'lim) — real-vaqtda sinxronlash
   let expDebounce=null;
@@ -4469,9 +4555,11 @@ function startListeners(){
     DB.suppliers.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     if(typeof window.renderSuppliersList==='function') window.renderSuppliersList();
   });
-  onSnapshot(collection(db,'customers'), snap=>{
+  onSnapshot(collection(db,'customers'), { includeMetadataChanges: true }, snap=>{
     DB.customers = snap.docs.map(d=>d.data());
     DB.customers.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    snap.docs.forEach(d=> trackDocSyncState('customers', d, d.data().name||'Mijoz'));
+    updateSyncDot();
     if(typeof window.renderCustomersList==='function') window.renderCustomersList();
   });
   onSnapshot(collection(db,'promotions'), snap=>{
@@ -8104,8 +8192,6 @@ window.renderScheduleForm = function(){
       <input type="time" id="sch-${d.key}-to" value="${s.to||'20:00'}" ${s.open?'':'disabled'} style="border:1.5px solid var(--border2);border-radius:8px;padding:.3rem .5rem;font-size:13px">
     </div>`;
   }).join('');
-  const bd = document.getElementById('backup-reminder-days');
-  if(bd) bd.value = DB.backupReminderDays || 7;
 }
 window.saveScheduleSettings = function(){
   const sched = {};
@@ -8117,7 +8203,6 @@ window.saveScheduleSettings = function(){
     };
   });
   DB.workSchedule = sched;
-  DB.backupReminderDays = Math.max(1, Math.min(30, parseInt(document.getElementById('backup-reminder-days')?.value,10) || 7));
   toast('✓ Ish jadvali saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
@@ -13161,7 +13246,7 @@ function computeNotifications(){
   // olinmagan bo'lsa va tizimda ma'lumot bo'lsa, adminga eslatma beriladi —
   // internet/qurilma muammosi holida ma'lumot yo'qolmasligi uchun.
   if((DB.products.length || DB.sales.length)){
-    const lastBackup = parseInt(localStorage.getItem('dokon_last_backup')||'0', 10);
+    const lastBackup = parseInt(localStorage.getItem('dokon_last_backup_at')||'0', 10);
     const daysSince = lastBackup ? Math.floor((Date.now()-lastBackup)/86400000) : Infinity;
     const backupReminderDays = DB.backupReminderDays || 7;
     if(daysSince>=backupReminderDays){
@@ -14940,8 +15025,8 @@ window.renderAiAssistant = function(){
 
   // ================== 12.6 AMALLAR JURNALI KO'RGICHI ==================
   window.openAuditLogViewer = async function(){
-    const wrap = document.getElementById('auditlog-list');
-    const empty = document.getElementById('auditlog-empty');
+    const wrap = document.getElementById('auditlog-list-modal');
+    const empty = document.getElementById('auditlog-empty-modal');
     if(typeof openModal === 'function') openModal('modal-auditlog');
     if(wrap) wrap.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:.5rem">⏳ Yuklanmoqda...</p>';
     if(empty) empty.style.display='none';
@@ -15637,10 +15722,36 @@ document.addEventListener('keydown', function(e){
     const name = (document.getElementById('cus-name').value||'').trim();
     if(!name){ toast2('Ismini kiriting','amber'); return; }
     const phone = document.getElementById('cus-phone').value.trim();
-    const c = { id: uid2(), name, phone, points:0, totalSpent:0, purchaseCount:0, createdAt: new Date().toISOString() };
+    const c = { id: uid2(), name, phone, points:0, totalSpent:0, purchaseCount:0, telegramUsername:'', telegramUserId:'', createdAt: new Date().toISOString() };
     fbSaveCustomer(c);
     document.getElementById('cus-name').value=''; document.getElementById('cus-phone').value='';
     toast2("✓ Mijoz qo'shildi",'green');
+  };
+  // YANGI: MIJOZNI TELEGRAM BOTGA BIRIKTIRISH — qarzdorlardagi bilan bir
+  // xil mantiq (username/ID orqali bot avtomatik tanib oladi).
+  window.openCustomerLink = function(id){
+    const c = DB.customers.find(x=>x.id===id); if(!c) return;
+    editingCustomerLinkId = id;
+    document.getElementById('cul-name').value = c.name;
+    document.getElementById('cul-tg-username').value = c.telegramUsername||'';
+    document.getElementById('cul-tg-userid').value = c.telegramUserId||'';
+    openModal('modal-customer-link');
+  };
+  window.saveCustomerLink = function(){
+    const c = DB.customers.find(x=>x.id===editingCustomerLinkId); if(!c) return;
+    const tgUsername = document.getElementById('cul-tg-username').value.trim().replace(/^@/,'').toLowerCase();
+    const tgUserId = document.getElementById('cul-tg-userid').value.trim().replace(/\D/g,'');
+    if(tgUsername){
+      const dupU = DB.customers.find(x=>x.id!==editingCustomerLinkId && (x.telegramUsername||'').toLowerCase()===tgUsername);
+      if(dupU){ toast2(`Bu Telegram username allaqachon "${dupU.name}"da ishlatilgan`,'amber'); return; }
+    }
+    if(tgUserId){
+      const dupId = DB.customers.find(x=>x.id!==editingCustomerLinkId && String(x.telegramUserId||'')===tgUserId);
+      if(dupId){ toast2(`Bu Telegram ID allaqachon "${dupId.name}"da ishlatilgan`,'amber'); return; }
+    }
+    closeModal('modal-customer-link');
+    fbSaveCustomer({ ...c, telegramUsername: tgUsername, telegramUserId: tgUserId });
+    toast2('✓ Botga ulanish ma\'lumoti saqlandi','green');
   };
   // YANGI: checkout paytida mijoz tanlansa, shu funksiya avtomatik
   // chaqiriladi — endi har bir xarid c.purchases massivida ALOHIDA
@@ -15689,10 +15800,15 @@ document.addEventListener('keydown', function(e){
     if(empty) empty.style.display='none';
     wrap.innerHTML = list.map(c=>{
       const tier = customerTier(c.totalSpent||0);
+      const linked = !!c.telegramChatId;
+      const hasTgInfo = !!(c.telegramUsername || c.telegramUserId);
+      const tgBadge = linked
+        ? `<span class="badge green" title="Bot orqali ulangan">🤖 Ulangan</span>`
+        : (hasTgInfo ? `<span class="badge amber" title="Ma'lumot kiritilgan, lekin mijoz hali botga /start yozmagan">🤖 Kutilmoqda</span>` : '');
       return `<div style="padding:.6rem .75rem;border:1px solid var(--border);border-radius:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
           <div><b>${esc(c.name)}</b><br><span style="font-size:12px;color:var(--text3)">${esc(c.phone||'Telefon kiritilmagan')}</span></div>
-          <span class="badge ${tier.cls}">${tier.name}</span>
+          <div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:flex-end">${tgBadge}<span class="badge ${tier.cls}">${tier.name}</span></div>
         </div>
         <div style="font-size:12px;color:var(--text3);margin-top:.3rem">Jami xarid: <b>${fmt2(c.totalSpent||0)} so'm</b> (${c.purchaseCount||0} marta) · Ball: <b>${c.points||0}</b></div>
         ${Array.isArray(c.purchases) && c.purchases.length ? `<details style="margin-top:.4rem"><summary style="font-size:12px;color:var(--accent);cursor:pointer">🕐 Xarid tarixi (${c.purchases.length})</summary>
@@ -15703,6 +15819,7 @@ document.addEventListener('keydown', function(e){
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
           <button class="btn sm blue" onclick="window.logCustomerPurchase('${c.id}')">+ Xarid qayd etish</button>
           <button class="btn sm amber" onclick="window.redeemCustomerPoints('${c.id}')">🎁 Ballni ishlatish</button>
+          <button class="btn sm" onclick="window.openCustomerLink('${c.id}')">🤖 Botga ulash</button>
           <button class="btn sm red" onclick="window.deleteCustomer('${c.id}')">✕ O'chirish</button>
         </div>
       </div>`;
@@ -15959,7 +16076,10 @@ document.addEventListener('keydown', function(e){
   }
 
   window.saveBackupReminderDays = function(days){
-    try{ localStorage.setItem(REMINDER_DAYS_KEY, String(days||0)); }catch(e){}
+    const n = Math.max(0, Math.min(30, parseInt(days,10) || 0));
+    try{ localStorage.setItem(REMINDER_DAYS_KEY, String(n)); }catch(e){}
+    DB.backupReminderDays = n || 7;
+    if(typeof window.fbSaveSettings === 'function') window.fbSaveSettings().catch(()=>{});
     if(typeof window.toast==='function') window.toast('✓ Eslatma sozlamasi saqlandi','green');
     window.renderBackupStatus && window.renderBackupStatus();
   };
@@ -15970,7 +16090,7 @@ document.addEventListener('keydown', function(e){
     const statusEl = document.getElementById('last-backup-status');
     const selEl = document.getElementById('backup-reminder-days');
     let lastAt = 0; try{ lastAt = parseInt(localStorage.getItem(LAST_BACKUP_KEY)||'0',10); }catch(e){}
-    const reminderDays = (()=>{ try{ return parseInt(localStorage.getItem(REMINDER_DAYS_KEY)||'7',10); }catch(e){ return 7; } })();
+    const reminderDays = (DB.backupReminderDays != null) ? DB.backupReminderDays : (()=>{ try{ return parseInt(localStorage.getItem(REMINDER_DAYS_KEY)||'7',10); }catch(e){ return 7; } })();
     if(selEl) selEl.value = String(reminderDays);
     const daysAgo = lastAt ? Math.floor((Date.now()-lastAt)/86400000) : null;
     if(statusEl){

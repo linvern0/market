@@ -136,10 +136,19 @@ function hide(el){ document.getElementById(el).classList.add('hidden'); }
 
 function render(){
   hide('loading');
+  if (STATE.data.role === 'admin') {
+    // Admin har doim TO'LIQ boshqaruv panelida (index.html) ishlashi kerak —
+    // agar u qandaydir sabab bilan shu yengil sahifaga (miniapp.html) kirib
+    // qolsa, avtomatik index.html'ga yo'naltiramiz (ikkita alohida admin
+    // interfeysini parallel saqlab, ularning bir-biridan orqada qolishining
+    // oldini olish uchun).
+    const target = window.location.href.replace(/miniapp\.html([^/]*)$/, 'index.html');
+    window.location.replace(target);
+    return;
+  }
   show('app'); show('tabs');
   if (tg && tg.setHeaderColor) try{ tg.setHeaderColor('secondary_bg_color'); }catch(e){}
-  if (STATE.data.role === 'admin') renderAdmin();
-  else renderDebtor();
+  renderDebtor();
 }
 
 // ================= MIJOZ / QARZDOR KO'RINISHI =================

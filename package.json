@@ -1,12 +1,8 @@
 {
-  "name": "dokon-telegram-notify",
-  "version": "1.0.0",
+  "name": "dokon-telegram-miniapp",
+  "version": "2.0.0",
   "private": true,
-  "description": "Do'kon Boshqaruvi ilovasi uchun 24/7 Telegram bildirishnoma skripti (GitHub Actions orqali ishga tushadi)",
-  "scripts": {
-    "notify": "node scripts/telegram-notify.js",
-    "bot": "node scripts/telegram-bot.js"
-  },
+  "description": "Do'kon Boshqaruvi ilovasi — Telegram bot va Mini App (Vercel serverless funksiyalari: webhook, mini-app API, kunlik Cron bildirishnomalari orqali ishlaydi)",
   "dependencies": {
     "firebase-admin": "^12.6.0"
   },
