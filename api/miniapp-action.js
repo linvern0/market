@@ -328,11 +328,19 @@ module.exports = async (req, res) => {
           name: String(name).trim(), org: org || '', phone: phone || '',
           telegramUsername: (telegramUsername || '').replace(/^@/, ''), telegramUserId: cleanTgId, viewScope: cleanScope,
         };
-        // Agar username yoki Telegram ID o'zgargan bo'lsa, eski chatId endi mos
-        // kelmasligi mumkin - shuning uchun tozalaymiz, bot keyingi murojaatda
-        // avtomatik qayta ulaydi.
+        // Agar username yoki Telegram ID BOSHQA (bo'sh emas) qiymatga
+        // o'zgartirilgan bo'lsa, eski chatId endi mos kelmasligi mumkin -
+        // shuning uchun tozalaymiz, bot keyingi murojaatda avtomatik qayta
+        // ulaydi. MUHIM: faqat MAYDON BO'SH QOLDIRILGANDA (masalan forma
+        // to'liq yuklanmagan holatda saqlangan) chatId'ni O'CHIRIB
+        // YUBORMAYMIZ — aks holda allaqachon ishlayotgan bot ulanishi
+        // shunchaki qayta saqlashda (hech narsa o'zgartirmasdan ham)
+        // bekor bo'lib qolar, va mijoz "ertasi kuni" botdan
+        // foydalana olmay qolardi.
         const prev = snap.data();
-        if (patch.telegramUsername !== (prev.telegramUsername || '') || patch.telegramUserId !== (prev.telegramUserId || '')) {
+        const usernameChanged = patch.telegramUsername && patch.telegramUsername !== (prev.telegramUsername || '');
+        const userIdChanged = patch.telegramUserId && patch.telegramUserId !== (prev.telegramUserId || '');
+        if (usernameChanged || userIdChanged) {
           patch.telegramChatId = admin.firestore.FieldValue.delete();
         }
         await ref.update(patch);
