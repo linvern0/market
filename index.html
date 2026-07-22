@@ -67,6 +67,10 @@
     --radius:8px;--shadow:0 1px 2px rgba(15,40,33,.05),0 3px 10px rgba(15,40,33,.06);
     --font-display:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    /* YANGI: "sotildi/savatga qo'shildi" kabi tezkor tasdiqlash animatsiyalarining
+       tezligini admin sozlamalaridan boshqarish uchun umumiy ko'paytiruvchi.
+       1 = standart, 0 ga yaqin = deyarli o'chirilgan, >1 = sekinroq. */
+    --anim-scale:1;
   }
   html{overflow-x:hidden;overflow-y:auto}
   body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overflow-x:hidden;overflow-y:auto;font-variant-numeric:tabular-nums}
@@ -248,20 +252,21 @@
   /* Sotish gridi uchun maxsus */
   .sell-card{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
   .sell-card:active{transform:scale(.96);opacity:.9}
-  .sell-card.cart-added{animation:cart-pulse .2s ease}
+  .sell-card.cart-added{animation:cart-pulse calc(.2s * var(--anim-scale)) ease}
   @keyframes cart-pulse{
     0%{transform:scale(1)}
     50%{transform:scale(.93);box-shadow:0 0 0 3px rgba(15,110,94,.4)}
     100%{transform:scale(1)}
   }
   /* "Qo'shildi/sotildi" kabi barcha tezkor tasdiqlash animatsiyalari — izchil,
-     bir xil 0.3s davomiylikda, his qilinishi tez va "sakramaydigan" bo'lishi uchun */
+     bir xil davomiylikda, his qilinishi tez va "sakramaydigan" bo'lishi uchun.
+     Davomiylik --anim-scale orqali Sozlamalar > Animatsiya bo'limidan boshqariladi. */
   @keyframes flash-added{
     0%{box-shadow:0 0 0 0 rgba(34,197,94,.85)}
     100%{box-shadow:0 0 0 16px rgba(34,197,94,0)}
   }
-  #scan-video-wrap.flash-added{animation:flash-added .2s ease-out}
-  #assign-video-wrap.flash-added{animation:flash-added .2s ease-out}
+  #scan-video-wrap.flash-added{animation:flash-added calc(.2s * var(--anim-scale)) ease-out}
+  #assign-video-wrap.flash-added{animation:flash-added calc(.2s * var(--anim-scale)) ease-out}
 
   /* Savatdagi tovar ko'rsatgichi */
   .cart-badge-overlay{position:absolute;top:7px;left:7px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25)}
@@ -290,8 +295,17 @@
   .filter-bar::-webkit-scrollbar{display:none}
   .filter-bar>*{flex-shrink:0}
   .filter-bar input,.filter-bar select{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .85rem;font-size:13px;outline:none;background:var(--surface2)}
-  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#10302b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .22s ease,transform .22s ease;pointer-events:none;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#10302b;color:#fff;border-radius:10px;padding:.85rem 1.25rem;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px) scale(.97);transition:opacity calc(.22s * var(--anim-scale)) ease,transform calc(.22s * var(--anim-scale)) ease;pointer-events:none;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
   .toast.show{opacity:1;transform:translateY(0) scale(1)}
+  /* YANGI: Bildirishnoma (toast) ekranda joylashuvi — Sozlamalar > Animatsiya
+     bo'limidan tanlanadi (DB.toastPosition), barcha qurilmalarda bir xil amal qiladi. */
+  .toast.pos-top-right{bottom:auto;top:1.5rem;right:1.5rem;left:auto;transform:translateY(-10px) scale(.97)}
+  .toast.pos-top-right.show{transform:translateY(0) scale(1)}
+  .toast.pos-top-center{bottom:auto;top:1.5rem;right:auto;left:50%;transform:translate(-50%,-10px) scale(.97)}
+  .toast.pos-top-center.show{transform:translate(-50%,0) scale(1)}
+  .toast.pos-bottom-center{right:auto;left:50%;transform:translate(-50%,10px) scale(.97)}
+  .toast.pos-bottom-center.show{transform:translate(-50%,0) scale(1)}
+  .toast.pos-bottom-right{bottom:1.5rem;right:1.5rem;left:auto;top:auto}
   .toast.green{background:#166534}
   .toast.red{background:#991b1b}
   .toast.amber{background:#92400e}
@@ -1277,7 +1291,7 @@ tr.selected td {
   100% { background: transparent; }
 }
 tr.row-flash td {
-  animation: row-flash-anim 0.55s ease-out;
+  animation: row-flash-anim calc(0.55s * var(--anim-scale)) ease-out;
 }
 
 /* Status Badges */
@@ -1773,6 +1787,71 @@ body.dark table {
     </select>
     <p style="font-size:11px;color:var(--text3);margin-top:.5rem" id="autolock-status">Joriy holat: —</p>
   </div>
+
+  <div class="card" style="max-width:460px;margin-top:1rem" id="settings-animation-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">⚡ Animatsiya va bildirishnoma sozlamalari</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">"Savatga qo'shildi", "sotildi" kabi tezkor tasdiqlash animatsiyalari va bildirishnoma xabarlarining tezligini/vaqtini sozlang. <b>Bu yerdagi qiymatlar barcha qurilmalar va sotuvchilar uchun bir xilda amal qiladi.</b></p>
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Animatsiya tezligi</label>
+      <select id="anim-speed-select" onchange="if(this.value!=='') window.setAnimSpeed(this.value)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="">Ixtiyoriy (pastdagi maydondan kiriting)</option>
+        <option value="0">O'chirilgan (aniqlik uchun tezkor)</option>
+        <option value="0.5">Tez</option>
+        <option value="1" selected>Oddiy (standart)</option>
+        <option value="1.75">Sekin</option>
+        <option value="2.5">Juda sekin</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>...yoki ixtiyoriy qiymat kiriting (0 = o'chirilgan, 1 = oddiy)</label>
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <input type="range" id="anim-speed-custom" min="0" max="4" step="0.05" value="1" style="flex:1" oninput="document.getElementById('anim-speed-custom-num').value=this.value" onchange="window.setAnimSpeed(this.value)">
+        <input type="number" id="anim-speed-custom-num" min="0" max="4" step="0.05" value="1" style="width:70px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .5rem;font-size:13px;outline:none;background:var(--surface2)" oninput="document.getElementById('anim-speed-custom').value=this.value" onchange="window.setAnimSpeed(this.value)">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:.5rem">
+      <label>Bildirishnoma xabari necha soniya ko'rinib tursin</label>
+      <select id="toast-duration-select" onchange="if(this.value!=='') window.setToastSeconds(this.value)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="">Ixtiyoriy (pastdagi maydondan kiriting)</option>
+        <option value="1.5">1.5 soniya</option>
+        <option value="2">2 soniya</option>
+        <option value="2.6" selected>2.6 soniya (standart)</option>
+        <option value="3.5">3.5 soniya</option>
+        <option value="5">5 soniya</option>
+        <option value="7">7 soniya</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>...yoki ixtiyoriy soniya kiriting</label>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <input type="number" id="toast-duration-custom" min="0.3" max="15" step="0.1" value="2.6" style="width:90px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .5rem;font-size:13px;outline:none;background:var(--surface2)" onchange="window.setToastSeconds(this.value)">
+        <span style="font-size:12px;color:var(--text3)">soniya (0.3 – 15 oralig'ida)</span>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>📍 Bildirishnoma qaysi burchakda chiqsin</label>
+      <select id="toast-position-select" onchange="window.setToastPosition(this.value)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="bottom-right" selected>Pastda, o'ngda (standart)</option>
+        <option value="bottom-center">Pastda, markazda</option>
+        <option value="top-right">Yuqorida, o'ngda</option>
+        <option value="top-center">Yuqorida, markazda</option>
+      </select>
+    </div>
+    <div class="settings-switch">
+      <div><div class="lbl">🔊 Tasdiqlash tovushi</div><div class="sub">Sotildi/qo'shildi kabi muvaffaqiyatli amallarda qisqa tovush chalinadi</div></div>
+      <label class="switch"><input type="checkbox" id="sw-ui-sound" onchange="window.setUiSound(this.checked)"><span class="slider"></span></label>
+    </div>
+    <div class="field" style="margin:.4rem 0 .85rem">
+      <label>🔉 Tovush balandligi</label>
+      <input type="range" id="ui-sound-volume" min="0" max="1" step="0.02" value="0.16" style="width:100%" oninput="window.setUiSoundVolume(this.value)">
+    </div>
+    <div class="settings-switch">
+      <div><div class="lbl">📳 Tebranish (vibratsiya)</div><div class="sub">Mobil qurilmada muvaffaqiyatli amalda qisqa tebranadi</div></div>
+      <label class="switch"><input type="checkbox" id="sw-ui-vibration" onchange="window.setUiVibration(this.checked)"><span class="slider"></span></label>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:.5rem" id="anim-settings-status">Joriy holat: —</p>
+  </div>
+
   <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">Ma'lumotlar</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.</p>
@@ -3775,7 +3854,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right' };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -4041,7 +4120,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -4465,8 +4544,15 @@ function startListeners(){
       DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
       DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
       DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
+      DB.animSpeed=(typeof d.animSpeed==='number')?d.animSpeed:1;
+      DB.toastSeconds=(typeof d.toastSeconds==='number')?d.toastSeconds:2.6;
+      DB.uiSoundEnabled=!!d.uiSoundEnabled;
+      DB.uiVibrationEnabled=!!d.uiVibrationEnabled;
+      DB.uiSoundVolume=(typeof d.uiSoundVolume==='number')?d.uiSoundVolume:0.16;
+      DB.toastPosition=d.toastPosition||'bottom-right';
       if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts();
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
+      if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
       if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
       if(document.getElementById('page-settings')?.classList.contains('active')){
         renderSellersManager();
@@ -4663,10 +4749,17 @@ async function init(){
           DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
           DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
           DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
+          DB.animSpeed=(typeof d.animSpeed==='number')?d.animSpeed:1;
+          DB.toastSeconds=(typeof d.toastSeconds==='number')?d.toastSeconds:2.6;
+          DB.uiSoundEnabled=!!d.uiSoundEnabled;
+          DB.uiVibrationEnabled=!!d.uiVibrationEnabled;
+          DB.uiSoundVolume=(typeof d.uiSoundVolume==='number')?d.uiSoundVolume:0.16;
+          DB.toastPosition=d.toastPosition||'bottom-right';
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
+          if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right'}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -5641,7 +5734,7 @@ window.addToCartWithFeedback = function(id, cardEl){
   // Visual feedback on card
   if(cardEl){
     cardEl.classList.add('cart-added');
-    setTimeout(()=>cardEl.classList.remove('cart-added'),220);
+    setTimeout(()=>cardEl.classList.remove('cart-added'), (typeof window.animMs==='function')?window.animMs(220):220);
   }
   updateCartBtn();
   // Only update this specific card's data attributes (no full re-render)
@@ -6940,7 +7033,7 @@ function renderMySalesInner(){
       return '';
     }
   }).join('');
-  if(flashId){ window._lastSaleFlashId=null; setTimeout(()=>{ document.querySelectorAll('#my-sales-body tr.row-flash').forEach(r=>r.classList.remove('row-flash')); },625); }
+  if(flashId){ window._lastSaleFlashId=null; setTimeout(()=>{ document.querySelectorAll('#my-sales-body tr.row-flash').forEach(r=>r.classList.remove('row-flash')); },(typeof window.animMs==='function')?window.animMs(625):625); }
 }
 window.revertSale=function(id){
   const s=DB.sales.find(x=>x.id===id); if(!s||s.reverted) return;
@@ -8670,11 +8763,16 @@ window.confirm2=function(title,msg,cb){
 
 
 let _toastTimer, _toastQueue=[], _toastBusy=false;
+// YANGI: bildirishnoma ("✓ savatga qo'shildi", "✓ sotildi" va h.k.) ekranda
+// necha soniya turishini admin Sozlamalar > Animatsiya bo'limidan barcha
+// qurilmalar uchun markazlashtirilgan boshqaradi (DB.toastSeconds).
+// Xato (qizil) va ogohlantirish (amber) xabarlari o'qish uchun nisbatan
+// ko'proq turadi — standart holatdagi 3600/3000/2600 nisbati saqlanadi.
 function _toastDurationFor(type){
-  // Xato/ogohlantirish xabarlari o'qish uchun ko'proq vaqt turadi
-  if(type==='red') return 3600;
-  if(type==='amber') return 3000;
-  return 2600;
+  const base = (window.DB && typeof DB.toastSeconds==='number' && DB.toastSeconds>0) ? DB.toastSeconds*1000 : 2600;
+  if(type==='red') return Math.round(base*1.3846);
+  if(type==='amber') return Math.round(base*1.1538);
+  return Math.round(base);
 }
 function _runToastQueue(){
   if(_toastBusy || !_toastQueue.length) return;
@@ -8682,13 +8780,20 @@ function _runToastQueue(){
   const {msg, type} = _toastQueue.shift();
   const el=document.getElementById('toast');
   if(!el){ _toastBusy=false; return; }
-  el.textContent=msg; el.className='toast '+(type||'');
+  const pos = (window.DB && DB.toastPosition) ? DB.toastPosition : 'bottom-right';
+  el.textContent=msg; el.className='toast pos-'+pos+' '+(type||'');
   el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
   requestAnimationFrame(()=>el.classList.add('show'));
+  // "Sotildi/savatga qo'shildi" kabi muvaffaqiyatli (yashil) tasdiqlarda,
+  // agar admin yoqqan bo'lsa, qisqa tovush va tebranish orqali ham bildiriladi.
+  if(type==='green'){
+    try{ if(typeof window.playUiConfirmSound==='function') window.playUiConfirmSound(); }catch(e){}
+    try{ if(typeof window.vibrateUiConfirm==='function') window.vibrateUiConfirm(); }catch(e){}
+  }
   clearTimeout(_toastTimer);
   _toastTimer=setTimeout(()=>{
     el.classList.remove('show');
-    setTimeout(()=>{ _toastBusy=false; _runToastQueue(); }, 220);
+    setTimeout(()=>{ _toastBusy=false; _runToastQueue(); }, (typeof window.animMs==='function')?window.animMs(220):220);
   }, _toastDurationFor(type));
 }
 window.toast=function(msg,type=''){
@@ -14696,6 +14801,127 @@ window.renderAiAssistant = function(){
   });
   window.addEventListener('load', () => {
     setTimeout(() => { updateAutoLockStatusUI(); }, 1200);
+  });
+
+  // ---------- 11.5 ANIMATSIYA TEZLIGI, BILDIRISHNOMA VAQTI, TOVUSH/TEBRANISH ----------
+  // "Yangi sotildi", "savatga qo'shildi" kabi tezkor tasdiqlash animatsiyalari va
+  // bildirishnoma (toast) xabarlarining ekranda qancha turishi shu yerdan
+  // boshqariladi. Avtomatik qulflash kabi — bu ham DB orqali Firebase'da
+  // saqlanadi va admin qaysi qiymatni tanlasa, BARCHA qurilmalarda (admin +
+  // barcha sotuvchilar) bir xilda qo'llaniladi.
+  window.animMs = function(baseMs){
+    const scale = (window.DB && typeof DB.animSpeed==='number' && DB.animSpeed>=0) ? DB.animSpeed : 1;
+    return Math.max(0, Math.round(baseMs*scale));
+  };
+  let _uiAudioCtx = null;
+  window.playUiConfirmSound = function(){
+    if(!window.DB || !DB.uiSoundEnabled) return;
+    try{
+      _uiAudioCtx = _uiAudioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const ctx = _uiAudioCtx;
+      if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+      const vol = (window.DB && typeof DB.uiSoundVolume==='number' && DB.uiSoundVolume>=0) ? DB.uiSoundVolume : 0.16;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(880, ctx.currentTime);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, vol), ctx.currentTime+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.19);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime+0.2);
+    }catch(e){}
+  };
+  window.vibrateUiConfirm = function(){
+    if(!window.DB || !DB.uiVibrationEnabled) return;
+    try{ if(navigator.vibrate) navigator.vibrate(35); }catch(e){}
+  };
+  // Joriy sozlamalarni sahifaga (CSS o'zgaruvchisi + boshqaruv elementlari) qo'llaydi.
+  window.applyAnimSettings = function(){
+    const scale = (window.DB && typeof DB.animSpeed==='number') ? DB.animSpeed : 1;
+    document.documentElement.style.setProperty('--anim-scale', String(scale));
+    const speedSel = document.getElementById('anim-speed-select');
+    // Faqat tayyor variantlardan biriga to'g'ri kelsa dropdown'ni sinxronlaydi;
+    // ixtiyoriy (custom) qiymat bo'lsa dropdown "Ixtiyoriy" holatida qoladi.
+    if(speedSel){
+      const hasPreset = Array.from(speedSel.options).some(o=>parseFloat(o.value)===scale);
+      speedSel.value = hasPreset ? String(scale) : '';
+    }
+    const speedNum = document.getElementById('anim-speed-custom');
+    if(speedNum && document.activeElement!==speedNum) speedNum.value = String(scale);
+    const toastSel = document.getElementById('toast-duration-select');
+    const toastSec = (window.DB && typeof DB.toastSeconds==='number') ? DB.toastSeconds : 2.6;
+    if(toastSel){
+      const hasPreset2 = Array.from(toastSel.options).some(o=>parseFloat(o.value)===toastSec);
+      toastSel.value = hasPreset2 ? String(toastSec) : '';
+    }
+    const toastNum = document.getElementById('toast-duration-custom');
+    if(toastNum && document.activeElement!==toastNum) toastNum.value = String(toastSec);
+    const soundSw = document.getElementById('sw-ui-sound');
+    if(soundSw) soundSw.checked = !!(window.DB && DB.uiSoundEnabled);
+    const vibSw = document.getElementById('sw-ui-vibration');
+    if(vibSw) vibSw.checked = !!(window.DB && DB.uiVibrationEnabled);
+    const volRange = document.getElementById('ui-sound-volume');
+    if(volRange && document.activeElement!==volRange){
+      const vol = (window.DB && typeof DB.uiSoundVolume==='number') ? DB.uiSoundVolume : 0.16;
+      volRange.value = String(vol);
+    }
+    const posSel = document.getElementById('toast-position-select');
+    if(posSel) posSel.value = (window.DB && DB.toastPosition) ? DB.toastPosition : 'bottom-right';
+    const status = document.getElementById('anim-settings-status');
+    if(status){
+      const speedLabel = scale<=0.05 ? "o'chirilgan (tezkor)" : (scale===1 ? 'oddiy' : (scale<1 ? 'tez' : 'sekin'));
+      status.textContent = `Joriy holat: animatsiya ${speedLabel} (${scale}x), bildirishnoma ~${toastSec} soniya (barcha qurilmalarda)`;
+    }
+  };
+  // Admin Sozlamalar sahifasidan chaqiriladi.
+  window.setAnimSpeed = function(val){
+    const v = parseFloat(val);
+    if(!window.DB) return;
+    DB.animSpeed = isNaN(v) ? 1 : v;
+    window.applyAnimSettings();
+    if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
+    safeToast('✓ Animatsiya tezligi barcha qurilmalarda yangilandi','green');
+  };
+  window.setToastSeconds = function(val){
+    const v = parseFloat(val);
+    if(!window.DB) return;
+    DB.toastSeconds = isNaN(v) ? 2.6 : v;
+    window.applyAnimSettings();
+    if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
+    safeToast('✓ Bildirishnoma vaqti barcha qurilmalarda yangilandi','green');
+  };
+  window.setUiSound = function(checked){
+    if(!window.DB) return;
+    DB.uiSoundEnabled = !!checked;
+    if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
+    if(checked) window.playUiConfirmSound();
+    safeToast(checked ? '✓ Tasdiqlash tovushi yoqildi' : '✓ Tasdiqlash tovushi o\'chirildi','green');
+  };
+  window.setUiVibration = function(checked){
+    if(!window.DB) return;
+    DB.uiVibrationEnabled = !!checked;
+    if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
+    if(checked) window.vibrateUiConfirm();
+    safeToast(checked ? '✓ Tebranish yoqildi' : '✓ Tebranish o\'chirildi','green');
+  };
+  // YANGI: Tasdiqlash tovushi balandligi (0 — juda past, 1 — eng baland).
+  window.setUiSoundVolume = function(val){
+    const v = parseFloat(val);
+    if(!window.DB) return;
+    DB.uiSoundVolume = isNaN(v) ? 0.16 : Math.min(1, Math.max(0, v));
+    window.applyAnimSettings();
+    if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
+    if(DB.uiSoundEnabled) window.playUiConfirmSound();
+  };
+  // YANGI: Bildirishnoma (toast) ekranning qaysi burchagida chiqishi.
+  window.setToastPosition = function(val){
+    if(!window.DB) return;
+    const allowed = ['bottom-right','bottom-center','top-right','top-center'];
+    DB.toastPosition = allowed.includes(val) ? val : 'bottom-right';
+    if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
+    safeToast('✓ Bildirishnoma joyi barcha qurilmalarda yangilandi','green');
+  };
+  window.addEventListener('load', () => {
+    setTimeout(() => { if(typeof window.applyAnimSettings==='function') window.applyAnimSettings(); }, 1200);
   });
 
 })();
