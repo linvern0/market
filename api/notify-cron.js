@@ -14,16 +14,7 @@
 
 const admin = require('firebase-admin');
 
-let firebaseApp = null;
-function getDb() {
-  if (!firebaseApp) {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var topilmadi (Vercel Settings > Environment Variables).');
-    const serviceAccount = JSON.parse(raw);
-    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
-  return admin.firestore();
-}
+function getDb() { return require('./_firebase').getDb(); }
 
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }

@@ -28,15 +28,7 @@
 const admin = require('firebase-admin');
 
 let firebaseApp = null;
-function getDb() {
-  if (!firebaseApp) {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var topilmadi (Vercel Settings > Environment Variables).');
-    const serviceAccount = JSON.parse(raw);
-    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
-  return admin.firestore();
-}
+function getDb() { return require('./_firebase').getDb(); }
 
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
@@ -182,6 +174,45 @@ async function setMenuButtonFor(token, chatId, req, isAdmin) {
   } catch (e) { console.error('setChatMenuButton xatolik:', e); }
 }
 
+// ============ YANGI: SOTUVCHI (XODIM) UCHUN MINI APP ============
+// Ilgari Telegram bot faqat ADMIN va QARZDOR/mijozni tanirdi — oddiy
+// sotuvchi (xodim) botga yozsa, "mijoz" deb ro'yxatga olinib qolardi.
+// Endi sotuvchilar ham (index.html'dagi "Sotuvchilar" bo'limida Telegram
+// username kiritilgan bo'lsa) tanib olinadi va ularga to'liq savdo
+// panelini (index.html, seller sifatida, PIN'siz avtomatik kirish bilan)
+// ochuvchi tugma beriladi.
+function usernameKeyLocal(u) { return String(u || '').replace(/^@/, '').trim().toLowerCase(); }
+function findSellerByChat(sellers, chatId) { return sellers.find((s) => String(s.telegramChatId || '').trim() === String(chatId).trim()); }
+function findPendingSellerIndex(sellers, username) {
+  const uKey = usernameKeyLocal(username);
+  if (!uKey) return -1;
+  return sellers.findIndex((s) => !s.telegramChatId && usernameKeyLocal(s.telegramUsername) === uKey);
+}
+async function linkPendingSeller(settingsRef, sellers, idx, chatId) {
+  sellers[idx] = { ...sellers[idx], telegramChatId: String(chatId) };
+  await settingsRef.set({ sellers }, { merge: true });
+}
+function sellerAppKeyboard(req) {
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
+  if (!host) return undefined;
+  const url = `https://${host}/index.html`;
+  return { inline_keyboard: [[{ text: '🛒 Sotuvchi panelini ochish', web_app: { url } }]] };
+}
+async function setSellerMenuButton(token, chatId, req) {
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
+  if (!host) return;
+  const url = `https://${host}/index.html`;
+  try {
+    await tgCall(token, 'setChatMenuButton', { chat_id: chatId, menu_button: { type: 'web_app', text: 'Sotuvchi paneli', web_app: { url } } });
+  } catch (e) { console.error('setChatMenuButton (sotuvchi) xatolik:', e); }
+}
+function sellerHelpText(name) {
+  return `🤖 <b>Do'kon boti</b>\n\n👋 Xush kelibsiz, <b>${esc(name || 'Sotuvchi')}</b>!\n\n` +
+    `🛒 Pastdagi tugma orqali to'liq savdo panelini oching — PIN kiritmasdan, ` +
+    `to'g'ridan-to'g'ri o'z hisobingiz bilan kirasiz va sotuv qila olasiz.\n\n` +
+    `/ilova — panelni qayta ochish`;
+}
+
 function isAdminChat(admins, chatId) { return admins.some((a) => String(a.chatId).trim() === String(chatId).trim()); }
 // ============ YANGI: ADMIN ROLLARI (owner / admin) ============
 // "owner" (bosh admin) — barcha buyruqlarga, jumladan admin qo'shish/
@@ -266,6 +297,9 @@ function helpText(isAdmin) {
       `/admin_qoshish &lt;chatId/@username/tel&gt; &lt;Ism&gt; [owner] — yangi admin qo'shish 👑\n` +
       `/admin_ochirish &lt;chatId/@username/tel&gt; — adminni o'chirish 👑\n` +
       `/admin_rol &lt;chatId/@username/tel&gt; &lt;owner|admin&gt; — admin rolini o'zgartirish 👑\n\n` +
+      `🛒 <b>Sotuvchilarni ham botga ulash mumkin:</b> Boshqaruv paneli -> Sozlamalar -> ` +
+      `Sotuvchilar bo'limida sotuvchining Telegram username'ini kiriting — u botga ` +
+      `/start yozganda, PIN kiritmasdan avtomatik o'z hisobi bilan savdo panelini ocha oladi.\n\n` +
       `💡 /qarzlar va /qarz natijalarida endi har bir qarz ostida ` +
       `"✅ To'liq to'landi" tugmasi bor — bosilsa, qo'lda summa yozmasdan ` +
       `bir zumda to'liq yopiladi.\n\n` +
@@ -942,7 +976,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
 // Bitta kelgan update'ni (Telegram webhook'dan) qayta ishlaydi.
 // Eski polling (telegram-bot.js) dagi for-loop tanasi bilan bir xil mantiq —
 // farqi shu yerda faqat BITTA update keladi, offset/state boshqarish shart emas.
-async function processUpdate(db, token, settingsRef, admins, upd, req) {
+async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) {
   if (upd.callback_query) { await handleCallbackQuery(db, token, settingsRef, admins, upd.callback_query, req); return; }
   const msg = upd.message;
   if (!msg) return;
@@ -960,6 +994,33 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
       await setAdminMenuButton(token, chatId, req);
       await setCommandsForChat(token, chatId, true).catch(() => {});
       await sendMessage(token, chatId, `✅ Xush kelibsiz, <b>${esc(name)}</b>! Siz admin sifatida tanildingiz va endi botni to'liq boshqarishingiz mumkin.\n\n` + helpText(true), kbAdmin ? { reply_markup: kbAdmin } : undefined);
+      return;
+    }
+  }
+
+  // YANGI: SOTUVCHI (xodim) sifatida tanish. Admin bo'lmagan har bir kishi
+  // ilgari to'g'ridan-to'g'ri "qarzdor/mijoz" oqimiga tushib qolardi — endi
+  // avval sotuvchilar ro'yxatida (chatId yoki oldindan kiritilgan Telegram
+  // username orqali) qidiramiz. Topilsa, alohida (soddalashtirilgan) oqim
+  // bilan javob berib, boshqa hech qanday qarzdor/mijoz ro'yxatiga
+  // yozilmasdan chiqamiz.
+  if (!isAdmin) {
+    let sellerRec = findSellerByChat(sellers, chatId);
+    if (!sellerRec && msg.from && msg.from.username) {
+      const sIdx = findPendingSellerIndex(sellers, msg.from.username);
+      if (sIdx !== -1) {
+        await linkPendingSeller(settingsRef, sellers, sIdx, chatId);
+        sellerRec = sellers[sIdx];
+      }
+    }
+    if (sellerRec) {
+      const text0 = (msg.text || '').trim();
+      if (text0 === '/menu' || text0 === '/menyu') {
+        await sendMessage(token, chatId, "🛒 Savdo panelini quyidagi tugma orqali oching:", { reply_markup: sellerAppKeyboard(req) });
+        return;
+      }
+      await setSellerMenuButton(token, chatId, req).catch(() => {});
+      await sendMessage(token, chatId, sellerHelpText(sellerRec.name), { reply_markup: sellerAppKeyboard(req) });
       return;
     }
   }
@@ -1095,6 +1156,7 @@ module.exports = async (req, res) => {
     const token = (s.telegramBotToken || '').trim();
     if (!token) { res.status(200).json({ ok: true }); return; }
     const admins = Array.isArray(s.telegramAdmins) ? s.telegramAdmins : [];
+    const sellers = Array.isArray(s.sellers) ? s.sellers : [];
 
     const upd = req.body;
 
@@ -1121,7 +1183,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    await processUpdate(db, token, settingsRef, admins, upd, req);
+    await processUpdate(db, token, settingsRef, admins, sellers, upd, req);
 
     res.status(200).json({ ok: true });
   } catch (e) {

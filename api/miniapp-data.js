@@ -21,16 +21,7 @@
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
 
-let firebaseApp = null;
-function getDb() {
-  if (!firebaseApp) {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var topilmadi.');
-    const serviceAccount = JSON.parse(raw);
-    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
-  return admin.firestore();
-}
+function getDb() { return require('./_firebase').getDb(); }
 
 function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); return rem > 0.5 ? rem : 0; }
 

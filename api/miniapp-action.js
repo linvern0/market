@@ -25,16 +25,7 @@
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
 
-let firebaseApp = null;
-function getDb() {
-  if (!firebaseApp) {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var topilmadi.');
-    const serviceAccount = JSON.parse(raw);
-    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
-  return admin.firestore();
-}
+function getDb() { return require('./_firebase').getDb(); }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
