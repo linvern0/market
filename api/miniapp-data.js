@@ -137,9 +137,75 @@ async function fetchDebtsByDebtorIds(db, ids) {
   return snaps.flatMap((s) => s.docs.map((d) => d.data()));
 }
 
-async function buildDebtorPayload(db, settings, chatId) {
-  const debtorsSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).get();
-  if (debtorsSnap.empty) return { role: 'guest' };
+// Mijoz (sodiqlik dasturi) uchun tovarlar katalogi — mijoz TOVARLAR
+// BO'LIMIDAGI HAMMA MA'LUMOTNI (nomi, narxi, hajmi, izohi) ko'radi, LEKIN
+// ombordagi mavjud miqdori (stock) HECH QACHON unga yuborilmaydi — bu
+// faqat administrator uchun ichki ma'lumot.
+async function buildClientProducts(db) {
+  const productsSnap = await db.collection('products').get();
+  return productsSnap.docs
+    .map((d) => d.data())
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '' }));
+  // Diqqat: p.stock atayin bu yerga qo'shilmagan.
+}
+
+// Agar Telegram foydalanuvchisi hali "customers" (sodiqlik) kolleksiyasida
+// bo'lmasa — shu yerda ham (bot /start bosilmagan holatlar uchun zaxira
+// sifatida) avtomatik yaratib qo'yamiz, shunda mini-ilova hech qachon
+// "notanish mehmon" holatini ko'rsatmaydi.
+async function ensureCustomerRegistered(db, chatId, user) {
+  const snap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
+  if (!snap.empty) return snap.docs[0].data();
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ').trim()
+    || (user.username ? '@' + user.username : `Mijoz ${chatId}`);
+  const data = {
+    name,
+    telegramChatId: String(chatId),
+    telegramUserId: String(user.id || ''),
+    telegramUsername: user.username || '',
+    phone: '',
+    points: 0,
+    totalSpent: 0,
+    purchaseCount: 0,
+    autoRegistered: true,
+    createdAt: new Date().toISOString(),
+  };
+  await db.collection('customers').add(data);
+  return data;
+}
+
+async function buildDebtorPayload(db, settings, chatId, user) {
+  const [debtorsSnap, customerRecord, products] = await Promise.all([
+    db.collection('debtors').where('telegramChatId', '==', String(chatId)).get(),
+    ensureCustomerRegistered(db, chatId, user || {}),
+    buildClientProducts(db),
+  ]);
+
+  if (debtorsSnap.empty) {
+    // Qarzdor emas, faqat sodiqlik dasturi mijozi — baribir "mehmon" emas:
+    // tovarlar katalogini va ball holatini ko'radi.
+    return {
+      role: 'client',
+      shopName: settings.shopName || "Do'kon",
+      currencySymbol: settings.currencySymbol || "so'm",
+      name: customerRecord.name || '',
+      isOrg: false,
+      isOrgViewer: false,
+      total: 0,
+      totalPaidAmount: 0,
+      byPerson: null,
+      debts: [],
+      historyDebts: [],
+      payments: [],
+      loyalty: {
+        points: customerRecord.points || 0,
+        totalSpent: customerRecord.totalSpent || 0,
+        purchaseCount: customerRecord.purchaseCount || 0,
+      },
+      products,
+    };
+  }
 
   const debtorDocs = debtorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const org = debtorDocs.find((d) => d.org)?.org || '';
@@ -182,7 +248,7 @@ async function buildDebtorPayload(db, settings, chatId) {
   }
 
   return {
-    role: 'debtor',
+    role: 'client',
     shopName: settings.shopName || "Do'kon",
     currencySymbol: settings.currencySymbol || "so'm",
     name: isOrgViewer ? org : (debtorDocs[0]?.name || ''),
@@ -195,6 +261,12 @@ async function buildDebtorPayload(db, settings, chatId) {
     debts: activeDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).map(debtSummary),
     historyDebts: paidDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).map(debtSummary),
     payments: allPayments.slice(0, 50),
+    loyalty: customerRecord ? {
+      points: customerRecord.points || 0,
+      totalSpent: customerRecord.totalSpent || 0,
+      purchaseCount: customerRecord.purchaseCount || 0,
+    } : null,
+    products,
   };
 }
 
@@ -218,7 +290,7 @@ module.exports = async (req, res) => {
 
     let payload;
     if (isAdmin) payload = await buildAdminPayload(db, settings);
-    else payload = await buildDebtorPayload(db, settings, chatId);
+    else payload = await buildDebtorPayload(db, settings, chatId, user);
 
     res.status(200).json(payload);
   } catch (e) {

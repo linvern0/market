@@ -90,6 +90,7 @@ async function sendDocument(token, chatId, filename, content, caption) {
 // xatosiz buyruq tanlay oladi (yozib xato qilmaydi).
 async function setCommandsForChat(token, chatId, isAdmin) {
   const adminCommands = [
+    { command: 'menu', description: "🗂 Tugmali menyu (buyruq yozmasdan)" },
     { command: 'ilova', description: "Boshqaruv panelini ochish" },
     { command: 'qarzlar', description: 'Faol qarzlar ro\'yxati' },
     { command: 'qarz', description: 'Mijoz bo\'yicha qarz qidirish' },
@@ -105,10 +106,12 @@ async function setCommandsForChat(token, chatId, isAdmin) {
     { command: 'eslatma', description: 'Bitta mijozga qo\'lda eslatma' },
     { command: 'broadcast', description: 'Barcha mijozlarga xabar' },
     { command: 'export', description: 'Faol qarzlarni CSV qilib olish' },
+    { command: 'admin_rol', description: "Admin rolini o'zgartirish (owner/admin)" },
     { command: 'adminlar', description: 'Admin ro\'yxati' },
     { command: 'yordam', description: 'Yordam' },
   ];
   const debtorCommands = [
+    { command: 'menu', description: "🗂 Tugmali menyu (buyruq yozmasdan)" },
     { command: 'qarzim', description: "Joriy qarzim (tashkilot bo'lsa — barcha xodimlar bo'yicha)" },
     { command: 'tarix', description: "To'lovlar tarixim" },
     { command: 'ballarim', description: "Sodiqlik dasturi ball holatim" },
@@ -180,6 +183,48 @@ async function setMenuButtonFor(token, chatId, req, isAdmin) {
 }
 
 function isAdminChat(admins, chatId) { return admins.some((a) => String(a.chatId).trim() === String(chatId).trim()); }
+// ============ YANGI: ADMIN ROLLARI (owner / admin) ============
+// "owner" (bosh admin) — barcha buyruqlarga, jumladan admin qo'shish/
+// o'chirish va broadcast'ga ruxsati bor. "admin" (oddiy admin/sotuvchi) —
+// kundalik ishlar (qarzlar, to'lov, statistika, ombor va h.k.) uchun to'liq
+// ruxsatli, lekin admin boshqaruvi va ommaviy xabar yubora olmaydi. Eski
+// (role maydoni saqlanmagan) adminlar orqaga moslik uchun "owner" deb
+// hisoblanadi — hech kimning huquqi kutilmaganda kamaymaydi.
+function adminRole(admins, chatId) {
+  const a = admins.find((x) => String(x.chatId).trim() === String(chatId).trim());
+  return (a && a.role) || 'owner';
+}
+function isOwnerChat(admins, chatId) { return adminRole(admins, chatId) === 'owner'; }
+const OWNER_ONLY_COMMANDS = new Set(['/admin_qoshish', '/admin_ochirish', '/admin_rol', '/broadcast']);
+
+// ============ YANGI: TUGMALI (INLINE) MENYU ============
+// Endi admin va mijoz buyruqlarni qo'lda yozmasdan, to'g'ridan-to'g'ri
+// tugmalar orqali ham bajarishi mumkin — /menu (yoki /menyu) buyrug'i,
+// shuningdek /start xabaridagi menyu shu tugmalar bilan keladi. Har bir
+// tugma "cmd:/buyruq" callback_data yuboradi, handleCallbackQuery esa buni
+// xuddi matn buyruq kelgandek qayta ishlaydi — mantiq ikki joyda
+// takrorlanmaydi.
+function adminMenuKeyboard(req) {
+  const rows = [
+    [{ text: '📋 Qarzlar', callback_data: 'cmd:/qarzlar' }, { text: '🏆 TOP qarzdorlar', callback_data: 'cmd:/top' }],
+    [{ text: '📊 Bugungi', callback_data: 'cmd:/statistika' }, { text: '📆 Haftalik', callback_data: 'cmd:/haftalik' }, { text: '🗓 Oylik', callback_data: 'cmd:/oylik' }],
+    [{ text: '📦 Ombor holati', callback_data: 'cmd:/ombor' }, { text: '📄 Export (CSV)', callback_data: 'cmd:/export' }],
+    [{ text: '👤 Adminlar', callback_data: 'cmd:/adminlar' }],
+  ];
+  const mini = miniAppKeyboard(req, true);
+  if (mini) rows.push(mini.inline_keyboard[0]);
+  return { inline_keyboard: rows };
+}
+function debtorMenuKeyboard(req) {
+  const rows = [
+    [{ text: '💰 Mening qarzim', callback_data: 'cmd:/qarzim' }],
+    [{ text: "🧾 To'lovlar tarixi", callback_data: 'cmd:/tarix' }],
+    [{ text: '⭐ Ballarim', callback_data: 'cmd:/ballarim' }],
+  ];
+  const mini = miniAppKeyboard(req, false);
+  if (mini) rows.push(mini.inline_keyboard[0]);
+  return { inline_keyboard: rows };
+}
 function findPendingAdminIndex(admins, { phone, username }) {
   const uKey = usernameKey(username);
   const pKey = phoneKey(phone);
@@ -200,7 +245,8 @@ function helpText(isAdmin) {
     t += `✅ Endi deyarli hamma narsani buyruq yozmasdan, to'g'ridan-to'g'ri ` +
       `<b>boshqaruv panelida</b> qilishingiz mumkin — u veb-saytdagi (brauzerdagi) ` +
       `bilan AYNAN BIR XIL panel, faqat shu bot ichida ochiladi:\n\n` +
-      `🖥 /ilova — Boshqaruv panelini ochish (qarzlar, tovarlar, sotish, hisobotlar, xarajatlar, mijozlar — hammasi shu yerda)\n\n` +
+      `🖥 /ilova — Boshqaruv panelini ochish (qarzlar, tovarlar, sotish, hisobotlar, xarajatlar, mijozlar — hammasi shu yerda)\n` +
+      `🗂 /menu — Tugmali tezkor menyu (qarzlar, statistika, ombor va h.k. — hech narsa yozmasdan, bosish bilan)\n\n` +
       `Buyruqlar ixtiyoriy, tezkor holatlar uchun hamon mavjud:\n` +
       `/qarzlar — faol (to'lanmagan) qarzlar ro'yxati\n` +
       `/qarz &lt;ism yoki telefon&gt; — muayyan mijoz qarzlarini qidirish\n` +
@@ -216,17 +262,22 @@ function helpText(isAdmin) {
       `/eslatma &lt;ism yoki telefon&gt; — bitta mijozga qo'lda eslatma yuborish\n` +
       `/broadcast &lt;matn&gt; — bog'langan barcha mijozlarga xabar yuborish\n` +
       `/export — faol qarzlar ro'yxatini CSV fayl qilib olish\n` +
-      `/adminlar — admin ro'yxati\n` +
-      `/admin_qoshish &lt;chatId&gt; &lt;Ism&gt; — yangi admin qo'shish\n` +
-      `/admin_ochirish &lt;chatId&gt; — adminni o'chirish\n\n` +
+      `/adminlar — admin ro'yxati (rollari bilan)\n` +
+      `/admin_qoshish &lt;chatId/@username/tel&gt; &lt;Ism&gt; [owner] — yangi admin qo'shish 👑\n` +
+      `/admin_ochirish &lt;chatId/@username/tel&gt; — adminni o'chirish 👑\n` +
+      `/admin_rol &lt;chatId/@username/tel&gt; &lt;owner|admin&gt; — admin rolini o'zgartirish 👑\n\n` +
       `💡 /qarzlar va /qarz natijalarida endi har bir qarz ostida ` +
       `"✅ To'liq to'landi" tugmasi bor — bosilsa, qo'lda summa yozmasdan ` +
-      `bir zumda to'liq yopiladi.`;
+      `bir zumda to'liq yopiladi.\n\n` +
+      `👑 belgili buyruqlar faqat <b>bosh admin (owner)</b> uchun. Oddiy ` +
+      `adminlar (sotuvchilar) qolgan barcha buyruqlarni to'liq ishlata oladi, ` +
+      `lekin admin qo'shish/o'chirish va ommaviy xabar (/broadcast) yubora olmaydi.`;
   } else {
     t += `Bu bot orqali qarzingiz va to'lovlaringiz haqida xabar olasiz.\n\n` +
       `✅ Hech qanday tugma bosish shart emas — do'kon administratori sizni ` +
       `Telegram username yoki Telegram ID orqali oldindan ro'yxatga qo'shgan bo'lsa, ` +
       `siz shunchaki shu botga <b>/start</b> yozishingiz bilan avtomatik tanilasiz.\n\n` +
+      `🗂 /menu — Tugmali menyu (buyruq yozmasdan, bosish bilan)\n` +
       `/qarzim — joriy qarzingizni ko'rish (agar tashkilot vakili bo'lsangiz — ` +
       `tashkilotdagi HAR BIR xodimning qarzi alohida-alohida, batafsil ko'rsatiladi)\n` +
       `/tarix — so'nggi to'lovlaringiz tarixi\n` +
@@ -272,10 +323,10 @@ async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req) {
   } else {
     text += `Hozircha faol qarzingiz yo'q. 👍`;
   }
-  text += `\n\n📱 Qarzingizni istalgan vaqt to'liq (nima uchun qarzdorligingiz bilan birga) ko'rish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.`;
+  text += `\n\n📱 Qarzingizni istalgan vaqt to'liq (nima uchun qarzdorligingiz bilan birga) ko'rish uchun pastdagi tugmalardan foydalaning.`;
   await setCommandsForChat(token, chatId, false).catch(() => {});
   if (req) await setMenuButtonFor(token, chatId, req, false).catch(() => {});
-  await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
+  await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) || kb || { remove_keyboard: true } });
 }
 
 async function handleCustomerContact(db, token, msg, kb, req) {
@@ -317,16 +368,37 @@ async function tryLinkCustomerByTelegramId(db, token, msg, kb, req) {
   return true;
 }
 
-// Hech qanday moslik topilmasa — tugma taklif qilish o'rniga, shaxsning
-// o'z username/ID'sini ko'rsatib, buni administratorga berishini so'raymiz
-// (administrator shu ma'lumot bilan Mini-ilovada qarzdorni ro'yxatga oladi).
-async function sendNotRecognizedNotice(token, msg, kb) {
+// ============ YANGI: OCHIQ RO'YXATDAN O'TISH (ADMINSIZ) ============
+// Endi admin hech kimni qo'lda "mijoz" sifatida qo'shishi shart emas —
+// botga /start bosgan HAR QANDAY kishi avtomatik ravishda "customers"
+// (sodiqlik dasturi) kolleksiyasiga yoziladi va shu zahoti mijoz sifatida
+// tanilib, Mini-ilovadan (tovarlar katalogi) foydalana oladi.
+async function autoRegisterCustomer(db, token, msg, kb) {
   const chatId = msg.chat.id;
-  const uname = msg.from && msg.from.username;
-  let text = `👋 Siz hali do'kon ro'yxatida topilmadingiz.\n\nAdministratorga quyidagi ma'lumotni bering, shunda keyingi safar (hech qanday tugmasiz) avtomatik tanilasiz:\n\n`;
-  text += uname ? `• Telegram username: <code>@${esc(uname)}</code>\n` : '';
-  text += `• Telegram ID: <code>${esc(chatId)}</code>`;
-  await sendMessage(token, chatId, text, kb ? { reply_markup: kb } : { remove_keyboard: true });
+  const from = msg.from || {};
+  const name = [from.first_name, from.last_name].filter(Boolean).join(' ').trim()
+    || (from.username ? '@' + from.username : `Mijoz ${chatId}`);
+  const data = {
+    name,
+    telegramChatId: String(chatId),
+    telegramUserId: String(from.id || ''),
+    telegramUsername: from.username || '',
+    phone: '',
+    points: 0,
+    totalSpent: 0,
+    purchaseCount: 0,
+    autoRegistered: true,
+    createdAt: new Date().toISOString(),
+  };
+  await db.collection('customers').add(data);
+  const text = `👋 Xush kelibsiz, <b>${esc(name)}</b>!\n\n` +
+    `✅ Siz do'konning sodiqlik dasturiga avtomatik ro'yxatdan o'tdingiz.\n\n` +
+    `🏆 Daraja: ${customerTierName(0)}\n⭐ Ball: <b>0</b>\n\n` +
+    `📱 Tovarlar katalogini ko'rish va o'z ma'lumotlaringizni kuzatish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.\n` +
+    `⭐ Ball holatingizni istalgan vaqt /ballarim buyrug'i orqali ko'rishingiz mumkin.`;
+  await setCommandsForChat(token, chatId, false).catch(() => {});
+  await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
+  return data;
 }
 
 // ============ YANGI: MIJOZLAR (SODIQLIK DASTURI) BOTGA BIRIKTIRISH ============
@@ -382,7 +454,7 @@ async function tryLinkLoyaltyCustomerByContact(db, token, msg, kb) {
   await sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb);
   return true;
 }
-async function handleLoyaltyPoints(db, token, chatId) {
+async function handleLoyaltyPoints(db, token, chatId, req) {
   const customersSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
   if (customersSnap.empty) { await sendMessage(token, chatId, "Siz sodiqlik dasturiga hali ulanmagansiz. Do'kon administratoridan ulashini so'rang, keyin /start yozing."); return; }
   const c = customersSnap.docs[0].data();
@@ -390,7 +462,7 @@ async function handleLoyaltyPoints(db, token, chatId) {
     `⭐ Ball: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b> (${c.purchaseCount || 0} marta)\n` +
     (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} ballni ${fmt(Math.floor(c.points / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.` : `\nHar 10,000 so'm xariddan 1 ball, 100 ball = 10,000 so'm chegirma.`);
-  await sendMessage(token, chatId, text);
+  await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
 }
 
 // Bitta qarz uchun "nima uchun qarzdorligi" batafsil matnini quradi: tovar
@@ -406,7 +478,7 @@ function debtDetailText(d) {
   return text;
 }
 
-async function handleCustomerMyDebts(db, token, chatId) {
+async function handleCustomerMyDebts(db, token, chatId, req) {
   const debtorsSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).get();
   if (debtorsSnap.empty) { await sendMessage(token, chatId, "Siz hali ro'yxatdan o'tmagansiz. /start yozib qayta urinib ko'ring."); return; }
   const debtorDocs = debtorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -427,7 +499,7 @@ async function handleCustomerMyDebts(db, token, chatId) {
   }
   const myDebts = allDebts;
   if (!myDebts.length) {
-    await sendMessage(token, chatId, isOrgViewer ? `✅ "${esc(org)}" tashkilotining faol qarzi yo'q. 👍` : "Faol qarzingiz yo'q. 👍");
+    await sendMessage(token, chatId, isOrgViewer ? `✅ "${esc(org)}" tashkilotining faol qarzi yo'q. 👍` : "Faol qarzingiz yo'q. 👍", { reply_markup: debtorMenuKeyboard(req) });
     return;
   }
   const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
@@ -458,12 +530,12 @@ async function handleCustomerMyDebts(db, token, chatId) {
     });
   }
   text += `\n📱 Batafsil (jadval, grafik, to'lovlar tarixi bilan) ko'rish uchun "Mening qarzim" tugmasidan (Mini-ilova) foydalaning.`;
-  await sendMessage(token, chatId, text);
+  await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
 }
 
 // Tashkilot vakili yoki oddiy mijoz — so'nggi to'lovlar tarixini
 // ko'rsatadi (mini-ilovadagi "payments" bilan bir xil manba).
-async function handleCustomerPaymentHistory(db, token, chatId) {
+async function handleCustomerPaymentHistory(db, token, chatId, req) {
   const debtorsSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).get();
   if (debtorsSnap.empty) { await sendMessage(token, chatId, "Siz hali ro'yxatdan o'tmagansiz. /start yozib qayta urinib ko'ring."); return; }
   const debtorDocs = debtorsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -484,17 +556,27 @@ async function handleCustomerPaymentHistory(db, token, chatId) {
     .flatMap((d) => (Array.isArray(d.payments) ? d.payments.map((p) => ({ ...p, debtorName: d.debtorName || d.org })) : []))
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 15);
-  if (!payments.length) { await sendMessage(token, chatId, "Hali to'lov tarixi yo'q."); return; }
+  if (!payments.length) { await sendMessage(token, chatId, "Hali to'lov tarixi yo'q.", { reply_markup: debtorMenuKeyboard(req) }); return; }
   let text = `🧾 <b>So'nggi to'lovlar</b>\n\n`;
   payments.forEach((p) => {
     text += `• ${new Date(p.date).toLocaleDateString('uz-UZ')} — <b>${fmt(p.amount)} so'm</b>` + (isOrgViewer ? ` (${esc(p.debtorName || '')})` : '') + `\n`;
   });
   text += `\n📱 To'liq tarix uchun Mini-ilovadan foydalaning.`;
-  await sendMessage(token, chatId, text);
+  await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
 }
 
 async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req) {
   const shopName = (await settingsRef.get()).data()?.shopName || "Do'kon";
+
+  // YANGI: rol tekshiruvi — admin boshqaruvi va ommaviy xabar faqat
+  // "owner" (bosh admin) uchun. Oddiy admin (sotuvchi) shu yerda to'xtaydi.
+  if (OWNER_ONLY_COMMANDS.has(cmd) && !isOwnerChat(admins, chatId)) {
+    return sendMessage(token, chatId, "⛔ Bu buyruq faqat bosh admin (owner) uchun mavjud. Ruxsat kerak bo'lsa, bosh administratorga murojaat qiling.");
+  }
+
+  if (cmd === '/menu' || cmd === '/menyu') {
+    return sendMessage(token, chatId, "🗂 <b>Tezkor menyu</b> — kerakli bo'limni tanlang:", { reply_markup: adminMenuKeyboard(req) });
+  }
 
   if (cmd === '/yordam' || cmd === '/start' || cmd === '/help') return sendMessage(token, chatId, helpText(true), kb ? { reply_markup: kb } : undefined);
 
@@ -690,20 +772,28 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!admins.length) return sendMessage(token, chatId, "Hali admin qo'shilmagan.");
     let text = `👤 <b>Adminlar</b>\n\n`;
     admins.forEach((a) => {
-      if (a.chatId) text += `• ✅ ${esc(a.name || 'Admin')} — Chat ID: <code>${esc(a.chatId)}</code>\n`;
-      else { const via = a.username ? `@${esc(a.username)}` : a.phone ? esc(a.phone) : '—'; text += `• ⏳ ${esc(a.name || 'Admin')} — kutmoqda (${via})\n`; }
+      const roleBadge = (a.role || 'owner') === 'owner' ? '👑 owner' : '🧑‍💼 admin';
+      if (a.chatId) text += `• ✅ ${esc(a.name || 'Admin')} — ${roleBadge} — Chat ID: <code>${esc(a.chatId)}</code>\n`;
+      else { const via = a.username ? `@${esc(a.username)}` : a.phone ? esc(a.phone) : '—'; text += `• ⏳ ${esc(a.name || 'Admin')} — ${roleBadge} — kutmoqda (${via})\n`; }
     });
     return sendMessage(token, chatId, text);
   }
 
   if (cmd === '/admin_qoshish') {
-    const parts = argStr.trim().split(/\s+/);
+    const rawParts = argStr.trim().split(/\s+/);
+    // YANGI: oxirgi so'z "owner" yoki "admin" bo'lsa, rol sifatida olinadi.
+    // Ko'rsatilmasa, xavfsizlik uchun standart rol — cheklangan "admin".
+    let role = 'admin';
+    if (rawParts.length > 1 && (rawParts[rawParts.length - 1] === 'owner' || rawParts[rawParts.length - 1] === 'admin')) {
+      role = rawParts.pop();
+    }
+    const parts = rawParts;
     const idArg = parts[0];
     const name = parts.slice(1).join(' ') || 'Admin';
-    if (!idArg) return sendMessage(token, chatId, "Foydalanish:\n/admin_qoshish 123456789 Ism — Chat ID bilan\n/admin_qoshish +998901234567 Ism — telefon raqami bilan\n/admin_qoshish @username Ism — username bilan");
+    if (!idArg) return sendMessage(token, chatId, "Foydalanish:\n/admin_qoshish 123456789 Ism [owner] — Chat ID bilan\n/admin_qoshish +998901234567 Ism [owner] — telefon raqami bilan\n/admin_qoshish @username Ism [owner] — username bilan\n\nOxiriga \"owner\" qo'shsangiz, u bosh admin sifatida qo'shiladi. Ko'rsatmasangiz, standart holatda cheklangan \"admin\" bo'ladi (admin qo'sha/o'chira va broadcast qila olmaydi).");
     const isNumericChatId = /^-?\d{5,}$/.test(idArg) && !idArg.startsWith('+');
     const isUsername = idArg.startsWith('@');
-    const newAdmin = { id: 'tg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, chatId: '', phone: '', username: '' };
+    const newAdmin = { id: 'tg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, chatId: '', phone: '', username: '', role };
     if (isNumericChatId) {
       if (admins.some((a) => String(a.chatId) === idArg)) return sendMessage(token, chatId, "Bu Chat ID allaqachon admin.");
       newAdmin.chatId = idArg;
@@ -719,13 +809,14 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     admins.push(newAdmin);
     await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    const roleLabel = role === 'owner' ? '👑 owner (bosh admin)' : '🧑‍💼 admin (cheklangan)';
     if (newAdmin.chatId) {
-      await sendMessage(token, chatId, `✅ Yangi admin qo'shildi: ${esc(name)} (${esc(newAdmin.chatId)})`);
+      await sendMessage(token, chatId, `✅ Yangi admin qo'shildi: ${esc(name)} (${esc(newAdmin.chatId)}) — ${roleLabel}`);
       await setAdminMenuButton(token, newAdmin.chatId, req).catch(() => {});
       await setCommandsForChat(token, newAdmin.chatId, true).catch(() => {});
-      await sendMessage(token, newAdmin.chatId, `👋 Siz "${esc(shopName)}" do'konining Telegram admini etib tayinlandingiz. /yordam yozib buyruqlar ro'yxatini ko'ring.`).catch(() => {});
+      await sendMessage(token, newAdmin.chatId, `👋 Siz "${esc(shopName)}" do'konining Telegram admini (${roleLabel}) etib tayinlandingiz. /menu yozib tugmali menyuni yoki /yordam yozib buyruqlar ro'yxatini ko'ring.`).catch(() => {});
     } else {
-      await sendMessage(token, chatId, `✅ ${esc(name)} "kutayotgan admin" sifatida qo'shildi.\nU botga birinchi marta yozganda (yoki telefon raqamini yuborganda) avtomatik faollashadi.`);
+      await sendMessage(token, chatId, `✅ ${esc(name)} "kutayotgan admin" sifatida qo'shildi — ${roleLabel}.\nU botga birinchi marta yozganda (yoki telefon raqamini yuborganda) avtomatik faollashadi.`);
     }
     return;
   }
@@ -735,27 +826,88 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!target) return sendMessage(token, chatId, "Foydalanish: /admin_ochirish 123456789 (yoki telefon/@username)");
     const uKey = usernameKey(target);
     const pKey = phoneKey(target);
-    const remaining = admins.filter((a) => {
-      if (String(a.chatId) === target) return false;
-      if (target.startsWith('@') && usernameKey(a.username) === uKey) return false;
-      if (pKey && phoneKey(a.phone) === pKey) return false;
-      return true;
-    });
-    if (remaining.length === admins.length) return sendMessage(token, chatId, "Bunday admin topilmadi.");
+    const targetAdmin = admins.find((a) => String(a.chatId) === target || (target.startsWith('@') && usernameKey(a.username) === uKey) || (pKey && phoneKey(a.phone) === pKey));
+    if (!targetAdmin) return sendMessage(token, chatId, "Bunday admin topilmadi.");
+    // Xavfsizlik: oxirgi owner'ni o'chirib bo'lmaydi — aks holda hech kim
+    // admin boshqaruvi qila olmay qoladigan holatga tushib qolish mumkin.
+    const remainingOwners = admins.filter((a) => a !== targetAdmin && (a.role || 'owner') === 'owner');
+    if ((targetAdmin.role || 'owner') === 'owner' && remainingOwners.length === 0) {
+      return sendMessage(token, chatId, "⛔ Bu yagona bosh admin (owner) — uni o'chirib bo'lmaydi. Avval boshqa birortasini owner qiling (/admin_rol).");
+    }
+    const remaining = admins.filter((a) => a !== targetAdmin);
     await settingsRef.set({ telegramAdmins: remaining }, { merge: true });
-    return sendMessage(token, chatId, `✅ Admin o'chirildi (${esc(target)}).`);
+    return sendMessage(token, chatId, `✅ Admin o'chirildi (${esc(targetAdmin.name || target)}).`);
   }
 
-  return sendMessage(token, chatId, "Noma'lum buyruq. /yordam yozing.");
+  if (cmd === '/admin_rol') {
+    const parts = argStr.trim().split(/\s+/);
+    const target = parts[0];
+    const newRole = parts[1];
+    if (!target || (newRole !== 'owner' && newRole !== 'admin')) return sendMessage(token, chatId, "Foydalanish: /admin_rol <chatId yoki @username yoki telefon> <owner|admin>\nMasalan: /admin_rol @aziz owner");
+    const uKey = usernameKey(target);
+    const pKey = phoneKey(target);
+    const targetAdmin = admins.find((a) => String(a.chatId) === target || (target.startsWith('@') && usernameKey(a.username) === uKey) || (pKey && phoneKey(a.phone) === pKey));
+    if (!targetAdmin) return sendMessage(token, chatId, "Bunday admin topilmadi.");
+    const remainingOwners = admins.filter((a) => a !== targetAdmin && (a.role || 'owner') === 'owner');
+    if ((targetAdmin.role || 'owner') === 'owner' && newRole === 'admin' && remainingOwners.length === 0) {
+      return sendMessage(token, chatId, "⛔ Bu yagona bosh admin (owner) — uning rolini pasaytirib bo'lmaydi. Avval boshqa birortasini owner qiling.");
+    }
+    targetAdmin.role = newRole;
+    await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    await sendMessage(token, chatId, `✅ ${esc(targetAdmin.name || target)} roli — ${newRole === 'owner' ? '👑 owner' : '🧑‍💼 admin'} qilib o'zgartirildi.`);
+    if (targetAdmin.chatId) await sendMessage(token, targetAdmin.chatId, `ℹ️ Sizning admin rolingiz ${newRole === 'owner' ? '👑 owner (bosh admin)' : '🧑‍💼 admin (cheklangan)'} ga o'zgartirildi.`).catch(() => {});
+    return;
+  }
+
+  return sendMessage(token, chatId, "Noma'lum buyruq. /yordam yozing yoki /menu orqali tugmali menyuni oching.");
 }
 
 // "✅ To'landi" inline tugmasi bosilganda ishlaydi (callback_query).
 // Faqat admin bosgan taqdirdagina ishlaydi — boshqa hech kim (hatto o'sha
 // xabarni ko'rgan bo'lsa ham) qarzni yopa olmaydi.
+// YANGI: tugmali menyudan bosilgan buyruqlar shu yerda "cmd:/buyruq" ko'rinishida
+// keladi. Admin buyruqlari uchun handleAdminCommand'ni, mijoz (qarzdor)
+// buyruqlari uchun mos handler funksiyani chaqiramiz — mantiq matn buyruq
+// bilan AYNAN bir xil, faqat ikkinchi marta yozilmaydi.
+const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
+const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/ballarim']);
+
 async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   const chatId = cq.message && cq.message.chat && cq.message.chat.id;
   const data = cq.data || '';
-  if (!chatId || !isAdminChat(admins, chatId)) {
+  if (!chatId) { await answerCallbackQuery(token, cq.id); return; }
+  const isAdmin = isAdminChat(admins, chatId);
+
+  if (data.startsWith('cmd:')) {
+    const cmd = data.slice('cmd:'.length);
+    if (ADMIN_MENU_COMMANDS.has(cmd)) {
+      if (!isAdmin) { await answerCallbackQuery(token, cq.id, "Bu amal faqat admin uchun.", true); return; }
+      await answerCallbackQuery(token, cq.id);
+      try {
+        await handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, '', miniAppKeyboard(req, true), req);
+      } catch (e) {
+        console.error('Menyu buyrug\'i xatosi:', cmd, e);
+        await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi. Qaytadan urinib ko'ring.").catch(() => {});
+      }
+      return;
+    }
+    if (DEBTOR_MENU_COMMANDS.has(cmd)) {
+      await answerCallbackQuery(token, cq.id);
+      try {
+        if (cmd === '/qarzim') await handleCustomerMyDebts(db, token, chatId, req);
+        else if (cmd === '/tarix') await handleCustomerPaymentHistory(db, token, chatId, req);
+        else if (cmd === '/ballarim') await handleLoyaltyPoints(db, token, chatId, req);
+      } catch (e) {
+        console.error('Mijoz menyusi xatosi:', cmd, e);
+        await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi. Qaytadan urinib ko'ring.").catch(() => {});
+      }
+      return;
+    }
+    await answerCallbackQuery(token, cq.id);
+    return;
+  }
+
+  if (!isAdmin) {
     await answerCallbackQuery(token, cq.id, "Bu amal faqat admin uchun.", true);
     return;
   }
@@ -869,25 +1021,34 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
       if (isKnownAny) {
         await setCommandsForChat(token, chatId, false).catch(() => {});
         await setMenuButtonFor(token, chatId, req, false).catch(() => {});
-        await sendMessage(token, chatId, helpText(false), { reply_markup: kbDebtor || { remove_keyboard: true } });
+        await sendMessage(token, chatId, helpText(false), { reply_markup: debtorMenuKeyboard(req) || kbDebtor || { remove_keyboard: true } });
         return;
       }
-      await sendNotRecognizedNotice(token, msg, kbDebtor);
+      // Hali hech qanday ro'yxatda (qarzdor yoki mijoz) topilmadi — admin
+      // kutmasdan, shu zahoti avtomatik "mijoz" sifatida ro'yxatga olamiz.
+      await autoRegisterCustomer(db, token, msg, kbDebtor);
+      await setMenuButtonFor(token, chatId, req, false).catch(() => {});
       return;
     }
     await setAdminMenuButton(token, chatId, req);
     await setCommandsForChat(token, chatId, true).catch(() => {});
-    await sendMessage(token, chatId, helpText(isAdmin), kbAdmin ? { reply_markup: kbAdmin } : undefined);
+    await sendMessage(token, chatId, helpText(isAdmin), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
     return;
   }
-  if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId); return; }
-  if (text === '/tarix' && !isAdmin) { await handleCustomerPaymentHistory(db, token, chatId); return; }
-  if (text === '/ballarim' && !isAdmin) { await handleLoyaltyPoints(db, token, chatId); return; }
+  if (text === '/menu' || text === '/menyu') {
+    if (!isAdmin) { await sendMessage(token, chatId, "🗂 Menyu — kerakli bo'limni tanlang:", { reply_markup: debtorMenuKeyboard(req) }); return; }
+    // isAdmin holatida /menu quyida handleAdminCommand orqali ham ishlaydi,
+    // lekin shu yerda ham tezkor javob beramiz.
+  }
+  if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId, req); return; }
+  if (text === '/tarix' && !isAdmin) { await handleCustomerPaymentHistory(db, token, chatId, req); return; }
+  if (text === '/ballarim' && !isAdmin) { await handleLoyaltyPoints(db, token, chatId, req); return; }
   if (!isAdmin && !isKnownAny && !text.startsWith('/')) {
     // Hali tanilmagan (ro'yxatdan o'tmagan) kishi /start dan boshqa narsa
-    // yozdi — umumiy yordam matni o'rniga, uni tanib olish uchun kerakli
-    // ID/username ma'lumotini yana bir bor eslatib qo'yamiz.
-    await sendNotRecognizedNotice(token, msg, kbDebtor);
+    // yozdi — bu ham birinchi murojaati hisoblanadi, shuning uchun uni
+    // shu yerda ham avtomatik mijoz sifatida ro'yxatga olamiz.
+    await autoRegisterCustomer(db, token, msg, kbDebtor);
+    await setMenuButtonFor(token, chatId, req, false).catch(() => {});
     return;
   }
   if (text === '/ilova' || text === '/app') {
@@ -901,10 +1062,18 @@ async function processUpdate(db, token, settingsRef, admins, upd, req) {
     const cmd = (spaceIdx === -1 ? text : text.slice(0, spaceIdx)).toLowerCase();
     const argStr = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1);
     if (!isAdmin) { await sendMessage(token, chatId, "Bu buyruq faqat do'kon adminlari uchun. /start yozib ro'yxatdan o'ting yoki /qarzim orqali qarzingizni ko'ring."); return; }
-    await handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req);
+    try {
+      await handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req);
+    } catch (e) {
+      // YANGI: bitta buyruqdagi kutilmagan xatolik butun webhook'ni
+      // "yiqitmasin" va admin javobsiz qolib ketmasin — xatolik konsolga
+      // (Vercel loglariga) yoziladi, admin esa tushunarli xabar oladi.
+      console.error(`Admin buyrug'i xatosi (${cmd}):`, e);
+      await sendMessage(token, chatId, "⚠️ Buyruqni bajarishda kutilmagan xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring. Xatolik davom etsa, ma'lumotlar formatini tekshiring.").catch(() => {});
+    }
     return;
   }
-  await sendMessage(token, chatId, helpText(isAdmin));
+  await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? { reply_markup: adminMenuKeyboard(req) } : { reply_markup: debtorMenuKeyboard(req) });
 }
 
 module.exports = async (req, res) => {
@@ -928,6 +1097,30 @@ module.exports = async (req, res) => {
     const admins = Array.isArray(s.telegramAdmins) ? s.telegramAdmins : [];
 
     const upd = req.body;
+
+    // YANGI: TAKRORLANISHNI OLDINI OLISH (idempotentlik). Vercel funksiyasi
+    // sekinlashib ketsa yoki vaqtinchalik xato bersa, Telegram O'SHA update'ni
+    // qayta-qayta yuborishga urinadi — buni oldini olmasak, masalan bitta
+    // to'lov ikki marta qo'shilib ketishi yoki bitta xabar ikki marta
+    // yuborilishi mumkin. Har bir update_id faqat BIR MARTA qayta ishlanadi.
+    const updateId = upd && upd.update_id;
+    if (updateId != null) {
+      const dedupeRef = db.collection('telegramProcessedUpdates').doc(String(updateId));
+      const dedupeSnap = await dedupeRef.get();
+      if (dedupeSnap.exists) {
+        res.status(200).json({ ok: true, duplicate: true });
+        return;
+      }
+      // Firestore'da "expiresAt" maydoniga TTL siyosati o'rnatilsa (Firebase
+      // konsolida, ixtiyoriy), bu yozuvlar avtomatik tozalanadi — bo'lmasa
+      // ham hech qanday amaliy zarar yo'q, faqat bitta kichik kolleksiya
+      // o'sib boradi.
+      await dedupeRef.set({
+        processedAt: new Date().toISOString(),
+        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      });
+    }
+
     await processUpdate(db, token, settingsRef, admins, upd, req);
 
     res.status(200).json({ ok: true });

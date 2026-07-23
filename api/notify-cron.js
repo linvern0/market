@@ -77,6 +77,7 @@ async function runNotify() {
   }
 
   const shopName = s.shopName || "Do'kon";
+  const currencySymbol = s.currencySymbol || "so'm";
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const sentLogRef = db.collection('dokon').doc('telegramSentLog');
@@ -112,7 +113,7 @@ async function runNotify() {
     if (overdue.length) {
       const remaining = (d) => (d.total || 0) - (d.paidAmount || 0);
       const sum = overdue.reduce((a, d) => a + remaining(d), 0);
-      const text = `⏰ <b>Muddati o'tgan qarzlar</b> — ${esc(shopName)}\n\n${overdue.length} ta qarzdor, jami ${fmt(sum)} so'm ${overdueDays} kundan ortiq to'lanmagan.`;
+      const text = `⏰ <b>Muddati o'tgan qarzlar</b> — ${esc(shopName)}\n\n${overdue.length} ta qarzdor, jami ${fmt(sum)} ${esc(currencySymbol)} ${overdueDays} kundan ortiq to'lanmagan.`;
       const ok = await sendToAllAdmins(token, chatIds, text);
       if (ok) patch.overdue = todayStr;
     }
@@ -139,7 +140,7 @@ async function runNotify() {
         cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
       }
       const overdue = d.dueDate.slice(0, 10) < todayStr;
-      const text = `⏰ <b>${esc(shopName)}</b>\n\n${overdue ? "Qarzingizni to'lash muddati o'tib ketdi." : "Bugun qarzingizni to'lash muddati keldi."}\n💰 Qoldiq: <b>${fmt(remaining)} so'm</b>${d.note ? `\n📝 ${esc(d.note)}` : ''}`;
+      const text = `⏰ <b>${esc(shopName)}</b>\n\n${overdue ? "Qarzingizni to'lash muddati o'tib ketdi." : "Bugun qarzingizni to'lash muddati keldi."}\n💰 Qoldiq: <b>${fmt(remaining)} ${esc(currencySymbol)}</b>${d.note ? `\n📝 ${esc(d.note)}` : ''}`;
       if (cid) await sendTelegramMessage(token, cid, text);
       await docSnap.ref.update({ lastAutoReminderDate: todayStr });
     }
@@ -152,7 +153,7 @@ async function runNotify() {
     const todaySales = sales.filter((sale) => !sale.reverted && (sale.date || '').slice(0, 10) === todayStr);
     const revenue = todaySales.reduce((a, sale) => a + (sale.total || 0), 0);
     const profit = todaySales.reduce((a, sale) => a + (sale.price - (sale.cost || 0)) * sale.qty, 0);
-    const text = `📊 <b>Kunlik hisobot</b> — ${esc(shopName)}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} so'm\n📈 Foyda: ${fmt(profit)} so'm`;
+    const text = `📊 <b>Kunlik hisobot</b> — ${esc(shopName)}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} ${esc(currencySymbol)}\n📈 Foyda: ${fmt(profit)} ${esc(currencySymbol)}`;
     const ok = await sendToAllAdmins(token, chatIds, text);
     if (ok) patch.dailyreport = todayStr;
   }
