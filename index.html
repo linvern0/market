@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="uz">
 <head>
@@ -429,6 +430,24 @@
   body.dark .login-card,body.dark .modal{background:var(--surface);color:var(--text)}
   body.dark .field input,body.dark .field select,body.dark .field textarea{background:var(--surface2);color:var(--text);border-color:var(--border2)}
   body.dark .role-btn{background:var(--surface);border-color:var(--border2)}
+  /* YANGI: CHEKLANGAN ADMIN — owner-only belgili elementlar (masalan
+     Admin PIN o'zgartirish va "Cheklangan admin" sozlamalari) faqat bosh
+     admin (owner) uchun ko'rinadi, cheklangan admin sessiyasida yashiriladi. */
+  body.restricted-admin .owner-only{display:none!important}
+  /* Cheklangan admin uchun o'chirish tugmalari (agar shu ruxsat cheklangan
+     bo'lsa) JS orqali body'ga qo'shiladigan .no-delete klassi bilan
+     yashiriladi — bloklash funksiya darajasida ham amalga oshiriladi. */
+  body.restricted-admin.no-delete button[onclick*="deleteProduct"],
+  body.restricted-admin.no-delete button[onclick*="deleteDebtEntry"],
+  body.restricted-admin.no-delete button[onclick*="deleteSellerRow"],
+  body.restricted-admin.no-delete button[onclick*="deleteExpense"],
+  body.restricted-admin.no-delete button[onclick*="removeTelegramAdmin"],
+  body.restricted-admin.no-delete button[onclick*="deleteLabelTemplate"],
+  body.restricted-admin.no-delete button[onclick*="deleteSupplier"],
+  body.restricted-admin.no-delete button[onclick*="deleteCustomer"],
+  body.restricted-admin.no-delete button[onclick*="adminRevertGroup"],
+  body.restricted-admin.no-delete button[onclick*="clearAll"],
+  body.restricted-admin.no-delete button[onclick*="partialReset"]{display:none!important}
   body.dark th{background:var(--surface2)}
   body.dark tr:hover td{background:var(--surface2)}
   body.dark #receipt-content{color:#111} /* chek doim oq qog'ozda o'qilishi uchun */
@@ -1622,7 +1641,7 @@ body.dark table {
 
 <div class="page" id="page-settings">
   <div class="section-header"><h2>Sozlamalar</h2></div>
-  <div class="card" style="max-width:420px">
+  <div class="card owner-only" style="max-width:420px">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:1.25rem">PIN kodlarni o'zgartirish</h3>
     <div class="field" style="margin-bottom:1rem">
       <label>Admin PIN</label>
@@ -1641,6 +1660,37 @@ body.dark table {
       <button class="btn sm blue" onclick="addSellerRow()">+ Qo'shish</button>
     </div>
   </div>
+  <div class="card owner-only" style="max-width:480px;margin-top:1rem" id="restricted-admin-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🔒 Cheklangan admin</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Bu PIN bilan kirgan kishi "Admin" sifatida tizimga kiradi, lekin quyida yoqilgan cheklovlarga bo'ysunadi. Barcha cheklangan adminlar shu bitta PIN va bitta ruxsatlar to'plamini baham ko'radi. Bo'sh qoldirsangiz, bu imkoniyat o'chirilgan bo'ladi.</p>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Cheklangan admin PIN</label>
+      <input type="password" id="restricted-admin-pin" maxlength="4" placeholder="4 xonali PIN (bo'sh = o'chirilgan)" inputmode="numeric" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+    <div class="switch-row" style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border2)">
+      <div>
+        <div style="font-size:14px;font-weight:600">🚚 Kirim/Chiqim bo'limini yashirish</div>
+        <div style="font-size:12px;color:var(--text3)">Yoqilsa, cheklangan admin tovarlarni omborga kirim/chiqim qilish bo'limini ko'rmaydi.</div>
+      </div>
+      <input type="checkbox" id="ra-hide-stock" style="width:20px;height:20px;flex-shrink:0">
+    </div>
+    <div class="switch-row" style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border2)">
+      <div>
+        <div style="font-size:14px;font-weight:600">🛒 "Sotuvchi bo'lib kirish"ni yashirish</div>
+        <div style="font-size:12px;color:var(--text3)">Yoqilsa, cheklangan admin shu qurilmadagi kirish ekranida "Sotuvchi" tugmasini ko'rmaydi.</div>
+      </div>
+      <input type="checkbox" id="ra-hide-seller-login" style="width:20px;height:20px;flex-shrink:0">
+    </div>
+    <div class="switch-row" style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0">
+      <div>
+        <div style="font-size:14px;font-weight:600">🗑 O'chirish tugmalarini bloklash</div>
+        <div style="font-size:12px;color:var(--text3)">Yoqilsa, cheklangan admin hech narsani (tovar, savdo, qarz, xarajat, sotuvchi va h.k.) o'chira olmaydi.</div>
+      </div>
+      <input type="checkbox" id="ra-disable-delete" style="width:20px;height:20px;flex-shrink:0">
+    </div>
+    <button class="btn sm blue" style="margin-top:1rem" onclick="saveRestrictedAdminSettings()">💾 Saqlash</button>
+  </div>
+
   <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🏪 Do'kon nomi va logotipi</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bu nom va rasm chek hamda hisobotlar chop etilganda yuqorida ko'rsatiladi.</p>
@@ -3854,7 +3904,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right' };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false } };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -3865,6 +3915,12 @@ function migrateSellersFromLegacy(d){
 }
 window.currentRole = null;
 window.currentSellerName = 'Sotuvchi';
+// YANGI: CHEKLANGAN ADMIN — bosh admin (owner) PIN emas, balki alohida
+// "cheklangan admin" PIN orqali kirgan foydalanuvchi uchun bayroq. Bu
+// true bo'lganda ba'zi bo'limlar (Kirim/Chiqim) va barcha "o'chirish"
+// amallari — Sozlamalar > "Cheklangan admin" bo'limidagi ruxsatlarga
+// qarab — yashiriladi/bloklanadi. Oddiy (bosh) admin uchun har doim false.
+window.isRestrictedAdmin = false;
 window.currentSellerId = null;
 
 // ===== KUN DAVOMIDA AVTOMATIK KIRISH (PAROLSIZ) =====
@@ -3874,10 +3930,10 @@ window.currentSellerId = null;
 // Faqat: (1) "Chiqish" tugmasi bosilsa, yoki (2) 20 daqiqa harakatsizlik
 // tufayli avtomatik chiqarilsa — seans tozalanadi va qayta PIN so'raladi.
 const SESSION_KEY = 'dokon_session_v1';
-function saveSession(role, sellerName, sellerId){
+function saveSession(role, sellerName, sellerId, isRestrictedAdmin){
   try{
     const end = new Date(); end.setHours(23,59,59,999);
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ role, sellerName, sellerId: sellerId||null, expiresAt: end.getTime() }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ role, sellerName, sellerId: sellerId||null, isRestrictedAdmin: !!isRestrictedAdmin, expiresAt: end.getTime() }));
   }catch(e){}
 }
 function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
@@ -4120,7 +4176,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -4368,6 +4424,7 @@ async function fbDeleteDebt(id){
     .finally(()=>setSyncing(false));
 }
 window.deleteDebtEntry = function(id){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   const d = DB.debts.find(x=>x.id===id);
   confirm2("Qarz yozuvini o'chirish", `${d?.debtorName||''}${d?.org?' ('+d.org+')':''} — ${fmt(d?.total||0)} so'm qarz yozuvi butunlay o'chirilsinmi? Bu amalni ortga qaytarib bo'lmaydi.`, ()=>{
     toast("Qarz yozuvi o'chirildi",'green');
@@ -4550,6 +4607,9 @@ function startListeners(){
       DB.uiVibrationEnabled=!!d.uiVibrationEnabled;
       DB.uiSoundVolume=(typeof d.uiSoundVolume==='number')?d.uiSoundVolume:0.16;
       DB.toastPosition=d.toastPosition||'bottom-right';
+      DB.restrictedAdminPin=d.restrictedAdminPin||'';
+      DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
+      if(currentRole==='admin' && typeof window.applyRestrictedAdminUI==='function') window.applyRestrictedAdminUI();
       if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts();
       if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
       if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
@@ -4560,6 +4620,7 @@ function startListeners(){
         if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
         if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
         if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
+        if(typeof window.fillRestrictedAdminForm==='function') window.fillRestrictedAdminForm();
         if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
         if(typeof window.renderAuditLog==='function') window.renderAuditLog();
         if(typeof window.fillTelegramSettingsForm==='function') window.fillTelegramSettingsForm();
@@ -4686,13 +4747,24 @@ async function init(){
     }));
     document.getElementById('pin-input').addEventListener('keyup', e=>{ if(e.key==='Enter') doLogin(); });
 
+    // YANGI: agar shu qurilmada oldin cheklangan admin kirgan bo'lsa va
+    // bosh admin "Sotuvchi bo'lib kirish"ni yashirishni yoqqan bo'lsa —
+    // login ekranida "Sotuvchi" tugmasi butunlay ko'rsatilmaydi (faqat
+    // shu brauzerda; boshqa qurilmalarga ta'sir qilmaydi).
+    try{
+      if(localStorage.getItem('dokon_hide_seller_role')==='1'){
+        const sellerBtn = document.querySelector('.role-btn[data-role="seller"]');
+        if(sellerBtn) sellerBtn.style.display='none';
+      }
+    }catch(e){}
+
     // YANGI: kun davomida parolsiz kirish — agar shu brauzerda bugungi
     // amal qiluvchi seans mavjud bo'lsa, login sahifasini umuman
     // ko'rsatmasdan avtomatik tizimga kiritamiz.
     const session = getValidSession();
     if(session){
       document.getElementById('login-page').style.display='none';
-      completeLogin(session.role, session.sellerName, session.sellerId);
+      completeLogin(session.role, session.sellerName, session.sellerId, session.isRestrictedAdmin);
     } else {
       document.getElementById('login-page').style.display='flex';
     }
@@ -4755,11 +4827,13 @@ async function init(){
           DB.uiVibrationEnabled=!!d.uiVibrationEnabled;
           DB.uiSoundVolume=(typeof d.uiSoundVolume==='number')?d.uiSoundVolume:0.16;
           DB.toastPosition=d.toastPosition||'bottom-right';
+          DB.restrictedAdminPin=d.restrictedAdminPin||'';
+          DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right'}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false}}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -4821,6 +4895,36 @@ function registerFailedLogin(){
   }
 }
 
+// YANGI: CHEKLANGAN ADMIN — Sozlamalar > "Cheklangan admin" bo'limida
+// bosh admin (owner) belgilagan ruxsatlarga qarab, interfeys elementlarini
+// yashiradi/ko'rsatadi. Har safar admin sifatida kirilganda va ruxsatlar
+// sozlamasi saqlanganda chaqiriladi.
+window.applyRestrictedAdminUI = function(){
+  const restricted = !!window.isRestrictedAdmin;
+  document.body.classList.toggle('restricted-admin', restricted);
+  const perms = (DB.restrictedAdminPermissions) || {};
+  document.body.classList.toggle('no-delete', restricted && !!perms.disableDelete);
+  // "Kirim/Chiqim" (ombor) bo'limini yashirish
+  const stockTab = document.querySelector('#nav-admin button[onclick*="stock-history"]');
+  if(stockTab) stockTab.style.display = (restricted && perms.hideStockInOut) ? 'none' : '';
+  const stockMtab = document.getElementById('mtab-stock-history');
+  if(stockMtab) stockMtab.style.display = (restricted && perms.hideStockInOut) ? 'none' : '';
+}
+
+// Cheklangan admin uchun "o'chirish" turidagi amallarni bloklaydigan
+// umumiy tekshiruv. Har bir o'chirish funksiyasi (deleteProduct va h.k.)
+// boshida shu funksiya chaqiriladi — ruxsat bo'lmasa, ogohlantirish
+// ko'rsatilib, amal bekor qilinadi. Bu FAQAT tugmalarni yashirishga emas,
+// balki funksiya darajasida ham himoyaga tayanadi (masalan konsoldan
+// to'g'ridan-to'g'ri chaqirilishining oldini olish uchun).
+window.restrictedAdminBlocked = function(){
+  if(window.isRestrictedAdmin && DB.restrictedAdminPermissions && DB.restrictedAdminPermissions.disableDelete){
+    toast("⛔ Cheklangan admin sifatida bu amalni bajarish mumkin emas.", 'red');
+    return true;
+  }
+  return false;
+}
+
 window.doLogin = function(){
   const role = document.querySelector('.role-btn.selected')?.dataset.role;
   const pin = document.getElementById('pin-input').value;
@@ -4838,8 +4942,18 @@ window.doLogin = function(){
 
   let sellerName = DB.sellerName || 'Sotuvchi';
   let sellerId = null;
+  let isRestrictedAdmin = false;
   if(role==='admin'){
-    if(pin!==DB.pins.admin){ registerFailedLogin(); err.textContent="Admin PIN noto'g'ri"; return; }
+    // Avval bosh admin (owner) PIN tekshiriladi. Mos kelmasa — va agar
+    // bosh admin "cheklangan admin" PIN o'rnatgan bo'lsa — o'sha PIN bilan
+    // solishtiramiz. Ikkalasiga ham mos kelmasa, xato ko'rsatiladi.
+    if(pin===DB.pins.admin){
+      isRestrictedAdmin = false;
+    } else if(DB.restrictedAdminPin && pin===DB.restrictedAdminPin){
+      isRestrictedAdmin = true;
+    } else {
+      registerFailedLogin(); err.textContent="Admin PIN noto'g'ri"; return;
+    }
   } else if(role==='seller'){
     // YANGI: bir nechta sotuvchi qo'llab-quvvatlanadi — PIN ro'yxatdagi
     // sotuvchilardan biriga mos kelsa, o'sha kishining ismi bilan kiradi.
@@ -4850,18 +4964,31 @@ window.doLogin = function(){
   }
   setLoginLockState({}); // muvaffaqiyatli kirish — hisoblagichni tozalash
   err.textContent='';
-  completeLogin(role, sellerName, sellerId);
+  completeLogin(role, sellerName, sellerId, isRestrictedAdmin);
 }
 
 // YANGI: kirishdan keyingi barcha ekran/holat sozlash bitta joyga
 // chiqarildi — shu funksiya PIN tekshiruvidan keyin (doLogin) HAM,
 // kun davomida saqlangan seansdan avtomatik kirishda (proceedToLogin) HAM
 // chaqiriladi.
-window.completeLogin = function(role, sellerName, sellerId){
+window.completeLogin = function(role, sellerName, sellerId, isRestrictedAdmin){
   currentSellerName = sellerName || DB.sellerName || 'Sotuvchi';
   currentSellerId = sellerId || null;
   currentRole = role;
-  saveSession(role, currentSellerName, currentSellerId);
+  window.isRestrictedAdmin = (role==='admin' && !!isRestrictedAdmin);
+  saveSession(role, currentSellerName, currentSellerId, window.isRestrictedAdmin);
+  document.body.classList.toggle('restricted-admin', window.isRestrictedAdmin);
+  // Cheklangan admin sifatida kirilganda — bosh admin "Sotuvchi bo'lib
+  // kirish"ni yashirish ruxsatini yoqqan bo'lsa, shu QURILMADA (brauzerda)
+  // login ekranidagi "Sotuvchi" tugmasi keyingi safar chiqishda yashiriladi.
+  // Bosh admin (owner) kirsa — bu cheklov avtomatik olib tashlanadi.
+  try{
+    if(window.isRestrictedAdmin && DB.restrictedAdminPermissions && DB.restrictedAdminPermissions.hideSellerLogin){
+      localStorage.setItem('dokon_hide_seller_role', '1');
+    } else if(role==='admin' && !window.isRestrictedAdmin){
+      localStorage.removeItem('dokon_hide_seller_role');
+    }
+  }catch(e){}
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
   resetInactivityTimer();
@@ -4883,6 +5010,7 @@ window.completeLogin = function(role, sellerName, sellerId){
       const el=document.getElementById(id); if(el) el.style.display='flex';
     });
     const bellWrap=document.getElementById('notif-bell-wrap'); if(bellWrap) bellWrap.style.display='inline-block';
+    applyRestrictedAdminUI();
     showPage('dashboard','admin');
     renderDashboard();
     checkNavOverflow();
@@ -4946,6 +5074,9 @@ window.logout = function(){
   clearTimeout(_inactivityTimer);
   Object.keys(cartSerialCodes).forEach(id=>{ while(revertCartSerialCode(id)){} });
   currentRole=null; currentSellerName=DB.sellerName||'Sotuvchi'; currentSellerId=null; cart={};
+  window.isRestrictedAdmin = false;
+  document.body.classList.remove('restricted-admin');
+  document.body.classList.remove('no-delete');
   clearSession(); // qo'lda chiqishda yoki harakatsizlik tufayli — kun davomidagi avtomatik kirish bekor qilinadi
   document.getElementById('login-page').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -4954,6 +5085,12 @@ window.logout = function(){
 }
 
 window.showPage = function(page, role){
+  // Cheklangan admin uchun "Kirim/Chiqim" yashirilgan bo'lsa — tugma
+  // yashirilgan bo'lsa ham, to'g'ridan-to'g'ri chaqirilishining oldini olamiz.
+  if(page==='stock-history' && window.isRestrictedAdmin && DB.restrictedAdminPermissions && DB.restrictedAdminPermissions.hideStockInOut){
+    toast('⛔ Bu bo\\'lim sizga yopiq.', 'red');
+    page = 'dashboard';
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   const navId = role==='admin'?'nav-admin':'nav-seller';
@@ -4984,6 +5121,7 @@ window.showPage = function(page, role){
     if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
     if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
     if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
+    if(typeof window.fillRestrictedAdminForm==='function') window.fillRestrictedAdminForm();
     if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
     if(typeof window.renderAuditLog==='function') window.renderAuditLog();
     if(typeof window.fillTelegramSettingsForm==='function') window.fillTelegramSettingsForm();
@@ -5537,6 +5675,7 @@ function finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 window.deleteProduct=function(id){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   const p=DB.products.find(x=>x.id===id);
   if(!p){ toast("Tovar topilmadi",'red'); return; }
   confirm2('Tovarni o\'chirish', `"${p.name}" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi!`, ()=>{
@@ -6931,6 +7070,7 @@ window.revertSaleGroup=function(receiptId){
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 window.adminRevertGroup=function(receiptId){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
   if(!items.length) return;
   const label = items.length===1 ? `"${items[0].productName}" ni ${items[0].qty} ta` : `${items.length} xil tovarni`;
@@ -7667,7 +7807,36 @@ function isWeakPin(pin){
   const desc = d.every((v,i)=> i===0 || v===d[i-1]-1);
   return asc||desc;
 }
+// YANGI: CHEKLANGAN ADMIN — sozlamalar formasini DB'dagi qiymatlar bilan
+// to'ldiradi (Sozlamalar sahifasi ochilganda chaqiriladi).
+window.fillRestrictedAdminForm = function(){
+  const pinEl = document.getElementById('restricted-admin-pin');
+  if(!pinEl) return; // cheklangan admin sessiyasida karta o'zi DOM'da yashirin, lekin xavfsizlik uchun tekshiramiz
+  const perms = DB.restrictedAdminPermissions || {};
+  pinEl.value = DB.restrictedAdminPin || '';
+  const hs=document.getElementById('ra-hide-stock'); if(hs) hs.checked = !!perms.hideStockInOut;
+  const hl=document.getElementById('ra-hide-seller-login'); if(hl) hl.checked = !!perms.hideSellerLogin;
+  const dd=document.getElementById('ra-disable-delete'); if(dd) dd.checked = !!perms.disableDelete;
+}
+
+window.saveRestrictedAdminSettings = function(){
+  if(window.isRestrictedAdmin){ toast("⛔ Faqat bosh admin bu sozlamani o'zgartira oladi.", 'red'); return; }
+  const pin = (document.getElementById('restricted-admin-pin').value||'').trim();
+  if(pin && pin.length!==4){ toast("PIN 4 raqam bo'lishi kerak", 'red'); return; }
+  if(pin && pin===DB.pins.admin){ toast("Cheklangan admin PIN bosh admin PIN bilan bir xil bo'lmasligi kerak", 'red'); return; }
+  DB.restrictedAdminPin = pin;
+  DB.restrictedAdminPermissions = {
+    hideStockInOut: !!document.getElementById('ra-hide-stock').checked,
+    hideSellerLogin: !!document.getElementById('ra-hide-seller-login').checked,
+    disableDelete: !!document.getElementById('ra-disable-delete').checked
+  };
+  toast('✓ Cheklangan admin sozlamalari saqlandi','green');
+  logAudit('restricted_admin_settings', "🔒 Cheklangan admin sozlamalari o'zgartirildi");
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+
 window.savePins=function(){
+  if(window.isRestrictedAdmin){ toast("⛔ Faqat bosh admin Admin PIN'ni o'zgartira oladi.", 'red'); return; }
   const ap=document.getElementById('new-admin-pin').value;
   if(ap&&ap.length!==4){ toast("Admin PIN 4 raqam bo'lishi kerak",'red'); return; }
   if(ap && isWeakPin(ap)){
@@ -7721,6 +7890,7 @@ window.addSellerRow=function(){
   fbSaveSettings().then(()=>toast('✓ Sotuvchi qo\'shildi','green')).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 window.deleteSellerRow=function(id){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   confirm2("Sotuvchini o'chirish", "Bu sotuvchi endi tizimga kira olmaydi. Uning oldingi savdo tarixi saqlanib qoladi. Davom etilsinmi?", ()=>{
     DB.sellers = (DB.sellers||[]).filter(s=>s.id!==id);
     renderSellersManager();
@@ -8170,6 +8340,7 @@ window.addTelegramAdmin = function(){
   toast('✓ Admin qo\'shildi — pastdagi "💾 Saqlash" tugmasini bosishni unutmang','green');
 }
 window.removeTelegramAdmin = function(id){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   DB.telegramAdmins = (DB.telegramAdmins||[]).filter(a=>a.id!==id);
   renderTelegramAdminsList();
   saveTelegramSettings(true);
@@ -8604,6 +8775,7 @@ window.printSaleReceipt=function(saleId){
 }
 
 window.clearAll=function(){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   confirm2('Hammasini o\'chirish','Barcha tovarlar va savdolar o\'chiriladi!', ()=>{
     const productIds=DB.products.map(p=>p.id);
     const saleIds=DB.sales.map(s=>s.id);
@@ -8631,6 +8803,7 @@ const PARTIAL_RESET_META = {
   promotions: { label:'Aksiyalar', collection:'promotions', dbKey:'promotions' }
 };
 window.partialReset = function(type){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   const meta = PARTIAL_RESET_META[type];
   if(!meta) return;
   const items = DB[meta.dbKey] || [];
@@ -12316,6 +12489,7 @@ window.saveExpense = function(){
   if(document.getElementById('page-profit')?.classList.contains('active')) renderProfit();
 }
 window.deleteExpense = function(id){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   const e = (DB.expenses||[]).find(x=>x.id===id);
   if(!e) return;
   confirm2("Xarajatni o'chirish", `"${e.name}" — ${fmt(e.amount)} so'm xarajat yozuvi butunlay o'chirilsinmi?`, ()=>{
@@ -12569,6 +12743,7 @@ window.renameLabelTemplate = function(kind){
   toast('✓ Shablon nomi o\'zgartirildi','green');
 };
 window.deleteLabelTemplate = function(kind){
+  if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
   const cfg = labelTemplateConfig(kind);
   const sel = document.getElementById(cfg.selectId);
   if(!sel || !sel.value) return;
@@ -15907,6 +16082,7 @@ document.addEventListener('keydown', function(e){
     toast2('✓ Yangilandi','green');
   };
   window.deleteSupplier = function(id){
+    if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
     const s = DB.suppliers.find(x=>x.id===id); if(!s) return;
     confirm2("Yetkazib beruvchini o'chirish", `${s.name} butunlay o'chirilsinmi?`, ()=>{ fbDeleteSupplier(id); toast2("O'chirildi",'green'); });
   };
@@ -16015,6 +16191,7 @@ document.addEventListener('keydown', function(e){
     toast2(`✓ ${fmt2(discount)} so'm chegirma qo'llanildi`,'green');
   };
   window.deleteCustomer = function(id){
+    if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
     confirm2("Mijozni o'chirish", `${c.name} butunlay o'chirilsinmi?`, ()=>{ fbDeleteCustomer(id); toast2("O'chirildi",'green'); });
   };
