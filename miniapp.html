@@ -80,7 +80,7 @@
 <div id="guest" class="center-msg hidden">
   <div class="icon">🔒</div>
   <div style="font-size:16px;font-weight:600">Siz ro'yxatdan o'tmagansiz</div>
-  <div id="guest-msg" style="color:var(--hint);font-size:13px;max-width:280px">Botga qaytib <b>/start</b> yozing. Agar do'kon administratori sizni Telegram username yoki ID orqali ro'yxatga qo'shgan bo'lsa, hech qanday tugmasiz avtomatik tanilasiz.</div>
+  <div id="guest-msg" style="color:var(--hint);font-size:13px;max-width:280px">Botga qaytib <b>/start</b> yozing — avtomatik ravishda mijoz sifatida ro'yxatdan o'tasiz va bu ilovadan foydalana olasiz.</div>
 </div>
 
 <div id="app" class="container hidden"></div>
@@ -148,15 +148,58 @@ function render(){
   }
   show('app'); show('tabs');
   if (tg && tg.setHeaderColor) try{ tg.setHeaderColor('secondary_bg_color'); }catch(e){}
-  renderDebtor();
+  renderClient();
 }
 
 // ================= MIJOZ / QARZDOR KO'RINISHI =================
-function renderDebtor(){
-  const d = STATE.data;
-  document.getElementById('tabs').innerHTML = '';
+const CLIENT_TABS = [['home','🏠','Mening'], ['catalog','🛍','Tovarlar']];
+
+function renderClient(){
+  const tabsEl = document.getElementById('tabs');
+  const active = STATE.clientTab || 'home';
+  tabsEl.innerHTML = CLIENT_TABS.map(([key,ic,label])=>
+    `<div class="tab ${active===key?'active':''}" onclick="switchClientTab('${key}')"><span class="ic">${ic}</span>${label}</div>`
+  ).join('');
   const app = document.getElementById('app');
-  let html = `
+  if (active === 'catalog') renderClientCatalog(app, STATE.data);
+  else renderDebtor(app, STATE.data);
+}
+function switchClientTab(t){ STATE.clientTab = t; renderClient(); }
+
+// ---------------- MIJOZ: TOVARLAR KATALOGI ----------------
+// Mijoz tovarlar bo'limidagi hamma ma'lumotni (nomi, narxi, hajmi, izohi)
+// ko'radi — LEKIN ombordagi mavjud miqdori (stock) hech qachon
+// ko'rsatilmaydi, chunki bu faqat administrator uchun ichki ma'lumot.
+function renderClientCatalog(app, d){
+  const products = d.products || [];
+  let html = `<div class="section-title">🛍 Tovarlar katalogi</div>`;
+  if (!products.length){
+    html += `<div class="card empty">Hozircha tovarlar mavjud emas.</div>`;
+  } else {
+    products.forEach(p=>{
+      html += `<div class="card">
+        <div class="row">
+          <div class="name">${esc(p.name)}</div>
+          <div class="amount-green">${fmt(p.price)} ${cs()}</div>
+        </div>
+        ${p.volume ? `<div class="meta">📦 Hajmi: ${esc(p.volume)}</div>` : ''}
+        ${p.note ? `<div class="meta">📝 ${esc(p.note)}</div>` : ''}
+      </div>`;
+    });
+  }
+  app.innerHTML = html;
+}
+
+function renderDebtor(app, d){
+  let html = '';
+  if (d.loyalty){
+    html += `<div class="hero">
+      <div class="label">⭐ Sodiqlik dasturi</div>
+      <div class="amount">${d.loyalty.points||0} ball</div>
+      <div class="sub">Jami xarid: ${fmt(d.loyalty.totalSpent||0)} ${cs()} (${d.loyalty.purchaseCount||0} marta)</div>
+    </div>`;
+  }
+  html += `
     <div class="hero">
       <div class="label">${d.isOrgViewer ? '🏢 ' + esc(d.name) + ' — butun tashkilot qarzi' : (d.org ? '👤 ' + esc(d.name) + ' — sizning shaxsiy qarzingiz' : 'Mening qarzim')}</div>
       <div class="amount">${fmt(d.total)} ${cs()}</div>
@@ -205,7 +248,7 @@ function renderDebtor(){
   }
   app.innerHTML = html;
 }
-function setDebtorView(v){ STATE.debtorView = v; renderDebtor(); }
+function setDebtorView(v){ STATE.debtorView = v; renderClient(); }
 
 // ================= ADMIN KO'RINISHI =================
 const ADMIN_TABS = [
