@@ -1651,7 +1651,7 @@ body.dark table {
   </div>
   <div class="card" style="max-width:480px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🛒 Sotuvchilar</h3>
-    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Har bir sotuvchi uchun alohida ism va 4 xonali PIN belgilang. Kirish ekranida sotuvchi faqat o'z PIN kodini kiritadi — tizim shu orqali kim ekanini avtomatik aniqlaydi va chek/hisobotlarda o'sha ismni ko'rsatadi.</p>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Har bir sotuvchi uchun alohida ism va 4 xonali PIN belgilang. Kirish ekranida sotuvchi faqat o'z PIN kodini kiritadi — tizim shu orqali kim ekanini avtomatik aniqlaydi va chek/hisobotlarda o'sha ismni ko'rsatadi. <b>Telegram username</b>ni ham kiritsangiz (masalan @aziz_seller), sotuvchi Telegram botga <code>/start</code> yozib Mini App'ni ochganda PIN kiritmasdan, bitta bosish bilan avtomatik kiradi.</p>
     <div id="sellers-list" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.6rem"></div>
     <button class="btn sm green" style="margin-bottom:.85rem" onclick="saveSellersList()">💾 O'zgarishlarni saqlash</button>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border2);padding-top:.85rem">
@@ -4765,9 +4765,38 @@ async function init(){
     if(session){
       document.getElementById('login-page').style.display='none';
       completeLogin(session.role, session.sellerName, session.sellerId, session.isRestrictedAdmin);
-    } else {
-      document.getElementById('login-page').style.display='flex';
+      return;
     }
+
+    // YANGI: Telegram Mini App ichida ochilgan bo'lsa (bot orqali) — PIN
+    // kiritishni ham talab qilmasdan, avtomatik kirish. Telegram initData
+    // serverda (api/whoami.js) bot tokeni bilan raqamli tekshiriladi,
+    // shuning uchun soxta bo'lishi mumkin emas; oddiy brauzerda initData
+    // bo'lmagani uchun bu yo'l ishlamaydi va odatdagi PIN ekrani chiqadi.
+    try{
+      const tg = window.Telegram && window.Telegram.WebApp;
+      const initData = tg && tg.initData;
+      if(initData){
+        document.getElementById('login-page').style.display='none';
+        fetch('/api/whoami', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData }) })
+          .then(r=>r.json())
+          .then(who=>{
+            if(who && who.role==='admin'){
+              completeLogin('admin', DB.sellerName, null, false);
+            } else if(who && who.role==='seller'){
+              completeLogin('seller', who.sellerName || 'Sotuvchi', who.sellerId || null, false);
+            } else {
+              // Tanilmadi (masalan hali ro'yxatga kiritilmagan xodim) —
+              // odatdagi PIN ekraniga qaytamiz.
+              document.getElementById('login-page').style.display='flex';
+            }
+          })
+          .catch(()=>{ document.getElementById('login-page').style.display='flex'; });
+        return;
+      }
+    }catch(e){ console.error('Telegram avtomatik kirish xatosi:', e); }
+
+    document.getElementById('login-page').style.display='flex';
   }
 
   try{
@@ -5088,7 +5117,7 @@ window.showPage = function(page, role){
   // Cheklangan admin uchun "Kirim/Chiqim" yashirilgan bo'lsa — tugma
   // yashirilgan bo'lsa ham, to'g'ridan-to'g'ri chaqirilishining oldini olamiz.
   if(page==='stock-history' && window.isRestrictedAdmin && DB.restrictedAdminPermissions && DB.restrictedAdminPermissions.hideStockInOut){
-    toast('⛔ Bu bo\\'lim sizga yopiq.', 'red');
+    toast("⛔ Bu bo'lim sizga yopiq.", 'red');
     page = 'dashboard';
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -7866,10 +7895,12 @@ window.renderSellersManager=function(){
   }
   wrap.innerHTML = sellers.map(s=>`
     <div class="seller-row" data-id="${s.id}" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .6rem">
-      <input type="text" value="${(s.name||'').replace(/"/g,'&quot;')}" maxlength="40" style="flex:1;min-width:110px;border:1.5px solid var(--border2);border-radius:6px;padding:.4rem .6rem;font-size:14px;outline:none" data-field="name">
+      <input type="text" value="${(s.name||'').replace(/"/g,'&quot;')}" maxlength="40" placeholder="Ism" style="flex:1;min-width:110px;border:1.5px solid var(--border2);border-radius:6px;padding:.4rem .6rem;font-size:14px;outline:none" data-field="name">
       <input type="password" value="${s.pin||''}" maxlength="4" inputmode="numeric" style="width:100px;border:1.5px solid var(--border2);border-radius:6px;padding:.4rem .6rem;font-size:14px;outline:none" data-field="pin">
+      <input type="text" value="${(s.telegramUsername||'').replace(/"/g,'&quot;')}" maxlength="40" placeholder="@telegram_username" title="Sotuvchi Telegram bot orqali Mini App ochganda avtomatik va PIN'siz kirishi uchun (ixtiyoriy)" style="width:150px;border:1.5px solid var(--border2);border-radius:6px;padding:.4rem .6rem;font-size:14px;outline:none" data-field="telegramUsername">
       <button class="btn sm" onclick="showSellerPin(this)" title="PIN'ni ko'rsatish/yashirish">👁</button>
       <button class="btn sm red" onclick="deleteSellerRow('${s.id}')" title="O'chirish">🗑</button>
+      ${s.telegramChatId?'<span style="font-size:11px;color:var(--green,#16a34a);white-space:nowrap">✓ Telegram ulangan</span>':'<span style="font-size:11px;color:var(--text3);white-space:nowrap">Telegram ulanmagan</span>'}
     </div>`).join('');
 }
 window.showSellerPin=function(btn){
@@ -7884,7 +7915,7 @@ window.addSellerRow=function(){
   if(!/^\d{4}$/.test(pin)){ toast("PIN 4 xonali raqam bo'lishi kerak",'red'); return; }
   if((DB.sellers||[]).some(s=>s.pin===pin)){ toast("Bu PIN allaqachon boshqa sotuvchida band",'red'); return; }
   if(!DB.sellers) DB.sellers=[];
-  DB.sellers.push({ id: uid(), name, pin });
+  DB.sellers.push({ id: uid(), name, pin, telegramUsername:'', telegramChatId:'' });
   nameInp.value=''; pinInp.value='';
   renderSellersManager();
   fbSaveSettings().then(()=>toast('✓ Sotuvchi qo\'shildi','green')).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
@@ -7916,11 +7947,21 @@ window.saveSellersList=function(){
       const id=row.dataset.id;
       const name=(row.querySelector('input[data-field="name"]').value||'').trim();
       const pin=(row.querySelector('input[data-field="pin"]').value||'').trim();
+      const tgUserInp=row.querySelector('input[data-field="telegramUsername"]');
+      const telegramUsername=tgUserInp?(tgUserInp.value||'').trim().replace(/^@/,''):'';
       const s=DB.sellers.find(x=>x.id===id);
-      if(s){ s.name=name; s.pin=pin; }
+      if(s){
+        s.name=name; s.pin=pin;
+        // Username o'zgartirilsa - eski bog'langan Telegram hisobi (chatId)
+        // endi noto'g'ri bo'lib qolishi mumkin, shuning uchun qayta
+        // bog'lanishi uchun tozalaymiz (u botga qayta /start yozganda
+        // avtomatik qayta bog'lanadi).
+        if((s.telegramUsername||'') !== telegramUsername) s.telegramChatId='';
+        s.telegramUsername=telegramUsername;
+      }
     }
     toast('✓ Sotuvchilar ro\'yxati saqlandi','green');
-    fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+    fbSaveSettings().then(renderSellersManager).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   };
   if(weakNames.length){
     confirm2("⚠️ Kuchsiz PIN aniqlandi", `${weakNames.join(', ')} uchun tanlangan PIN (masalan 0000, 1234) osongina taxmin qilinishi mumkin. Baribir saqlansinmi?`, doSave);
