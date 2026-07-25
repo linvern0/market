@@ -19,41 +19,58 @@
     --warn: #f59e0b;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:80px}
-  .container{padding:12px}
+  html{scrollbar-width:thin}
+  body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:84px;-webkit-tap-highlight-color:transparent;letter-spacing:.1px}
+  body,.card,.stat-box,.btn,.tab,.pill,.toggle,.chip,input,select,textarea{transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease,transform .12s ease,color .2s ease,opacity .2s ease}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:20px}
+  .container{padding:12px;animation:mv-fade-in .25s ease}
+  @keyframes mv-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   .center-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;padding:24px;gap:10px}
-  .center-msg .icon{font-size:48px}
-  .card{background:var(--sec-bg);border-radius:14px;padding:14px 16px;margin-bottom:10px}
-  .hero{background:linear-gradient(135deg,var(--button),#10302b);border-radius:16px;padding:18px;margin-bottom:14px;color:#fff}
-  .hero .label{font-size:13px;opacity:.85}
-  .hero .amount{font-size:28px;font-weight:800;margin-top:2px}
-  .hero .sub{font-size:12px;opacity:.75;margin-top:4px}
-  .section-title{font-size:14px;font-weight:700;color:var(--hint);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:center}
+  .center-msg .icon{font-size:48px;animation:mv-breathe 2.6s ease-in-out infinite}
+  @keyframes mv-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .card{background:var(--sec-bg);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .card:active{transform:scale(.994)}
+  .hero{background:linear-gradient(135deg,var(--button),#0d9488 65%,#10302b);border-radius:20px;padding:20px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 10px 30px -8px rgba(0,0,0,.45)}
+  .hero::before{content:'';position:absolute;top:-40%;right:-15%;width:65%;height:180%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 65%);pointer-events:none}
+  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.08) 45%,transparent 60%);background-size:220% 100%;animation:mv-shine 4.5s ease-in-out infinite}
+  @keyframes mv-shine{0%{background-position:140% 0}60%,100%{background-position:-60% 0}}
+  .hero .label{font-size:13px;opacity:.88;position:relative;display:flex;align-items:center;gap:6px}
+  .hero .amount{font-size:30px;font-weight:800;margin-top:3px;position:relative;letter-spacing:-.02em}
+  .hero .sub{font-size:12px;opacity:.8;margin-top:5px;position:relative}
+  .section-title{font-size:13px;font-weight:700;color:var(--hint);margin:18px 0 9px;text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
   .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
   .name{font-weight:600;font-size:15px}
   .meta{font-size:12px;color:var(--hint);margin-top:2px}
   .amount-red{color:var(--danger);font-weight:700}
   .amount-green{color:var(--accent);font-weight:700}
-  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--sec-bg);border-top:1px solid rgba(255,255,255,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom));overflow-x:auto}
-  .tab{flex:1;min-width:56px;text-align:center;padding:8px 2px;border-radius:10px;font-size:10.5px;color:var(--hint);cursor:pointer}
-  .tab.active{color:var(--button);background:rgba(79,70,229,.12)}
-  .tab .ic{font-size:19px;display:block;margin-bottom:2px}
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:rgba(23,32,42,.85);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-top:1px solid rgba(255,255,255,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom));overflow-x:auto;z-index:40}
+  .tab{flex:1;min-width:56px;text-align:center;padding:8px 2px;border-radius:10px;font-size:10.5px;color:var(--hint);cursor:pointer;position:relative}
+  .tab.active{color:var(--button);background:rgba(79,70,229,.14)}
+  .tab.active::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:22px;height:3px;border-radius:0 0 4px 4px;background:var(--button);box-shadow:0 0 8px var(--button)}
+  .tab .ic{font-size:19px;display:block;margin-bottom:2px;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+  .tab.active .ic{transform:translateY(-2px) scale(1.1)}
   .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-  .stat-box{background:var(--sec-bg);border-radius:12px;padding:12px}
+  .stat-box{background:var(--sec-bg);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:13px}
+  .stat-box:active{transform:scale(.97)}
   .stat-box .v{font-size:19px;font-weight:800}
   .stat-box .l{font-size:11px;color:var(--hint);margin-top:2px}
-  .btn{background:var(--button);color:var(--button-text);border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn{background:var(--button);color:var(--button-text);border:none;border-radius:11px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 3px 10px -3px rgba(79,70,229,.5)}
+  .btn:active{transform:scale(.95);box-shadow:none}
   .btn.small{padding:6px 10px;font-size:12px}
-  .btn.wide{width:100%;margin-top:12px;padding:11px}
-  .btn.danger{background:var(--danger)}
-  .btn-outline{background:transparent;border:1px solid var(--button);color:var(--button)}
-  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+  .btn.wide{width:100%;margin-top:12px;padding:12px}
+  .btn.danger{background:var(--danger);box-shadow:0 3px 10px -3px rgba(239,68,68,.5)}
+  .btn-outline{background:transparent;border:1px solid var(--button);color:var(--button);box-shadow:none}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700}
   .pill.low{background:rgba(245,158,11,.15);color:var(--warn)}
   .pill.out{background:rgba(239,68,68,.15);color:var(--danger)}
   .pill.org{background:rgba(79,158,234,.15);color:var(--link)}
-  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:50}
-  .modal{background:var(--sec-bg);width:100%;border-radius:16px 16px 0 0;padding:18px;max-height:85vh;overflow:auto}
-  input[type=number],input[type=text],select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:15px;margin-top:6px;font-family:inherit}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);display:flex;align-items:flex-end;z-index:50;animation:mv-fade-in-fast .18s ease}
+  @keyframes mv-fade-in-fast{from{opacity:0}to{opacity:1}}
+  .modal{background:var(--sec-bg);width:100%;border-radius:18px 18px 0 0;padding:18px;max-height:85vh;overflow:auto;animation:mv-sheet-up .24s cubic-bezier(.2,.9,.3,1.2);box-shadow:0 -12px 40px rgba(0,0,0,.4)}
+  @keyframes mv-sheet-up{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+  input[type=number],input[type=text],select,textarea{width:100%;padding:10px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:15px;margin-top:6px;font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--button);box-shadow:0 0 0 3px rgba(79,70,229,.18)}
   label.f{display:block;font-size:12px;color:var(--hint);margin-top:10px}
   label.f:first-child{margin-top:0}
   .hidden{display:none!important}
@@ -63,14 +80,19 @@
   .switch-row:last-child{border-bottom:none}
   .toggle{width:44px;height:26px;border-radius:20px;background:rgba(255,255,255,.15);position:relative;cursor:pointer;flex-shrink:0}
   .toggle.on{background:var(--accent)}
-  .toggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+  .toggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s cubic-bezier(.34,1.56,.64,1);box-shadow:0 1px 3px rgba(0,0,0,.35)}
   .toggle.on .knob{left:21px}
   .qty-ctrl{display:flex;align-items:center;gap:8px}
   .qty-ctrl button{width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:var(--bg);color:var(--text);font-size:16px;cursor:pointer}
-  .cart-bar{position:fixed;bottom:64px;left:0;right:0;background:var(--button);color:var(--button-text);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;z-index:20;cursor:pointer}
-  .empty{text-align:center;color:var(--hint);padding:18px}
-  .chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;background:rgba(255,255,255,.08);color:var(--hint);margin:2px 4px 2px 0;cursor:pointer}
-  .chip.active{background:var(--button);color:var(--button-text)}
+  .qty-ctrl button:active{transform:scale(.9)}
+  .cart-bar{position:fixed;bottom:64px;left:0;right:0;background:linear-gradient(135deg,var(--button),#0d9488);color:var(--button-text);padding:13px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;z-index:20;cursor:pointer;box-shadow:0 -6px 20px rgba(0,0,0,.35)}
+  .cart-bar:active{filter:brightness(1.08)}
+  .empty{text-align:center;color:var(--hint);padding:22px}
+  .chip{display:inline-block;padding:4px 11px;border-radius:20px;font-size:11px;background:rgba(255,255,255,.08);color:var(--hint);margin:2px 4px 2px 0;cursor:pointer;border:1px solid transparent}
+  .chip.active{background:var(--button);color:var(--button-text);box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+  }
 </style>
 </head>
 <body>
@@ -136,18 +158,16 @@ function hide(el){ document.getElementById(el).classList.add('hidden'); }
 
 function render(){
   hide('loading');
-  if (STATE.data.role === 'admin') {
-    // Admin har doim TO'LIQ boshqaruv panelida (index.html) ishlashi kerak —
-    // agar u qandaydir sabab bilan shu yengil sahifaga (miniapp.html) kirib
-    // qolsa, avtomatik index.html'ga yo'naltiramiz (ikkita alohida admin
-    // interfeysini parallel saqlab, ularning bir-biridan orqada qolishining
-    // oldini olish uchun).
-    const target = window.location.href.replace(/miniapp\.html([^/]*)$/, 'index.html');
-    window.location.replace(target);
-    return;
-  }
   show('app'); show('tabs');
   if (tg && tg.setHeaderColor) try{ tg.setHeaderColor('secondary_bg_color'); }catch(e){}
+  // YANGI: ilgari admin shu yerga tushib qolsa, majburan index.html'ga
+  // (kompyuter uchun to'liq panel) yo'naltirilardi — endi mini-ilovaning
+  // o'zi ham TO'LIQ boshqaruv imkoniyatiga ega (sotish, qarzlar, tovarlar,
+  // qarzdorlar, hisobotlar, mijozlar/sodiqlik, xodimlar, sozlamalar), shu
+  // sabab admin xohlasa shu yerda — telefondan qulay — ishlashda davom
+  // etadi. Kompyuterdagi to'liq panel ("🖥 Boshqaruv panelini ochish"
+  // tugmasi) ham alohida taklif etiladi, ikkalasidan xohlaganini tanlaydi.
+  if (STATE.data.role === 'admin') { renderAdmin(); return; }
   renderClient();
 }
 
@@ -253,7 +273,8 @@ function setDebtorView(v){ STATE.debtorView = v; renderClient(); }
 // ================= ADMIN KO'RINISHI =================
 const ADMIN_TABS = [
   ['main','📊','Bosh'], ['sell','🛒','Sotish'], ['debts','📋','Qarzlar'],
-  ['stock','📦','Tovarlar'], ['debtors','👥','Qarzdorlar'], ['settings','⚙️','Sozlama'],
+  ['stock','📦','Tovarlar'], ['debtors','👥','Qarzdorlar'], ['report','📈','Hisobot'],
+  ['customers','⭐','Mijozlar'], ['staff','🧑\u200d💼','Xodimlar'], ['settings','⚙️','Sozlama'],
 ];
 
 function renderAdmin(){
@@ -269,6 +290,9 @@ function renderAdmin(){
   if (STATE.tab === 'debts') renderDebts(app, d);
   if (STATE.tab === 'stock') renderStock(app, d);
   if (STATE.tab === 'debtors') renderDebtorsTab(app, d);
+  if (STATE.tab === 'report') renderReport(app, d);
+  if (STATE.tab === 'customers') renderCustomers(app, d);
+  if (STATE.tab === 'staff') renderStaff(app, d);
   if (STATE.tab === 'settings') renderSettings(app, d);
 }
 
@@ -654,6 +678,183 @@ async function deleteDebtor(id, name){
   if (r.ok){ await loadData(); STATE.tab='debtors'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
 }
 
+// ---------------- HISOBOT (kunlik/haftalik/oylik, top tovarlar, so'nggi savdolar) ----------------
+function renderReport(app, d){
+  const r = d.report || {};
+  const per = STATE.reportPeriod || 'today';
+  const stat = r[per] || { revenue:0, profit:0, salesCount:0, newDebt:0, changePct:null };
+  const periodLabel = { today:'Bugun', week:'Oxirgi 7 kun', month:'Joriy oy' }[per];
+  const changeLine = stat.changePct===null ? '' :
+    `<div class="meta" style="margin-top:4px">${stat.changePct>=0?'▲':'▼'} ${stat.changePct>=0?'+':''}${stat.changePct.toFixed(1)}% (oldingi davrga nisbatan)</div>`;
+  let html = `<div class="section-title">Hisobot</div>
+    <div class="card" style="display:flex;gap:6px;padding:8px">
+      ${['today','week','month'].map(k=>`<button class="btn small ${per===k?'':'btn-outline'}" style="flex:1" onclick="setReportPeriod('${k}')">${ {today:'Kun',week:'Hafta',month:'Oy'}[k] }</button>`).join('')}
+    </div>
+    <div class="hero">
+      <div class="label">💰 ${periodLabel} — tushum</div>
+      <div class="amount">${fmt(stat.revenue)} ${cs()}</div>
+      ${changeLine}
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="v">${fmt(stat.profit)}</div><div class="l">Foyda</div></div>
+      <div class="stat-box"><div class="v">${stat.salesCount}</div><div class="l">Savdolar soni</div></div>
+      <div class="stat-box"><div class="v">${stat.salesCount ? fmt(Math.round(stat.revenue/stat.salesCount)) : 0}</div><div class="l">O'rtacha chek</div></div>
+      <div class="stat-box"><div class="v" style="color:var(--danger)">${fmt(stat.newDebt)}</div><div class="l">Yangi qarzga sotildi</div></div>
+    </div>
+    <div class="section-title">Oxirgi 7 kun — savdo</div>
+    <div class="card">${renderWeekChart(d.last7Days||[])}</div>
+    <div class="section-title">🏆 Eng ko'p sotilgan tovarlar (${periodLabel.toLowerCase()})</div>`;
+  const top = (r.topProducts && r.topProducts[per]) || [];
+  if (!top.length){ html += `<div class="card empty">Ma'lumot yo'q</div>`; }
+  else {
+    const medals = ['🥇','🥈','🥉'];
+    top.forEach((p,i)=>{
+      html += `<div class="card row"><div class="name">${medals[i]||(i+1)+'.'} ${esc(p.name)}</div><div style="text-align:right"><div class="amount-green">${fmt(p.revenue)} ${cs()}</div><div class="meta">${p.qty} dona sotildi</div></div></div>`;
+    });
+  }
+  html += `<div class="section-title">🧾 So'nggi savdolar</div>`;
+  const recent = r.recentSales || [];
+  if (!recent.length){ html += `<div class="card empty">Hali savdo yo'q</div>`; }
+  else {
+    recent.forEach(s=>{
+      html += `<div class="card row">
+        <div><div class="name">${esc(s.productName)} ${s.isDebt?'<span class="pill org">nasiya</span>':''}</div><div class="meta">${new Date(s.date).toLocaleString('uz-UZ',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${s.qty} ta · ${esc(s.seller||'')}</div></div>
+        <div class="amount-green">${fmt(s.total)} ${cs()}</div>
+      </div>`;
+    });
+  }
+  html += `<div class="card" style="text-align:center"><button class="btn small btn-outline" onclick="exportReportCsv()">📤 Excel'ga eksport</button></div>`;
+  app.innerHTML = html;
+}
+function setReportPeriod(p){ STATE.reportPeriod = p; renderAdmin(); }
+function exportReportCsv(){
+  const r = (STATE.data.report && STATE.data.report.recentSales) || [];
+  const rows = [['Sana','Tovar','Miqdor','Narx','Summa','Sotuvchi','Turi']];
+  r.forEach(s=>rows.push([new Date(s.date).toLocaleString('uz-UZ'), s.productName, s.qty, s.price, s.total, s.seller||'', s.isDebt?'Nasiya':'Naqd']));
+  const csv = rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `hisobot_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+// ---------------- MIJOZLAR / SODIQLIK DASTURI ----------------
+function renderCustomers(app, d){
+  const list = [...(d.customers||[])].sort((a,b)=>(b.totalSpent||0)-(a.totalSpent||0));
+  let html = `<div class="section-title">Mijozlar / sodiqlik (${list.length}) <button class="btn small" onclick="openCustomerModal()">+ Qo'shish</button></div>`;
+  if (!list.length){ html += `<div class="card empty">Hali sodiqlik mijozi yo'q. Mijozlar chekni Telegram botda skanerlaganda yoki shu yerdan qo'shganda avtomatik paydo bo'ladi.</div>`; }
+  list.forEach(c=>{
+    const tier = (c.totalSpent||0) >= 2000000 ? '🥇 Oltin' : (c.totalSpent||0) >= 500000 ? '🥈 Kumush' : '🥉 Boshlang\'ich';
+    html += `<div class="card">
+      <div class="row">
+        <div><div class="name">${esc(c.name)}</div><div class="meta">${tier} · ${c.telegramUsername?'@'+esc(c.telegramUsername):(c.phone?esc(c.phone):'Telegram ulanmagan')}</div></div>
+        <div style="text-align:right"><div class="name">⭐ ${c.points||0}</div><div class="meta">${fmt(c.totalSpent||0)} ${cs()}</div></div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn small btn-outline" onclick="openPointsModal('${c.id}','${esc(c.name).replace(/'/g,"\\'")}',${c.points||0})">⭐ Ball</button>
+        <button class="btn small btn-outline" onclick='openCustomerModal(${JSON.stringify(c.id)})'>✏️</button>
+        <button class="btn small danger" onclick="deleteCustomer('${c.id}','${esc(c.name).replace(/'/g,"\\'")}')">🗑</button>
+      </div>
+    </div>`;
+  });
+  app.innerHTML = html;
+}
+function openCustomerModal(id){
+  const d = STATE.data;
+  const c = id ? (d.customers||[]).find(x=>x.id===id) : null;
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px">${c?'Mijozni tahrirlash':'Yangi mijoz'}</div>
+    <label class="f">Ism *</label><input type="text" id="cf-name" value="${c?esc(c.name):''}">
+    <label class="f">Telefon</label><input type="text" id="cf-phone" value="${c?esc(c.phone):''}">
+    <label class="f">Telegram username (@ siz)</label><input type="text" id="cf-username" value="${c?esc(c.telegramUsername):''}">
+    <button class="btn wide" onclick="submitCustomer(${c?`'${id}'`:'null'})">Saqlash</button>
+  `);
+}
+async function submitCustomer(id){
+  const payload = {
+    id: id || undefined,
+    name: document.getElementById('cf-name').value.trim(),
+    phone: document.getElementById('cf-phone').value.trim(),
+    telegramUsername: document.getElementById('cf-username').value.trim(),
+  };
+  if (!payload.name){ alert('Ismni kiriting.'); return; }
+  const r = await callAction('upsert_customer', payload);
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='customers'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+async function deleteCustomer(id, name){
+  if (!confirm(`"${name}" sodiqlik ro'yxatidan o'chirilsinmi?`)) return;
+  const r = await callAction('delete_customer', { id });
+  if (r.ok){ await loadData(); STATE.tab='customers'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+}
+function openPointsModal(id, name, current){
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(name)}</div>
+    <div style="color:var(--hint);font-size:13px;margin-bottom:10px">Joriy ball: ${current}</div>
+    <label class="f">Necha ball qo'shiladi (ayirish uchun manfiy son kiriting, masalan -20)</label>
+    <input type="number" id="pts-delta" placeholder="Masalan: 50">
+    <label class="f">Sabab (ixtiyoriy)</label>
+    <input type="text" id="pts-reason" placeholder="Masalan: tug'ilgan kun sovg'asi">
+    <button class="btn wide" onclick="submitPoints('${id}')">Saqlash</button>
+  `);
+}
+async function submitPoints(id){
+  const delta = parseInt(document.getElementById('pts-delta').value, 10);
+  const reason = document.getElementById('pts-reason').value.trim();
+  if (!delta){ alert("Ball miqdorini kiriting."); return; }
+  const r = await callAction('adjust_customer_points', { id, delta, reason });
+  closeModal();
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Ball yangilandi ✅'); await loadData(); STATE.tab='customers'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error||''));
+}
+
+// ---------------- XODIMLAR (sotuvchilar, PIN bilan kirish) ----------------
+function renderStaff(app, d){
+  const list = d.sellers||[];
+  let html = `<div class="section-title">Xodimlar / sotuvchilar (${list.length})</div>
+    <div class="card" style="font-size:12px;color:var(--hint)">Har bir sotuvchi 4 xonali PIN bilan kassaga (index.html) kiradi. Telegram username kiritilsa, bot orqali PIN'siz avtomatik kirish ham mumkin.</div>
+    <div class="card">
+      <label class="f">Ism *</label><input type="text" id="stf-name" placeholder="Masalan: Dilnoza">
+      <label class="f">PIN (4 raqam) *</label><input type="text" id="stf-pin" maxlength="4" inputmode="numeric" placeholder="masalan: 1234">
+      <label class="f">Telegram username (ixtiyoriy, @ siz)</label><input type="text" id="stf-username" placeholder="masalan: dilnoza_dev">
+      <button class="btn wide" onclick="submitStaff()">+ Xodim qo'shish</button>
+    </div>`;
+  if (!list.length){ html += `<div class="card empty">Hali xodim qo'shilmagan.</div>`; }
+  list.forEach(s=>{
+    html += `<div class="card">
+      <div class="row">
+        <div><div class="name">${esc(s.name)}</div><div class="meta">PIN: <span id="pin-mask-${s.id}">••••</span> <a href="javascript:void(0)" onclick="togglePinMask('${s.id}','${esc(s.pin)}')" style="color:var(--button)">(ko'rsatish)</a></div></div>
+        <span class="pill ${s.linked?'':'low'}" style="${s.linked?'background:rgba(16,185,129,.15);color:var(--accent)':''}">${s.linked?'✅ Telegram ulangan':(s.telegramUsername?'⏳ kutilmoqda':'Telegram yo\'q')}</span>
+      </div>
+      <div style="margin-top:8px;text-align:right">
+        <button class="btn small danger" onclick="deleteStaff('${s.id}','${esc(s.name).replace(/'/g,"\\'")}')">🗑 O'chirish</button>
+      </div>
+    </div>`;
+  });
+  app.innerHTML = html;
+}
+function togglePinMask(id, pin){
+  const el = document.getElementById('pin-mask-'+id);
+  if (!el) return;
+  el.textContent = el.textContent === '••••' ? pin : '••••';
+}
+async function submitStaff(){
+  const name = document.getElementById('stf-name').value.trim();
+  const pin = document.getElementById('stf-pin').value.trim();
+  const telegramUsername = document.getElementById('stf-username').value.trim();
+  if (!name){ alert("Ismni kiriting."); return; }
+  if (!/^\d{4}$/.test(pin)){ alert("PIN 4 xonali raqam bo'lishi kerak."); return; }
+  const r = await callAction('upsert_seller', { name, pin, telegramUsername });
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Xodim qo\'shildi ✅'); await loadData(); STATE.tab='staff'; renderAdmin(); }
+  else alert('Xatolik: ' + (r.error==='pin_taken' ? "Bu PIN band" : (r.error||'')));
+}
+async function deleteStaff(id, name){
+  if (!confirm(`"${name}" xodimlikdan o'chirilsinmi?`)) return;
+  const r = await callAction('remove_seller', { id });
+  if (r.ok){ await loadData(); STATE.tab='staff'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+}
+
 // ---------------- SOZLAMALAR ----------------
 function renderSettings(app, d){
   const s = d.settings;
@@ -680,6 +881,7 @@ function renderSettings(app, d){
     </div>`;
   });
   html += `<div class="card" style="font-size:11.5px;color:var(--hint)">Bot tokeni xavfsizlik uchun mini ilovadan o'zgartirilmaydi — u faqat kompyuterdagi to'liq boshqaruv panelidan sozlanadi.</div>`;
+  html += `<div class="card" style="text-align:center"><button class="btn small btn-outline" onclick="openDesktopPanel()">🖥 To'liq panelni ochish (kompyuter uchun)</button></div>`;
   app.innerHTML = html;
 }
 async function toggleNotif(key, el){
@@ -743,6 +945,10 @@ function showModal(inner){
   document.body.appendChild(bg);
 }
 function closeModal(){ const m = document.getElementById('modal-bg'); if(m) m.remove(); }
+function openDesktopPanel(){
+  const url = window.location.href.replace(/miniapp\.html([^/]*)$/, 'index.html');
+  if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
+}
 
 async function callAction(action, payload){
   const initData = tg ? tg.initData : '';

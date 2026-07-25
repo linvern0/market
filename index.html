@@ -880,6 +880,110 @@
   @media(max-width:768px){ #scroll-top-btn{bottom:78px;right:1rem;width:42px;height:42px;font-size:17px} }
   body.nav-compact #scroll-top-btn{bottom:80px}
 </style>
+
+<!-- ================================================================
+     ✨ PREMIUM DIZAYN QATLAMI (v3) — 2026
+     Maqsad: mavjud funksionallikka umuman tegmasdan (hech qanday ID,
+     class yoki JS o'zgartirilmaydi), faqat vizual "his qilinishni"
+     zamonaviylashtirish — silliq animatsiyalar, oyna effekt (glass),
+     yumshoq soyalar, mikro-interaksiyalar, chiroyli scrollbar va h.k.
+     Bu qatlam avvalgi barcha uslublardan KEYIN yuklanadi, shu sabab
+     ularni yumshoq tarzda "ustidan" bezaydi va ziddiyat qilmaydi.
+     ================================================================ -->
+<style id="design-v3-premium">
+  /* ---- 1) Global silliqlik: har bir rang/soya/joylashuv o'zgarishi animatsiyali ---- */
+  body,.card,.stat,.prod-card,.btn,.badge,.modal,nav,#mobile-tabbar,input,select,textarea,.tbl-wrap tr{
+    transition:background-color .2s ease,border-color .2s ease,box-shadow .25s ease,transform .15s ease,opacity .2s ease,color .2s ease;
+  }
+
+  /* ---- 2) Nozik, zamonaviy scrollbar (Chrome/Edge/Safari) ---- */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:20px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+  *{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+
+  /* ---- 3) Navbar — "shisha" (glassmorphism) effekt ---- */
+  nav{backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px)}
+  #mobile-tabbar{backdrop-filter:saturate(160%) blur(16px);-webkit-backdrop-filter:saturate(160%) blur(16px)}
+  nav button.tab{position:relative;transition:color .2s ease,background .2s ease}
+  nav button.tab:hover{background:rgba(255,255,255,.06)!important}
+  nav button.tab.active::after{border-radius:3px 3px 0 0}
+
+  /* Mobil pastki menyu — faol tugma ostida suzuvchi "pill" indikator */
+  #mobile-tabbar button{position:relative}
+  #mobile-tabbar button.active::before{
+    content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);
+    width:26px;height:3px;border-radius:0 0 4px 4px;background:var(--accent2);
+    box-shadow:0 0 8px var(--accent2);
+  }
+  #mobile-tabbar button .tab-icon{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+  #mobile-tabbar button.active .tab-icon{transform:translateY(-2px) scale(1.12)}
+
+  /* ---- 4) Kartalar — sokin ko'tarilish, ingichka chegara porlashi ---- */
+  .card,.stat,.prod-card{border:1px solid var(--border);will-change:transform}
+  .card:hover,.prod-card:hover{transform:translateY(-2px)}
+  .stat{overflow:hidden;position:relative}
+  .stat:hover{transform:translateY(-3px) scale(1.01)}
+  .stat::after{
+    content:'';position:absolute;inset:0;background:radial-gradient(120px 80px at var(--mx,50%) var(--my,0%),rgba(255,255,255,.14),transparent 60%);
+    opacity:0;transition:opacity .3s ease;pointer-events:none;
+  }
+  .stat:hover::after{opacity:1}
+
+  /* ---- 5) Tugmalar — bosilganda "press", asosiy tugmalarda yumshoq porlash ---- */
+  .btn{position:relative;overflow:hidden}
+  .btn:active{transform:scale(.96)}
+  .btn.blue,.btn-primary,.btn.green,.btn.amber{box-shadow:0 4px 14px -4px rgba(0,0,0,.25)}
+  .btn.blue:active,.btn-primary:active,.btn.green:active,.btn.amber:active,.btn.red:active{box-shadow:none}
+  .qty-btn:active{transform:scale(.92)}
+
+  /* ---- 6) Modal — silliq ochilish (scale + fade), qorong'i fon blur bilan ---- */
+  .modal-overlay{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:pv3-fade .18s ease}
+  .modal{animation:pv3-modal-in .22s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes pv3-fade{from{opacity:0}to{opacity:1}}
+  @keyframes pv3-modal-in{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+  /* ---- 7) Sahifalar orasida almashinganda mayin paydo bo'lish ---- */
+  .page{animation:pv3-page-in .28s ease}
+  @keyframes pv3-page-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ---- 8) Bo'sh holat (empty-state) — sokin "nafas olish" animatsiyasi ---- */
+  .empty-state .emoji{display:inline-block;animation:pv3-breathe 2.6s ease-in-out infinite}
+  @keyframes pv3-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+  /* ---- 9) Login karta — yorug'lik chizig'i (subtle shine) ---- */
+  .login-card{position:relative;overflow:hidden}
+  .login-card::before{
+    content:'';position:absolute;top:-60%;left:-20%;width:60%;height:220%;
+    background:linear-gradient(120deg,transparent,rgba(255,255,255,.08),transparent);
+    transform:rotate(20deg);animation:pv3-shine 5s ease-in-out infinite;
+  }
+  @keyframes pv3-shine{0%{left:-30%}45%{left:120%}100%{left:120%}}
+
+  /* ---- 10) Badge/pill — yengil "nafas" effekt faqat "amber/red" holatlarda (diqqat tortish) ---- */
+  .badge.red,.badge.amber{animation:pv3-pulse 2.2s ease-in-out infinite}
+  @keyframes pv3-pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.0)}50%{box-shadow:0 0 0 4px rgba(220,38,38,.08)}}
+  body.dark .badge.red,body.dark .badge.amber{animation:none}
+
+  /* ---- 11) Input/select fokus — yumshoq halqa ---- */
+  input:focus,select:focus,textarea:focus{
+    outline:none!important;border-color:var(--accent)!important;
+    box-shadow:0 0 0 3px var(--accent-bg)!important;
+  }
+
+  /* ---- 12) Jadval qatorlari — hover ta'kidlash ---- */
+  .tbl-wrap table tbody tr:hover{background:var(--surface2)}
+
+  /* ---- 13) Umumiy tipografiya — sarlavhalar biroz zichroq va zamonaviyroq ---- */
+  h1,h2,h3{letter-spacing:-.01em}
+
+  /* ---- 14) Harakatni kamaytirish sozlamasi bo'lsa — barcha yangi animatsiyalar o'chadi ---- */
+  @media (prefers-reduced-motion: reduce){
+    .stat::after,.login-card::before,.empty-state .emoji,.badge.red,.badge.amber{animation:none!important}
+    .page{animation:none!important}
+  }
+</style>
 </head>
 <body>
 <script>
@@ -2027,15 +2131,21 @@ body.dark table {
       <input type="text" id="tg-bot-token" placeholder="123456789:AAExampleTokenHere" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu tokenni GitHub Actions orqali 24/7 ishlashi uchun repo'ning "Secrets" bo'limiga ham qo'shishingiz kerak bo'ladi (pastdagi qo'llanmaga qarang).</p>
     </div>
+    <div class="field" style="margin-bottom:.6rem">
+      <label>Bot username</label>
+      <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">🎁 Shu kiritilsa, chekdagi QR kod avtomatik <b>botga (Telegram)</b> ishora qiladi — mijoz chekni skanerlashi bilan sodiqlik balli avtomatik hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa). Bo'sh qoldirsangiz, QR avvalgidek faqat chekni ko'rsatadigan sahifaga ishora qiladi.</p>
+    </div>
 
     <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
       <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.5rem">👤 Telegram adminlari</label>
       <div id="tg-admins-list" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem"></div>
       <div style="display:flex;gap:.4rem;flex-wrap:wrap">
         <input type="text" id="tg-admin-name" placeholder="Ism (masalan: Dilnoza)" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
-        <input type="text" id="tg-admin-chatid" placeholder="Chat ID" style="flex:1;min-width:120px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
+        <input type="text" id="tg-admin-chatid" placeholder="Chat ID / @username / telefon" style="flex:1;min-width:150px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
         <button class="btn sm blue" onclick="addTelegramAdmin()">➕ Admin qo'shish</button>
       </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">💡 Chat ID bilmasangiz ham bo'ladi — <b>@username</b> yoki <b>telefon raqami</b>ni kiritsangiz kifoya: o'sha admin botga <code>/start</code> yozishi bilan avtomatik tanilib, to'liq huquq oladi.</p>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.85rem">
@@ -3089,6 +3199,7 @@ body.dark table {
       <div id="receipt-footer-text" style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
       <div id="receipt-qr" style="text-align:center;margin-top:.6rem">
         <img id="receipt-qr-img" src="" alt="QR" style="width:110px;height:110px;display:none;margin:0 auto">
+        <div id="receipt-qr-caption" style="font-size:10px;color:#777;margin-top:.25rem"></div>
       </div>
     </div>
     <div class="modal-footer" style="flex-wrap:wrap">
@@ -3904,7 +4015,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false } };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false } };
 // YANGI: bir nechta sotuvchi — har biri o'z ismi va PIN kodi bilan. Eski
 // (bitta umumiy "seller" PIN) formatdan avtomatik ko'chirish uchun yordamchi.
 function migrateSellersFromLegacy(d){
@@ -4176,7 +4287,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -4595,7 +4706,7 @@ function startListeners(){
       DB.backupReminderDays=d.backupReminderDays||7;
       DB.workSchedule=d.workSchedule||null;
       DB.pinMinLength=d.pinMinLength||4;
-      DB.telegramBotToken=d.telegramBotToken||'';
+      DB.telegramBotToken=d.telegramBotToken||''; DB.telegramBotUsername=d.telegramBotUsername||'';
       DB.telegramChatId=d.telegramChatId||'';
       DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
       DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
@@ -4844,7 +4955,7 @@ async function init(){
           DB.backupReminderDays=d.backupReminderDays||7;
           DB.workSchedule=d.workSchedule||null;
           DB.pinMinLength=d.pinMinLength||4;
-          DB.telegramBotToken=d.telegramBotToken||'';
+          DB.telegramBotToken=d.telegramBotToken||''; DB.telegramBotUsername=d.telegramBotUsername||'';
           DB.telegramChatId=d.telegramChatId||'';
           DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
           DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
@@ -4862,7 +4973,7 @@ async function init(){
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false}}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false}}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -6935,8 +7046,12 @@ window.doCartSell=async function(){
     }
     const custSel = document.getElementById('cart-customer-select'); if(custSel) custSel.value='';
     // Butun savat (bir nechta tovar bo'lsa ham) BITTA umumiy receiptId
-    // bilan chek sifatida saqlanadi — QR shu ID'ga ishora qiladi.
-    openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total, saleGroupId));
+    // bilan chek sifatida saqlanadi — QR shu ID'ga ishora qiladi. Agar
+    // mijoz savatga oldindan bog'langan bo'lsa (cartCustomerId), ball
+    // allaqachon yuqorida berildi — shu sabab pointsAwarded=true deb
+    // belgilanadi, aks holda mijoz chekni botda skanerlaganda IKKINCHI
+    // marta ball olib qolishi mumkin edi.
+    openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total, saleGroupId, !!cartCustomerId));
   }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
@@ -8370,15 +8485,33 @@ window.addTelegramAdmin = function(){
   const nameEl = document.getElementById('tg-admin-name');
   const idEl = document.getElementById('tg-admin-chatid');
   const name = (nameEl?.value||'').trim();
-  const chatId = (idEl?.value||'').trim();
-  if(!chatId){ toast('Chat ID kiriting','red'); return; }
-  if(!/^-?\d+$/.test(chatId)){ toast('Chat ID faqat raqamlardan iborat bo\'lishi kerak (masalan: 123456789)','red'); return; }
+  const raw = (idEl?.value||'').trim();
+  if(!raw){ toast('Chat ID, @username yoki telefon kiriting','red'); return; }
   DB.telegramAdmins = DB.telegramAdmins||[];
-  if(DB.telegramAdmins.some(a=>String(a.chatId)===chatId)){ toast('Bu Chat ID allaqachon qo\'shilgan','amber'); return; }
-  DB.telegramAdmins.push({ id:'tg_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name: name||('Admin '+(DB.telegramAdmins.length+1)), chatId });
+  let entry = { id:'tg_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name: name||('Admin '+(DB.telegramAdmins.length+1)) };
+  if(/^-?\d{5,}$/.test(raw)){
+    // Faqat raqamlardan iborat (va yetarlicha uzun) — Telegram Chat ID
+    if(DB.telegramAdmins.some(a=>String(a.chatId)===raw)){ toast('Bu Chat ID allaqachon qo\'shilgan','amber'); return; }
+    entry.chatId = raw;
+  } else if(raw.startsWith('@') || /^[a-zA-Z][a-zA-Z0-9_]{3,}$/.test(raw)){
+    // @username (Telegram username'lar lotin harf bilan boshlanadi, 5+ belgi)
+    const uname = raw.replace(/^@/,'').toLowerCase();
+    if(DB.telegramAdmins.some(a=>(a.username||'').toLowerCase()===uname)){ toast('Bu username allaqachon qo\'shilgan','amber'); return; }
+    entry.username = uname;
+    entry.chatId = ''; // /start yozgach avtomatik to'ldiriladi
+  } else if(/^\+?\d[\d\s-]{6,}$/.test(raw)){
+    // Telefon raqami
+    const phoneDigits = raw.replace(/\D/g,'').slice(-9);
+    if(DB.telegramAdmins.some(a=>String(a.phone||'').replace(/\D/g,'').slice(-9)===phoneDigits)){ toast('Bu telefon raqami allaqachon qo\'shilgan','amber'); return; }
+    entry.phone = raw;
+    entry.chatId = '';
+  } else {
+    toast('Noto\'g\'ri format — Chat ID (raqam), @username yoki telefon kiriting','red'); return;
+  }
+  DB.telegramAdmins.push(entry);
   if(nameEl) nameEl.value=''; if(idEl) idEl.value='';
   renderTelegramAdminsList();
-  toast('✓ Admin qo\'shildi — pastdagi "💾 Saqlash" tugmasini bosishni unutmang','green');
+  toast(entry.chatId ? '✓ Admin qo\'shildi — pastdagi "💾 Saqlash" tugmasini bosishni unutmang' : '✓ Admin qo\'shildi (kutmoqda) — u botga /start yozishi bilan avtomatik faollashadi. "💾 Saqlash"ni unutmang','green');
 }
 window.removeTelegramAdmin = function(id){
   if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
@@ -8394,14 +8527,17 @@ window.renderTelegramAdminsList = function(){
     wrap.innerHTML = `<p style="font-size:12px;color:var(--text3)">Hali admin qo'shilmagan — pastdan qo'shing.</p>`;
     return;
   }
-  wrap.innerHTML = admins.map(a=>`
+  wrap.innerHTML = admins.map(a=>{
+    const via = a.chatId ? `Chat ID: ${esc(a.chatId)}` : a.username ? `@${esc(a.username)} — <span style="color:var(--amber)">⏳ /start kutilmoqda</span>` : a.phone ? `${esc(a.phone)} — <span style="color:var(--amber)">⏳ /start kutilmoqda</span>` : '—';
+    return `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem">
       <div style="min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name||'Admin')}</div>
-        <div style="font-size:11.5px;color:var(--text3)">Chat ID: ${esc(a.chatId)}</div>
+        <div style="font-size:11.5px;color:var(--text3)">${via}</div>
       </div>
       <button class="btn sm red" style="flex-shrink:0" onclick="removeTelegramAdmin('${a.id}')">🗑</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 window.sendTelegramTestMessage = async function(){
   const token = document.getElementById('tg-bot-token')?.value.trim();
@@ -8456,6 +8592,7 @@ window.checkAndSendTelegramAlerts = async function(){
 }
 window.fillTelegramSettingsForm = function(){
   const t=document.getElementById('tg-bot-token'); if(t && document.activeElement!==t) t.value=DB.telegramBotToken||'';
+  const u=document.getElementById('tg-bot-username'); if(u && document.activeElement!==u) u.value=DB.telegramBotUsername||'';
   const l=document.getElementById('tg-notify-lowstock'); if(l) l.checked=!!DB.telegramNotifyLowStock;
   const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
@@ -8463,6 +8600,8 @@ window.fillTelegramSettingsForm = function(){
 }
 window.saveTelegramSettings = function(silent){
   DB.telegramBotToken = (document.getElementById('tg-bot-token').value||'').trim();
+  const uEl = document.getElementById('tg-bot-username');
+  DB.telegramBotUsername = uEl ? (uEl.value||'').trim().replace(/^@/,'').replace(/^https?:\/\/t\.me\//i,'') : (DB.telegramBotUsername||'');
   DB.telegramNotifyLowStock = !!document.getElementById('tg-notify-lowstock').checked;
   DB.telegramNotifyOverdueDebts = !!document.getElementById('tg-notify-overdue').checked;
   DB.telegramNotifyDailyReport = !!document.getElementById('tg-notify-daily').checked;
@@ -8605,6 +8744,14 @@ const RECEIPT_PAGE_URL = (function(){
   }catch(e){ return fallback; }
 })();
 function receiptQrLink(receiptId){
+  // YANGI: agar admin bot username'ini kiritgan bo'lsa, QR endi TO'G'RIDAN-TO'G'RI
+  // Telegram botiga (start-parametr bilan) ishora qiladi — mijoz shunchaki QR'ni
+  // skanerlashi bilan bot ochiladi va xarid summasiga mos ball avtomatik
+  // hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa).
+  // Bot username kiritilmagan bo'lsa — avvalgidek faqat chekni ko'rsatuvchi
+  // sahifaga (receipt.html) ishora qiladi.
+  const botUser = (DB.telegramBotUsername||'').trim();
+  if(botUser) return `https://t.me/${encodeURIComponent(botUser)}?start=r_${encodeURIComponent(receiptId)}`;
   return `${RECEIPT_PAGE_URL}?id=${encodeURIComponent(receiptId)}`;
 }
 // ESKI usul (zaxira sifatida qoldirildi): tashqi serverga so'rov yuborib rasm
@@ -8631,10 +8778,16 @@ function generateReceiptQR(imgEl, receiptId){
     imgEl.src = receiptQrUrl(receiptId);
   }
 }
-function buildReceiptFromItems(items, sellerName, totalOverride, receiptId){
+function buildReceiptFromItems(items, sellerName, totalOverride, receiptId, pointsAwarded){
   // items: [{name, volume, qty, price, total}]
   const total = totalOverride!=null ? totalOverride : items.reduce((a,i)=>a+i.total,0);
-  return { items, sellerName: sellerName||currentSellerName||'Sotuvchi', total, date:new Date(), id: receiptId||uid() };
+  const r = { items, sellerName: sellerName||currentSellerName||'Sotuvchi', total, date:new Date(), id: receiptId||uid() };
+  // YANGI: agar sotuv paytida sodiqlik mijozi allaqachon tanlangan bo'lsa
+  // (va shu tariqa ball darhol berilgan bo'lsa), shu belgi qo'yiladi — bu
+  // saqlangan chekka yoziladi va bot orqali QR skanerlanganda QAYTA ball
+  // berilib ketmasligini ta'minlaydi.
+  if(pointsAwarded) r.pointsAwarded = true;
+  return r;
 }
 // YANGI: chek ma'lumotini Firestore'ning "receipts" to'plamiga yozadi —
 // QR kod skanerlanganda shu yozuv o'qiladi. Xatolik bo'lsa ham chek
@@ -8661,9 +8814,22 @@ function saveReceiptRecord(receiptData){
     receiptFooter: DB.receiptFooter || '',
     brandAccent1: DB.brandAccent1 || '',
     date: (receiptData.date instanceof Date ? receiptData.date.toISOString() : receiptData.date) || new Date().toISOString(),
-    links: links
+    links: links,
+    telegramBotUsername: (DB.telegramBotUsername||'').trim()
   };
-  withRetry(()=>setDoc(doc(db,'receipts',receiptData.id), payload)).catch(e=>{
+  // Faqat "true" bo'lsa yozamiz — aks holda (masalan chekni qayta chop
+  // etishda) merge:true bo'lsa ham bu maydonni yo'qligicha qoldiramiz,
+  // chunki bot allaqachon shu chek uchun ball bergan bo'lishi mumkin va
+  // bu holatni (pointsAwarded/pointsClaimed) hech qachon qayta yozib
+  // "false"ga qaytarib yubormasligimiz kerak.
+  if(receiptData.pointsAwarded) payload.pointsAwarded = true;
+  // MUHIM TUZATISH: ilgari setDoc merge'siz ishlatilardi — bu chekni QAYTA
+  // CHOP ETISHDA (masalan reprint) bot tomonidan yozilgan pointsClaimed/
+  // pointsClaimedBy/pointsEarned maydonlarini BUTUNLAY O'CHIRIB YUBORARDI
+  // (chunki setDoc, merge bo'lmasa, hujjatni to'liq almashtiradi). Endi
+  // merge:true bilan faqat shu yerda ko'rsatilgan maydonlar yangilanadi,
+  // bot yozgan ball holatiga tegilmaydi.
+  withRetry(()=>setDoc(doc(db,'receipts',receiptData.id), payload, {merge:true})).catch(e=>{
     console.error('Chek yozuvini saqlashda xatolik:', e);
   });
 }
@@ -8691,12 +8857,17 @@ window.openReceiptModal=function(receiptData){
   document.getElementById('receipt-total').textContent = fmt(receiptData.total)+" so'm";
   // YANGI: QR kodni chek tagiga chiqarish
   const qrImg = document.getElementById('receipt-qr-img');
+  const qrCaption = document.getElementById('receipt-qr-caption');
   if(qrImg){
     if(receiptData.id){
       qrImg.style.display = 'inline-block';
       generateReceiptQR(qrImg, receiptData.id);
+      if(qrCaption) qrCaption.textContent = (DB.telegramBotUsername||'').trim()
+        ? '📷 Skanerlab Telegram botda sodiqlik ballini yig\'ing'
+        : '📷 Chekni onlayn ko\'rish uchun skanerlang';
     } else {
       qrImg.style.display = 'none';
+      if(qrCaption) qrCaption.textContent = '';
     }
   }
   saveReceiptRecord(receiptData);

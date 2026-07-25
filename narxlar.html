@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Narxlar ro'yxati</title>
+<style>
+  /* ============================================================
+     NARXLAR RO'YXATI — bitta A4 varaqqa chop etish uchun mo'ljallangan
+     mustaqil sahifa. Admin bo'limidagi tovar kartalari bilan bir xil
+     uslub (rasm + nom + narx), lekin faqat mijozga kerakli maydonlar
+     ko'rsatiladi — hajmi, tannarx, qoldiq va boshqaruv tugmalari YO'Q.
+     ============================================================ */
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f2f6f4;--surface:#fff;--surface2:#f7faf8;
+    --border:#dde6e1;--border2:#c2d0c9;
+    --text:#16221c;--text2:#4d5b54;--text3:#7c8c83;
+    --accent:#0f6e5e;--accent-dark:#0b5449;--gold:#c99a3a;
+    --radius:10px;--shadow:0 1px 2px rgba(15,40,33,.05),0 3px 10px rgba(15,40,33,.06);
+    --font-display:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --print-cols:5;
+  }
+  html,body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh}
+  h1,h2{font-family:var(--font-display)}
+
+  /* ---------- Ekrandagi (chop etilmaydigan) boshqaruv paneli ---------- */
+  .toolbar{
+    position:sticky;top:0;z-index:20;background:#10302b;color:#fff;
+    padding:.8rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  .toolbar .title{font-weight:700;font-size:16px;display:flex;align-items:center;gap:.5rem}
+  .toolbar .title span{color:var(--gold)}
+  .toolbar .spacer{flex:1}
+  .toolbar button, .toolbar select, .toolbar input[type=search], .toolbar input[type=number]{
+    font-family:inherit;font-size:13.5px;border-radius:8px;border:1.5px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.08);color:#fff;padding:.5rem .8rem;cursor:pointer;outline:none;
+  }
+  .toolbar button{font-weight:600}
+  .toolbar button.primary{background:var(--gold);color:#3a2c05;border-color:var(--gold)}
+  .toolbar button:hover{filter:brightness(1.12)}
+  .toolbar input[type=search]{cursor:text;min-width:160px}
+  .toolbar input[type=search]::placeholder{color:rgba(255,255,255,.55)}
+  .toolbar .hint{font-size:11.5px;color:#9fb3ac;width:100%}
+  .toolbar .opt-group{display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.15);border-radius:8px;padding:.3rem .5rem}
+  .toolbar .opt-group label{font-size:12px;color:#cfe0da;white-space:nowrap}
+  .toolbar input[type=number]{width:56px;cursor:text;padding:.35rem .4rem;text-align:center}
+  .toolbar label.chk{display:flex;align-items:center;gap:.4rem;font-size:12.5px;color:#cfe0da;cursor:pointer;white-space:nowrap}
+  .toolbar input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--gold)}
+
+  .page-wrap{max-width:1100px;margin:0 auto;padding:1rem}
+  .sheet-header{text-align:center;margin-bottom:1rem}
+  .sheet-header h1{font-size:22px;color:var(--accent-dark)}
+  .sheet-header .sub{font-size:12.5px;color:var(--text3);margin-top:.2rem}
+  .sheet-header img.shop-logo{height:40px;margin-bottom:.4rem}
+
+  #state-msg{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:14px}
+  #state-msg .spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;margin:0 auto 1rem;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- Tovar kartalari (admin bo'limidagidek — img-wrap/prod-name/prod-price) ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem}
+  .prod-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);break-inside:avoid;page-break-inside:avoid}
+  .prod-card .img-wrap{aspect-ratio:1/1;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
+  .prod-card .img-wrap .no-img{font-size:34px;color:#c7d3cd}
+  .prod-card .body{padding:.5rem .6rem .6rem;text-align:center}
+  .prod-card .prod-name{font-weight:700;font-size:13px;line-height:1.25;color:var(--text);word-break:break-word}
+  .prod-card .prod-price{color:var(--accent);font-weight:800;font-size:14px;margin-top:.25rem;white-space:nowrap}
+
+  .empty{text-align:center;padding:3rem 1rem;color:var(--text3)}
+
+  /* ================= CHOP ETISH (PRINT) UCHUN MAXSUS QOIDALAR ================= */
+  @page{ size:A4; margin:10mm; }
+  @media print{
+    .no-print{display:none!important}
+    html,body{background:#fff!important;height:auto}
+    .page-wrap{max-width:none;padding:0;margin:0}
+    .sheet-header{margin-bottom:.5rem}
+    .sheet-header h1{font-size:16px}
+    .sheet-header .sub{font-size:10px}
+    /* JS tomonidan hisoblangan --print-cols qiymati orqali, tovarlar soni
+       qancha bo'lishidan qat'i nazar, hammasi BITTA A4 varaqqa sig'adigan
+       ustunlar soniga avtomatik moslashadi. */
+    .grid{grid-template-columns:repeat(var(--print-cols),1fr)!important;gap:2mm;grid-auto-rows:var(--print-row-h,auto)}
+    .prod-card{box-shadow:none;border:.4mm solid #ccc;border-radius:1.5mm;display:flex;flex-direction:column;height:100%}
+    .prod-card .img-wrap{aspect-ratio:auto;flex:1 1 auto;min-height:0}
+    .prod-card .img-wrap .no-img{font-size:22px}
+    .prod-card .body{padding:1mm 1.2mm 1.4mm;flex:0 0 auto}
+    .prod-card .prod-name{font-size:8.5px}
+    .prod-card .prod-price{font-size:9px;margin-top:.6mm}
+    /* Do'kon nomi/logotipini chop etishda ko'rsatish/yashirish (ixtiyoriy) */
+    body.no-print-header .sheet-header{display:none!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <div class="title">🧾 <span>Narxlar ro'yxati</span></div>
+  <input type="search" id="search-box" placeholder="🔍 Tovar qidirish..." oninput="applyFilter()">
+  <div class="opt-group">
+    <label for="cols-input">Ustun:</label>
+    <input type="number" id="cols-input" min="1" max="12" placeholder="Avto" oninput="onPrintOptsChange()">
+    <label for="rows-input">Qator:</label>
+    <input type="number" id="rows-input" min="1" max="30" placeholder="Avto" oninput="onPrintOptsChange()">
+    <button type="button" onclick="resetPrintOpts()" title="Avtomatik hisoblashga qaytarish">↺ Avto</button>
+  </div>
+  <label class="chk"><input type="checkbox" id="show-header-chk" checked onchange="onPrintOptsChange()"> Do'kon nomi/logotipini chop etish</label>
+  <div class="spacer"></div>
+  <button onclick="doPrint()" class="primary">🖨 Bitta A4'ga chop etish</button>
+  <div class="hint">💡 "Ustun"/"Qator" bo'sh qoldirilsa, tovarlar soniga qarab avtomatik hisoblanadi. Ikkalasini ham kiritsangiz, aynan shuncha katak (ustun × qator) bitta varaqqa joylashtiriladi. Chop etish oynasida "Fon rasmlari" (Background graphics) yoqilgan bo'lsa, chegaralar aniqroq chiqadi.</div>
+</div>
+
+<div class="page-wrap">
+  <div class="sheet-header" id="sheet-header" style="display:none">
+    <img class="shop-logo" id="shop-logo" style="display:none">
+    <h1 id="shop-title">Narxlar ro'yxati</h1>
+    <div class="sub" id="shop-sub"></div>
+  </div>
+
+  <div id="state-msg"><div class="spin"></div>Tovarlar yuklanmoqda...</div>
+  <div class="grid no-print-hide" id="grid" style="display:none"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
+  authDomain: "dokon-ce38b.firebaseapp.com",
+  projectId: "dokon-ce38b",
+  storageBucket: "dokon-ce38b.firebasestorage.app",
+  messagingSenderId: "1024226826394",
+  appId: "1:1024226826394:web:3a052adf83b46202c96723",
+  measurementId: "G-75RXS3WVWC"
+};
+
+function esc(s){ return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' '); }
+
+let ALL_PRODUCTS = [];
+let CURRENCY = "so'm";
+
+async function boot(){
+  try{
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const [settingsSnap, productsSnap] = await Promise.all([
+      getDoc(doc(db,'dokon','settings')),
+      getDocs(collection(db,'products')),
+    ]);
+
+    const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+    CURRENCY = settings.currencySymbol || "so'm";
+
+    document.getElementById('shop-title').textContent = (settings.shopName || "Do'kon") + " — narxlar ro'yxati";
+    document.getElementById('shop-sub').textContent = "Yangilangan: " + new Date().toLocaleDateString('uz-UZ', { year:'numeric', month:'long', day:'numeric' });
+    if (settings.shopLogo){
+      const logo = document.getElementById('shop-logo');
+      logo.src = settings.shopLogo; logo.style.display = 'inline-block';
+    }
+    document.getElementById('sheet-header').style.display = 'block';
+
+    ALL_PRODUCTS = productsSnap.docs
+      .map(d=>d.data())
+      .sort((a,b)=>(a.name||'').localeCompare(b.name||'', 'uz'));
+
+    document.getElementById('state-msg').style.display = 'none';
+    if (!ALL_PRODUCTS.length){
+      const g = document.getElementById('grid');
+      g.style.display = 'block';
+      g.innerHTML = `<div class="empty">Hali birorta tovar qo'shilmagan.</div>`;
+      return;
+    }
+    renderGrid(ALL_PRODUCTS);
+    document.getElementById('grid').style.display = 'grid';
+    computePrintColumns(ALL_PRODUCTS.length);
+  } catch(e){
+    console.error(e);
+    document.getElementById('state-msg').innerHTML = '⚠️ Ma\'lumotlarni yuklashda xatolik yuz berdi. Internet aloqasini tekshirib, sahifani qayta yuklang.';
+  }
+}
+
+function renderGrid(list){
+  const grid = document.getElementById('grid');
+  if (!list.length){
+    grid.innerHTML = `<div class="empty">Hech narsa topilmadi.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(p=>`
+    <div class="prod-card">
+      <div class="img-wrap">
+        ${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
+        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+      </div>
+      <div class="body">
+        <div class="prod-name">${esc(p.name)}</div>
+        <div class="prod-price">${fmt(p.price)} ${esc(CURRENCY)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.applyFilter = function(){
+  const q = (document.getElementById('search-box').value||'').trim().toLowerCase();
+  const filtered = q ? ALL_PRODUCTS.filter(p=>(p.name||'').toLowerCase().includes(q)) : ALL_PRODUCTS;
+  renderGrid(filtered);
+  computePrintColumns(filtered.length);
+};
+
+// ============ YANGI: barcha tovarlar sonidan qat'i nazar, ustunlar sonini
+// shunday hisoblaymizki, natijaviy jadval taxminan BITTA A4 varaqqa
+// (10mm chegaralar bilan, ~190x255mm foydalaniladigan maydon) sig'sin.
+// Kam tovar bo'lsa — kartalar kattaroq, ko'p bo'lsa — ustunlar ko'proq va
+// kartalar kichikroq bo'lib, baribir bitta sahifaga joylashishga harakat
+// qilinadi (juda ko'p tovar bo'lsa, 10 ustundan keyin brauzer o'zi ikkinchi
+// sahifaga o'tkazadi — bu holatda ham chop etish baribir ishlaydi).
+//
+// YANGI (ixtiyoriy qo'lda boshqarish): agar admin "Ustun" va/yoki "Qator"
+// maydoniga qiymat kiritgan bo'lsa — avtomatik hisoblash o'rniga aynan shu
+// qiymat(lar) ishlatiladi. Faqat ustun kiritilsa — qatorlar tovarlar soniga
+// qarab tabiiy ravishda ko'payadi (kerak bo'lsa 2-varaqqa o'tadi). Ikkalasi
+// ham kiritilsa — jami "ustun × qator" ta katak bitta varaqqa sig'adigan
+// balandlikda majburan tekislanadi.
+function computePrintColumns(n){
+  const colsEl = document.getElementById('cols-input');
+  const rowsEl = document.getElementById('rows-input');
+  const manualCols = colsEl ? parseInt(colsEl.value, 10) : NaN;
+  const manualRows = rowsEl ? parseInt(rowsEl.value, 10) : NaN;
+  const availW = 190;   // mm, A4 (210mm) minus 2x10mm chegaralar
+  const availH = 250;   // mm, sarlavha uchun joy qoldirib
+  const textH = 8;      // mm — nom + narx matni balandligi (taxminiy)
+
+  let cols;
+  if (manualCols > 0) {
+    cols = manualCols;
+  } else if (!n) {
+    cols = 4;
+  } else {
+    cols = 10;
+    for (let c = 2; c <= 10; c++){
+      const cardW = availW / c;
+      const cardH = cardW + textH;
+      const rows = Math.ceil(n / c);
+      if (rows * cardH <= availH){ cols = c; break; }
+    }
+  }
+  document.documentElement.style.setProperty('--print-cols', cols);
+
+  if (manualRows > 0) {
+    // Aynan shuncha qator bitta varaqqa sig'ishi uchun har bir katakning
+    // balandligini majburan hisoblaymiz.
+    const rowH = (availH / manualRows).toFixed(2) + 'mm';
+    document.documentElement.style.setProperty('--print-row-h', rowH);
+  } else {
+    document.documentElement.style.removeProperty('--print-row-h');
+  }
+}
+
+window.onPrintOptsChange = function(){
+  document.body.classList.toggle('no-print-header', !document.getElementById('show-header-chk').checked);
+  computePrintColumns((document.querySelectorAll('#grid .prod-card')||[]).length);
+};
+window.resetPrintOpts = function(){
+  document.getElementById('cols-input').value = '';
+  document.getElementById('rows-input').value = '';
+  computePrintColumns((document.querySelectorAll('#grid .prod-card')||[]).length);
+};
+
+window.doPrint = function(){
+  computePrintColumns((document.querySelectorAll('#grid .prod-card')||[]).length);
+  window.print();
+};
+window.addEventListener('beforeprint', ()=>{
+  computePrintColumns((document.querySelectorAll('#grid .prod-card')||[]).length);
+});
+
+boot();
+</script>
+</body>
+</html>
