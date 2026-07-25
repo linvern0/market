@@ -218,8 +218,10 @@ async function buildClientProducts(db) {
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     // Diqqat: aniq qoldiq (stock soni) mijozga ko'rsatilmaydi — faqat
     // "mavjud/tugagan" (inStock true/false) va sotib olganda necha ball
-    // berilishi (points) ko'rsatiladi.
-    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '', points: productUnitPoints(p), inStock: (p.stock || 0) > 0 }));
+    // berilishi (points) ko'rsatiladi. Rasm (img) esa yuboriladi — chunki
+    // admin panelidagi "Sotish" bo'limi kabi katalog ham rasm bilan
+    // ko'rsatilishi kerak (bu ilgari yuborilmagan edi — kamchilik edi).
+    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '', points: productUnitPoints(p), inStock: (p.stock || 0) > 0, img: p.img || '' }));
 }
 
 // Agar Telegram foydalanuvchisi hali "customers" (sodiqlik) kolleksiyasida
