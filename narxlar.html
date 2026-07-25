@@ -58,6 +58,39 @@
   .toolbar label.chk{display:flex;align-items:center;gap:.4rem;font-size:12.5px;color:#cfe0da;cursor:pointer;white-space:nowrap}
   .toolbar input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--gold)}
 
+  /* ---------- Sozlamalar paneli (ochiladigan, tartibli) ---------- */
+  .settings-panel{
+    display:none;background:#16362f;border-bottom:1px solid rgba(255,255,255,.1);
+    padding:1.1rem 1.2rem 1.3rem;color:#fff;
+  }
+  .settings-panel.open{display:block}
+  .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;max-width:1200px;margin:0 auto}
+  .settings-grid section{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:.9rem 1rem}
+  .settings-grid h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--gold);margin-bottom:.7rem;font-weight:700}
+  .settings-grid .field{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.65rem}
+  .settings-grid .field-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.65rem}
+  .settings-grid .field-row .field{margin-bottom:0}
+  .settings-grid label{font-size:12px;color:#cfe0da}
+  .settings-grid input,.settings-grid select{
+    width:100%;font-family:inherit;font-size:13.5px;border-radius:7px;
+    border:1.5px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);
+    color:#fff;padding:.5rem .6rem;cursor:pointer;outline:none;
+  }
+  .settings-grid input[type=number],.settings-grid input[type=text]{cursor:text}
+  .chk-field{display:flex!important;flex-direction:row;align-items:center;gap:.5rem;font-size:13px;color:#e4efe9;cursor:pointer;margin-bottom:.55rem}
+  .chk-field input{width:16px;height:16px;cursor:pointer;accent-color:var(--gold)}
+  .settings-grid .reset-btn{width:100%;margin-top:.2rem;font-family:inherit;font-size:12.5px;font-weight:600;border-radius:7px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;padding:.5rem .6rem;cursor:pointer}
+  .settings-grid .reset-btn:hover{filter:brightness(1.15)}
+  .settings-panel .hint{font-size:11.5px;color:#9fb3ac;max-width:1200px;margin:.9rem auto 0}
+  #settings-toggle-btn.active{background:var(--gold);color:#3a2c05;border-color:var(--gold)}
+
+  /* ---------- Ekran uchun kattalashtirish (zoom) paneli ---------- */
+  .zoom-bar{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.6rem 1rem 0;color:var(--text3);font-size:12.5px;flex-wrap:wrap}
+  .zoom-bar button{border:1.5px solid var(--border2);background:#fff;border-radius:7px;padding:.3rem .6rem;cursor:pointer;font-size:13px;line-height:1}
+  .zoom-bar button:hover{background:var(--surface2)}
+  .zoom-bar #zoom-label{min-width:42px;text-align:center;font-weight:700;color:var(--text2)}
+  .zoom-bar .zoom-hint{font-size:11px;color:var(--text3)}
+
   /* ---------- Chop etish oldindan ko'rish (A4 varaq) ----------
      .sheet-viewport — ekrandagi kulrang fon, o'rtaga tekislangan, kerak
      bo'lsa gorizontal skroll (ko'ndalang varaq kenglikda sig'masa).
@@ -87,9 +120,9 @@
      (--print-cols, --print-gap va h.k. real vaqtda JS orqali yangilanadi),
      shuning uchun ekranda ko'rgan narsangiz chop etilganda ham xuddi
      shunday chiqadi. */
-  .grid{display:grid;grid-template-columns:repeat(var(--print-cols,4),1fr)!important;gap:var(--print-gap,2mm);grid-auto-rows:var(--print-row-h,auto)}
+  .grid{display:grid;height:var(--print-area-h,auto);grid-template-columns:repeat(var(--print-cols,4),1fr)!important;grid-template-rows:repeat(var(--print-rows,1),1fr);gap:var(--print-gap,2mm);align-content:stretch}
   .grid.fixed-card-width{grid-template-columns:repeat(auto-fill,minmax(var(--print-card-w,32mm),1fr))!important}
-  .prod-card{position:relative;background:var(--surface);border:var(--print-border,.4mm) solid var(--border2);border-radius:1.5mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid;transition:opacity .15s;display:flex;flex-direction:column;height:100%}
+  .prod-card{position:relative;background:var(--surface);border:var(--print-border,.4mm) solid var(--border2);border-radius:var(--card-radius,1.5mm);overflow:hidden;break-inside:avoid;page-break-inside:avoid;transition:opacity .15s;display:flex;flex-direction:column;height:100%}
   .prod-card .img-wrap{flex:1 1 auto;min-height:0;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
   .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
   .prod-card .img-wrap .no-img{font-size:22px;color:#c7d3cd}
@@ -121,7 +154,7 @@
     .no-print{display:none!important}
     html,body{background:#fff!important;height:auto}
     .sheet-viewport{width:auto;overflow:visible;background:#fff;padding:0}
-    .page-wrap{box-shadow:none;margin:0;width:auto;min-height:0}
+    .page-wrap{box-shadow:none;margin:0;width:auto;min-height:0;zoom:1!important}
     /* Tanlab chop etish — belgilanmagan (excluded) kartalar chop etilmaydi */
     .prod-card.excluded{display:none!important}
   }
@@ -133,77 +166,125 @@
   <div class="title">🧾 <span>Narxlar ro'yxati</span></div>
   <button type="button" id="refresh-btn" onclick="reloadProducts()" title="Firebase'dan qayta yuklash">🔄 Yangilash</button>
   <input type="search" id="search-box" placeholder="🔍 Tovar qidirish..." oninput="refreshDisplay()">
-  <div class="opt-group" id="category-group" style="display:none">
-    <label for="category-select">Kategoriya:</label>
-    <select id="category-select" onchange="refreshDisplay()"></select>
-  </div>
-  <div class="opt-group">
-    <label for="orientation-select">Yo'nalish:</label>
-    <select id="orientation-select" onchange="onPrintOptsChange()">
-      <option value="portrait" selected>📄 Bo'ylama</option>
-      <option value="landscape">📃 Ko'ndalang</option>
-    </select>
-  </div>
-  <div class="opt-group">
-    <label for="cols-input">Ustun:</label>
-    <input type="number" id="cols-input" min="1" max="12" placeholder="Avto" oninput="onPrintOptsChange()">
-    <label for="rows-input">Qator:</label>
-    <input type="number" id="rows-input" min="1" max="30" placeholder="Avto" oninput="onPrintOptsChange()">
-  </div>
-  <div class="opt-group">
-    <label for="cardw-input">Karta kengligi (mm):</label>
-    <input type="number" id="cardw-input" min="15" max="100" placeholder="Avto" oninput="onPrintOptsChange()">
-  </div>
-  <div class="opt-group">
-    <label for="margin-input">Chekka (mm):</label>
-    <input type="number" id="margin-input" min="0" max="30" value="10" oninput="onPrintOptsChange()">
-    <label for="gap-input">Oraliq (mm):</label>
-    <input type="number" id="gap-input" min="0" max="20" value="2" step="0.5" oninput="onPrintOptsChange()">
-    <label for="pad-input">Ichki bo'shliq (mm):</label>
-    <input type="number" id="pad-input" min="0" max="10" value="1" step="0.5" oninput="onPrintOptsChange()">
-    <label for="border-input">Chegara (mm):</label>
-    <input type="number" id="border-input" min="0" max="3" value="0.4" step="0.1" oninput="onPrintOptsChange()">
-  </div>
-  <button type="button" onclick="resetPrintOpts()" title="Sig'dirish sozlamalarini asliga qaytarish">↺ Avto</button>
-
-  <div class="opt-group">
-    <label for="sort-select">Saralash:</label>
-    <select id="sort-select" onchange="refreshDisplay()">
-      <option value="name-asc">Nomi (A-Z)</option>
-      <option value="name-desc">Nomi (Z-A)</option>
-      <option value="price-asc">Narxi: past → baland</option>
-      <option value="price-desc">Narxi: baland → past</option>
-    </select>
-  </div>
-  <div class="opt-group">
-    <label for="fontsize-select">Shrift:</label>
-    <select id="fontsize-select" onchange="onPrintOptsChange()">
-      <option value="0.8">Kichik</option>
-      <option value="1" selected>O'rta</option>
-      <option value="1.3">Katta</option>
-    </select>
-  </div>
-  <label class="chk"><input type="checkbox" id="hide-img-chk" onchange="onPrintOptsChange()"> Rasmlarsiz chop etish</label>
-  <div class="opt-group">
-    <label for="title-override">Sarlavha:</label>
-    <input type="text" id="title-override" placeholder="Avto (do'kon nomi)" oninput="applyTitleOverride()" style="min-width:150px;cursor:text">
-  </div>
-  <label class="chk"><input type="checkbox" id="show-header-chk" checked onchange="onPrintOptsChange()"> Do'kon nomi/logotipini chop etish</label>
-
-  <label class="chk"><input type="checkbox" id="select-mode-chk" onchange="toggleSelectMode()"> Tovarlarni tanlab chop etish</label>
-  <div class="opt-group" id="select-actions" style="display:none">
-    <button type="button" onclick="selectAll()">✅ Barchasini tanlash</button>
-    <button type="button" onclick="selectNone()">❌ Hech birini tanlamaslik</button>
-  </div>
-  <label class="chk" id="footer-toggle-wrap" style="display:none"><input type="checkbox" id="show-footer-chk" checked onchange="onPrintOptsChange()"> Aloqa ma'lumotlarini chop etish</label>
-
   <div class="spacer"></div>
-  <button type="button" onclick="exportCSV()">📥 CSV yuklab olish</button>
-  <button onclick="doPrint()" class="primary">🖨 Bitta A4'ga chop etish</button>
-  <div class="hint">💡 Pastdagi oq varaq — bu aynan A4 qog'ozning o'zi (haqiqiy o'lchamda): har qanday sozlamani (ustun, qator, chekka, yo'nalish va h.k.) o'zgartirganingizda, natija shu yerda REAL VAQTDA ko'rinadi — chop etishdan oldin qanday chiqishini oldindan ko'rasiz. "Yo'nalish" — varaqni bo'ylama yoki ko'ndalang holatda chop etish uchun. "Ustun"/"Qator" bo'sh qoldirilsa, tovarlar soniga qarab avtomatik hisoblanadi. Ikkalasini ham kiritsangiz, aynan shuncha katak (ustun × qator) bitta varaqqa joylashtiriladi. "Karta kengligi" kiritilsangiz, ustun soni shu kenglikka qarab avtomatik moslanadi (bunda "Ustun" maydoni e'tiborga olinmaydi). "Chekka", "Oraliq", "Ichki bo'shliq" va "Chegara" — varaq va kartalar atrofidagi masofalarni belgilaydi. "Tanlab chop etish"ni yoqsangiz, har bir karta ustida belgi (checkbox) chiqadi — belgisi olib tashlangan tovarlar chop etishga kiritilmaydi. "🔄 Yangilash" — sahifani qayta yuklamasdan Firebase'dagi eng so'nggi tovarlarni tortib oladi. "📥 CSV yuklab olish" — hozir ko'rinib turgan (va tanlangan) tovarlarni jadval faylga saqlaydi. Chop etish oynasida "Fon rasmlari" (Background graphics) yoqilgan bo'lsa, chegaralar aniqroq chiqadi.</div>
+  <button type="button" id="settings-toggle-btn" onclick="toggleSettingsPanel()">⚙️ Sozlamalar</button>
+  <button type="button" onclick="exportCSV()">📥 CSV</button>
+  <button onclick="doPrint()" class="primary">🖨 Chop etish</button>
+</div>
+
+<div class="settings-panel no-print" id="settings-panel">
+  <div class="settings-grid">
+
+    <section>
+      <h3>📋 Ro'yxat</h3>
+      <div class="field" id="category-group" style="display:none">
+        <label for="category-select">Kategoriya</label>
+        <select id="category-select" onchange="refreshDisplay()"></select>
+      </div>
+      <div class="field">
+        <label for="sort-select">Saralash</label>
+        <select id="sort-select" onchange="refreshDisplay()">
+          <option value="name-asc">Nomi (A-Z)</option>
+          <option value="name-desc">Nomi (Z-A)</option>
+          <option value="price-asc">Narxi: past → baland</option>
+          <option value="price-desc">Narxi: baland → past</option>
+          <option value="size-asc">Hajmi: kichik → katta</option>
+          <option value="size-desc">Hajmi: katta → kichik</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="title-override">Sarlavha</label>
+        <input type="text" id="title-override" placeholder="Avto (do'kon nomi)" oninput="applyTitleOverride()">
+      </div>
+      <label class="chk-field"><input type="checkbox" id="hide-img-chk" onchange="onPrintOptsChange()"> Rasmlarsiz chop etish</label>
+      <label class="chk-field"><input type="checkbox" id="show-header-chk" checked onchange="onPrintOptsChange()"> Do'kon nomi/logotipi</label>
+      <label class="chk-field" id="footer-toggle-wrap" style="display:none"><input type="checkbox" id="show-footer-chk" checked onchange="onPrintOptsChange()"> Aloqa ma'lumotlari</label>
+    </section>
+
+    <section>
+      <h3>🎨 Shrift va uslub</h3>
+      <div class="field">
+        <label for="fontsize-range">Shrift o'lchami: <b id="fontsize-label">100%</b></label>
+        <div class="field-row" style="grid-template-columns:1fr 62px">
+          <input type="range" id="fontsize-range" min="0.5" max="2.2" step="0.05" value="1" oninput="syncFontSize(false)">
+          <input type="number" id="fontsize-number" min="50" max="220" step="5" value="100" oninput="syncFontSize(true)">
+        </div>
+      </div>
+      <div class="field">
+        <label for="fontfamily-select">Shrift turi</label>
+        <select id="fontfamily-select" onchange="onPrintOptsChange()">
+          <option value="modern" selected>Zamonaviy (Inter)</option>
+          <option value="classic">Klassik (Georgia)</option>
+          <option value="rounded">Yumshoq (Verdana)</option>
+          <option value="mono">Texnik (Monospace)</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="accent-color">Narx/sarlavha rangi</label>
+          <input type="color" id="accent-color" value="#0f6e5e" oninput="onPrintOptsChange()">
+        </div>
+        <div class="field">
+          <label for="radius-input">Karta burchagi (mm)</label>
+          <input type="number" id="radius-input" min="0" max="6" step="0.5" value="1.5" oninput="onPrintOptsChange()">
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>📐 Varaq va joylashuv</h3>
+      <div class="field">
+        <label for="orientation-select">Yo'nalish</label>
+        <select id="orientation-select" onchange="onPrintOptsChange()">
+          <option value="portrait" selected>📄 Bo'ylama</option>
+          <option value="landscape">📃 Ko'ndalang</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cols-input">Ustun</label><input type="number" id="cols-input" min="1" max="12" placeholder="Avto" oninput="onPrintOptsChange()"></div>
+        <div class="field"><label for="rows-input">Qator</label><input type="number" id="rows-input" min="1" max="30" placeholder="Avto" oninput="onPrintOptsChange()"></div>
+      </div>
+      <div class="field">
+        <label for="cardw-input">Karta kengligi (mm)</label>
+        <input type="number" id="cardw-input" min="15" max="100" placeholder="Avto" oninput="onPrintOptsChange()">
+      </div>
+      <button type="button" class="reset-btn" onclick="resetPrintOpts()" title="Sig'dirish sozlamalarini asliga qaytarish">↺ Avtomatikka qaytarish</button>
+    </section>
+
+    <section>
+      <h3>📏 Masofalar</h3>
+      <div class="field-row">
+        <div class="field"><label for="margin-input">Chekka (mm)</label><input type="number" id="margin-input" min="0" max="30" value="10" oninput="onPrintOptsChange()"></div>
+        <div class="field"><label for="gap-input">Oraliq (mm)</label><input type="number" id="gap-input" min="0" max="20" value="2" step="0.5" oninput="onPrintOptsChange()"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="pad-input">Ichki bo'shliq (mm)</label><input type="number" id="pad-input" min="0" max="10" value="1" step="0.5" oninput="onPrintOptsChange()"></div>
+        <div class="field"><label for="border-input">Chegara (mm)</label><input type="number" id="border-input" min="0" max="3" value="0.4" step="0.1" oninput="onPrintOptsChange()"></div>
+      </div>
+    </section>
+
+    <section>
+      <h3>✅ Tanlab chop etish</h3>
+      <label class="chk-field"><input type="checkbox" id="select-mode-chk" onchange="toggleSelectMode()"> Tovarlarni tanlab chop etish</label>
+      <div class="field-row" id="select-actions" style="display:none">
+        <button type="button" onclick="selectAll()">✅ Barchasi</button>
+        <button type="button" onclick="selectNone()">❌ Hech biri</button>
+      </div>
+    </section>
+
+  </div>
+  <div class="hint">💡 Pastdagi oq varaq — bu aynan A4 qog'ozning o'zi (haqiqiy o'lchamda): qaysi sozlamani o'zgartirmang, natija shu yerda REAL VAQTDA ko'rinadi. "Ustun"/"Qator" bo'sh qoldirilsa, tovarlar soniga qarab avtomatik hisoblanadi va varaq balandligini TO'LIQ (yuqoridan pastgacha teng) egallaydi — bo'sh joy qolib ketmaydi. Ikkalasini ham kiritsangiz, aynan shuncha katak (ustun × qator) shu tarzda taqsimlanadi. "Karta kengligi" kiritilsangiz, ustun soni shu kenglikka qarab moslanadi (bunda "Ustun" maydoni e'tiborga olinmaydi). "Tanlab chop etish"ni yoqsangiz, har bir karta ustida belgi chiqadi — belgisi olib tashlangan tovarlar chop etishga kiritilmaydi.</div>
 </div>
 
 <div class="stats-line no-print" id="stats-line" style="display:none"></div>
+
+<div class="zoom-bar no-print">
+  <button type="button" onclick="adjustZoom(-0.1)" title="Kichraytirish">➖</button>
+  <span id="zoom-label">100%</span>
+  <button type="button" onclick="adjustZoom(0.1)" title="Kattalashtirish">➕</button>
+  <button type="button" onclick="resetZoom()" title="Asliga qaytarish">↺</button>
+  <span class="zoom-hint">bu faqat ekrandagi ko'rinish uchun — chop etishga ta'sir qilmaydi</span>
+</div>
 
 <div class="sheet-viewport">
   <div class="page-wrap" id="page-wrap">
@@ -218,6 +299,7 @@
     <div class="sheet-footer" id="sheet-footer" style="display:none"></div>
   </div>
 </div>
+
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -235,6 +317,21 @@ const firebaseConfig = {
 
 function esc(s){ return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' '); }
+
+// Mahsulot "hajmi" turli nom bilan saqlangan bo'lishi mumkin (hajm, size,
+// volume, weight, o'lcham va h.k.) — shularning birinchi topilganidan
+// sonli qiymatni ajratib olamiz (masalan "500 ml" -> 500). Karta ustida
+// bu maydon HECH QACHON ko'rsatilmaydi, faqat saralash uchun ishlatiladi.
+function getProductSize(p){
+  const candidates = [p.hajm, p.size, p.volume, p.weight, p.amount, p["o'lcham"], p.olcham];
+  for (const c of candidates){
+    if (c === undefined || c === null || c === '') continue;
+    if (typeof c === 'number') return c;
+    const m = String(c).match(/[\d]+([.,]\d+)?/);
+    if (m) return parseFloat(m[0].replace(',', '.'));
+  }
+  return null;
+}
 
 let ALL_PRODUCTS = [];
 let CURRENT_LIST = [];
@@ -264,6 +361,7 @@ async function loadFromFirebase(isFirstLoad){
     document.getElementById('shop-sub').textContent = "Yangilangan: " + new Date().toLocaleDateString('uz-UZ', { year:'numeric', month:'long', day:'numeric' });
     if (settings.shopLogo){
       const logo = document.getElementById('shop-logo');
+      logo.onload = ()=>computePrintColumns(printableCount());
       logo.src = settings.shopLogo; logo.style.display = 'inline-block';
     }
     document.getElementById('sheet-header').style.display = 'block';
@@ -366,6 +464,8 @@ window.refreshDisplay = function(){
   if (sortVal === 'name-desc') list.sort((a,b)=>(b.name||'').localeCompare(a.name||'', 'uz'));
   else if (sortVal === 'price-asc') list.sort((a,b)=>(a.price||0)-(b.price||0));
   else if (sortVal === 'price-desc') list.sort((a,b)=>(b.price||0)-(a.price||0));
+  else if (sortVal === 'size-asc') list.sort((a,b)=>(getProductSize(a) ?? Infinity)-(getProductSize(b) ?? Infinity));
+  else if (sortVal === 'size-desc') list.sort((a,b)=>(getProductSize(b) ?? -Infinity)-(getProductSize(a) ?? -Infinity));
   else list.sort((a,b)=>(a.name||'').localeCompare(b.name||'', 'uz'));
 
   CURRENT_LIST = list;
@@ -411,6 +511,15 @@ window.applyTitleOverride = function(){
   const el = document.getElementById('title-override');
   const ov = el ? el.value.trim() : '';
   document.getElementById('shop-title').textContent = ov || BASE_TITLE;
+};
+
+// ---------- Sozlamalar panelini ochish/yopish ----------
+window.toggleSettingsPanel = function(){
+  const panel = document.getElementById('settings-panel');
+  const btn = document.getElementById('settings-toggle-btn');
+  const open = !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  if (btn) btn.classList.toggle('active', open);
 };
 
 // ---------- Tovarlarni tanlab chop etish ----------
@@ -469,6 +578,27 @@ function numVal(id, fallback){
   return Number.isFinite(v) ? v : fallback;
 }
 
+function pxToMM(px){ return px / 96 * 25.4; }
+
+// Sarlavha (do'kon nomi/logotip) va footer (aloqa ma'lumotlari) chindan
+// qancha joy egallayotganini ekrandan o'lchab olamiz — shu orqali
+// "yuqorida kam, pastda ko'p bo'sh joy qolib ketish" muammosi butunlay
+// yo'qoladi, chunki taxminiy (qattiq kodlangan) raqam ishlatilmaydi.
+function measureChromeHeightMM(){
+  function boxH(el){
+    if (!el) return 0;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none') return 0;
+    const rect = el.getBoundingClientRect();
+    const mt = parseFloat(cs.marginTop) || 0;
+    const mb = parseFloat(cs.marginBottom) || 0;
+    return rect.height + mt + mb;
+  }
+  const header = document.getElementById('sheet-header');
+  const footer = document.getElementById('sheet-footer');
+  return pxToMM(boxH(header) + boxH(footer));
+}
+
 function computePrintColumns(n){
   const colsEl = document.getElementById('cols-input');
   const rowsEl = document.getElementById('rows-input');
@@ -495,8 +625,8 @@ function computePrintColumns(n){
   refreshPageStyle(pageW, pageH, margin);
 
   const availW = pageW - 2 * margin;  // mm, varaq kengligi minus chekkalar
-  const availH = pageH - 2 * margin - 12; // mm, sarlavha uchun joy qoldirib
-  const textH = 8;      // mm — nom + narx matni balandligi (taxminiy)
+  const chromeH = measureChromeHeightMM(); // mm, sarlavha + footer haqiqiy balandligi
+  const availH = Math.max(20, pageH - 2 * margin - chromeH); // mm, tovarlar uchun qolgan aniq joy
 
   const grid = document.getElementById('grid');
 
@@ -509,6 +639,11 @@ function computePrintColumns(n){
     if (grid) grid.classList.remove('fixed-card-width');
   }
 
+  // Qatorlar ENDI HAR DOIM mavjud balandlikni (availH) to'liq, teng
+  // taqsimlab egallaydi (grid-template-rows: repeat(rows,1fr) orqali) —
+  // shuning uchun ustunlar sonini tanlashda "sig'adimi yo'qmi"ni tekshirish
+  // shart emas; faqat kartalar imkon qadar chiroyli (kvadratga yaqin)
+  // chiqishi uchun eng mos ustunlar sonini tanlaymiz.
   let cols;
   if (manualCardW > 0){
     cols = Math.max(1, Math.floor((availW + gap) / (manualCardW + gap)));
@@ -517,24 +652,23 @@ function computePrintColumns(n){
   } else if (!n) {
     cols = 4;
   } else {
-    cols = 10;
-    for (let c = 2; c <= 10; c++){
-      const cardW = (availW - gap * (c - 1)) / c;
-      const cardH = cardW + textH;
+    const targetRatio = 0.82; // karta kengligi/balandligi uchun yoqimli nisbat
+    let best = 4, bestScore = Infinity;
+    for (let c = 2; c <= 12; c++){
       const rows = Math.ceil(n / c);
-      if (rows * (cardH + gap) <= availH){ cols = c; break; }
+      const cardW = (availW - gap * (c - 1)) / c;
+      const cardH = (availH - gap * (rows - 1)) / rows;
+      if (cardW <= 0 || cardH <= 0) continue;
+      const score = Math.abs((cardW / cardH) - targetRatio);
+      if (score < bestScore){ bestScore = score; best = c; }
     }
+    cols = best;
   }
   document.documentElement.style.setProperty('--print-cols', cols);
 
-  if (manualRows > 0) {
-    // Aynan shuncha qator bitta varaqqa sig'ishi uchun har bir katakning
-    // balandligini majburan hisoblaymiz.
-    const rowH = ((availH - gap * (manualRows - 1)) / manualRows).toFixed(2) + 'mm';
-    document.documentElement.style.setProperty('--print-row-h', rowH);
-  } else {
-    document.documentElement.style.removeProperty('--print-row-h');
-  }
+  const rows = Math.max(1, manualRows > 0 ? manualRows : Math.ceil((n || 1) / cols));
+  document.documentElement.style.setProperty('--print-rows', rows);
+  document.documentElement.style.setProperty('--print-area-h', availH.toFixed(2) + 'mm');
 }
 
 // @page{size/margin:...} qoidasi ba'zi brauzerlarda CSS custom property
@@ -552,12 +686,58 @@ function refreshPageStyle(pageW, pageH, marginMM){
   styleEl.textContent = `@page{ size:${pageW}mm ${pageH}mm; margin:${marginMM}mm; }`;
 }
 
+const FONT_STACKS = {
+  modern: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  classic: "Georgia,'Times New Roman',serif",
+  rounded: "Verdana,'Trebuchet MS',sans-serif",
+  mono: "'Courier New',monospace"
+};
+const FONT_DISPLAY_STACKS = {
+  modern: "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  classic: "Georgia,'Times New Roman',serif",
+  rounded: "Verdana,'Trebuchet MS',sans-serif",
+  mono: "'Courier New',monospace"
+};
+// Rangni ma'lum foizga qorong'ilashtirib, --accent-dark uchun soyasini hosil qiladi.
+function shadeColor(hex, percent){
+  const f = parseInt(hex.slice(1), 16);
+  const t = percent < 0 ? 0 : 255;
+  const p = Math.abs(percent);
+  const R = f >> 16, G = (f >> 8) & 0x00FF, B = f & 0x0000FF;
+  return '#' + (0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 + (Math.round((t - G) * p) + G) * 0x100 + (Math.round((t - B) * p) + B)).toString(16).slice(1);
+}
+
+// "Shrift o'lchami" slayder va raqam maydonini bir-biri bilan sinxron ushlab turadi.
+window.syncFontSize = function(fromNumber){
+  const range = document.getElementById('fontsize-range');
+  const number = document.getElementById('fontsize-number');
+  if (fromNumber){
+    const v = Math.min(220, Math.max(50, parseFloat(number.value) || 100));
+    range.value = (v / 100).toFixed(2);
+  } else {
+    number.value = Math.round(parseFloat(range.value) * 100);
+  }
+  document.getElementById('fontsize-label').textContent = Math.round(parseFloat(range.value) * 100) + '%';
+  onPrintOptsChange();
+};
+
 window.onPrintOptsChange = function(){
   document.body.classList.toggle('no-print-header', !document.getElementById('show-header-chk').checked);
   document.body.classList.toggle('print-no-img', document.getElementById('hide-img-chk').checked);
   const footerChk = document.getElementById('show-footer-chk');
   document.body.classList.toggle('no-print-footer', !!footerChk && !footerChk.checked);
-  document.documentElement.style.setProperty('--print-font-scale', numVal('fontsize-select', 1));
+  document.documentElement.style.setProperty('--print-font-scale', numVal('fontsize-range', 1));
+
+  const fontKey = document.getElementById('fontfamily-select')?.value || 'modern';
+  document.documentElement.style.setProperty('--font-body', FONT_STACKS[fontKey] || FONT_STACKS.modern);
+  document.documentElement.style.setProperty('--font-display', FONT_DISPLAY_STACKS[fontKey] || FONT_DISPLAY_STACKS.modern);
+
+  const accent = document.getElementById('accent-color')?.value || '#0f6e5e';
+  document.documentElement.style.setProperty('--accent', accent);
+  document.documentElement.style.setProperty('--accent-dark', shadeColor(accent, -0.25));
+
+  document.documentElement.style.setProperty('--card-radius', numVal('radius-input', 1.5) + 'mm');
+
   computePrintColumns(printableCount());
 };
 window.resetPrintOpts = function(){
@@ -568,7 +748,25 @@ window.resetPrintOpts = function(){
   document.getElementById('gap-input').value = '2';
   document.getElementById('pad-input').value = '1';
   document.getElementById('border-input').value = '0.4';
+  document.getElementById('radius-input').value = '1.5';
   computePrintColumns(printableCount());
+};
+
+// ---------- Ekran uchun kattalashtirish (zoom) — chop etishga ta'sir qilmaydi ----------
+let UI_ZOOM = 1;
+function applyZoom(){
+  const page = document.getElementById('page-wrap');
+  if (page) page.style.zoom = UI_ZOOM;
+  const label = document.getElementById('zoom-label');
+  if (label) label.textContent = Math.round(UI_ZOOM * 100) + '%';
+}
+window.adjustZoom = function(delta){
+  UI_ZOOM = Math.min(1.6, Math.max(0.3, +(UI_ZOOM + delta).toFixed(2)));
+  applyZoom();
+};
+window.resetZoom = function(){
+  UI_ZOOM = 1;
+  applyZoom();
 };
 
 window.doPrint = function(){
@@ -579,6 +777,7 @@ window.addEventListener('beforeprint', ()=>{
   computePrintColumns(printableCount());
 });
 
+onPrintOptsChange(); // shrift, rang, radius kabi dastlabki qiymatlarni ham qo'llab qo'yamiz
 computePrintColumns(0); // Firebase ma'lumotlari kelmasidan oldin ham A4 varaq to'g'ri o'lchamda ko'rinsin
 boot();
 </script>
