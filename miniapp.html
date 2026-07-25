@@ -192,22 +192,90 @@ function switchClientTab(t){ STATE.clientTab = t; renderClient(); }
 // ko'rsatilmaydi, chunki bu faqat administrator uchun ichki ma'lumot.
 function renderClientCatalog(app, d){
   const products = d.products || [];
+  STATE.clientCart = STATE.clientCart || {};
   let html = `<div class="section-title">🛍 Tovarlar katalogi</div>`;
   if (!products.length){
     html += `<div class="card empty">Hozircha tovarlar mavjud emas.</div>`;
   } else {
     products.forEach(p=>{
+      const qty = STATE.clientCart[p.id] || 0;
       html += `<div class="card">
         <div class="row">
-          <div class="name">${esc(p.name)}</div>
+          <div class="name">${esc(p.name)}${p.inStock===false?' <span class="pill out">tugagan</span>':''}</div>
           <div class="amount-green">${fmt(p.price)} ${cs()}</div>
         </div>
         ${p.volume ? `<div class="meta">📦 Hajmi: ${esc(p.volume)}</div>` : ''}
         ${p.note ? `<div class="meta">📝 ${esc(p.note)}</div>` : ''}
+        ${p.points>0 ? `<div class="meta">⭐ ${p.points} ball beriladi (1 dona uchun)</div>` : ''}
+        ${p.inStock===false ? '' : `<div class="qty-ctrl" style="margin-top:8px">
+          <button onclick="changeClientCartQty('${p.id}',-1)">−</button>
+          <span style="min-width:18px;text-align:center">${qty}</span>
+          <button onclick="changeClientCartQty('${p.id}',1)">+</button>
+        </div>`}
       </div>`;
     });
   }
   app.innerHTML = html;
+  renderClientCartBar(d);
+}
+function changeClientCartQty(id, delta){
+  STATE.clientCart = STATE.clientCart || {};
+  const cur = STATE.clientCart[id] || 0;
+  let next = cur + delta;
+  if (next < 0) next = 0;
+  if (next === 0) delete STATE.clientCart[id]; else STATE.clientCart[id] = next;
+  renderClientCatalog(document.getElementById('app'), STATE.data);
+}
+function clientCartTotal(){
+  const d = STATE.data;
+  return Object.entries(STATE.clientCart||{}).reduce((a,[id,qty])=>{ const p=(d.products||[]).find(x=>x.id===id); return a + (p?p.price*qty:0); },0);
+}
+function renderClientCartBar(d){
+  let bar = document.getElementById('cart-bar');
+  const count = Object.values(STATE.clientCart||{}).reduce((a,b)=>a+b,0);
+  if (bar) bar.remove();
+  if (!count) return;
+  bar = document.createElement('div');
+  bar.id = 'cart-bar'; bar.className = 'cart-bar';
+  bar.onclick = openClientCheckoutModal;
+  bar.innerHTML = `<span>🛒 ${count} ta tovar</span><span>${fmt(clientCartTotal())} ${cs()} →</span>`;
+  document.body.appendChild(bar);
+}
+function openClientCheckoutModal(){
+  const d = STATE.data;
+  const total = clientCartTotal();
+  const myPoints = (d.loyalty && d.loyalty.points) || 0;
+  const canUsePoints = myPoints >= 100; // kamida 1 ball = 100 so'm — 100 balldan boshlab foydali
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:10px">Buyurtma — ${fmt(total)} ${cs()}</div>
+    <div class="card" style="font-size:12.5px;color:var(--hint)">✅ Buyurtma yuborilgach, do'kon administratori tasdiqlaydi — shundan so'ng tovar sizga rasmiylashtiriladi.</div>
+    <div class="chip active" id="pay-cash" onclick="setClientPayMode(false)">💵 Naqd pul</div>
+    <div class="chip ${canUsePoints?'':'hidden'}" id="pay-points" onclick="setClientPayMode(true)">⭐ Ballarim (${myPoints} ball bor)</div>
+    <div id="pay-points-info" class="hidden" style="margin-top:8px;font-size:12.5px;color:var(--hint)">1 ball = 100 ${cs()} chegirma sifatida hisoblanadi. Ballaringiz yetmasa, qolgan qismini naqd to'laysiz.</div>
+    <button class="btn wide" onclick="submitClientOrder()">✅ Buyurtma berish</button>
+  `);
+}
+function setClientPayMode(usePoints){
+  document.getElementById('pay-cash').classList.toggle('active', !usePoints);
+  const pp = document.getElementById('pay-points');
+  if (pp) pp.classList.toggle('active', usePoints);
+  document.getElementById('pay-points-info').classList.toggle('hidden', !usePoints);
+  STATE.clientUsePoints = usePoints;
+}
+async function submitClientOrder(){
+  const items = Object.entries(STATE.clientCart||{}).map(([productId,qty])=>({productId,qty}));
+  if (!items.length){ alert('Savat bo\'sh.'); return; }
+  const r = await callAction('create_order', { items, usePoints: !!STATE.clientUsePoints });
+  closeModal();
+  if (r.ok){
+    if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
+    STATE.clientCart = {}; STATE.clientUsePoints = false;
+    toastMsg('✅ Buyurtma yuborildi — admin tasdig\'ini kuting');
+    await loadData();
+    STATE.clientTab = 'catalog'; renderClient();
+  } else {
+    alert('Xatolik: ' + (r.error||'') + (r.productName?(' — '+r.productName):''));
+  }
 }
 
 function renderDebtor(app, d){
@@ -571,6 +639,7 @@ function openProductModal(id){
     <label class="f">Nomi *</label><input type="text" id="pf-name" value="${p?esc(p.name):''}">
     <label class="f">Narxi (sotish) *</label><input type="number" id="pf-price" value="${p?p.price:''}">
     <label class="f">Tannarx</label><input type="number" id="pf-cost" value="${p?p.cost:''}">
+    <label class="f">⭐ Sodiqlik balli (1 dona uchun, bo'sh — avtomatik narx/10000)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
     <label class="f">Qoldiq (soni)</label><input type="number" id="pf-stock" value="${p?p.stock:0}">
     <label class="f">Hajm/o'lcham (ixtiyoriy)</label><input type="text" id="pf-volume" value="${p?esc(p.volume):''}">
     <label class="f">Izoh</label><textarea id="pf-note" rows="2">${p?esc(p.note):''}</textarea>
@@ -578,10 +647,12 @@ function openProductModal(id){
   `);
 }
 async function submitProduct(id){
+  const pointsRaw = document.getElementById('pf-points').value;
   const patch = {
     name: document.getElementById('pf-name').value.trim(),
     price: document.getElementById('pf-price').value,
     cost: document.getElementById('pf-cost').value,
+    points: pointsRaw === '' ? null : pointsRaw,
     stock: document.getElementById('pf-stock').value,
     volume: document.getElementById('pf-volume').value.trim(),
     note: document.getElementById('pf-note').value.trim(),

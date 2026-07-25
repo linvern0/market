@@ -2514,6 +2514,12 @@ body.dark table {
         <input id="p-cost" type="number" min="0" placeholder="Masalan: 3500">
       </div>
     </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>⭐ Sodiqlik balli <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni 1 dona sotib olganda necha ball olishini belgilang — bo'sh qoldirsangiz avtomatik hisoblanadi: narx/10 000)</span></label>
+        <input id="p-points" type="number" min="0" step="1" placeholder="Masalan: 1">
+      </div>
+    </div>
     <div class="form-row" id="p-qty-row">
       <div class="field"><label>Boshlang'ich miqdor *</label><input id="p-qty" type="number" min="0" placeholder="50"></div>
       <div class="field" style="justify-content:flex-end;padding-bottom:.25rem">
@@ -3718,6 +3724,7 @@ body.dark table {
       <div class="field"><label>Telefon</label><input type="text" id="cus-phone" placeholder="+998 90 123 45 67"></div>
     </div>
     <button class="btn blue" style="width:100%;margin-bottom:1rem" onclick="window.addCustomer && window.addCustomer()">+ Mijoz qo'shish</button>
+    <div id="loyalty-report" style="margin-bottom:1rem"></div>
     <div id="customers-list" style="display:flex;flex-direction:column;gap:.5rem;max-height:42vh;overflow-y:auto"></div>
     <p id="customers-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Hozircha mijoz qo'shilmagan.</p>
     <div class="modal-footer">
@@ -5675,7 +5682,7 @@ function updateAssignQueueBtn(){
 window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
-  ['p-name','p-price','p-cost','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['p-name','p-price','p-cost','p-points','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
@@ -5689,6 +5696,7 @@ window.openEditProduct=function(id){
   document.getElementById('p-name').value=p.name;
   document.getElementById('p-price').value=p.price;
   document.getElementById('p-cost').value=p.cost||'';
+  document.getElementById('p-points').value=(p.points===0||p.points)?p.points:'';
   document.getElementById('p-img').value=p.img||'';
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
@@ -5735,6 +5743,9 @@ window.saveProduct=async function(){
   const price=parseFloat(document.getElementById('p-price').value);
   const costRaw=document.getElementById('p-cost').value;
   const cost=costRaw===''||costRaw===null||isNaN(parseFloat(costRaw)) ? 0 : parseFloat(costRaw);
+  const pointsRaw=document.getElementById('p-points').value;
+  // Bo'sh qoldirilsa (null) — sotuvda avtomatik narx/10000 formula ishlatiladi.
+  const points=pointsRaw===''||pointsRaw===null||isNaN(parseInt(pointsRaw,10)) ? null : Math.max(0,parseInt(pointsRaw,10));
   const img=document.getElementById('p-img').value.trim();
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
@@ -5760,29 +5771,30 @@ window.saveProduct=async function(){
     // sifatida bilib qolish o'rniga — SAQLASH PAYTIDA darhol ogohlantiramiz.
     if(cost>0 && price>0 && price<cost){
       confirm2('⚠️ Narx tannarxdan past', `Sotish narxi (${fmt(price)} so'm) tannarxdan (${fmt(cost)} so'm) past — har bir sotuvda zarar ko'rasiz. Baribir shunday saqlansinmi?`, ()=>{
-        finishSaveExistingProduct(p, {name,price,cost,img,note,volume,barcode,qrCode});
+        finishSaveExistingProduct(p, {name,price,cost,points,img,note,volume,barcode,qrCode});
       });
       return;
     }
-    finishSaveExistingProduct(p, {name,price,cost,img,note,volume,barcode,qrCode});
+    finishSaveExistingProduct(p, {name,price,cost,points,img,note,volume,barcode,qrCode});
   } else {
     const qty=parseInt(document.getElementById('p-qty').value);
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
     if(cost>0 && price>0 && price<cost){
       confirm2('⚠️ Narx tannarxdan past', `Sotish narxi (${fmt(price)} so'm) tannarxdan (${fmt(cost)} so'm) past — har bir sotuvda zarar ko'rasiz. Baribir shunday saqlansinmi?`, ()=>{
-        finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty);
+        finishSaveNewProduct(name,price,cost,points,img,note,volume,barcode,qrCode,qty);
       });
       return;
     }
-    finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty);
+    finishSaveNewProduct(name,price,cost,points,img,note,volume,barcode,qrCode,qty);
   }
 }
-function finishSaveNewProduct(name,price,cost,img,note,volume,barcode,qrCode,qty){
+function finishSaveNewProduct(name,price,cost,points,img,note,volume,barcode,qrCode,qty){
     const newProd = {
     id: uid(),
     name,
     price,
     cost,
+    points,
     stock: qty,
     img,
     note,
@@ -7042,7 +7054,7 @@ window.doCartSell=async function(){
     // ravishda uning tarixiga va ballariga qo'shiladi.
     const cartCustomerId = document.getElementById('cart-customer-select')?.value;
     if(cartCustomerId && typeof window.applyCustomerPurchase==='function'){
-      window.applyCustomerPurchase(cartCustomerId, total, saleGroupId);
+      window.applyCustomerPurchase(cartCustomerId, total, saleGroupId, receiptItems);
     }
     const custSel = document.getElementById('cart-customer-select'); if(custSel) custSel.value='';
     // Butun savat (bir nechta tovar bo'lsa ham) BITTA umumiy receiptId
@@ -16372,16 +16384,36 @@ document.addEventListener('keydown', function(e){
   // yozuv sifatida ham saqlanadi (sana + summa + qaysi chek), shunday
   // qilib mijoz kartochkasida haqiqiy "xarid tarixi" ko'rsatish mumkin
   // (ilgari faqat yig'indi raqamlar bor edi, individual xaridlar yo'q edi).
-  window.applyCustomerPurchase = function(customerId, amount, receiptId){
+  // Chek summasiga mos ballni chekdagi har bir tovar ulushiga qarab
+  // taqsimlaydi (bot orqali claim qilingandagi bilan bir xil mantiq) —
+  // shunda admin "qaysi mahsulotdan qancha ball to'plandi" degan
+  // savolga aniq javob ola oladi.
+  function splitPointsByItemsLocal(items, total, earned){
+    const list = Array.isArray(items) ? items.filter(i=>i && (i.total||0)>0) : [];
+    if(!list.length || !total || earned<=0) return [];
+    let assigned = 0;
+    return list.map((it,idx)=>{
+      let pts;
+      if(idx===list.length-1){ pts = earned - assigned; }
+      else { pts = Math.round((it.total/total)*earned); assigned += pts; }
+      return { name: it.name || "Noma'lum tovar", amount: it.total||0, points: Math.max(0,pts) };
+    });
+  }
+  window.applyCustomerPurchase = function(customerId, amount, receiptId, items){
     const c = DB.customers.find(x=>x.id===customerId);
     if(!c || !amount || amount<=0) return;
     const earned = Math.floor(amount/10000);
+    const breakdown = splitPointsByItemsLocal(items, amount, earned);
     c.totalSpent = (c.totalSpent||0) + amount;
     c.purchaseCount = (c.purchaseCount||0) + 1;
     c.points = (c.points||0) + earned;
     c.lastPurchaseAt = new Date().toISOString();
     c.purchases = Array.isArray(c.purchases) ? c.purchases : [];
-    c.purchases = [{ date:c.lastPurchaseAt, amount, receiptId:receiptId||'', pointsEarned:earned }, ...c.purchases].slice(0,50);
+    c.purchases = [{ date:c.lastPurchaseAt, amount, receiptId:receiptId||'', pointsEarned:earned, items:breakdown }, ...c.purchases].slice(0,50);
+    if(breakdown.length){
+      c.pointsByProduct = Object.assign({}, c.pointsByProduct||{});
+      breakdown.forEach(b=>{ c.pointsByProduct[b.name] = (c.pointsByProduct[b.name]||0) + b.points; });
+    }
     fbSaveCustomer(c);
   };
   window.logCustomerPurchase = function(id){
@@ -16399,6 +16431,11 @@ document.addEventListener('keydown', function(e){
     const discount = (usedPoints/100)*10000;
     if(!confirm(`${usedPoints} ball ${fmt2(discount)} so'm chegirmaga almashtirilsinmi?`)) return;
     c.points = c.points - usedPoints;
+    // YANGI: nechta ball nimaga (qancha chegirmaga) sarflanganini alohida
+    // saqlaymiz — admin mijoz kartochkasida va umumiy ballar hisobotida
+    // "ballar nimaga sarflandi" degan savolga aniq javob ola oladi.
+    c.redemptions = Array.isArray(c.redemptions) ? c.redemptions : [];
+    c.redemptions = [{ date: new Date().toISOString(), pointsUsed: usedPoints, discount }, ...c.redemptions].slice(0,50);
     fbSaveCustomer(c);
     toast2(`✓ ${fmt2(discount)} so'm chegirma qo'llanildi`,'green');
   };
@@ -16410,6 +16447,7 @@ document.addEventListener('keydown', function(e){
   window.renderCustomersList = function(){
     const wrap = document.getElementById('customers-list'); const empty = document.getElementById('customers-empty');
     if(!wrap || !window.DB) return;
+    if(typeof window.renderLoyaltyReport==='function') window.renderLoyaltyReport();
     const list = (DB.customers||[]).slice().sort((a,b)=>(b.totalSpent||0)-(a.totalSpent||0));
     if(!list.length){ wrap.innerHTML=''; if(empty) empty.style.display='block'; return; }
     if(empty) empty.style.display='none';
@@ -16420,6 +16458,8 @@ document.addEventListener('keydown', function(e){
       const tgBadge = linked
         ? `<span class="badge green" title="Bot orqali ulangan">🤖 Ulangan</span>`
         : (hasTgInfo ? `<span class="badge amber" title="Ma'lumot kiritilgan, lekin mijoz hali botga /start yozmagan">🤖 Kutilmoqda</span>` : '');
+      const pbp = c.pointsByProduct && typeof c.pointsByProduct==='object' ? Object.entries(c.pointsByProduct).sort((a,b)=>b[1]-a[1]) : [];
+      const redemptions = Array.isArray(c.redemptions) ? c.redemptions : [];
       return `<div style="padding:.6rem .75rem;border:1px solid var(--border);border-radius:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
           <div><b>${esc(c.name)}</b><br><span style="font-size:12px;color:var(--text3)">${esc(c.phone||'Telefon kiritilmagan')}</span></div>
@@ -16431,6 +16471,16 @@ document.addEventListener('keydown', function(e){
             ${c.purchases.slice(0,20).map(p=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:.2rem 0;border-bottom:1px dashed var(--border2)"><span>${new Date(p.date).toLocaleDateString('uz-UZ')}</span><span style="font-weight:600;color:var(--text2)">${fmt2(p.amount)} so'm${p.pointsEarned?' (+' +p.pointsEarned+' ball)':''}</span></div>`).join('')}
           </div>
         </details>` : ''}
+        ${pbp.length ? `<details style="margin-top:.4rem"><summary style="font-size:12px;color:var(--accent);cursor:pointer">📦 Qaysi mahsulotdan qancha ball (${pbp.length})</summary>
+          <div style="max-height:120px;overflow-y:auto;margin-top:.3rem">
+            ${pbp.map(([name,pts])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:.2rem 0;border-bottom:1px dashed var(--border2)"><span>${esc(name)}</span><span style="font-weight:600;color:var(--text2)">+${pts} ball</span></div>`).join('')}
+          </div>
+        </details>` : ''}
+        ${redemptions.length ? `<details style="margin-top:.4rem"><summary style="font-size:12px;color:var(--accent);cursor:pointer">🎁 Ball qanday sarflangan (${redemptions.length})</summary>
+          <div style="max-height:120px;overflow-y:auto;margin-top:.3rem">
+            ${redemptions.map(r=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:.2rem 0;border-bottom:1px dashed var(--border2)"><span>${new Date(r.date).toLocaleDateString('uz-UZ')}</span><span style="font-weight:600;color:var(--text2)">-${r.pointsUsed} ball → ${fmt2(r.discount)} so'm chegirma</span></div>`).join('')}
+          </div>
+        </details>` : ''}
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
           <button class="btn sm blue" onclick="window.logCustomerPurchase('${c.id}')">+ Xarid qayd etish</button>
           <button class="btn sm amber" onclick="window.redeemCustomerPoints('${c.id}')">🎁 Ballni ishlatish</button>
@@ -16439,6 +16489,42 @@ document.addEventListener('keydown', function(e){
         </div>
       </div>`;
     }).join('');
+  };
+
+  // ============ YANGI: BALLAR BO'YICHA TO'LIQ HISOBOT (ADMIN UCHUN) ============
+  // "Mijozlar" oynasi tepasida — barcha mijozlar bo'yicha yig'ma ko'rinish:
+  // jami faol ball, jami berilgan/ishlatilgan ball (so'mda), va qaysi
+  // mahsulot(lar) eng ko'p ball keltirganini ko'rsatadi.
+  window.renderLoyaltyReport = function(){
+    const box = document.getElementById('loyalty-report');
+    if(!box || !window.DB) return;
+    const customers = DB.customers||[];
+    if(!customers.length){ box.innerHTML=''; return; }
+    let activePoints=0, everEarnedPoints=0, redeemedPoints=0, redeemedSom=0;
+    const productTotals = {};
+    customers.forEach(c=>{
+      activePoints += (c.points||0);
+      const purchEarned = Array.isArray(c.purchases) ? c.purchases.reduce((s,p)=>s+(p.pointsEarned||0),0) : 0;
+      everEarnedPoints += purchEarned;
+      if(Array.isArray(c.redemptions)) c.redemptions.forEach(r=>{ redeemedPoints += (r.pointsUsed||0); redeemedSom += (r.discount||0); });
+      if(c.pointsByProduct && typeof c.pointsByProduct==='object'){
+        Object.entries(c.pointsByProduct).forEach(([name,pts])=>{ productTotals[name] = (productTotals[name]||0) + pts; });
+      }
+    });
+    const topProducts = Object.entries(productTotals).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    box.innerHTML = `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:.7rem .8rem;background:var(--bg2,rgba(0,0,0,.02))">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.4rem">📊 Ballar bo'yicha umumiy hisobot</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;font-size:12px;color:var(--text3);margin-bottom:${topProducts.length?'.5rem':'0'}">
+          <span>Faol ball (hozir): <b style="color:var(--text2)">${activePoints}</b></span>
+          <span>·</span><span>Jami to'plangan: <b style="color:var(--text2)">${everEarnedPoints}</b></span>
+          <span>·</span><span>Ishlatilgan: <b style="color:var(--text2)">${redeemedPoints}</b> ball (${fmt2(redeemedSom)} so'm chegirma)</span>
+        </div>
+        ${topProducts.length ? `<div style="font-size:11px;color:var(--text3)">
+          <b style="color:var(--text2)">Eng ko'p ball keltirgan mahsulotlar:</b>
+          ${topProducts.map(([name,pts])=>`<div style="display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--border2)"><span>${esc(name)}</span><span style="font-weight:600;color:var(--text2)">+${pts} ball</span></div>`).join('')}
+        </div>` : `<div style="font-size:11px;color:var(--text3)">Hali mahsulot bo'yicha ball taqsimoti yo'q (yangi xaridlardan boshlab ko'rinadi).</div>`}
+      </div>`;
   };
 
   // ---------- 3) AKSIYA VA CHEGIRMALAR ----------
