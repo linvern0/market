@@ -27,6 +27,8 @@
     --print-border:.4mm;      /* karta chegarasi qalinligi (chop etishda) */
     --page-margin:10mm;       /* varaq chekkasidagi bo'sh joy */
     --print-font-scale:1;     /* nom/narx shrift o'lchami koeffitsienti (chop etishda) */
+    --page-w:210mm;           /* varaq kengligi (bo'ylama: 210, ko'ndalang: 297) */
+    --page-h:297mm;           /* varaq balandligi (bo'ylama: 297, ko'ndalang: 210) */
   }
   html,body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh}
   h1,h2{font-family:var(--font-display)}
@@ -56,27 +58,47 @@
   .toolbar label.chk{display:flex;align-items:center;gap:.4rem;font-size:12.5px;color:#cfe0da;cursor:pointer;white-space:nowrap}
   .toolbar input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--gold)}
 
-  .page-wrap{max-width:1100px;margin:0 auto;padding:1rem}
-  .sheet-header{text-align:center;margin-bottom:1rem}
-  .sheet-header h1{font-size:22px;color:var(--accent-dark)}
-  .sheet-header .sub{font-size:12.5px;color:var(--text3);margin-top:.2rem}
-  .sheet-header img.shop-logo{height:40px;margin-bottom:.4rem}
-  .stats-line{font-size:12.5px;color:var(--text3);text-align:center;margin:-.4rem 0 .8rem}
-  .sheet-footer{margin-top:1.2rem;text-align:center;font-size:11.5px;color:var(--text3);border-top:1px dashed var(--border2);padding-top:.7rem}
+  /* ---------- Chop etish oldindan ko'rish (A4 varaq) ----------
+     .sheet-viewport — ekrandagi kulrang fon, o'rtaga tekislangan, kerak
+     bo'lsa gorizontal skroll (ko'ndalang varaq kenglikda sig'masa).
+     .page-wrap — aynan A4 varaqning o'zi: haqiqiy mm o'lchamda (mm birligi
+     brauzerda haqiqiy fizik o'lchamga mos chiqadi), shuning uchun bu yerda
+     ko'rinayotgan narsa chop etilganda chiqadigan natija bilan bir xil. */
+  .sheet-viewport{width:100%;overflow-x:auto;overflow-y:visible;background:var(--bg);padding:1.4rem 1rem 3rem}
+  .page-wrap{
+    width:var(--page-w,210mm);min-height:var(--page-h,297mm);
+    padding:var(--page-margin,10mm);box-sizing:border-box;
+    background:#fff;margin:0 auto;
+    box-shadow:0 0 0 1px #dfe6e2,0 12px 30px rgba(15,40,33,.14);
+  }
+  .sheet-header{text-align:center;margin-bottom:.5rem}
+  .sheet-header h1{font-size:16px;color:var(--accent-dark)}
+  .sheet-header .sub{font-size:10px;color:var(--text3);margin-top:.2rem}
+  .sheet-header img.shop-logo{height:34px;margin-bottom:.3rem}
+  .stats-line{font-size:12.5px;color:var(--text3);text-align:center;max-width:1100px;margin:1rem auto -.6rem;padding:0 1rem}
+  .sheet-footer{margin-top:.5rem;text-align:center;font-size:9px;color:var(--text3);border-top:1px dashed var(--border2);padding-top:.3rem}
 
   #state-msg{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:14px}
   #state-msg .spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;margin:0 auto 1rem;animation:spin .7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ---------- Tovar kartalari (admin bo'limidagidek — img-wrap/prod-name/prod-price) ---------- */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem}
-  .prod-card{position:relative;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);break-inside:avoid;page-break-inside:avoid;transition:opacity .15s}
-  .prod-card .img-wrap{aspect-ratio:1/1;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  /* ---------- Tovar kartalari ----------
+     Bu qoidalar ENDI ekranda ham, chop etishda ham BIR XIL ishlaydi
+     (--print-cols, --print-gap va h.k. real vaqtda JS orqali yangilanadi),
+     shuning uchun ekranda ko'rgan narsangiz chop etilganda ham xuddi
+     shunday chiqadi. */
+  .grid{display:grid;grid-template-columns:repeat(var(--print-cols,4),1fr)!important;gap:var(--print-gap,2mm);grid-auto-rows:var(--print-row-h,auto)}
+  .grid.fixed-card-width{grid-template-columns:repeat(auto-fill,minmax(var(--print-card-w,32mm),1fr))!important}
+  .prod-card{position:relative;background:var(--surface);border:var(--print-border,.4mm) solid var(--border2);border-radius:1.5mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid;transition:opacity .15s;display:flex;flex-direction:column;height:100%}
+  .prod-card .img-wrap{flex:1 1 auto;min-height:0;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
   .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
-  .prod-card .img-wrap .no-img{font-size:34px;color:#c7d3cd}
-  .prod-card .body{padding:.5rem .6rem .6rem;text-align:center}
-  .prod-card .prod-name{font-weight:700;font-size:13px;line-height:1.25;color:var(--text);word-break:break-word}
-  .prod-card .prod-price{color:var(--accent);font-weight:800;font-size:14px;margin-top:.25rem;white-space:nowrap}
+  .prod-card .img-wrap .no-img{font-size:22px;color:#c7d3cd}
+  .prod-card .body{padding:var(--print-pad,1mm) calc(var(--print-pad,1mm) + .2mm) calc(var(--print-pad,1mm) + .4mm);flex:0 0 auto;text-align:center}
+  .prod-card .prod-name{font-weight:700;font-size:calc(8.5px * var(--print-font-scale,1));line-height:1.25;color:var(--text);word-break:break-word}
+  .prod-card .prod-price{color:var(--accent);font-weight:800;font-size:calc(9px * var(--print-font-scale,1));margin-top:.6mm;white-space:nowrap}
+  body.no-print-header .sheet-header{display:none!important}
+  body.print-no-img .prod-card .img-wrap{display:none!important}
+  body.no-print-footer .sheet-footer{display:none!important}
 
   /* ---------- Tanlab chop etish rejimi ---------- */
   .prod-card .pick{display:none;position:absolute;top:6px;left:6px;width:19px;height:19px;z-index:5;cursor:pointer;accent-color:var(--gold);background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -86,36 +108,22 @@
 
   .empty{text-align:center;padding:3rem 1rem;color:var(--text3)}
 
-  /* ================= CHOP ETISH (PRINT) UCHUN MAXSUS QOIDALAR ================= */
-  @page{ size:A4; margin:var(--page-margin,10mm); }
+  /* ================= CHOP ETISH (PRINT) UCHUN MAXSUS QOIDALAR =================
+     E'TIBOR: karta o'lchami, ustunlar soni, shrift va h.k. ENDI yuqorida
+     ekran uchun ham qo'llanadigan umumiy qoidalarda turadi — shu sababli
+     bu yerda faqat chindan ham FAQAT chop etishga tegishli narsalar
+     qoladi: qog'oz o'lchami/yo'nalishi, "qog'oz" soyasini olib tashlash,
+     boshqaruv panelini yashirish va belgilanmagan tovarlarni chiqarib
+     tashlash. JS (refreshPageStyle) tomonidan @page qoidasi haqiqiy
+     mm qiymatlari bilan qayta yoziladi (pastga qarang). */
+  @page{ size:210mm 297mm; margin:var(--page-margin,10mm); }
   @media print{
     .no-print{display:none!important}
     html,body{background:#fff!important;height:auto}
-    .page-wrap{max-width:none;padding:0;margin:0}
-    .sheet-header{margin-bottom:.5rem}
-    .sheet-header h1{font-size:16px}
-    .sheet-header .sub{font-size:10px}
-    /* JS tomonidan hisoblangan --print-cols qiymati orqali, tovarlar soni
-       qancha bo'lishidan qat'i nazar, hammasi BITTA A4 varaqqa sig'adigan
-       ustunlar soniga avtomatik moslashadi. Ustunlar soni "Karta kengligi"
-       kiritilsa, shu kenglikka mos avtomatik-to'ldiruvchi ustunlarga
-       almashtiriladi (computePrintColumns funksiyasida boshqariladi). */
-    .grid{grid-template-columns:repeat(var(--print-cols),1fr)!important;gap:var(--print-gap,2mm);grid-auto-rows:var(--print-row-h,auto)}
-    .grid.fixed-card-width{grid-template-columns:repeat(auto-fill,minmax(var(--print-card-w,32mm),1fr))!important}
-    .prod-card{box-shadow:none;border:var(--print-border,.4mm) solid #ccc;border-radius:1.5mm;display:flex;flex-direction:column;height:100%}
-    .prod-card .img-wrap{aspect-ratio:auto;flex:1 1 auto;min-height:0}
-    .prod-card .img-wrap .no-img{font-size:22px}
-    .prod-card .body{padding:var(--print-pad,1mm) calc(var(--print-pad,1mm) + .2mm) calc(var(--print-pad,1mm) + .4mm);flex:0 0 auto}
-    .prod-card .prod-name{font-size:calc(8.5px * var(--print-font-scale,1))}
-    .prod-card .prod-price{font-size:calc(9px * var(--print-font-scale,1));margin-top:.6mm}
-    /* Do'kon nomi/logotipini chop etishda ko'rsatish/yashirish (ixtiyoriy) */
-    body.no-print-header .sheet-header{display:none!important}
-    /* Rasmlarsiz chop etish (ixtiyoriy) — faqat nom va narx qoladi */
-    body.print-no-img .prod-card .img-wrap{display:none!important}
+    .sheet-viewport{width:auto;overflow:visible;background:#fff;padding:0}
+    .page-wrap{box-shadow:none;margin:0;width:auto;min-height:0}
     /* Tanlab chop etish — belgilanmagan (excluded) kartalar chop etilmaydi */
     .prod-card.excluded{display:none!important}
-    .sheet-footer{margin-top:.5rem;font-size:9px;padding-top:.3rem}
-    body.no-print-footer .sheet-footer{display:none!important}
   }
 </style>
 </head>
@@ -128,6 +136,13 @@
   <div class="opt-group" id="category-group" style="display:none">
     <label for="category-select">Kategoriya:</label>
     <select id="category-select" onchange="refreshDisplay()"></select>
+  </div>
+  <div class="opt-group">
+    <label for="orientation-select">Yo'nalish:</label>
+    <select id="orientation-select" onchange="onPrintOptsChange()">
+      <option value="portrait" selected>📄 Bo'ylama</option>
+      <option value="landscape">📃 Ko'ndalang</option>
+    </select>
   </div>
   <div class="opt-group">
     <label for="cols-input">Ustun:</label>
@@ -185,20 +200,23 @@
   <div class="spacer"></div>
   <button type="button" onclick="exportCSV()">📥 CSV yuklab olish</button>
   <button onclick="doPrint()" class="primary">🖨 Bitta A4'ga chop etish</button>
-  <div class="hint">💡 "Ustun"/"Qator" bo'sh qoldirilsa, tovarlar soniga qarab avtomatik hisoblanadi. Ikkalasini ham kiritsangiz, aynan shuncha katak (ustun × qator) bitta varaqqa joylashtiriladi. "Karta kengligi" kiritilsangiz, ustun soni shu kenglikka qarab avtomatik moslanadi (bunda "Ustun" maydoni e'tiborga olinmaydi). "Chekka", "Oraliq", "Ichki bo'shliq" va "Chegara" — varaq va kartalar atrofidagi masofalarni belgilaydi. "Tanlab chop etish"ni yoqsangiz, har bir karta ustida belgi (checkbox) chiqadi — belgisi olib tashlangan tovarlar chop etishga kiritilmaydi. "🔄 Yangilash" — sahifani qayta yuklamasdan Firebase'dagi eng so'nggi tovarlarni tortib oladi. "📥 CSV yuklab olish" — hozir ko'rinib turgan (va tanlangan) tovarlarni jadval faylga saqlaydi. Chop etish oynasida "Fon rasmlari" (Background graphics) yoqilgan bo'lsa, chegaralar aniqroq chiqadi.</div>
+  <div class="hint">💡 Pastdagi oq varaq — bu aynan A4 qog'ozning o'zi (haqiqiy o'lchamda): har qanday sozlamani (ustun, qator, chekka, yo'nalish va h.k.) o'zgartirganingizda, natija shu yerda REAL VAQTDA ko'rinadi — chop etishdan oldin qanday chiqishini oldindan ko'rasiz. "Yo'nalish" — varaqni bo'ylama yoki ko'ndalang holatda chop etish uchun. "Ustun"/"Qator" bo'sh qoldirilsa, tovarlar soniga qarab avtomatik hisoblanadi. Ikkalasini ham kiritsangiz, aynan shuncha katak (ustun × qator) bitta varaqqa joylashtiriladi. "Karta kengligi" kiritilsangiz, ustun soni shu kenglikka qarab avtomatik moslanadi (bunda "Ustun" maydoni e'tiborga olinmaydi). "Chekka", "Oraliq", "Ichki bo'shliq" va "Chegara" — varaq va kartalar atrofidagi masofalarni belgilaydi. "Tanlab chop etish"ni yoqsangiz, har bir karta ustida belgi (checkbox) chiqadi — belgisi olib tashlangan tovarlar chop etishga kiritilmaydi. "🔄 Yangilash" — sahifani qayta yuklamasdan Firebase'dagi eng so'nggi tovarlarni tortib oladi. "📥 CSV yuklab olish" — hozir ko'rinib turgan (va tanlangan) tovarlarni jadval faylga saqlaydi. Chop etish oynasida "Fon rasmlari" (Background graphics) yoqilgan bo'lsa, chegaralar aniqroq chiqadi.</div>
 </div>
 
-<div class="page-wrap">
-  <div class="sheet-header" id="sheet-header" style="display:none">
-    <img class="shop-logo" id="shop-logo" style="display:none">
-    <h1 id="shop-title">Narxlar ro'yxati</h1>
-    <div class="sub" id="shop-sub"></div>
-  </div>
+<div class="stats-line no-print" id="stats-line" style="display:none"></div>
 
-  <div class="stats-line no-print" id="stats-line" style="display:none"></div>
-  <div id="state-msg"><div class="spin"></div>Tovarlar yuklanmoqda...</div>
-  <div class="grid no-print-hide" id="grid" style="display:none"></div>
-  <div class="sheet-footer" id="sheet-footer" style="display:none"></div>
+<div class="sheet-viewport">
+  <div class="page-wrap" id="page-wrap">
+    <div class="sheet-header" id="sheet-header" style="display:none">
+      <img class="shop-logo" id="shop-logo" style="display:none">
+      <h1 id="shop-title">Narxlar ro'yxati</h1>
+      <div class="sub" id="shop-sub"></div>
+    </div>
+
+    <div id="state-msg"><div class="spin"></div>Tovarlar yuklanmoqda...</div>
+    <div class="grid no-print-hide" id="grid" style="display:none"></div>
+    <div class="sheet-footer" id="sheet-footer" style="display:none"></div>
+  </div>
 </div>
 
 <script type="module">
@@ -463,14 +481,21 @@ function computePrintColumns(n){
   const pad = numVal('pad-input', 1);          // mm, karta ichidagi bo'shliq
   const border = numVal('border-input', 0.4);  // mm, karta chegarasi
 
+  const orientEl = document.getElementById('orientation-select');
+  const landscape = orientEl && orientEl.value === 'landscape';
+  const pageW = landscape ? 297 : 210;  // mm, A4 kengligi (yo'nalishga qarab)
+  const pageH = landscape ? 210 : 297;  // mm, A4 balandligi (yo'nalishga qarab)
+
   document.documentElement.style.setProperty('--page-margin', margin + 'mm');
   document.documentElement.style.setProperty('--print-gap', gap + 'mm');
   document.documentElement.style.setProperty('--print-pad', pad + 'mm');
   document.documentElement.style.setProperty('--print-border', border + 'mm');
-  refreshPageMarginStyle(margin);
+  document.documentElement.style.setProperty('--page-w', pageW + 'mm');
+  document.documentElement.style.setProperty('--page-h', pageH + 'mm');
+  refreshPageStyle(pageW, pageH, margin);
 
-  const availW = 210 - 2 * margin;  // mm, A4 (210mm) minus chekkalar
-  const availH = 297 - 2 * margin - 12; // mm, sarlavha uchun joy qoldirib
+  const availW = pageW - 2 * margin;  // mm, varaq kengligi minus chekkalar
+  const availH = pageH - 2 * margin - 12; // mm, sarlavha uchun joy qoldirib
   const textH = 8;      // mm — nom + narx matni balandligi (taxminiy)
 
   const grid = document.getElementById('grid');
@@ -512,17 +537,19 @@ function computePrintColumns(n){
   }
 }
 
-// @page{margin:...} qoidasi ba'zi brauzerlarda CSS custom property orqali
-// o'zgarmasligi mumkin bo'lgani uchun, aniq mm qiymati bilan alohida
-// <style> teg orqali qayta yozib qo'yamiz (chop etishdan oldin chaqiriladi).
-function refreshPageMarginStyle(marginMM){
+// @page{size/margin:...} qoidasi ba'zi brauzerlarda CSS custom property
+// orqali o'zgarmasligi mumkin bo'lgani uchun, aniq mm qiymatlari bilan
+// alohida <style> teg orqali qayta yozib qo'yamiz (chop etishdan oldin
+// chaqiriladi) — shu orqali yo'nalish (bo'ylama/ko'ndalang) ham haqiqiy
+// chop etishga ta'sir qiladi.
+function refreshPageStyle(pageW, pageH, marginMM){
   let styleEl = document.getElementById('dynamic-page-style');
   if (!styleEl){
     styleEl = document.createElement('style');
     styleEl.id = 'dynamic-page-style';
     document.head.appendChild(styleEl);
   }
-  styleEl.textContent = `@page{ size:A4; margin:${marginMM}mm; }`;
+  styleEl.textContent = `@page{ size:${pageW}mm ${pageH}mm; margin:${marginMM}mm; }`;
 }
 
 window.onPrintOptsChange = function(){
@@ -552,6 +579,7 @@ window.addEventListener('beforeprint', ()=>{
   computePrintColumns(printableCount());
 });
 
+computePrintColumns(0); // Firebase ma'lumotlari kelmasidan oldin ham A4 varaq to'g'ri o'lchamda ko'rinsin
 boot();
 </script>
 </body>
