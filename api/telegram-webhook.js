@@ -458,7 +458,14 @@ async function autoRegisterCustomer(db, token, msg, kb) {
 // "debtors" (qarzdorlar) bilan bir xil mantiq, lekin alohida "customers"
 // (ball/chegirma) kolleksiyasi uchun. Bir kishi ham qarzdor, ham sodiqlik
 // mijozi bo'lishi mumkin — ikkisi mustaqil ishlaydi.
-function customerTierName(totalSpent) {
+function customerTierName(totalSpent, override) {
+  // TUZATILDI: admin panelida ("Do'kon Boshqaruvi" > Mijozlar) mijozga
+  // qo'lda belgilangan daraja bo'lsa (c.tierOverride: 'bronze'|'silver'|'gold'),
+  // bot ham AYNAN o'sha darajani ko'rsatishi kerak — aks holda admin
+  // panelidagi va botdagi daraja bir-biriga mos kelmay qolardi.
+  if (override === 'gold') return '🥇 Oltin';
+  if (override === 'silver') return '🥈 Kumush';
+  if (override === 'bronze') return '🥉 Bronza';
   const v = totalSpent || 0;
   if (v >= 2000000) return '🥇 Oltin';
   if (v >= 500000) return '🥈 Kumush';
@@ -470,7 +477,7 @@ async function sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb) {
   await batch.commit();
   const c = matches[0].data();
   const text = `✅ Ro'yxatdan o'tdingiz: <b>${esc(c.name)}</b>\n\n` +
-    `🏆 Daraja: ${customerTierName(c.totalSpent)}\n` +
+    `🏆 Daraja: ${customerTierName(c.totalSpent, c.tierOverride)}\n` +
     `⭐ Ball: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b>\n\n` +
     `Ball holatingizni istalgan vaqt /ballarim buyrug'i orqali ko'rishingiz mumkin.`;
@@ -669,7 +676,7 @@ async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, c
     `🧾 Xarid: <b>${fmt(total)} so'm</b>\n` +
     `⭐ Siz to'pladingiz: <b>+${earned} ball</b>\n` +
     `💳 Jami ball: <b>${newPoints}</b>\n` +
-    `🏆 Daraja: ${customerTierName(newTotalSpent)}\n\n` +
+    `🏆 Daraja: ${customerTierName(newTotalSpent, customerData.tierOverride)}\n\n` +
     (newPoints >= 100
       ? `🎁 ${Math.floor(newPoints / 100) * 100} ballni ${fmt(Math.floor(newPoints / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.`
       : `Har 10,000 so'm xariddan 1 ball, 100 ball = 10,000 so'm chegirma.`);
@@ -829,7 +836,7 @@ async function handleLoyaltyPoints(db, token, chatId, req) {
   const customersSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
   if (customersSnap.empty) { await sendMessage(token, chatId, "Siz sodiqlik dasturiga hali ulanmagansiz. Do'kon administratoridan ulashini so'rang, keyin /start yozing."); return; }
   const c = customersSnap.docs[0].data();
-  const text = `🏆 Daraja: ${customerTierName(c.totalSpent)}\n` +
+  const text = `🏆 Daraja: ${customerTierName(c.totalSpent, c.tierOverride)}\n` +
     `⭐ Ball: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b> (${c.purchaseCount || 0} marta)\n` +
     (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} ballni ${fmt(Math.floor(c.points / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.` : `\nHar 10,000 so'm xariddan 1 ball, 100 ball = 10,000 so'm chegirma.`);

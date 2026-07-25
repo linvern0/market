@@ -20,7 +20,7 @@
 //                             telegramNotifyOverdueDebts,telegramNotifyDailyReport} }
 //   upsert_admin    { name, phone, username, chatId? }
 //   remove_admin    { chatId?, username?, phone? }
-//   upsert_customer { id?, name, phone, telegramUsername }   -> sodiqlik mijozi
+//   upsert_customer { id?, name, phone, telegramUsername, tierOverride? }   -> sodiqlik mijozi (tierOverride: ''|'bronze'|'silver'|'gold')
 //   delete_customer { id }
 //   adjust_customer_points { id, delta, reason? }            -> ball qo'lda +/-
 //   upsert_seller   { id?, name, pin, telegramUsername }     -> xodim/sotuvchi
@@ -506,20 +506,26 @@ module.exports = async (req, res) => {
 
     // ---------------- MIJOZLAR / SODIQLIK DASTURI ----------------
     if (action === 'upsert_customer') {
-      const { id, name, phone, telegramUsername } = p;
+      const { id, name, phone, telegramUsername, tierOverride } = p;
       if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const cleanUsername = (telegramUsername || '').replace(/^@/, '');
+      // TUZATILDI: admin daraja (Bronza/Kumush/Oltin)ni qo'lda belgilasa,
+      // bu maydon oldin umuman saqlanmas edi (unutilib qolgan). Faqat
+      // ruxsat etilgan qiymatlar qabul qilinadi; bo'sh/notanish qiymat —
+      // "avtomatik" (jami xariddan hisoblanadi) deb olinadi.
+      const cleanTierOverride = ['bronze', 'silver', 'gold'].includes(tierOverride) ? tierOverride : '';
       if (id) {
         const ref = db.collection('customers').doc(id);
         const snap = await ref.get();
         if (!snap.exists) { res.status(404).json({ ok: false, error: 'customer_not_found' }); return; }
-        await ref.update({ name: String(name).trim(), phone: phone || '', telegramUsername: cleanUsername });
+        await ref.update({ name: String(name).trim(), phone: phone || '', telegramUsername: cleanUsername, tierOverride: cleanTierOverride });
         res.status(200).json({ ok: true, id });
         return;
       }
       const newRef = db.collection('customers').doc();
       const doc = {
         id: newRef.id, name: String(name).trim(), phone: phone || '', telegramUsername: cleanUsername,
+        tierOverride: cleanTierOverride,
         points: 0, totalSpent: 0, purchaseCount: 0, createdAt: new Date().toISOString(), addedBy: 'Mini App orqali',
       };
       await newRef.set(doc);
