@@ -90,6 +90,30 @@
   .empty{text-align:center;color:var(--hint);padding:22px}
   .chip{display:inline-block;padding:4px 11px;border-radius:20px;font-size:11px;background:rgba(255,255,255,.08);color:var(--hint);margin:2px 4px 2px 0;cursor:pointer;border:1px solid transparent}
   .chip.active{background:var(--button);color:var(--button-text);box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  .pill.in{background:rgba(16,185,129,.15);color:var(--accent)}
+  /* ---- Tovarlar katalogi gridi — admin panelidagi "Sotish" (#sell-grid)
+     bo'limi bilan bir xil rasm-kartochka dizayni: rasm, zaxira belgisi,
+     savatdagi son va narx bitta kartada. ---- */
+  .catalog-search{width:100%;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:var(--sec-bg);color:var(--text);font-size:14px;margin-bottom:12px}
+  .catalog-search:focus{outline:none;border-color:var(--button)}
+  .product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(min-width:460px){.product-grid{grid-template-columns:repeat(3,1fr)}}
+  @media(min-width:720px){.product-grid{grid-template-columns:repeat(4,1fr)}}
+  .prod-card{background:var(--sec-bg);border:1px solid rgba(255,255,255,.07);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.15);cursor:pointer}
+  .prod-card:active{transform:scale(.96)}
+  .prod-card.out{opacity:.55;cursor:default}
+  .prod-card .img-wrap{height:96px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
+  .prod-card .img-wrap .no-img{font-size:34px;color:rgba(255,255,255,.22)}
+  .prod-card .stock-badge{position:absolute;top:6px;right:6px}
+  .prod-card .cart-badge-overlay{position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .prod-card .body{padding:.55rem .6rem .65rem}
+  .prod-card .prod-name{font-weight:700;font-size:12.5px;margin-bottom:.2rem;overflow-wrap:anywhere;line-height:1.25}
+  .prod-card .prod-meta{font-size:10.5px;color:var(--hint);margin-bottom:.15rem}
+  .prod-card .prod-price{color:var(--accent);font-weight:700;font-size:13.5px;white-space:nowrap}
+  .prod-card .prod-points{font-size:10.5px;color:var(--warn);margin-top:.15rem}
+  .prod-card .qty-ctrl{margin-top:.4rem;justify-content:space-between}
+  .prod-card .qty-ctrl button{width:26px;height:26px;font-size:15px}
   @media (prefers-reduced-motion: reduce){
     *{animation:none!important}
   }
@@ -191,32 +215,68 @@ function switchClientTab(t){ STATE.clientTab = t; renderClient(); }
 // ko'radi — LEKIN ombordagi mavjud miqdori (stock) hech qachon
 // ko'rsatilmaydi, chunki bu faqat administrator uchun ichki ma'lumot.
 function renderClientCatalog(app, d){
-  const products = d.products || [];
   STATE.clientCart = STATE.clientCart || {};
-  let html = `<div class="section-title">🛍 Tovarlar katalogi</div>`;
+  let html = `<div class="section-title">🛍 Tovarlar katalogi</div>
+    <input type="text" class="catalog-search" id="catalog-search" placeholder="🔍 Tovar qidirish..." value="${esc(STATE.catalogSearch||'')}" oninput="STATE.catalogSearch=this.value; renderCatalogGrid()">`;
+  html += `<div class="product-grid" id="catalog-grid"></div>`;
+  app.innerHTML = html;
+  renderCatalogGrid();
+  renderClientCartBar(d);
+  // Qidiruv maydoniga fokus/kursor pozitsiyasini har renderda yo'qotmaslik
+  // uchun input alohida — faqat grid qayta chiziladi (pastda).
+}
+// Faqat gridni qayta chizadi (qidiruv inputini emas) — shunda foydalanuvchi
+// yozayotganda input fokusi va kursor joyi yo'qolmaydi.
+function renderCatalogGrid(){
+  const d = STATE.data;
+  const products = d.products || [];
+  const q = (STATE.catalogSearch||'').trim().toLowerCase();
+  const filtered = q ? products.filter(p=>p.name.toLowerCase().includes(q)) : products;
+  const grid = document.getElementById('catalog-grid');
+  if (!grid) return;
   if (!products.length){
-    html += `<div class="card empty">Hozircha tovarlar mavjud emas.</div>`;
-  } else {
-    products.forEach(p=>{
-      const qty = STATE.clientCart[p.id] || 0;
-      html += `<div class="card">
-        <div class="row">
-          <div class="name">${esc(p.name)}${p.inStock===false?' <span class="pill out">tugagan</span>':''}</div>
-          <div class="amount-green">${fmt(p.price)} ${cs()}</div>
-        </div>
-        ${p.volume ? `<div class="meta">📦 Hajmi: ${esc(p.volume)}</div>` : ''}
-        ${p.note ? `<div class="meta">📝 ${esc(p.note)}</div>` : ''}
-        ${p.points>0 ? `<div class="meta">⭐ ${p.points} ball beriladi (1 dona uchun)</div>` : ''}
-        ${p.inStock===false ? '' : `<div class="qty-ctrl" style="margin-top:8px">
+    grid.outerHTML = `<div class="card empty" id="catalog-grid-empty">Hozircha tovarlar mavjud emas.</div>`;
+    return;
+  }
+  if (!filtered.length){
+    grid.innerHTML = '';
+    grid.insertAdjacentHTML('afterend', `<div class="card empty" id="catalog-no-match">Hech narsa topilmadi.</div>`);
+    return;
+  }
+  const oldEmpty = document.getElementById('catalog-no-match'); if (oldEmpty) oldEmpty.remove();
+  grid.innerHTML = filtered.map(p=>{
+    const qty = STATE.clientCart[p.id] || 0;
+    const out = p.inStock === false;
+    const cartBadge = qty>0 ? `<div class="cart-badge-overlay">${qty}</div>` : '';
+    return `<div class="prod-card ${out?'out':''}" data-id="${p.id}" onclick="clientCardTap(event,'${p.id}')">
+      <div class="img-wrap">
+        ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+        <div class="stock-badge"><span class="pill ${out?'out':'in'}">${out?'Tugagan':'Mavjud'}</span></div>
+        ${cartBadge}
+      </div>
+      <div class="body">
+        <div class="prod-name">${esc(p.name)}</div>
+        ${p.volume ? `<div class="prod-meta">📦 ${esc(p.volume)}</div>` : ''}
+        <div class="prod-price">${fmt(p.price)} ${cs()}</div>
+        ${p.points>0 ? `<div class="prod-points">⭐ ${p.points} ball</div>` : ''}
+        ${out ? '' : `<div class="qty-ctrl" onclick="event.stopPropagation()">
           <button onclick="changeClientCartQty('${p.id}',-1)">−</button>
-          <span style="min-width:18px;text-align:center">${qty}</span>
+          <span style="min-width:16px;text-align:center">${qty}</span>
           <button onclick="changeClientCartQty('${p.id}',1)">+</button>
         </div>`}
-      </div>`;
-    });
-  }
-  app.innerHTML = html;
-  renderClientCartBar(d);
+      </div>
+    </div>`;
+  }).join('');
+}
+// Kartaning rasm/nom qismiga bosilganda — admin panelidagi "Sotish" gridi
+// kabi — bitta dona darhol savatga qo'shiladi (miqdor tugmalari esa
+// alohida, event.stopPropagation bilan himoyalangan).
+function clientCardTap(e, id){
+  const p = (STATE.data.products||[]).find(x=>x.id===id);
+  if (!p || p.inStock===false) return;
+  changeClientCartQty(id, 1);
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 function changeClientCartQty(id, delta){
   STATE.clientCart = STATE.clientCart || {};
@@ -224,7 +284,8 @@ function changeClientCartQty(id, delta){
   let next = cur + delta;
   if (next < 0) next = 0;
   if (next === 0) delete STATE.clientCart[id]; else STATE.clientCart[id] = next;
-  renderClientCatalog(document.getElementById('app'), STATE.data);
+  renderCatalogGrid();
+  renderClientCartBar(STATE.data);
 }
 function clientCartTotal(){
   const d = STATE.data;
