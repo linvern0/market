@@ -35,6 +35,15 @@ function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;
 function phoneKey(phone) { return String(phone || '').replace(/\D/g, '').slice(-9); }
 function usernameKey(u) { return String(u || '').replace(/^@/, '').trim().toLowerCase(); }
 function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); return rem > 0.5 ? rem : 0; }
+// Kun vaqtiga qarab iliqroq salomlashish (Toshkent vaqti, UTC+5) — /start
+// xabarini shunchaki quruq buyruqlar ro'yxati emas, biroz "jonli" qiladi.
+function greetingWord() {
+  const h = (new Date().getUTCHours() + 5) % 24;
+  if (h >= 5 && h < 11) return 'Xayrli tong';
+  if (h >= 11 && h < 17) return 'Xayrli kun';
+  if (h >= 17 && h < 22) return 'Xayrli kech';
+  return 'Xayrli tun';
+}
 
 async function tgCall(token, method, params) {
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -141,10 +150,19 @@ const CONTACT_KEYBOARD = {
 function miniAppKeyboard(req, isAdmin) {
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
   if (!host) return undefined;
-  const file = isAdmin ? 'index.html' : 'miniapp.html';
-  const text = isAdmin ? '🖥 Boshqaruv panelini ochish' : '📱 Mini-ilovani ochish';
-  const url = `https://${host}/${file}`;
-  return { inline_keyboard: [[{ text, web_app: { url } }]] };
+  if (!isAdmin) {
+    return { inline_keyboard: [[{ text: '📱 Mini-ilovani ochish', web_app: { url: `https://${host}/miniapp.html` } }]] };
+  }
+  // YANGI: mini-ilova (miniapp.html) endi TO'LIQ boshqaruv imkoniyatiga
+  // ega bo'lgani uchun (sotish, qarzlar, tovarlar, hisobot, mijozlar,
+  // xodimlar, sozlamalar) — admin ikkalasidan birini tanlashi mumkin:
+  // kompyuter uchun to'liq panel yoki telefon uchun tezkor mini-ilova.
+  return {
+    inline_keyboard: [
+      [{ text: '🖥 Boshqaruv panelini ochish', web_app: { url: `https://${host}/index.html` } }],
+      [{ text: '📱 Mobil mini-ilova (tezkor)', web_app: { url: `https://${host}/miniapp.html` } }],
+    ],
+  };
 }
 
 // Telegram'ning pastki, DOIMIY menyu tugmasi (chat oynasining chap pastki
@@ -243,7 +261,7 @@ function adminMenuKeyboard(req) {
     [{ text: '👤 Adminlar', callback_data: 'cmd:/adminlar' }],
   ];
   const mini = miniAppKeyboard(req, true);
-  if (mini) rows.push(mini.inline_keyboard[0]);
+  if (mini) rows.push(...mini.inline_keyboard);
   return { inline_keyboard: rows };
 }
 function debtorMenuKeyboard(req) {
@@ -253,7 +271,7 @@ function debtorMenuKeyboard(req) {
     [{ text: '⭐ Ballarim', callback_data: 'cmd:/ballarim' }],
   ];
   const mini = miniAppKeyboard(req, false);
-  if (mini) rows.push(mini.inline_keyboard[0]);
+  if (mini) rows.push(...mini.inline_keyboard);
   return { inline_keyboard: rows };
 }
 function findPendingAdminIndex(admins, { phone, username }) {
@@ -488,6 +506,124 @@ async function tryLinkLoyaltyCustomerByContact(db, token, msg, kb) {
   await sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb);
   return true;
 }
+// ============ YANGI: CHEKNI SKANERLAB AVTOMATIK BALL YIG'ISH ============
+// Har bir chekdagi QR kod (agar Sozlamalarda bot username kiritilgan
+// bo'lsa) botni "/start r_<receiptId>" deep-link orqali ochadi. Mijoz
+// shunchaki QR'ni skanerlashi bilan — agar savdo paytida sotuvchi
+// mijozni oldindan tanlamagan bo'lsa — xarid summasiga mos ball
+// avtomatik hisobiga qo'shiladi. Bitta chek FAQAT BIR MARTA ball
+// berishi mumkin (qayta skanerlashda "allaqachon olingan" ko'rsatiladi),
+// shu bilan birga agar sotuvchi checkoutda mijozni allaqachon tanlagan
+// bo'lsa (receiptData.pointsAwarded), bu yerda IKKINCHI marta ball
+// berilmaydi.
+async function handleReceiptClaim(db, token, chatId, msg, req) {
+  const text = (msg.text || '').trim();
+  const m = /^\/start\s+r_(.+)$/.exec(text);
+  if (!m) return false;
+  const receiptId = m[1].trim();
+  const kb = miniAppKeyboard(req, false);
+  let r;
+  try {
+    const receiptSnap = await db.collection('receipts').doc(receiptId).get();
+    if (!receiptSnap.exists) { await sendMessage(token, chatId, "❌ Bu chek topilmadi (eskirgan yoki noto'g'ri havola bo'lishi mumkin)."); return true; }
+    r = receiptSnap.data();
+  } catch (e) {
+    console.error('Chekni o\'qishda xatolik:', e);
+    await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
+    return true;
+  }
+  const receiptRef = db.collection('receipts').doc(receiptId);
+
+  if (r.pointsAwarded) {
+    await sendMessage(token, chatId, `🧾 Bu xarid uchun ball savdo vaqtida allaqachon hisoblangan. Joriy ball holatingizni /ballarim orqali ko'rishingiz mumkin.`, { reply_markup: kb });
+    return true;
+  }
+  if (r.pointsClaimed) {
+    let balanceLine = '';
+    if (r.pointsClaimedBy) {
+      const cSnap = await db.collection('customers').where('telegramChatId', '==', String(r.pointsClaimedBy)).limit(1).get();
+      if (!cSnap.empty) balanceLine = `\n⭐ Joriy ball: <b>${cSnap.docs[0].data().points || 0}</b>`;
+    }
+    await sendMessage(token, chatId, `ℹ️ Bu chek uchun ball allaqachon hisoblangan (+${r.pointsEarned || 0} ball).${balanceLine}`, { reply_markup: kb });
+    return true;
+  }
+
+  const total = r.total || 0;
+  const earned = Math.floor(total / 10000);
+  if (earned <= 0) {
+    await sendMessage(token, chatId, `🧾 Chek qabul qilindi (${fmt(total)} so'm), lekin ball berish uchun xarid summasi yetarli emas (kamida 10,000 so'm).`, { reply_markup: kb });
+    return true;
+  }
+
+  // Mijozni telegramChatId bo'yicha qidiramiz; topilmasa — Telegram
+  // profilidagi ism bilan yangi sodiqlik mijozi sifatida ro'yxatga olamiz
+  // (xuddi qarzdorlar botga birinchi marta yozganda avtomatik
+  // ro'yxatga olinishi kabi).
+  const existingSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
+  let customerRef, customerData;
+  if (!existingSnap.empty) {
+    customerRef = existingSnap.docs[0].ref;
+    customerData = existingSnap.docs[0].data();
+  } else {
+    const fromName = [msg.from && msg.from.first_name, msg.from && msg.from.last_name].filter(Boolean).join(' ').trim();
+    const name = fromName || (msg.from && msg.from.username ? '@' + msg.from.username : 'Telegram mijozi');
+    customerRef = db.collection('customers').doc();
+    customerData = {
+      id: customerRef.id, name, phone: '', points: 0, totalSpent: 0, purchaseCount: 0,
+      telegramUsername: (msg.from && msg.from.username) || '',
+      createdAt: new Date().toISOString(),
+    };
+  }
+  const newPoints = (customerData.points || 0) + earned;
+  const newTotalSpent = (customerData.totalSpent || 0) + total;
+  const newPurchaseCount = (customerData.purchaseCount || 0) + 1;
+  const nowIso = new Date().toISOString();
+  const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned };
+  const purchases = [purchaseEntry, ...(Array.isArray(customerData.purchases) ? customerData.purchases : [])].slice(0, 50);
+
+  try {
+    await customerRef.set({
+      ...customerData,
+      points: newPoints,
+      totalSpent: newTotalSpent,
+      purchaseCount: newPurchaseCount,
+      lastPurchaseAt: nowIso,
+      purchases,
+      telegramChatId: String(chatId),
+      telegramUserId: String((msg.from && msg.from.id) || customerData.telegramUserId || ''),
+    }, { merge: true });
+    await receiptRef.set({ pointsClaimed: true, pointsClaimedBy: String(chatId), pointsClaimedAt: nowIso, pointsEarned: earned }, { merge: true });
+  } catch (e) {
+    console.error('Ball yozishda xatolik:', e);
+    await sendMessage(token, chatId, "⚠️ Ball yozishda xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
+    return true;
+  }
+
+  await setCommandsForChat(token, chatId, false).catch(() => {});
+  await setMenuButtonFor(token, chatId, req, false).catch(() => {});
+  const text2 = `🎉 <b>Chek qabul qilindi!</b>\n\n` +
+    `🧾 Xarid: <b>${fmt(total)} so'm</b>\n` +
+    `⭐ Siz to'pladingiz: <b>+${earned} ball</b>\n` +
+    `💳 Jami ball: <b>${newPoints}</b>\n` +
+    `🏆 Daraja: ${customerTierName(newTotalSpent)}\n\n` +
+    (newPoints >= 100
+      ? `🎁 ${Math.floor(newPoints / 100) * 100} ballni ${fmt(Math.floor(newPoints / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.`
+      : `Har 10,000 so'm xariddan 1 ball, 100 ball = 10,000 so'm chegirma.`);
+  // Mumkin bo'lsa, mini-ilova tugmasi ustiga "chekni to'liq ko'rish" tugmasi
+  // ham qo'shiladi — mijoz tovarlar ro'yxatini, chek dizaynini ko'ra oladi.
+  let replyMarkup = kb || debtorMenuKeyboard(req);
+  try {
+    const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
+    if (host) {
+      const receiptUrl = `https://${host}/receipt.html?id=${encodeURIComponent(receiptId)}`;
+      const extraRow = [{ text: '🧾 Chekni to\'liq ko\'rish', url: receiptUrl }];
+      const baseRows = (replyMarkup && replyMarkup.inline_keyboard) ? replyMarkup.inline_keyboard : [];
+      replyMarkup = { inline_keyboard: [extraRow, ...baseRows] };
+    }
+  } catch (e) { /* jim: tugma qo'shilmasa ham asosiy xabar baribir boradi */ }
+  await sendMessage(token, chatId, text2, { reply_markup: replyMarkup });
+  return true;
+}
 async function handleLoyaltyPoints(db, token, chatId, req) {
   const customersSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
   if (customersSnap.empty) { await sendMessage(token, chatId, "Siz sodiqlik dasturiga hali ulanmagansiz. Do'kon administratoridan ulashini so'rang, keyin /start yozing."); return; }
@@ -502,7 +638,16 @@ async function handleLoyaltyPoints(db, token, chatId, req) {
 // Bitta qarz uchun "nima uchun qarzdorligi" batafsil matnini quradi: tovar
 // nomlari, miqdori va narxi bilan (agar shu ma'lumot saqlangan bo'lsa).
 function debtDetailText(d) {
-  let text = `📅 ${new Date(d.date).toLocaleDateString('uz-UZ')} — <b>${fmt(debtRemaining(d))} so'm</b>\n`;
+  const remaining = debtRemaining(d);
+  const paid = d.paidAmount || 0;
+  let text;
+  if (paid > 0) {
+    // Qisman to'langan qarz — asl summa, to'langan va qoldiq alohida-alohida
+    // ko'rsatiladi, shunda mijoz nima uchun aynan shu qoldiq qolganini aniq ko'radi.
+    text = `📅 ${new Date(d.date).toLocaleDateString('uz-UZ')} — asl summa <b>${fmt(d.total || 0)} so'm</b>, to'langan <b>${fmt(paid)} so'm</b>, qoldiq <b>${fmt(remaining)} so'm</b>\n`;
+  } else {
+    text = `📅 ${new Date(d.date).toLocaleDateString('uz-UZ')} — <b>${fmt(remaining)} so'm</b>\n`;
+  }
   if (Array.isArray(d.items) && d.items.length) {
     d.items.forEach((it) => {
       text += `   • ${esc(it.productName)} — ${it.qty} ta × ${fmt(it.price)} = ${fmt(it.subtotal || it.qty * it.price)} so'm\n`;
@@ -520,24 +665,45 @@ async function handleCustomerMyDebts(db, token, chatId, req) {
   const isOrgViewer = !!org && debtorDocs.some((d) => d.org === org && d.viewScope === 'org');
   // TEZLIK: butun "debts" kolleksiyasini o'qish o'rniga faqat kerakli
   // qarzlarnigina to'g'ridan-to'g'ri so'raymiz (do'kon kattalashganda ham tez ishlaydi).
-  let allDebts;
+  let allDebts, allDebtsEver;
   if (isOrgViewer) {
-    const snap = await db.collection('debts').where('org', '==', org).where('paid', '==', false).get();
+    const [snap, snapEver] = await Promise.all([
+      db.collection('debts').where('org', '==', org).where('paid', '==', false).get(),
+      db.collection('debts').where('org', '==', org).get(),
+    ]);
     allDebts = snap.docs.map((d) => d.data());
+    allDebtsEver = snapEver.docs.map((d) => d.data());
   } else {
     const ids = debtorDocs.map((x) => x.id);
     const chunks = [];
     for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
-    const snaps = await Promise.all(chunks.map((c) => db.collection('debts').where('debtorId', 'in', c).where('paid', '==', false).get()));
+    const [snaps, snapsEver] = await Promise.all([
+      Promise.all(chunks.map((c) => db.collection('debts').where('debtorId', 'in', c).where('paid', '==', false).get())),
+      Promise.all(chunks.map((c) => db.collection('debts').where('debtorId', 'in', c).get())),
+    ]);
     allDebts = snaps.flatMap((s) => s.docs.map((d) => d.data()));
+    allDebtsEver = snapsEver.flatMap((s) => s.docs.map((d) => d.data()));
   }
   const myDebts = allDebts;
+  // YANGI: umr bo'yi (barcha, hozir yopilgan qarzlar bilan birga) statistika —
+  // mijoz shu do'kondan JAMI qancha qarzga olgani va JAMI qancha to'lagani
+  // haqida ham TO'LIQ ma'lumot olishi uchun.
+  const everCount = allDebtsEver.length;
+  const everTotalDebt = allDebtsEver.reduce((a, d) => a + (d.total || 0), 0);
+  const everTotalPaid = allDebtsEver.reduce((a, d) => a + (d.paidAmount || 0), 0);
+  const closedCount = allDebtsEver.filter((d) => d.paid).length;
+
   if (!myDebts.length) {
-    await sendMessage(token, chatId, isOrgViewer ? `✅ "${esc(org)}" tashkilotining faol qarzi yo'q. 👍` : "Faol qarzingiz yo'q. 👍", { reply_markup: debtorMenuKeyboard(req) });
+    let doneMsg = isOrgViewer ? `✅ "${esc(org)}" tashkilotining faol qarzi yo'q. 👍` : "✅ Faol qarzingiz yo'q. 👍";
+    if (everCount > 0) {
+      doneMsg += `\n\n📜 Umumiy tarix: jami <b>${everCount} ta</b> qarz yozuvi bo'lgan, hammasi (<b>${fmt(everTotalPaid)} so'm</b>) to'liq to'langan.`;
+    }
+    await sendMessage(token, chatId, doneMsg, { reply_markup: debtorMenuKeyboard(req) });
     return;
   }
   const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
   let text;
+  const LIST_CAP = 15;
   if (isOrgViewer) {
     // Tashkilot vakili: avval HAR BIR xodim bo'yicha alohida yig'indi
     // (mini-ilovadagi "byPerson" bilan bir xil mantiq), keyin so'nggi
@@ -550,19 +716,29 @@ async function handleCustomerMyDebts(db, token, chatId, req) {
       byPerson[key].count += 1;
     });
     const sortedPeople = Object.values(byPerson).sort((a, b) => b.total - a.total);
-    text = `🏢 <b>${esc(org)}</b> — tashkilot umumiy qarzi: <b>${fmt(total)} so'm</b>\n\n`;
+    text = `🏢 <b>${esc(org)}</b> — tashkilot umumiy qarzi (qolgan): <b>${fmt(total)} so'm</b>\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n`;
     text += `👥 <b>Xodimlar bo'yicha taqsimot</b> (${sortedPeople.length} kishi):\n`;
     sortedPeople.forEach((p) => { text += `• ${esc(p.name)} — <b>${fmt(p.total)} so'm</b> (${p.count} ta yozuv)\n`; });
-    text += `\n📝 <b>So'nggi yozuvlar (batafsil):</b>\n\n`;
-    myDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8).forEach((d) => {
+    text += `\n📝 <b>Faol qarzlar (batafsil)</b> — ${myDebts.length} ta:\n\n`;
+    const sortedDebts = myDebts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    sortedDebts.slice(0, LIST_CAP).forEach((d) => {
       text += `👤 ${esc(d.debtorName || '')}\n` + debtDetailText(d) + '\n';
     });
+    if (sortedDebts.length > LIST_CAP) text += `… va yana <b>${sortedDebts.length - LIST_CAP} ta</b> faol yozuv bor.\n`;
   } else {
-    text = `💰 Joriy qarzingiz: <b>${fmt(total)} so'm</b>\n\n`;
-    myDebts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10).forEach((d) => {
+    text = `💰 Joriy qarzingiz (qolgan): <b>${fmt(total)} so'm</b>\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n`;
+    text += `📝 <b>Faol qarzlar</b> — ${myDebts.length} ta:\n\n`;
+    const sortedDebts = myDebts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    sortedDebts.slice(0, LIST_CAP).forEach((d) => {
       text += debtDetailText(d) + '\n';
     });
+    if (sortedDebts.length > LIST_CAP) text += `… va yana <b>${sortedDebts.length - LIST_CAP} ta</b> faol yozuv bor — to'liq ro'yxat uchun Mini-ilovadan foydalaning.\n\n`;
   }
+  // YANGI: qisqacha umumiy (lifetime) statistika — nafaqat hozirgi qolgan
+  // qarz, balki shu do'kondan UMUMAN qancha marta va qancha summaga qarzga
+  // olingani hamda qanchasi allaqachon to'langani.
+  text += `\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n📜 <b>Umumiy tarix</b>: jami ${everCount} ta qarz yozuvi (shundan ${closedCount} tasi to'liq yopilgan)\n`;
+  text += `💵 Jami qarzga olingan: <b>${fmt(everTotalDebt)} so'm</b> · Jami to'langan: <b>${fmt(everTotalPaid)} so'm</b>\n`;
   text += `\n📱 Batafsil (jadval, grafik, to'lovlar tarixi bilan) ko'rish uchun "Mening qarzim" tugmasidan (Mini-ilova) foydalaning.`;
   await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
 }
@@ -687,18 +863,59 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 
   if (cmd === '/statistika' || cmd === '/haftalik' || cmd === '/oylik') {
     const now = new Date();
-    let fromStr, label;
-    if (cmd === '/statistika') { fromStr = now.toISOString().slice(0, 10); label = 'Bugungi hisobot'; }
-    else if (cmd === '/haftalik') { const from = new Date(now); from.setDate(from.getDate() - 6); fromStr = from.toISOString().slice(0, 10); label = "Oxirgi 7 kunlik hisobot"; }
-    else { fromStr = now.toISOString().slice(0, 8) + '01'; label = "Joriy oy hisoboti"; }
+    let fromStr, prevFromStr, prevToStr, label;
+    if (cmd === '/statistika') {
+      fromStr = now.toISOString().slice(0, 10); label = 'Bugungi hisobot';
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      prevFromStr = y.toISOString().slice(0, 10); prevToStr = prevFromStr;
+    } else if (cmd === '/haftalik') {
+      const from = new Date(now); from.setDate(from.getDate() - 6); fromStr = from.toISOString().slice(0, 10); label = "Oxirgi 7 kunlik hisobot";
+      const pf = new Date(now); pf.setDate(pf.getDate() - 13); prevFromStr = pf.toISOString().slice(0, 10);
+      const pt = new Date(now); pt.setDate(pt.getDate() - 7); prevToStr = pt.toISOString().slice(0, 10);
+    } else {
+      fromStr = now.toISOString().slice(0, 8) + '01'; label = "Joriy oy hisoboti";
+      const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      prevFromStr = pm.toISOString().slice(0, 10);
+      prevToStr = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+    }
     const salesSnap = await db.collection('sales').get();
-    const periodSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted && (s.date || '').slice(0, 10) >= fromStr);
+    const allSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
+    const periodSales = allSales.filter((s) => (s.date || '').slice(0, 10) >= fromStr);
+    const prevSales = allSales.filter((s) => { const d = (s.date || '').slice(0, 10); return d >= prevFromStr && d <= prevToStr; });
     const revenue = periodSales.reduce((a, s) => a + (s.total || 0), 0);
     const profit = periodSales.reduce((a, s) => a + (s.price - (s.cost || 0)) * s.qty, 0);
+    const prevRevenue = prevSales.reduce((a, s) => a + (s.total || 0), 0);
     const debtsSnap = await db.collection('debts').get();
     const newDebts = debtsSnap.docs.map((d) => d.data()).filter((d) => (d.date || '').slice(0, 10) >= fromStr);
     const newDebtTotal = newDebts.reduce((a, d) => a + (d.total || 0), 0);
-    return sendMessage(token, chatId, `📊 <b>${label}</b> — ${esc(shopName)}\n\n🧾 Savdolar: ${periodSales.length} ta\n💰 Tushum: ${fmt(revenue)} so'm\n📈 Foyda: ${fmt(profit)} so'm\n📝 Yangi qarzga sotish: ${newDebts.length} ta (${fmt(newDebtTotal)} so'm)`);
+    const avgCheck = periodSales.length ? revenue / periodSales.length : 0;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+    // O'tgan davrga nisbatan o'zgarish foizi (▲/▼ bilan)
+    let trendLine = '';
+    if (prevRevenue > 0) {
+      const change = ((revenue - prevRevenue) / prevRevenue) * 100;
+      const arrow = change >= 0 ? '▲' : '▼';
+      const trendLabel = cmd === '/statistika' ? "kechagiga nisbatan" : cmd === '/haftalik' ? "oldingi haftaga nisbatan" : "oldingi oyga nisbatan";
+      trendLine = `${arrow} ${change >= 0 ? '+' : ''}${change.toFixed(1)}% (${trendLabel})\n`;
+    } else if (revenue > 0) {
+      trendLine = `🆕 oldingi davrda savdo bo'lmagan\n`;
+    }
+
+    // Foyda marjasi uchun oddiy matnli progress-bar (0–100%)
+    const barLen = 10;
+    const filled = Math.max(0, Math.min(barLen, Math.round((margin / 100) * barLen)));
+    const bar = '▓'.repeat(filled) + '░'.repeat(barLen - filled);
+
+    let text = `📊 <b>${label}</b> — ${esc(shopName)}\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n`;
+    text += `🧾 Savdolar: <b>${periodSales.length} ta</b>\n`;
+    text += `💰 Tushum: <b>${fmt(revenue)} so'm</b>\n`;
+    if (trendLine) text += trendLine;
+    text += `📈 Foyda: <b>${fmt(profit)} so'm</b>  (marja ${margin.toFixed(1)}%)\n`;
+    text += `<code>${bar}</code>\n`;
+    if (periodSales.length) text += `🧮 O'rtacha chek: ${fmt(avgCheck)} so'm\n`;
+    text += `📝 Yangi qarzga sotish: ${newDebts.length} ta (${fmt(newDebtTotal)} so'm)`;
+    return sendMessage(token, chatId, text);
   }
 
   if (cmd === '/top') {
@@ -714,8 +931,9 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     });
     const top = [...byPerson.values()].sort((a, b) => b.total - a.total).slice(0, 10);
     if (!top.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q.");
-    let text = `🏆 <b>Eng katta 10 ta qarzdor</b>\n\n`;
-    top.forEach((p, i) => { text += `${i + 1}. ${esc(p.name)} — <b>${fmt(p.total)} so'm</b> (${p.ids.length} ta yozuv)\n`; });
+    const medals = ['🥇', '🥈', '🥉'];
+    let text = `🏆 <b>Eng katta 10 ta qarzdor</b>\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n`;
+    top.forEach((p, i) => { const rank = medals[i] || `${i + 1}.`; text += `${rank} ${esc(p.name)} — <b>${fmt(p.total)} so'm</b> (${p.ids.length} ta yozuv)\n`; });
     return sendMessage(token, chatId, text);
   }
 
@@ -986,6 +1204,12 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
   const kbDebtor = miniAppKeyboard(req, false);
   const kb = isAdmin ? kbAdmin : kbDebtor;
 
+  // Chek QR orqali "/start r_<receiptId>" deep-link kelgan bo'lsa — bu
+  // boshqa hamma narsadan OLDIN, mustaqil ravishda qayta ishlanadi (admin/
+  // sotuvchi/qarzdor rolidan qat'i nazar — birinchi marta yozayotgan yangi
+  // mijoz ham, allaqachon tanilgan mijoz ham bo'lishi mumkin).
+  if (await handleReceiptClaim(db, token, chatId, msg, req)) return;
+
   if (!isAdmin && msg.from && msg.from.username) {
     const idx = findPendingAdminIndex(admins, { username: msg.from.username });
     if (idx !== -1) {
@@ -1082,7 +1306,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
       if (isKnownAny) {
         await setCommandsForChat(token, chatId, false).catch(() => {});
         await setMenuButtonFor(token, chatId, req, false).catch(() => {});
-        await sendMessage(token, chatId, helpText(false), { reply_markup: debtorMenuKeyboard(req) || kbDebtor || { remove_keyboard: true } });
+        await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + helpText(false), { reply_markup: debtorMenuKeyboard(req) || kbDebtor || { remove_keyboard: true } });
         return;
       }
       // Hali hech qanday ro'yxatda (qarzdor yoki mijoz) topilmadi — admin
@@ -1093,7 +1317,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
     }
     await setAdminMenuButton(token, chatId, req);
     await setCommandsForChat(token, chatId, true).catch(() => {});
-    await sendMessage(token, chatId, helpText(isAdmin), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
+    await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + helpText(isAdmin), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
     return;
   }
   if (text === '/menu' || text === '/menyu') {

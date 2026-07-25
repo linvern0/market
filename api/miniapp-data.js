@@ -36,11 +36,12 @@ function debtSummary(d) {
 }
 
 async function buildAdminPayload(db, settings) {
-  const [debtsSnap, productsSnap, salesSnap, debtorsSnap] = await Promise.all([
+  const [debtsSnap, productsSnap, salesSnap, debtorsSnap, customersSnap] = await Promise.all([
     db.collection('debts').get(),
     db.collection('products').get(),
     db.collection('sales').get(),
     db.collection('debtors').get(),
+    db.collection('customers').get(),
   ]);
 
   const allDebts = debtsSnap.docs.map((d) => d.data());
@@ -74,6 +75,59 @@ async function buildAdminPayload(db, settings) {
     return { date: dayStr, revenue: dayRevenue, profit: dayProfit, newDebt: dayNewDebt };
   });
 
+  // ============ YANGI: Hisobot (kun/hafta/oy) — mini-ilovaning "Hisobot"
+  // bo'limi uchun. Har bir davr uchun daromad/foyda/savdolar soni, oldingi
+  // davrga nisbatan foiz o'zgarishi, eng ko'p sotilgan tovarlar va so'nggi
+  // savdolar ro'yxati hisoblanadi (bot'dagi /statistika bilan bir xil
+  // mantiq — shu bilan ikkala interfeys ham izchil ma'lumot beradi).
+  function periodBounds(period) {
+    const now = new Date();
+    if (period === 'today') return { from: todayStr, prevFrom: (() => { const y = new Date(now); y.setDate(y.getDate() - 1); return y.toISOString().slice(0, 10); })(), prevTo: null };
+    if (period === 'week') {
+      const from = new Date(now); from.setDate(from.getDate() - 6);
+      const pf = new Date(now); pf.setDate(pf.getDate() - 13);
+      const pt = new Date(now); pt.setDate(pt.getDate() - 7);
+      return { from: from.toISOString().slice(0, 10), prevFrom: pf.toISOString().slice(0, 10), prevTo: pt.toISOString().slice(0, 10) };
+    }
+    const from = todayStr.slice(0, 8) + '01';
+    const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return { from, prevFrom: pm.toISOString().slice(0, 10), prevTo: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10) };
+  }
+  function statsFor(period) {
+    const { from, prevFrom, prevTo } = periodBounds(period);
+    const periodSales = allSales.filter((s) => (s.date || '').slice(0, 10) >= from);
+    const prevSales = allSales.filter((s) => { const dd = (s.date || '').slice(0, 10); return prevTo ? (dd >= prevFrom && dd <= prevTo) : dd === prevFrom; });
+    const rev = periodSales.reduce((a, s) => a + (s.total || 0), 0);
+    const prof = periodSales.reduce((a, s) => a + ((s.price || 0) - (s.cost || 0)) * (s.qty || 0), 0);
+    const prevRev = prevSales.reduce((a, s) => a + (s.total || 0), 0);
+    const newDebt = allDebts.filter((dd) => (dd.date || '').slice(0, 10) >= from).reduce((a, dd) => a + (dd.total || 0), 0);
+    const changePct = prevRev > 0 ? ((rev - prevRev) / prevRev) * 100 : (rev > 0 ? null : null);
+    return { revenue: rev, profit: prof, salesCount: periodSales.length, newDebt, changePct, _sales: periodSales };
+  }
+  function topProductsFor(period) {
+    const { _sales } = statsFor(period);
+    const map = {};
+    _sales.forEach((s) => {
+      const key = s.productName || '?';
+      if (!map[key]) map[key] = { name: key, revenue: 0, qty: 0 };
+      map[key].revenue += s.total || 0;
+      map[key].qty += s.qty || 0;
+    });
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  }
+  const reportStats = {};
+  const topProducts = {};
+  ['today', 'week', 'month'].forEach((per) => {
+    const st = statsFor(per);
+    reportStats[per] = { revenue: st.revenue, profit: st.profit, salesCount: st.salesCount, newDebt: st.newDebt, changePct: st.changePct };
+    topProducts[per] = topProductsFor(per);
+  });
+  const recentSales = allSales
+    .slice()
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 25)
+    .map((s) => ({ productName: s.productName, qty: s.qty, price: s.price, total: s.total, date: s.date, seller: s.seller || '', isDebt: !!s.isDebt }));
+
   const debtors = debtorsSnap.docs.map((d) => {
     const x = d.data();
     return {
@@ -87,12 +141,27 @@ async function buildAdminPayload(db, settings) {
     name: a.name || '', phone: a.phone || '', username: a.username || '', chatId: a.chatId || '', linked: !!a.chatId,
   }));
 
+  // YANGI: Xodimlar (sotuvchilar) ro'yxati — "Xodimlar" bo'limi uchun.
+  const sellers = (Array.isArray(settings.sellers) ? settings.sellers : []).map((s) => ({
+    id: s.id, name: s.name || '', pin: s.pin || '', telegramUsername: s.telegramUsername || '', linked: !!s.telegramChatId,
+  }));
+
+  // YANGI: Mijozlar / sodiqlik dasturi ro'yxati — "Mijozlar" bo'limi uchun.
+  const customers = customersSnap.docs.map((d) => {
+    const c = d.data();
+    return {
+      id: d.id, name: c.name || '', phone: c.phone || '', telegramUsername: c.telegramUsername || '',
+      points: c.points || 0, totalSpent: c.totalSpent || 0, purchaseCount: c.purchaseCount || 0, linked: !!c.telegramChatId,
+    };
+  });
+
   return {
     role: 'admin',
     shopName: settings.shopName || "Do'kon",
     currencySymbol: settings.currencySymbol || "so'm",
     stats: { revenue, profit, salesCount: todaySales.length },
     last7Days,
+    report: { ...reportStats, topProducts, recentSales },
     debts: activeDebts.map(debtSummary),
     totalDebt,
     stock: {
@@ -103,6 +172,8 @@ async function buildAdminPayload(db, settings) {
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
       .map((p) => ({ id: p.id, name: p.name, price: p.price, cost: p.cost || 0, stock: p.stock || 0, volume: p.volume || '', note: p.note || '' })),
     debtors: debtors.sort((a, b) => (a.org || a.name).localeCompare(b.org || b.name)),
+    sellers,
+    customers,
     settings: {
       shopName: settings.shopName || "Do'kon",
       currencySymbol: settings.currencySymbol || "so'm",

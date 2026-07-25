@@ -20,6 +20,11 @@
 //                             telegramNotifyOverdueDebts,telegramNotifyDailyReport} }
 //   upsert_admin    { name, phone, username, chatId? }
 //   remove_admin    { chatId?, username?, phone? }
+//   upsert_customer { id?, name, phone, telegramUsername }   -> sodiqlik mijozi
+//   delete_customer { id }
+//   adjust_customer_points { id, delta, reason? }            -> ball qo'lda +/-
+//   upsert_seller   { id?, name, pin, telegramUsername }     -> xodim/sotuvchi
+//   remove_seller   { id }
 // ----------------------------------------------------------------------------
 
 const admin = require('firebase-admin');
@@ -415,6 +420,89 @@ module.exports = async (req, res) => {
       if (filtered.length === list.length) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
       if (String(chatId) === String(targetChatId)) { res.status(400).json({ ok: false, error: 'cannot_remove_self' }); return; }
       await settingsRef.set({ telegramAdmins: filtered }, { merge: true });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ---------------- MIJOZLAR / SODIQLIK DASTURI ----------------
+    if (action === 'upsert_customer') {
+      const { id, name, phone, telegramUsername } = p;
+      if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const cleanUsername = (telegramUsername || '').replace(/^@/, '');
+      if (id) {
+        const ref = db.collection('customers').doc(id);
+        const snap = await ref.get();
+        if (!snap.exists) { res.status(404).json({ ok: false, error: 'customer_not_found' }); return; }
+        await ref.update({ name: String(name).trim(), phone: phone || '', telegramUsername: cleanUsername });
+        res.status(200).json({ ok: true, id });
+        return;
+      }
+      const newRef = db.collection('customers').doc();
+      const doc = {
+        id: newRef.id, name: String(name).trim(), phone: phone || '', telegramUsername: cleanUsername,
+        points: 0, totalSpent: 0, purchaseCount: 0, createdAt: new Date().toISOString(), addedBy: 'Mini App orqali',
+      };
+      await newRef.set(doc);
+      res.status(200).json({ ok: true, id: newRef.id });
+      return;
+    }
+
+    if (action === 'delete_customer') {
+      const { id } = p;
+      if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      await db.collection('customers').doc(id).delete();
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // Ballarni qo'lda qo'shish/ayirish (masalan sovg'a yoki tuzatish uchun).
+    // delta manfiy bo'lsa — ball ayiriladi (0 dan pastga tushmaydi).
+    if (action === 'adjust_customer_points') {
+      const { id, delta, reason } = p;
+      const d2 = parseInt(delta, 10);
+      if (!id || !d2) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const ref = db.collection('customers').doc(id);
+      const snap = await ref.get();
+      if (!snap.exists) { res.status(404).json({ ok: false, error: 'customer_not_found' }); return; }
+      const cur = snap.data();
+      const newPoints = Math.max(0, (cur.points || 0) + d2);
+      const entry = { date: new Date().toISOString(), delta: d2, reason: reason || '', by: 'Mini App admin' };
+      await ref.update({ points: newPoints, pointsAdjustments: admin.firestore.FieldValue.arrayUnion(entry) });
+      if (cur.telegramChatId) {
+        const text = d2 > 0
+          ? `⭐ <b>${esc(shopName)}</b>\n\nSizga <b>+${d2} ball</b> qo'shildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`
+          : `ℹ️ <b>${esc(shopName)}</b>\n\nBallaringizdan ${Math.abs(d2)} ball ayirildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`;
+        await tgSendMessage(token, cur.telegramChatId, text);
+      }
+      res.status(200).json({ ok: true, points: newPoints });
+      return;
+    }
+
+    // ---------------- XODIMLAR (SOTUVCHILAR): QO'SHISH / O'CHIRISH ----------------
+    if (action === 'upsert_seller') {
+      const { id, name, pin, telegramUsername } = p;
+      if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      if (pin && !/^\d{4}$/.test(String(pin))) { res.status(400).json({ ok: false, error: 'bad_pin' }); return; }
+      const list = Array.isArray(settings.sellers) ? [...settings.sellers] : [];
+      if (pin && list.some((s) => s.pin === String(pin) && s.id !== id)) { res.status(400).json({ ok: false, error: 'pin_taken' }); return; }
+      const cleanUsername = (telegramUsername || '').replace(/^@/, '');
+      if (id) {
+        const idx = list.findIndex((s) => s.id === id);
+        if (idx === -1) { res.status(404).json({ ok: false, error: 'seller_not_found' }); return; }
+        list[idx] = { ...list[idx], name: String(name).trim(), ...(pin ? { pin: String(pin) } : {}), telegramUsername: cleanUsername };
+      } else {
+        list.push({ id: uid(), name: String(name).trim(), pin: String(pin || ''), telegramUsername: cleanUsername, telegramChatId: '' });
+      }
+      await settingsRef.set({ sellers: list }, { merge: true });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (action === 'remove_seller') {
+      const { id } = p;
+      if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const list = (Array.isArray(settings.sellers) ? settings.sellers : []).filter((s) => s.id !== id);
+      await settingsRef.set({ sellers: list }, { merge: true });
       res.status(200).json({ ok: true });
       return;
     }
