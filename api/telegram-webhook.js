@@ -507,6 +507,50 @@ async function tryLinkLoyaltyCustomerByContact(db, token, msg, kb) {
   await sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb);
   return true;
 }
+// ============ YANGI: BIR MARTALIK HAVOLA ORQALI BOTGA ULASH ============
+// Admin (veb-panel/Mini-ilova > "Mijozlar va sodiqlik dasturi" > "Botga
+// ulash") mijoz uchun noyob token yaratadi va shu token bilan
+// "https://t.me/<bot>?start=cl_<token>" havolasini chiqaradi. Mijoz shu
+// havolani (Telegram, SMS yoki boshqa kanal orqali) ochib botni ishga
+// tushirsa — quyidagi funksiya tokenni "customers" kolleksiyasidan topib,
+// o'sha mijozni DARHOL joriy chatId'ga bog'laydi (username/ID/telefon
+// kiritishga hojat qolmaydi). Xavfsizlik uchun token muvaffaqiyatli
+// ishlatilgach FIELD sifatida o'chirib tashlanadi — shu bilan havola
+// FAQAT BIR MARTA ishlaydi, qayta ochilsa "eskirgan" deb javob beriladi.
+async function handleCustomerLinkClaim(db, token, chatId, msg, req) {
+  const text = (msg.text || '').trim();
+  const m = /^\/start\s+cl_(.+)$/.exec(text);
+  if (!m) return false;
+  const linkToken = m[1].trim();
+  const kb = miniAppKeyboard(req, false);
+  let snap;
+  try {
+    snap = await db.collection('customers').where('linkToken', '==', linkToken).limit(1).get();
+  } catch (e) {
+    console.error('Bir martalik havolani tekshirishda xatolik:', e);
+    await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
+    return true;
+  }
+  if (snap.empty) {
+    await sendMessage(token, chatId, "❌ Bu havola eskirgan yoki allaqachon ishlatilgan. Do'kon administratoridan yangi havola so'rang.");
+    return true;
+  }
+  const custRef = snap.docs[0].ref;
+  const from = msg.from || {};
+  await custRef.set({
+    telegramChatId: String(chatId),
+    telegramUserId: String(from.id || ''),
+    telegramUsername: from.username || snap.docs[0].data().telegramUsername || '',
+    linkToken: admin.firestore.FieldValue.delete(),
+    linkTokenCreatedAt: admin.firestore.FieldValue.delete(),
+  }, { merge: true });
+  const freshSnap = await custRef.get();
+  await setCommandsForChat(token, chatId, false).catch(() => {});
+  await setMenuButtonFor(token, chatId, req, false).catch(() => {});
+  await sendLoyaltyLinkedWelcome(db, token, chatId, [freshSnap], kb);
+  return true;
+}
+
 // ============ YANGI: CHEKNI SKANERLAB AVTOMATIK BALL YIG'ISH ============
 // Har bir chekdagi QR kod (agar Sozlamalarda bot username kiritilgan
 // bo'lsa) botni "/start r_<receiptId>" deep-link orqali ochadi. Mijoz
@@ -1464,6 +1508,10 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
   // sotuvchi/qarzdor rolidan qat'i nazar — birinchi marta yozayotgan yangi
   // mijoz ham, allaqachon tanilgan mijoz ham bo'lishi mumkin).
   if (await handleReceiptClaim(db, token, chatId, msg, req)) return;
+
+  // Mijozni "bir martalik havola" (/start cl_<token>) orqali ulash — bu
+  // ham chek claim kabi, boshqa hamma narsadan OLDIN, mustaqil tekshiriladi.
+  if (await handleCustomerLinkClaim(db, token, chatId, msg, req)) return;
 
   if (!isAdmin && msg.from && msg.from.username) {
     const idx = findPendingAdminIndex(admins, { username: msg.from.username });
