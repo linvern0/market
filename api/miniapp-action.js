@@ -77,8 +77,81 @@ module.exports = async (req, res) => {
     const chatId = String(user.id);
     const admins = Array.isArray(settings.telegramAdmins) ? settings.telegramAdmins : [];
     const isAdmin = admins.some((a) => String(a.chatId).trim() === chatId);
-    if (!isAdmin) { res.status(403).json({ ok: false, error: 'not_admin' }); return; }
     const p = payload || {};
+
+    // ---------------- MIJOZ (SODIQLIK DASTURI): BUYURTMA BERISH ----------------
+    // Bu yagona amal — admin bo'lmagan foydalanuvchi ham chaqira oladi
+    // (mijoz mini-ilova katalogidan tovar tanlab "Sotib olish" bosganda).
+    // Boshqa barcha amallar hamon faqat admin uchun.
+    if (action === 'create_order') {
+      if (isAdmin) { res.status(400).json({ ok: false, error: 'admins_cannot_order' }); return; }
+      const { items, usePoints } = p;
+      if (!Array.isArray(items) || !items.length) { res.status(400).json({ ok: false, error: 'no_items' }); return; }
+
+      const customerSnap = await db.collection('customers').where('telegramChatId', '==', chatId).limit(1).get();
+      if (customerSnap.empty) { res.status(400).json({ ok: false, error: 'not_registered' }); return; }
+      const customerRef = customerSnap.docs[0].ref;
+      const customerData = customerSnap.docs[0].data();
+
+      const productRefs = items.map((it) => db.collection('products').doc(String(it.productId)));
+      const productSnaps = await Promise.all(productRefs.map((r) => r.get()));
+      const lineItems = [];
+      for (let i = 0; i < items.length; i++) {
+        const snap = productSnaps[i];
+        const qty = parseInt(items[i].qty, 10);
+        if (!snap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
+        const prod = snap.data();
+        if (!qty || qty <= 0) { res.status(400).json({ ok: false, error: 'bad_qty' }); return; }
+        if ((prod.stock || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
+        const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / 10000);
+        const subtotal = (prod.price || 0) * qty;
+        lineItems.push({ productId: prod.id, name: prod.name, qty, price: prod.price || 0, points: unitPoints * qty, subtotal });
+      }
+      const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
+      const totalPoints = lineItems.reduce((a, x) => a + x.points, 0);
+
+      // Ball bilan to'lash: 1 ball = 100 so'm chegirma (mavjud "100 ball =
+      // 10 000 so'm" nisbati bilan bir xil). Mijozning ballari yetarli
+      // bo'lmasa, faqat mavjud qadar ishlatiladi, qolgani naqd bo'ladi.
+      let pointsUsed = 0, cashDue = total;
+      if (usePoints) {
+        const neededPoints = Math.ceil(total / 100);
+        pointsUsed = Math.min(customerData.points || 0, neededPoints);
+        cashDue = Math.max(0, total - pointsUsed * 100);
+      }
+
+      const orderRef = db.collection('orders').doc();
+      const now = new Date().toISOString();
+      const orderDoc = {
+        id: orderRef.id, customerId: customerRef.id, customerName: customerData.name || '', customerChatId: chatId,
+        items: lineItems, total, totalPoints, usePoints: !!usePoints, pointsUsed, cashDue,
+        status: 'pending', createdAt: now,
+      };
+      await orderRef.set(orderDoc);
+
+      // Barcha (chatId ulangan) adminlarga buyurtma haqida xabar — Tasdiqlash
+      // yoki Bekor qilish tugmalari bilan.
+      let text = `🛒 <b>Yangi buyurtma!</b>\n\n👤 Mijoz: <b>${esc(customerData.name || 'Noma\'lum')}</b>\n\n`;
+      lineItems.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta × ${fmt(it.price)} ${esc(currencySymbol)} = ${fmt(it.subtotal)} ${esc(currencySymbol)}\n`; });
+      text += `\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>\n`;
+      if (pointsUsed > 0) text += `⭐ Balldan to'langan: <b>${pointsUsed} ball</b> (${fmt(pointsUsed * 100)} ${esc(currencySymbol)})\n💵 Naqd to'lanadigan: <b>${fmt(cashDue)} ${esc(currencySymbol)}</b>\n`;
+      else text += `💵 To'lov turi: Naqd pul\n`;
+      text += `\n✅ Tasdiqlasangiz — tovar avtomatik sotiladi va ombordan yechiladi.`;
+      const keyboard = { inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `order_confirm:${orderRef.id}` },
+        { text: '❌ Bekor qilish', callback_data: `order_cancel:${orderRef.id}` },
+      ]] };
+      const targets = admins.filter((a) => a.chatId).map((a) => a.chatId);
+      await Promise.allSettled(targets.map((cid) => fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: cid, text, parse_mode: 'HTML', reply_markup: keyboard }),
+      })));
+
+      res.status(200).json({ ok: true, orderId: orderRef.id, total, pointsUsed, cashDue });
+      return;
+    }
+
+    if (!isAdmin) { res.status(403).json({ ok: false, error: 'not_admin' }); return; }
 
     // ---------------- QARZGA TO'LOV ----------------
     if (action === 'pay_debt') {
@@ -124,11 +197,12 @@ module.exports = async (req, res) => {
 
     // ---------------- TOVAR: YARATISH / TAHRIRLASH / O'CHIRISH ----------------
     if (action === 'create_product') {
-      const { name, price, cost, stock, volume, note } = p;
+      const { name, price, cost, points, stock, volume, note } = p;
       if (!name || isNaN(parseFloat(price))) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const id = uid();
       const doc = {
         id, name: String(name).trim(), price: parseFloat(price) || 0, cost: parseFloat(cost) || 0,
+        points: (points === null || points === undefined || points === '') ? null : Math.max(0, parseInt(points, 10) || 0),
         stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: '',
       };
       await db.collection('products').doc(id).set(doc);
@@ -139,9 +213,15 @@ module.exports = async (req, res) => {
     if (action === 'update_product') {
       const { id, patch } = p;
       if (!id || !patch) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
-      const allowed = ['name', 'price', 'cost', 'stock', 'volume', 'note'];
+      const allowed = ['name', 'price', 'cost', 'points', 'stock', 'volume', 'note'];
       const clean = {};
-      allowed.forEach((k) => { if (patch[k] !== undefined) clean[k] = (k === 'price' || k === 'cost') ? parseFloat(patch[k]) || 0 : (k === 'stock' ? parseInt(patch[k], 10) || 0 : patch[k]); });
+      allowed.forEach((k) => {
+        if (patch[k] === undefined) return;
+        if (k === 'price' || k === 'cost') clean[k] = parseFloat(patch[k]) || 0;
+        else if (k === 'stock') clean[k] = parseInt(patch[k], 10) || 0;
+        else if (k === 'points') clean[k] = (patch[k] === null || patch[k] === '') ? null : Math.max(0, parseInt(patch[k], 10) || 0);
+        else clean[k] = patch[k];
+      });
       if (!Object.keys(clean).length) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const ref = db.collection('products').doc(id);
       const snap = await ref.get();

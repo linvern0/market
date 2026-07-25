@@ -170,7 +170,7 @@ async function buildAdminPayload(db, settings) {
     },
     products: products
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-      .map((p) => ({ id: p.id, name: p.name, price: p.price, cost: p.cost || 0, stock: p.stock || 0, volume: p.volume || '', note: p.note || '' })),
+      .map((p) => ({ id: p.id, name: p.name, price: p.price, cost: p.cost || 0, points: (p.points || p.points === 0) ? p.points : null, stock: p.stock || 0, volume: p.volume || '', note: p.note || '' })),
     debtors: debtors.sort((a, b) => (a.org || a.name).localeCompare(b.org || b.name)),
     sellers,
     customers,
@@ -203,13 +203,23 @@ async function fetchDebtsByDebtorIds(db, ids) {
 // BO'LIMIDAGI HAMMA MA'LUMOTNI (nomi, narxi, hajmi, izohi) ko'radi, LEKIN
 // ombordagi mavjud miqdori (stock) HECH QACHON unga yuborilmaydi — bu
 // faqat administrator uchun ichki ma'lumot.
+function productUnitPoints(p) {
+  // Admin aniq ball belgilagan bo'lsa — o'shani ishlatamiz (0 ham bo'lishi
+  // mumkin, masalan aksiya tovarlari uchun ball berilmasin desa). Aks
+  // holda avtomatik: narx/10000 (chekdagi umumiy formula bilan bir xil).
+  if (p.points || p.points === 0) return Math.max(0, parseInt(p.points, 10) || 0);
+  return Math.floor((p.price || 0) / 10000);
+}
+
 async function buildClientProducts(db) {
   const productsSnap = await db.collection('products').get();
   return productsSnap.docs
     .map((d) => d.data())
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '' }));
-  // Diqqat: p.stock atayin bu yerga qo'shilmagan.
+    // Diqqat: aniq qoldiq (stock soni) mijozga ko'rsatilmaydi — faqat
+    // "mavjud/tugagan" (inStock true/false) va sotib olganda necha ball
+    // berilishi (points) ko'rsatiladi.
+    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '', points: productUnitPoints(p), inStock: (p.stock || 0) > 0 }));
 }
 
 // Agar Telegram foydalanuvchisi hali "customers" (sodiqlik) kolleksiyasida

@@ -30,6 +30,7 @@ const admin = require('firebase-admin');
 let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
 
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 function phoneKey(phone) { return String(phone || '').replace(/\D/g, '').slice(-9); }
@@ -516,70 +517,88 @@ async function tryLinkLoyaltyCustomerByContact(db, token, msg, kb) {
 // shu bilan birga agar sotuvchi checkoutda mijozni allaqachon tanlagan
 // bo'lsa (receiptData.pointsAwarded), bu yerda IKKINCHI marta ball
 // berilmaydi.
-async function handleReceiptClaim(db, token, chatId, msg, req) {
-  const text = (msg.text || '').trim();
-  const m = /^\/start\s+r_(.+)$/.exec(text);
-  if (!m) return false;
-  const receiptId = m[1].trim();
-  const kb = miniAppKeyboard(req, false);
-  let r;
-  try {
-    const receiptSnap = await db.collection('receipts').doc(receiptId).get();
-    if (!receiptSnap.exists) { await sendMessage(token, chatId, "❌ Bu chek topilmadi (eskirgan yoki noto'g'ri havola bo'lishi mumkin)."); return true; }
-    r = receiptSnap.data();
-  } catch (e) {
-    console.error('Chekni o\'qishda xatolik:', e);
-    await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
-    return true;
-  }
-  const receiptRef = db.collection('receipts').doc(receiptId);
-
-  if (r.pointsAwarded) {
-    await sendMessage(token, chatId, `🧾 Bu xarid uchun ball savdo vaqtida allaqachon hisoblangan. Joriy ball holatingizni /ballarim orqali ko'rishingiz mumkin.`, { reply_markup: kb });
-    return true;
-  }
-  if (r.pointsClaimed) {
-    let balanceLine = '';
-    if (r.pointsClaimedBy) {
-      const cSnap = await db.collection('customers').where('telegramChatId', '==', String(r.pointsClaimedBy)).limit(1).get();
-      if (!cSnap.empty) balanceLine = `\n⭐ Joriy ball: <b>${cSnap.docs[0].data().points || 0}</b>`;
+// Chek summasiga mos umumiy ballni ("earned") chekdagi har bir tovar
+// ulushiga qarab taqsimlaydi — shunda admin "qaysi mahsulotdan qancha
+// ball to'plandi" degan savolga aniq javob ola oladi. Yig'indi aynan
+// "earned" ga teng chiqishi uchun oxirgi tovarga qoldiq beriladi.
+function splitPointsByItems(items, total, earned) {
+  const list = Array.isArray(items) ? items.filter((i) => i && (i.total || 0) > 0) : [];
+  if (!list.length || !total || earned <= 0) return [];
+  let assigned = 0;
+  const out = list.map((it, idx) => {
+    let pts;
+    if (idx === list.length - 1) {
+      pts = earned - assigned;
+    } else {
+      pts = Math.round((it.total / total) * earned);
+      assigned += pts;
     }
-    await sendMessage(token, chatId, `ℹ️ Bu chek uchun ball allaqachon hisoblangan (+${r.pointsEarned || 0} ball).${balanceLine}`, { reply_markup: kb });
-    return true;
-  }
+    return { name: it.name || "Noma'lum tovar", amount: it.total || 0, points: Math.max(0, pts) };
+  });
+  return out;
+}
 
+// ============ YANGI: TOVARGA QARAB BALL (ADMIN NAZORATI) ============
+// Ilgari chek uchun ball HAR DOIM "umumiy summa / 10000" formulasi bilan
+// hisoblanib, keyin tovarlar orasida SUMMASIGA QARAB (proporsional)
+// taqsimlanardi — admin bironta ham tovarga alohida ball belgilay olmasdi.
+// Endi: agar admin "products" bo'limida biror tovarga aniq ball (1 dona
+// uchun) belgilagan bo'lsa — chekda ham AYNAN o'sha ball ishlatiladi.
+// Belgilanmagan tovarlar uchun eski formulaga (narx/10000) qaytiladi.
+// Chekdagi tovar nomi bo'yicha (productId chekda saqlanmaydi) moslashtiriladi.
+async function computeReceiptPoints(db, items) {
+  const list = Array.isArray(items) ? items.filter((i) => i && (i.total || 0) > 0) : [];
+  if (!list.length) return { earned: 0, breakdown: [] };
+  let productsByName = {};
+  try {
+    const snap = await db.collection('products').get();
+    snap.docs.forEach((d) => {
+      const p = d.data();
+      const key = String(p.name || '').trim().toLowerCase();
+      if (key) productsByName[key] = p;
+    });
+  } catch (e) { /* jim: mahsulotlarni o'qib bo'lmasa, eski formulaga tushamiz */ }
+
+  let earned = 0;
+  const breakdown = list.map((it) => {
+    const qty = it.qty || 1;
+    const prod = productsByName[String(it.name || '').trim().toLowerCase()];
+    let unitPoints;
+    if (prod && (prod.points || prod.points === 0)) unitPoints = Math.max(0, parseInt(prod.points, 10) || 0);
+    else unitPoints = Math.floor((it.price || (it.total / qty) || 0) / 10000);
+    const linePoints = Math.max(0, unitPoints * qty);
+    earned += linePoints;
+    return { name: it.name || "Noma'lum tovar", amount: it.total || 0, points: linePoints };
+  });
+  return { earned, breakdown };
+}
+
+// Mijozning "pointsByProduct" xaritasini (mahsulot nomi -> jami to'plangan
+// ball) yangi taqsimot bilan qo'shib chiqadi. Admin panelida mijoz
+// kartochkasida va umumiy ballar hisobotida shu xaritadan foydalaniladi.
+function mergePointsByProduct(existingMap, breakdown) {
+  const out = Object.assign({}, existingMap || {});
+  breakdown.forEach((b) => { out[b.name] = (out[b.name] || 0) + b.points; });
+  return out;
+}
+
+// Chekka mos ballni (allaqachon ma'lum yoki hozirgina ro'yxatdan o'tgan)
+// mijozga yozadi va tasdiq xabarini yuboradi. `customerRef`/`customerData`
+// mavjud mijoz YOKI endigina yaratilgan (ism+telefon bilan) yangi mijozga
+// tegishli bo'lishi mumkin — ikkala holatda ham mantiq bir xil.
+async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, isNewRegistration) {
+  const kb = miniAppKeyboard(req, false);
+  const receiptRef = db.collection('receipts').doc(receiptId);
   const total = r.total || 0;
-  const earned = Math.floor(total / 10000);
-  if (earned <= 0) {
-    await sendMessage(token, chatId, `🧾 Chek qabul qilindi (${fmt(total)} so'm), lekin ball berish uchun xarid summasi yetarli emas (kamida 10,000 so'm).`, { reply_markup: kb });
-    return true;
-  }
+  const { earned, breakdown } = await computeReceiptPoints(db, r.items);
 
-  // Mijozni telegramChatId bo'yicha qidiramiz; topilmasa — Telegram
-  // profilidagi ism bilan yangi sodiqlik mijozi sifatida ro'yxatga olamiz
-  // (xuddi qarzdorlar botga birinchi marta yozganda avtomatik
-  // ro'yxatga olinishi kabi).
-  const existingSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
-  let customerRef, customerData;
-  if (!existingSnap.empty) {
-    customerRef = existingSnap.docs[0].ref;
-    customerData = existingSnap.docs[0].data();
-  } else {
-    const fromName = [msg.from && msg.from.first_name, msg.from && msg.from.last_name].filter(Boolean).join(' ').trim();
-    const name = fromName || (msg.from && msg.from.username ? '@' + msg.from.username : 'Telegram mijozi');
-    customerRef = db.collection('customers').doc();
-    customerData = {
-      id: customerRef.id, name, phone: '', points: 0, totalSpent: 0, purchaseCount: 0,
-      telegramUsername: (msg.from && msg.from.username) || '',
-      createdAt: new Date().toISOString(),
-    };
-  }
   const newPoints = (customerData.points || 0) + earned;
   const newTotalSpent = (customerData.totalSpent || 0) + total;
   const newPurchaseCount = (customerData.purchaseCount || 0) + 1;
   const nowIso = new Date().toISOString();
-  const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned };
+  const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned, items: breakdown };
   const purchases = [purchaseEntry, ...(Array.isArray(customerData.purchases) ? customerData.purchases : [])].slice(0, 50);
+  const pointsByProduct = mergePointsByProduct(customerData.pointsByProduct, breakdown);
 
   try {
     await customerRef.set({
@@ -589,6 +608,7 @@ async function handleReceiptClaim(db, token, chatId, msg, req) {
       purchaseCount: newPurchaseCount,
       lastPurchaseAt: nowIso,
       purchases,
+      pointsByProduct,
       telegramChatId: String(chatId),
       telegramUserId: String((msg.from && msg.from.id) || customerData.telegramUserId || ''),
     }, { merge: true });
@@ -596,12 +616,12 @@ async function handleReceiptClaim(db, token, chatId, msg, req) {
   } catch (e) {
     console.error('Ball yozishda xatolik:', e);
     await sendMessage(token, chatId, "⚠️ Ball yozishda xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
-    return true;
+    return;
   }
 
   await setCommandsForChat(token, chatId, false).catch(() => {});
   await setMenuButtonFor(token, chatId, req, false).catch(() => {});
-  const text2 = `🎉 <b>Chek qabul qilindi!</b>\n\n` +
+  const text2 = (isNewRegistration ? `✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>\n\n` : `🎉 <b>Chek qabul qilindi!</b>\n\n`) +
     `🧾 Xarid: <b>${fmt(total)} so'm</b>\n` +
     `⭐ Siz to'pladingiz: <b>+${earned} ball</b>\n` +
     `💳 Jami ball: <b>${newPoints}</b>\n` +
@@ -622,6 +642,143 @@ async function handleReceiptClaim(db, token, chatId, msg, req) {
     }
   } catch (e) { /* jim: tugma qo'shilmasa ham asosiy xabar baribir boradi */ }
   await sendMessage(token, chatId, text2, { reply_markup: replyMarkup });
+}
+
+// ============ YANGI: CHEKDAN RO'YXATDAN O'TISH (ISM VA TELEFON — MATN) ============
+// Mijoz botga birinchi marta chek havolasidan kirsa (hali "customers"
+// to'plamida yo'q), unga darhol Telegram profilidagi ism bilan avtomatik
+// hisob ochish O'RNIGA — avval ISMINI, keyin TELEFON RAQAMINI oddiy matn
+// ko'rinishida so'raymiz. Ikkalasi ham kiritilgandan keyingina mijoz
+// ro'yxatga olinadi va chekka mos ball avtomatik yoziladi. Kutilayotgan
+// holat "pendingRegistrations/<chatId>" hujjatida saqlanadi.
+async function startReceiptRegistration(db, token, chatId, receiptId) {
+  await db.collection('pendingRegistrations').doc(String(chatId)).set({
+    step: 'name', receiptId, createdAt: new Date().toISOString(),
+  });
+  await sendMessage(token, chatId,
+    `👋 Xush kelibsiz!\n\nBu chek uchun ball yozish va sodiqlik dasturidan foydalanish uchun avval ro'yxatdan o'tishingiz kerak.\n\n✍️ Ismingizni yozib yuboring:`);
+}
+
+// Mijoz ism/telefon savoliga matn bilan javob berayotganda ishlaydi.
+// `true` qaytarsa — xabar shu yerda to'liq qayta ishlangan (boshqa hech
+// qanday keyingi handler ishlamasligi kerak).
+async function handlePendingRegistrationText(db, token, chatId, msg, req) {
+  const pendRef = db.collection('pendingRegistrations').doc(String(chatId));
+  const pendSnap = await pendRef.get();
+  if (!pendSnap.exists) return false;
+  const pend = pendSnap.data();
+  const text = (msg.text || '').trim();
+  if (!text) { await sendMessage(token, chatId, "Iltimos, matn ko'rinishida javob yozing."); return true; }
+
+  if (pend.step === 'name') {
+    if (text.length < 2 || text.startsWith('/')) {
+      await sendMessage(token, chatId, "Iltimos, to'liq ismingizni oddiy matn ko'rinishida yozing (kamida 2 ta harf).");
+      return true;
+    }
+    await pendRef.set({ step: 'phone', name: text }, { merge: true });
+    await sendMessage(token, chatId, `Rahmat, <b>${esc(text)}</b>! ✅\n\n📱 Endi telefon raqamingizni yozing (masalan: +998901234567):`);
+    return true;
+  }
+
+  if (pend.step === 'phone') {
+    const digits = text.replace(/\D/g, '');
+    if (digits.length < 7) {
+      await sendMessage(token, chatId, "Telefon raqami noto'g'ri ko'rinmoqda. Iltimos, to'g'ri raqam yozing (masalan: +998901234567):");
+      return true;
+    }
+    const name = pend.name || 'Mijoz';
+    const receiptId = pend.receiptId;
+    await pendRef.delete();
+    await completeReceiptRegistration(db, token, chatId, msg, req, receiptId, name, text);
+    return true;
+  }
+  return false;
+}
+
+// Ism va telefon kiritilgach chaqiriladi: yangi "customers" hujjati
+// yaratiladi va shu darhol (agar chek hali band bo'lmagan bo'lsa) mos
+// ball yoziladi.
+async function completeReceiptRegistration(db, token, chatId, msg, req, receiptId, name, phone) {
+  let r;
+  try {
+    const receiptSnap = await db.collection('receipts').doc(receiptId).get();
+    if (!receiptSnap.exists) { await sendMessage(token, chatId, "❌ Bu chek topilmadi (eskirgan yoki noto'g'ri havola bo'lishi mumkin)."); return; }
+    r = receiptSnap.data();
+  } catch (e) {
+    console.error('Chekni o\'qishda xatolik (registratsiya):', e);
+    await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
+    return;
+  }
+  const customerRef = db.collection('customers').doc();
+  const customerData = {
+    id: customerRef.id, name, phone, points: 0, totalSpent: 0, purchaseCount: 0,
+    telegramUsername: (msg.from && msg.from.username) || '',
+    autoRegistered: false,
+    createdAt: new Date().toISOString(),
+  };
+  const total = r.total || 0;
+  const { earned } = await computeReceiptPoints(db, r.items);
+  if (r.pointsAwarded || r.pointsClaimed || earned <= 0) {
+    // Ro'yxatdan o'tish baribir yakunlanadi (mijoz endi bazada bor va
+    // botga ulangan), faqat shu aniq chek uchun ball qo'shilmaydi (allaqachon
+    // hisoblangan yoki xarid summasi yetarli emas).
+    await customerRef.set({ ...customerData, telegramChatId: String(chatId), telegramUserId: String((msg.from && msg.from.id) || '') });
+    await sendMessage(token, chatId, `✅ Ro'yxatdan o'tdingiz, <b>${esc(name)}</b>! Endi keyingi xaridlaringiz uchun ball to'play olasiz.\n⭐ Ball holatingizni /ballarim orqali ko'rishingiz mumkin.`, { reply_markup: miniAppKeyboard(req, false) });
+    return;
+  }
+  await finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, true);
+}
+
+async function handleReceiptClaim(db, token, chatId, msg, req) {
+  const text = (msg.text || '').trim();
+  const m = /^\/start\s+r_(.+)$/.exec(text);
+  if (!m) return false;
+  const receiptId = m[1].trim();
+  const kb = miniAppKeyboard(req, false);
+  let r;
+  try {
+    const receiptSnap = await db.collection('receipts').doc(receiptId).get();
+    if (!receiptSnap.exists) { await sendMessage(token, chatId, "❌ Bu chek topilmadi (eskirgan yoki noto'g'ri havola bo'lishi mumkin)."); return true; }
+    r = receiptSnap.data();
+  } catch (e) {
+    console.error('Chekni o\'qishda xatolik:', e);
+    await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
+    return true;
+  }
+
+  if (r.pointsAwarded) {
+    await sendMessage(token, chatId, `🧾 Bu xarid uchun ball savdo vaqtida allaqachon hisoblangan. Joriy ball holatingizni /ballarim orqali ko'rishingiz mumkin.`, { reply_markup: kb });
+    return true;
+  }
+  if (r.pointsClaimed) {
+    let balanceLine = '';
+    if (r.pointsClaimedBy) {
+      const cSnap = await db.collection('customers').where('telegramChatId', '==', String(r.pointsClaimedBy)).limit(1).get();
+      if (!cSnap.empty) balanceLine = `\n⭐ Joriy ball: <b>${cSnap.docs[0].data().points || 0}</b>`;
+    }
+    await sendMessage(token, chatId, `ℹ️ Bu chek uchun ball allaqachon hisoblangan (+${r.pointsEarned || 0} ball).${balanceLine}`, { reply_markup: kb });
+    return true;
+  }
+
+  const total = r.total || 0;
+  const { earned } = await computeReceiptPoints(db, r.items);
+  if (earned <= 0) {
+    await sendMessage(token, chatId, `🧾 Chek qabul qilindi (${fmt(total)} so'm), lekin ball berish uchun xarid summasi yetarli emas yoki bu tovarlarga ball belgilanmagan.`, { reply_markup: kb });
+    return true;
+  }
+
+  // Mijozni telegramChatId bo'yicha qidiramiz. Topilsa — ball darhol
+  // yoziladi. Topilmasa — endi Telegram profilidan avtomatik hisob OCHISH
+  // O'RNIGA, avval ism va telefon raqamini matn orqali so'raymiz (pastga
+  // qarang: startReceiptRegistration / handlePendingRegistrationText).
+  const existingSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
+  if (existingSnap.empty) {
+    await startReceiptRegistration(db, token, chatId, receiptId);
+    return true;
+  }
+  const customerRef = existingSnap.docs[0].ref;
+  const customerData = existingSnap.docs[0].data();
+  await finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, false);
   return true;
 }
 async function handleLoyaltyPoints(db, token, chatId, req) {
@@ -1124,6 +1281,88 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
 const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/ballarim']);
 
+// ============ YANGI: MIJOZ BUYURTMASI — TASDIQLASH / BEKOR QILISH ============
+// Mijoz mini-ilova katalogidan "Sotib olish" bosganda yaratilgan
+// "orders" hujjatini admin shu yerda (bot xabaridagi tugma orqali)
+// tasdiqlaydi yoki bekor qiladi. Tasdiqlansa — tovar avtomatik SOTILADI
+// (ombordan yechiladi, "sales" yozuvi yaratiladi) va mijozga ball
+// yoziladi (agar ball bilan to'langan bo'lsa — ishlatilgan ball ayiriladi).
+async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfirm, req) {
+  const adminChatId = cq.message && cq.message.chat && cq.message.chat.id;
+  const orderRef = db.collection('orders').doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists) { await answerCallbackQuery(token, cq.id, "Bu buyurtma topilmadi.", true); return; }
+  const order = orderSnap.data();
+  if (order.status !== 'pending') {
+    await answerCallbackQuery(token, cq.id, order.status === 'confirmed' ? "Bu buyurtma allaqachon tasdiqlangan." : "Bu buyurtma allaqachon bekor qilingan.", true);
+    return;
+  }
+  const settingsSnap = await settingsRef.get();
+  const shopName = settingsSnap.data()?.shopName || "Do'kon";
+  const currencySymbol = settingsSnap.data()?.currencySymbol || "so'm";
+  const items = Array.isArray(order.items) ? order.items : [];
+
+  if (!isConfirm) {
+    await orderRef.update({ status: 'cancelled', decidedAt: new Date().toISOString(), decidedBy: String(adminChatId) });
+    await answerCallbackQuery(token, cq.id, "❌ Buyurtma bekor qilindi.");
+    if (cq.message && cq.message.text) {
+      await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n❌ <b>Bekor qilindi.</b>`).catch(() => {});
+    }
+    if (order.customerChatId) {
+      await sendMessage(token, order.customerChatId, `❌ <b>${esc(shopName)}</b>\n\nAfsuski, buyurtmangiz bekor qilindi. Savolingiz bo'lsa do'konga murojaat qiling.`).catch(() => {});
+    }
+    return;
+  }
+
+  // Tasdiqlashdan oldin zaxirani qayta tekshiramiz (buyurtma berilgandan
+  // beri boshqa savdo bo'lgan bo'lishi mumkin).
+  const productRefs = items.map((it) => db.collection('products').doc(it.productId));
+  const productSnaps = await Promise.all(productRefs.map((r) => r.get()));
+  for (let i = 0; i < items.length; i++) {
+    const snap = productSnaps[i];
+    if (!snap.exists || (snap.data().stock || 0) < items[i].qty) {
+      await answerCallbackQuery(token, cq.id, `⚠️ "${items[i].name}" omborda yetarli emas. Buyurtmani bekor qiling yoki avval omborni to'ldiring.`, true);
+      return;
+    }
+  }
+
+  const now = new Date().toISOString();
+  await Promise.all(productSnaps.map((snap, i) => snap.ref.update({ stock: admin.firestore.FieldValue.increment(-items[i].qty) })));
+  await Promise.all(productSnaps.map((snap, i) => db.collection('sales').doc(uid()).set({
+    id: uid(), productId: snap.id, productName: items[i].name, volume: snap.data().volume || '', qty: items[i].qty,
+    price: items[i].price, cost: snap.data().cost || 0, total: items[i].subtotal, seller: `Mijoz buyurtmasi (${order.customerName || ''})`,
+    date: now, reverted: false, isDebt: false,
+  })));
+
+  // Mijozga: sarflangan ballarni ayirish va yangi to'plangan ballarni qo'shish.
+  if (order.customerId) {
+    const customerRef = db.collection('customers').doc(order.customerId);
+    const patch = {
+      points: admin.firestore.FieldValue.increment((order.totalPoints || 0) - (order.pointsUsed || 0)),
+      totalSpent: admin.firestore.FieldValue.increment(order.total || 0),
+      purchaseCount: admin.firestore.FieldValue.increment(1),
+      lastPurchaseAt: now,
+    };
+    await customerRef.set(patch, { merge: true }).catch(() => {});
+  }
+
+  await orderRef.update({ status: 'confirmed', decidedAt: now, decidedBy: String(adminChatId) });
+  await answerCallbackQuery(token, cq.id, "✅ Buyurtma tasdiqlandi, tovar sotildi!");
+  if (cq.message && cq.message.text) {
+    await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n✅ <b>Tasdiqlandi — sotildi.</b>`).catch(() => {});
+  }
+  if (order.customerChatId) {
+    let text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Buyurtmangiz tasdiqlandi!\n\n`;
+    items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
+    text += `\n💰 Jami: <b>${fmt(order.total)} ${esc(currencySymbol)}</b>\n`;
+    if (order.pointsUsed > 0) text += `⭐ Ishlatilgan ball: <b>${order.pointsUsed}</b>\n`;
+    if (order.cashDue > 0) text += `💵 Do'konda to'lanadigan naqd: <b>${fmt(order.cashDue)} ${esc(currencySymbol)}</b>\n`;
+    if ((order.totalPoints || 0) > 0) text += `🎁 Yangi to'plangan ball: <b>+${order.totalPoints}</b>\n`;
+    text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
+    await sendMessage(token, order.customerChatId, text).catch(() => {});
+  }
+}
+
 async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   const chatId = cq.message && cq.message.chat && cq.message.chat.id;
   const data = cq.data || '';
@@ -1163,6 +1402,15 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     await answerCallbackQuery(token, cq.id, "Bu amal faqat admin uchun.", true);
     return;
   }
+
+  // ============ YANGI: MIJOZ BUYURTMASI — TASDIQLASH / BEKOR QILISH ============
+  if (data.startsWith('order_confirm:') || data.startsWith('order_cancel:')) {
+    const isConfirm = data.startsWith('order_confirm:');
+    const orderId = data.slice(data.indexOf(':') + 1);
+    await handleOrderDecision(db, token, settingsRef, cq, orderId, isConfirm, req);
+    return;
+  }
+
   if (!data.startsWith('pay_full:')) { await answerCallbackQuery(token, cq.id); return; }
   const debtId = data.slice('pay_full:'.length);
   const debtRef = db.collection('debts').doc(debtId);
@@ -1203,6 +1451,13 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
   const kbAdmin = miniAppKeyboard(req, true);
   const kbDebtor = miniAppKeyboard(req, false);
   const kb = isAdmin ? kbAdmin : kbDebtor;
+
+  // YANGI: agar bu mijoz hozir chekdan ro'yxatdan o'tish jarayonida bo'lsa
+  // (ism yoki telefon so'ralgan bo'lsa), keyingi matn xabari — hatto u
+  // "/start" kabi ko'rinsa ham emas, oddiy javob — shu yerda ustuvor tarzda
+  // qayta ishlanadi. Bu boshqa HAMMA narsadan (admin/sotuvchi/qarzdor
+  // aniqlashdan, /start dan) OLDIN tekshiriladi.
+  if (!isAdmin && await handlePendingRegistrationText(db, token, chatId, msg, req)) return;
 
   // Chek QR orqali "/start r_<receiptId>" deep-link kelgan bo'lsa — bu
   // boshqa hamma narsadan OLDIN, mustaqil ravishda qayta ishlanadi (admin/
