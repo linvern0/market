@@ -3784,6 +3784,35 @@ body.dark table {
   </div>
 </div>
 
+<!-- YANGI: MIJOZ MA'LUMOTLARINI (ISM, TELEFON) TO'LIQ TAHRIRLASH -->
+<div class="modal-overlay hidden" id="modal-customer-edit">
+  <div class="modal" style="max-width:420px">
+    <h3>✏️ Mijoz ma'lumotlarini tahrirlash</h3>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Ism *</label>
+      <input id="cue-name" placeholder="Mijoz ismi">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Telefon</label>
+      <input id="cue-phone" placeholder="+998 90 123 45 67">
+    </div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>🏆 Daraja</label>
+      <select id="cue-tier">
+        <option value="">Avtomatik (jami xariddan hisoblanadi)</option>
+        <option value="bronze">🥉 Bronza (majburiy)</option>
+        <option value="silver">🥈 Kumush (majburiy)</option>
+        <option value="gold">🥇 Oltin (majburiy)</option>
+      </select>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Ixtiyoriy: mijozga doimiy daraja belgilamoqchi bo'lsangiz tanlang. "Avtomatik" tanlansa, daraja jami xarid summasidan o'zi hisoblanadi.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-customer-edit')">Bekor qilish</button>
+      <button class="btn blue" onclick="window.saveCustomerEdit()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ YANGI: AKSIYA VA CHEGIRMALAR MODALI ============ -->
 <div class="modal-overlay hidden" id="modal-promotions">
   <div class="modal" style="max-width:640px">
@@ -16307,6 +16336,10 @@ document.addEventListener('keydown', function(e){
   function fmt2(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }
   function uid2(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
   function toast2(msg,type){ try{ if(typeof window.toast==='function') window.toast(msg,type); }catch(e){} }
+  // YANGI: mijoz ism/telefon/daraja tahrirlash oynasi qaysi mijozga
+  // tegishli ekanini shu IIFE ICHIDA saqlaymiz (boshqa <script> yoki
+  // moduldagi o'xshash nomdagi o'zgaruvchi bilan chalkashmasligi uchun).
+  let editingCustomerEditId = null;
 
   // ---------- 1) YETKAZIB BERUVCHILAR ----------
   window.openSuppliersModal = function(){ window.renderSuppliersList(); openModal('modal-suppliers'); };
@@ -16367,11 +16400,39 @@ document.addEventListener('keydown', function(e){
   };
 
   // ---------- 2) MIJOZLAR VA SODIQLIK DASTURI ----------
-  function customerTier(totalSpent){
-    if((totalSpent||0) >= 2000000) return {name:'🥇 Oltin', cls:'amber'};
-    if((totalSpent||0) >= 500000) return {name:'🥈 Kumush', cls:'blue'};
-    return {name:'🥉 Bronza', cls:'green'};
+  // TUZATILDI: admin endi mijozning darajasini (Bronza/Kumush/Oltin) QO'LDA
+  // ham belgilay oladi — masalan hali yetarli xarid qilmagan, lekin
+  // maxsus sabab bilan yuqori darajaga o'tkazilishi kerak bo'lgan mijoz
+  // uchun. `override` berilsa (c.tierOverride: 'bronze'|'silver'|'gold')
+  // — avtomatik hisob-kitob (jami xariddan) e'tiborga olinmaydi. Admin
+  // istalgan payt "Avtomatik" holatiga qaytarib qo'yishi mumkin (pastda:
+  // window.setCustomerTierOverride).
+  function customerTier(totalSpent, override){
+    if(override==='gold') return {name:'🥇 Oltin', cls:'amber', manual:true};
+    if(override==='silver') return {name:'🥈 Kumush', cls:'blue', manual:true};
+    if(override==='bronze') return {name:'🥉 Bronza', cls:'green', manual:true};
+    if((totalSpent||0) >= 2000000) return {name:'🥇 Oltin', cls:'amber', manual:false};
+    if((totalSpent||0) >= 500000) return {name:'🥈 Kumush', cls:'blue', manual:false};
+    return {name:'🥉 Bronza', cls:'green', manual:false};
   }
+  // Admin mijoz kartochkasidagi daraja belgisiga bosganda ochiladigan
+  // tanlov: Avtomatik / Bronza / Kumush / Oltin.
+  window.setCustomerTierOverride = function(id){
+    const c = DB.customers.find(x=>x.id===id); if(!c) return;
+    const current = c.tierOverride || 'auto';
+    const choice = (prompt(
+      `${c.name} uchun darajani tanlang:\n` +
+      `  auto   — Avtomatik (jami xaridga qarab)\n` +
+      `  bronze — 🥉 Bronza (majburiy)\n` +
+      `  silver — 🥈 Kumush (majburiy)\n` +
+      `  gold   — 🥇 Oltin (majburiy)\n\n` +
+      `Joriy: ${current}`, current) || '').trim().toLowerCase();
+    if(!choice) return;
+    if(!['auto','bronze','silver','gold'].includes(choice)){ toast2("auto, bronze, silver yoki gold deb yozing",'amber'); return; }
+    c.tierOverride = choice==='auto' ? '' : choice;
+    fbSaveCustomer(c);
+    toast2(choice==='auto' ? "✓ Daraja avtomatik hisoblanadi" : `✓ Daraja qo'lda "${choice}" ga belgilandi`, 'green');
+  };
   window.openCustomersModal = function(){ window.renderCustomersList(); openModal('modal-customers'); };
   window.addCustomer = function(){
     const name = (document.getElementById('cus-name').value||'').trim();
@@ -16556,6 +16617,32 @@ document.addEventListener('keydown', function(e){
       window.sendTelegramMessageToChatId(c.telegramChatId, text).catch(()=>{});
     }
   };
+  // YANGI: MIJOZ ISM/TELEFON/DARAJASINI TO'LIQ TAHRIRLASH
+  // Admin mijoz kartochkasidagi "✏️ Tahrirlash" tugmasini bossa ochiladi.
+  // Xato kiritilgan ismni yoki telefon raqamini to'g'irlash, shuningdek
+  // darajani (Bronza/Kumush/Oltin) qo'lda belgilash/avtomatikka qaytarish
+  // shu bitta oynadan amalga oshiriladi.
+  window.openCustomerEdit = function(id){
+    const c = DB.customers.find(x=>x.id===id); if(!c) return;
+    editingCustomerEditId = id;
+    document.getElementById('cue-name').value = c.name||'';
+    document.getElementById('cue-phone').value = c.phone||'';
+    document.getElementById('cue-tier').value = c.tierOverride||'';
+    openModal('modal-customer-edit');
+  };
+  window.saveCustomerEdit = function(){
+    const c = DB.customers.find(x=>x.id===editingCustomerEditId); if(!c) return;
+    const name = (document.getElementById('cue-name').value||'').trim();
+    if(!name){ toast2('Ismini kiriting','amber'); return; }
+    const phone = (document.getElementById('cue-phone').value||'').trim();
+    const tier = document.getElementById('cue-tier').value||'';
+    c.name = name;
+    c.phone = phone;
+    c.tierOverride = tier;
+    fbSaveCustomer(c);
+    closeModal('modal-customer-edit');
+    toast2("✓ Mijoz ma'lumotlari yangilandi",'green');
+  };
   window.deleteCustomer = function(id){
     if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
@@ -16569,7 +16656,7 @@ document.addEventListener('keydown', function(e){
     if(!list.length){ wrap.innerHTML=''; if(empty) empty.style.display='block'; return; }
     if(empty) empty.style.display='none';
     wrap.innerHTML = list.map(c=>{
-      const tier = customerTier(c.totalSpent||0);
+      const tier = customerTier(c.totalSpent||0, c.tierOverride);
       const linked = !!c.telegramChatId;
       const hasTgInfo = !!(c.telegramUsername || c.telegramUserId);
       const tgBadge = linked
@@ -16580,7 +16667,7 @@ document.addEventListener('keydown', function(e){
       return `<div style="padding:.6rem .75rem;border:1px solid var(--border);border-radius:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
           <div><b>${esc(c.name)}</b><br><span style="font-size:12px;color:var(--text3)">${esc(c.phone||'Telefon kiritilmagan')}</span></div>
-          <div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:flex-end">${tgBadge}<span class="badge ${tier.cls}">${tier.name}</span></div>
+          <div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:flex-end">${tgBadge}<span class="badge ${tier.cls}" style="cursor:pointer" title="${tier.manual?'Qo\'lda belgilangan — bosing: o\'zgartirish/avtomatikka qaytarish':'Avtomatik (jami xariddan hisoblangan) — bosing: qo\'lda belgilash'}" onclick="window.setCustomerTierOverride('${c.id}')">${tier.name}${tier.manual?' ✋':''}</span></div>
         </div>
         <div style="font-size:12px;color:var(--text3);margin-top:.3rem">Jami xarid: <b>${fmt2(c.totalSpent||0)} so'm</b> (${c.purchaseCount||0} marta) · Ball: <b>${c.points||0}</b></div>
         ${Array.isArray(c.purchases) && c.purchases.length ? `<details style="margin-top:.4rem"><summary style="font-size:12px;color:var(--accent);cursor:pointer">🕐 Xarid tarixi (${c.purchases.length})</summary>
@@ -16604,6 +16691,7 @@ document.addEventListener('keydown', function(e){
           </div>
         </details>` : ''}
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
+          <button class="btn sm" onclick="window.openCustomerEdit('${c.id}')">✏️ Tahrirlash</button>
           <button class="btn sm blue" onclick="window.logCustomerPurchase('${c.id}')">+ Xarid qayd etish</button>
           <button class="btn sm green" onclick="window.giftCustomerPoints('${c.id}')">🎁 Ball hadya qilish</button>
           <button class="btn sm" onclick="window.adjustCustomerPoints('${c.id}')">✏️ Ballni to'g'irlash</button>

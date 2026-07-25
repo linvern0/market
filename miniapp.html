@@ -876,10 +876,11 @@ function renderCustomers(app, d){
   let html = `<div class="section-title">Mijozlar / sodiqlik (${list.length}) <button class="btn small" onclick="openCustomerModal()">+ Qo'shish</button></div>`;
   if (!list.length){ html += `<div class="card empty">Hali sodiqlik mijozi yo'q. Mijozlar chekni Telegram botda skanerlaganda yoki shu yerdan qo'shganda avtomatik paydo bo'ladi.</div>`; }
   list.forEach(c=>{
-    const tier = (c.totalSpent||0) >= 2000000 ? '🥇 Oltin' : (c.totalSpent||0) >= 500000 ? '🥈 Kumush' : '🥉 Boshlang\'ich';
+    const tier = c.tierOverride==='gold' ? '🥇 Oltin' : c.tierOverride==='silver' ? '🥈 Kumush' : c.tierOverride==='bronze' ? '🥉 Bronza'
+      : (c.totalSpent||0) >= 2000000 ? '🥇 Oltin' : (c.totalSpent||0) >= 500000 ? '🥈 Kumush' : '🥉 Boshlang\'ich';
     html += `<div class="card">
       <div class="row">
-        <div><div class="name">${esc(c.name)}</div><div class="meta">${tier} · ${c.telegramUsername?'@'+esc(c.telegramUsername):(c.phone?esc(c.phone):'Telegram ulanmagan')}</div></div>
+        <div><div class="name">${esc(c.name)}</div><div class="meta">${tier}${c.tierOverride?' ✋':''} · ${c.telegramUsername?'@'+esc(c.telegramUsername):(c.phone?esc(c.phone):'Telegram ulanmagan')}</div></div>
         <div style="text-align:right"><div class="name">⭐ ${c.points||0}</div><div class="meta">${fmt(c.totalSpent||0)} ${cs()}</div></div>
       </div>
       <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
@@ -899,6 +900,13 @@ function openCustomerModal(id){
     <label class="f">Ism *</label><input type="text" id="cf-name" value="${c?esc(c.name):''}">
     <label class="f">Telefon</label><input type="text" id="cf-phone" value="${c?esc(c.phone):''}">
     <label class="f">Telegram username (@ siz)</label><input type="text" id="cf-username" value="${c?esc(c.telegramUsername):''}">
+    <label class="f">🏆 Daraja</label>
+    <select id="cf-tier">
+      <option value="" ${!c||!c.tierOverride?'selected':''}>Avtomatik (jami xariddan)</option>
+      <option value="bronze" ${c&&c.tierOverride==='bronze'?'selected':''}>🥉 Bronza (majburiy)</option>
+      <option value="silver" ${c&&c.tierOverride==='silver'?'selected':''}>🥈 Kumush (majburiy)</option>
+      <option value="gold" ${c&&c.tierOverride==='gold'?'selected':''}>🥇 Oltin (majburiy)</option>
+    </select>
     <button class="btn wide" onclick="submitCustomer(${c?`'${id}'`:'null'})">Saqlash</button>
   `);
 }
@@ -908,6 +916,7 @@ async function submitCustomer(id){
     name: document.getElementById('cf-name').value.trim(),
     phone: document.getElementById('cf-phone').value.trim(),
     telegramUsername: document.getElementById('cf-username').value.trim(),
+    tierOverride: document.getElementById('cf-tier').value,
   };
   if (!payload.name){ alert('Ismni kiriting.'); return; }
   const r = await callAction('upsert_customer', payload);
