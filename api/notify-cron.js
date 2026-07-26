@@ -144,7 +144,19 @@ async function runNotify() {
     const todaySales = sales.filter((sale) => !sale.reverted && (sale.date || '').slice(0, 10) === todayStr);
     const revenue = todaySales.reduce((a, sale) => a + (sale.total || 0), 0);
     const profit = todaySales.reduce((a, sale) => a + (sale.price - (sale.cost || 0)) * sale.qty, 0);
-    const text = `📊 <b>Kunlik hisobot</b> — ${esc(shopName)}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} ${esc(currencySymbol)}\n📈 Foyda: ${fmt(profit)} ${esc(currencySymbol)}`;
+    // YANGI: yangi mijozlar statistikasi (bugun va so'nggi 7 kunda
+    // sodiqlik dasturiga qo'shilgan mijozlar soni) — kunlik hisobotga
+    // qo'shildi.
+    let newCustomersLine = '';
+    try {
+      const customersSnap = await db.collection('customers').get();
+      const customers = customersSnap.docs.map((d) => d.data());
+      const now = Date.now();
+      const newToday = customers.filter((c) => (c.createdAt || '').slice(0, 10) === todayStr).length;
+      const newWeek = customers.filter((c) => c.createdAt && now - new Date(c.createdAt).getTime() <= 7 * 86400000).length;
+      newCustomersLine = `\n👥 Yangi mijozlar: bugun ${newToday} ta, so'nggi 7 kunda ${newWeek} ta`;
+    } catch (e) { /* mijozlar bo'limi bo'lmasa ham hisobot to'xtab qolmasin */ }
+    const text = `📊 <b>Kunlik hisobot</b> — ${esc(shopName)}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} ${esc(currencySymbol)}\n📈 Foyda: ${fmt(profit)} ${esc(currencySymbol)}${newCustomersLine}`;
     const ok = await sendToAllAdmins(token, chatIds, text);
     if (ok) patch.dailyreport = todayStr;
   }

@@ -20,7 +20,7 @@
 //                             telegramNotifyOverdueDebts,telegramNotifyDailyReport} }
 //   upsert_admin    { name, phone, username, chatId? }
 //   remove_admin    { chatId?, username?, phone? }
-//   upsert_customer { id?, name, phone, telegramUsername, tierOverride? }   -> sodiqlik mijozi (tierOverride: ''|'bronze'|'silver'|'gold')
+//   upsert_customer { id?, name, phone, telegramUsername, tierOverride? }   -> sodiqlik mijozi (tierOverride: '' yoki admin sozlagan daraja id'si)
 //   delete_customer { id }
 //   adjust_customer_points { id, delta, reason? }            -> ball qo'lda +/-
 //   upsert_seller   { id?, name, pin, telegramUsername }     -> xodim/sotuvchi
@@ -36,6 +36,8 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); return rem > 0.5 ? rem : 0; }
+
+const { computeCustomerTier } = require('./_loyalty');
 
 async function tgSendMessage(token, chatId, text) {
   if (!token || !chatId) return;
@@ -103,21 +105,22 @@ module.exports = async (req, res) => {
         const prod = snap.data();
         if (!qty || qty <= 0) { res.status(400).json({ ok: false, error: 'bad_qty' }); return; }
         if ((prod.stock || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
-        const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / 10000);
+        const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / (settings.coinEarnRate > 0 ? settings.coinEarnRate : 10000));
         const subtotal = (prod.price || 0) * qty;
         lineItems.push({ productId: prod.id, name: prod.name, qty, price: prod.price || 0, points: unitPoints * qty, subtotal });
       }
       const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
       const totalPoints = lineItems.reduce((a, x) => a + x.points, 0);
 
-      // Ball bilan to'lash: 1 ball = 100 so'm chegirma (mavjud "100 ball =
-      // 10 000 so'm" nisbati bilan bir xil). Mijozning ballari yetarli
-      // bo'lmasa, faqat mavjud qadar ishlatiladi, qolgani naqd bo'ladi.
+      // Coin bilan to'lash: 1 coin = coinSpendRate so'm chegirma (standart
+      // 100 so'm, admin sozlashi mumkin). Mijozning coini yetarli bo'lmasa,
+      // faqat mavjud qadar ishlatiladi, qolgani naqd bo'ladi.
       let pointsUsed = 0, cashDue = total;
+      const spendRate = settings.coinSpendRate > 0 ? settings.coinSpendRate : 100;
       if (usePoints) {
-        const neededPoints = Math.ceil(total / 100);
+        const neededPoints = Math.ceil(total / spendRate);
         pointsUsed = Math.min(customerData.points || 0, neededPoints);
-        cashDue = Math.max(0, total - pointsUsed * 100);
+        cashDue = Math.max(0, total - pointsUsed * spendRate);
       }
 
       const orderRef = db.collection('orders').doc();
@@ -134,7 +137,7 @@ module.exports = async (req, res) => {
       let text = `🛒 <b>Yangi buyurtma!</b>\n\n👤 Mijoz: <b>${esc(customerData.name || 'Noma\'lum')}</b>\n\n`;
       lineItems.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta × ${fmt(it.price)} ${esc(currencySymbol)} = ${fmt(it.subtotal)} ${esc(currencySymbol)}\n`; });
       text += `\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>\n`;
-      if (pointsUsed > 0) text += `⭐ Balldan to'langan: <b>${pointsUsed} ball</b> (${fmt(pointsUsed * 100)} ${esc(currencySymbol)})\n💵 Naqd to'lanadigan: <b>${fmt(cashDue)} ${esc(currencySymbol)}</b>\n`;
+      if (pointsUsed > 0) text += `🪙 Coindan to'langan: <b>${pointsUsed} coin</b> (${fmt(pointsUsed * spendRate)} ${esc(currencySymbol)})\n💵 Naqd to'lanadigan: <b>${fmt(cashDue)} ${esc(currencySymbol)}</b>\n`;
       else text += `💵 To'lov turi: Naqd pul\n`;
       text += `\n✅ Tasdiqlasangiz — tovar avtomatik sotiladi va ombordan yechiladi.`;
       const keyboard = { inline_keyboard: [[
@@ -148,6 +151,65 @@ module.exports = async (req, res) => {
       })));
 
       res.status(200).json({ ok: true, orderId: orderRef.id, total, pointsUsed, cashDue });
+      return;
+    }
+
+    // ---------------- MIJOZ: TOVARNI TO'LIQ COIN'GA SOTIB OLISH ----------------
+    // Naqd/ball-chegirma buyurtmasidan farqli o'laroq — bu yerda tovar
+    // TO'LIQ coin hisobidan "sotib olinadi" (narxning bir qismi emas).
+    // Xuddi create_order kabi 'orders' kolleksiyasiga pending holatda
+    // yoziladi va ADMINGA xuddi shu Tasdiqlash/Bekor qilish tugmalari
+    // bilan yuboriladi (telegram-webhook.js > handleOrderDecision buni
+    // ham qayta ishlaydi — payMode:'coin' bo'lgani uchun avtomatik coin
+    // ayiriladi, naqd/qo'shimcha coin berilmaydi).
+    if (action === 'request_coin_purchase') {
+      if (isAdmin) { res.status(400).json({ ok: false, error: 'admins_cannot_order' }); return; }
+      const { productId, qty } = p;
+      const q = Math.max(1, parseInt(qty, 10) || 1);
+      if (!productId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+
+      const customerSnap = await db.collection('customers').where('telegramChatId', '==', chatId).limit(1).get();
+      if (customerSnap.empty) { res.status(400).json({ ok: false, error: 'not_registered' }); return; }
+      const customerRef = customerSnap.docs[0].ref;
+      const customerData = customerSnap.docs[0].data();
+
+      const productRef = db.collection('products').doc(String(productId));
+      const productSnap = await productRef.get();
+      if (!productSnap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
+      const prod = productSnap.data();
+      if ((prod.stock || 0) < q) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
+
+      const unitRedeem = (prod.redeemCoins || prod.redeemCoins === 0)
+        ? Math.max(0, parseInt(prod.redeemCoins, 10) || 0)
+        : Math.max(0, Math.ceil((prod.price || 0) / (settings.coinSpendRate > 0 ? settings.coinSpendRate : 100)));
+      const totalCoins = unitRedeem * q;
+      if ((customerData.points || 0) < totalCoins) { res.status(400).json({ ok: false, error: 'not_enough_coins' }); return; }
+
+      const orderRef = db.collection('orders').doc();
+      const now = new Date().toISOString();
+      const lineItems = [{ productId: prod.id, name: prod.name, qty: q, price: prod.price || 0, points: 0, subtotal: (prod.price || 0) * q }];
+      const orderDoc = {
+        id: orderRef.id, customerId: customerRef.id, customerName: customerData.name || '', customerChatId: chatId,
+        items: lineItems, total: 0, totalPoints: 0, usePoints: true, pointsUsed: totalCoins, cashDue: 0,
+        payMode: 'coin', coinCost: totalCoins,
+        status: 'pending', createdAt: now,
+      };
+      await orderRef.set(orderDoc);
+
+      let text = `🪙 <b>Coin bilan sotib olish so'rovi!</b>\n\n👤 Mijoz: <b>${esc(customerData.name || "Noma'lum")}</b>\n\n`;
+      text += `• ${esc(prod.name)} — ${q} ta\n\n🪙 Coin narxi: <b>${totalCoins} coin</b> (mijozda: ${customerData.points || 0} coin)\n`;
+      text += `\n✅ Tasdiqlasangiz — tovar sotiladi, ombordan yechiladi va mijozdan ${totalCoins} coin yechiladi.`;
+      const keyboard = { inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `order_confirm:${orderRef.id}` },
+        { text: '❌ Bekor qilish', callback_data: `order_cancel:${orderRef.id}` },
+      ]] };
+      const targets = admins.filter((a) => a.chatId).map((a) => a.chatId);
+      await Promise.allSettled(targets.map((cid) => fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: cid, text, parse_mode: 'HTML', reply_markup: keyboard }),
+      })));
+
+      res.status(200).json({ ok: true, orderId: orderRef.id, coinCost: totalCoins });
       return;
     }
 
@@ -197,12 +259,13 @@ module.exports = async (req, res) => {
 
     // ---------------- TOVAR: YARATISH / TAHRIRLASH / O'CHIRISH ----------------
     if (action === 'create_product') {
-      const { name, price, cost, points, stock, volume, note } = p;
+      const { name, price, cost, points, redeemCoins, stock, volume, note } = p;
       if (!name || isNaN(parseFloat(price))) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const id = uid();
       const doc = {
         id, name: String(name).trim(), price: parseFloat(price) || 0, cost: parseFloat(cost) || 0,
         points: (points === null || points === undefined || points === '') ? null : Math.max(0, parseInt(points, 10) || 0),
+        redeemCoins: (redeemCoins === null || redeemCoins === undefined || redeemCoins === '') ? null : Math.max(0, parseInt(redeemCoins, 10) || 0),
         stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: '',
       };
       await db.collection('products').doc(id).set(doc);
@@ -213,13 +276,13 @@ module.exports = async (req, res) => {
     if (action === 'update_product') {
       const { id, patch } = p;
       if (!id || !patch) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
-      const allowed = ['name', 'price', 'cost', 'points', 'stock', 'volume', 'note'];
+      const allowed = ['name', 'price', 'cost', 'points', 'redeemCoins', 'stock', 'volume', 'note'];
       const clean = {};
       allowed.forEach((k) => {
         if (patch[k] === undefined) return;
         if (k === 'price' || k === 'cost') clean[k] = parseFloat(patch[k]) || 0;
         else if (k === 'stock') clean[k] = parseInt(patch[k], 10) || 0;
-        else if (k === 'points') clean[k] = (patch[k] === null || patch[k] === '') ? null : Math.max(0, parseInt(patch[k], 10) || 0);
+        else if (k === 'points' || k === 'redeemCoins') clean[k] = (patch[k] === null || patch[k] === '') ? null : Math.max(0, parseInt(patch[k], 10) || 0);
         else clean[k] = patch[k];
       });
       if (!Object.keys(clean).length) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
@@ -509,16 +572,30 @@ module.exports = async (req, res) => {
       const { id, name, phone, telegramUsername, tierOverride } = p;
       if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const cleanUsername = (telegramUsername || '').replace(/^@/, '');
-      // TUZATILDI: admin daraja (Bronza/Kumush/Oltin)ni qo'lda belgilasa,
-      // bu maydon oldin umuman saqlanmas edi (unutilib qolgan). Faqat
-      // ruxsat etilgan qiymatlar qabul qilinadi; bo'sh/notanish qiymat —
-      // "avtomatik" (jami xariddan hisoblanadi) deb olinadi.
-      const cleanTierOverride = ['bronze', 'silver', 'gold'].includes(tierOverride) ? tierOverride : '';
+      // TUZATILDI (2x): (1) admin daraja (Bronza/Kumush/Oltin)ni qo'lda
+      // belgilasa, bu maydon oldin umuman saqlanmas edi (unutilib qolgan).
+      // (2) Faqat 'bronze'/'silver'/'gold' qabul qilinardi — endi admin
+      // index.html'dagi "🏆 Darajalarni sozlash"dan o'zi qo'shgan har
+      // qanday daraja (masalan Platina, id: 'tier_xxxx') ham to'g'ri
+      // saqlanadi. Bo'sh/notanish qiymat — "avtomatik" deb olinadi.
+      const cleanTierOverride = (typeof tierOverride === 'string') ? tierOverride.trim().slice(0, 60) : '';
       if (id) {
         const ref = db.collection('customers').doc(id);
         const snap = await ref.get();
         if (!snap.exists) { res.status(404).json({ ok: false, error: 'customer_not_found' }); return; }
+        const cur = snap.data();
+        const beforeTier = computeCustomerTier(cur.totalSpent || 0, cur.tierOverride || '', settings.loyaltyTiers);
         await ref.update({ name: String(name).trim(), phone: phone || '', telegramUsername: cleanUsername, tierOverride: cleanTierOverride });
+        // YANGI: daraja o'zgargan bo'lsa (masalan admin qo'lda "Oltin"ga
+        // o'tkazsa), mijozga darhol Telegram xabari boradi.
+        const afterTier = computeCustomerTier(cur.totalSpent || 0, cleanTierOverride, settings.loyaltyTiers);
+        if (cur.telegramChatId && afterTier.id !== beforeTier.id) {
+          const isUpgrade = afterTier.idx > beforeTier.idx;
+          const text = isUpgrade
+            ? `🎉 <b>${esc(shopName)}</b>\n\nTabriklaymiz! Sodiqlik darajangiz endi <b>${esc(afterTier.label)}</b> ga oshdi!`
+            : `ℹ️ <b>${esc(shopName)}</b>\n\nSodiqlik darajangiz <b>${esc(afterTier.label)}</b> ga o'zgardi.`;
+          await tgSendMessage(token, cur.telegramChatId, text);
+        }
         res.status(200).json({ ok: true, id });
         return;
       }
@@ -556,8 +633,8 @@ module.exports = async (req, res) => {
       await ref.update({ points: newPoints, pointsAdjustments: admin.firestore.FieldValue.arrayUnion(entry) });
       if (cur.telegramChatId) {
         const text = d2 > 0
-          ? `⭐ <b>${esc(shopName)}</b>\n\nSizga <b>+${d2} ball</b> qo'shildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`
-          : `ℹ️ <b>${esc(shopName)}</b>\n\nBallaringizdan ${Math.abs(d2)} ball ayirildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`;
+          ? `🪙 <b>${esc(shopName)}</b>\n\nSizga <b>+${d2} coin</b> qo'shildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami coin: <b>${newPoints}</b>`
+          : `ℹ️ <b>${esc(shopName)}</b>\n\nCoinlaringizdan ${Math.abs(d2)} coin ayirildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami coin: <b>${newPoints}</b>`;
         await tgSendMessage(token, cur.telegramChatId, text);
       }
       res.status(200).json({ ok: true, points: newPoints });

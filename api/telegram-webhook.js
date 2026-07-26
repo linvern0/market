@@ -116,7 +116,7 @@ async function setCommandsForChat(token, chatId, isAdmin) {
     { command: 'menu', description: "🗂 Tugmali menyu (buyruq yozmasdan)" },
     { command: 'qarzim', description: "Joriy qarzim (tashkilot bo'lsa — barcha xodimlar bo'yicha)" },
     { command: 'tarix', description: "To'lovlar tarixim" },
-    { command: 'ballarim', description: "Sodiqlik dasturi ball holatim" },
+    { command: 'coinlarim', description: "Sodiqlik dasturi coin holatim" },
     { command: 'ilova', description: 'Mini-ilovada batafsil ko\'rish' },
     { command: 'yordam', description: 'Yordam' },
   ];
@@ -269,7 +269,7 @@ function debtorMenuKeyboard(req) {
   const rows = [
     [{ text: '💰 Mening qarzim', callback_data: 'cmd:/qarzim' }],
     [{ text: "🧾 To'lovlar tarixi", callback_data: 'cmd:/tarix' }],
-    [{ text: '⭐ Ballarim', callback_data: 'cmd:/ballarim' }],
+    [{ text: '🪙 Coinlarim', callback_data: 'cmd:/coinlarim' }],
   ];
   const mini = miniAppKeyboard(req, false);
   if (mini) rows.push(...mini.inline_keyboard);
@@ -334,7 +334,7 @@ function helpText(isAdmin) {
       `/qarzim — joriy qarzingizni ko'rish (agar tashkilot vakili bo'lsangiz — ` +
       `tashkilotdagi HAR BIR xodimning qarzi alohida-alohida, batafsil ko'rsatiladi)\n` +
       `/tarix — so'nggi to'lovlaringiz tarixi\n` +
-      `/ballarim — sodiqlik dasturi ball va chegirma holatingiz (agar ulangan bo'lsangiz)\n` +
+      `/coinlarim — sodiqlik dasturi coin va chegirma holatingiz (agar ulangan bo'lsangiz)\n` +
       `/ilova — Mini-ilovada qarzingizni to'liq (grafik, tarix, har bir qarz nima uchunligi bilan) ko'rish\n\n` +
       `📌 Pastdagi (chap pastki burchakdagi) "Mening qarzim" menyu tugmasi orqali ham istalgan payt Mini-ilovani ochishingiz mumkin.`;
   }
@@ -446,9 +446,9 @@ async function autoRegisterCustomer(db, token, msg, kb) {
   await db.collection('customers').add(data);
   const text = `👋 Xush kelibsiz, <b>${esc(name)}</b>!\n\n` +
     `✅ Siz do'konning sodiqlik dasturiga avtomatik ro'yxatdan o'tdingiz.\n\n` +
-    `🏆 Daraja: ${customerTierName(0)}\n⭐ Ball: <b>0</b>\n\n` +
+    `🏆 Daraja: ${customerTierName(0)}\n🪙 Coin: <b>0</b>\n\n` +
     `📱 Tovarlar katalogini ko'rish va o'z ma'lumotlaringizni kuzatish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.\n` +
-    `⭐ Ball holatingizni istalgan vaqt /ballarim buyrug'i orqali ko'rishingiz mumkin.`;
+    `🪙 Coin holatingizni istalgan vaqt /coinlarim buyrug'i orqali ko'rishingiz mumkin.`;
   await setCommandsForChat(token, chatId, false).catch(() => {});
   await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
   return data;
@@ -478,9 +478,9 @@ async function sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb) {
   const c = matches[0].data();
   const text = `✅ Ro'yxatdan o'tdingiz: <b>${esc(c.name)}</b>\n\n` +
     `🏆 Daraja: ${customerTierName(c.totalSpent, c.tierOverride)}\n` +
-    `⭐ Ball: <b>${c.points || 0}</b>\n` +
+    `🪙 Coin: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b>\n\n` +
-    `Ball holatingizni istalgan vaqt /ballarim buyrug'i orqali ko'rishingiz mumkin.`;
+    `Coin holatingizni istalgan vaqt /coinlarim buyrug'i orqali ko'rishingiz mumkin.`;
   await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
 }
 async function tryLinkLoyaltyCustomerByUsername(db, token, msg, kb) {
@@ -665,8 +665,8 @@ async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, c
     }, { merge: true });
     await receiptRef.set({ pointsClaimed: true, pointsClaimedBy: String(chatId), pointsClaimedAt: nowIso, pointsEarned: earned }, { merge: true });
   } catch (e) {
-    console.error('Ball yozishda xatolik:', e);
-    await sendMessage(token, chatId, "⚠️ Ball yozishda xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
+    console.error('Coin yozishda xatolik:', e);
+    await sendMessage(token, chatId, "⚠️ Coin yozishda xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
     return;
   }
 
@@ -674,12 +674,12 @@ async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, c
   await setMenuButtonFor(token, chatId, req, false).catch(() => {});
   const text2 = (isNewRegistration ? `✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>\n\n` : `🎉 <b>Chek qabul qilindi!</b>\n\n`) +
     `🧾 Xarid: <b>${fmt(total)} so'm</b>\n` +
-    `⭐ Siz to'pladingiz: <b>+${earned} ball</b>\n` +
-    `💳 Jami ball: <b>${newPoints}</b>\n` +
+    `🪙 Siz to'pladingiz: <b>+${earned} coin</b>\n` +
+    `💳 Jami coin: <b>${newPoints}</b>\n` +
     `🏆 Daraja: ${customerTierName(newTotalSpent, customerData.tierOverride)}\n\n` +
     (newPoints >= 100
       ? `🎁 ${Math.floor(newPoints / 100) * 100} ballni ${fmt(Math.floor(newPoints / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.`
-      : `Har 10,000 so'm xariddan 1 ball, 100 ball = 10,000 so'm chegirma.`);
+      : `Har 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma.`);
   // Mumkin bo'lsa, mini-ilova tugmasi ustiga "chekni to'liq ko'rish" tugmasi
   // ham qo'shiladi — mijoz tovarlar ro'yxatini, chek dizaynini ko'ra oladi.
   let replyMarkup = kb || debtorMenuKeyboard(req);
@@ -707,7 +707,7 @@ async function startReceiptRegistration(db, token, chatId, receiptId) {
     step: 'name', receiptId, createdAt: new Date().toISOString(),
   });
   await sendMessage(token, chatId,
-    `👋 Xush kelibsiz!\n\nBu chek uchun ball yozish va sodiqlik dasturidan foydalanish uchun avval ro'yxatdan o'tishingiz kerak.\n\n✍️ Ismingizni yozib yuboring:`);
+    `👋 Xush kelibsiz!\n\nBu chek uchun coin yozish va sodiqlik dasturidan foydalanish uchun avval ro'yxatdan o'tishingiz kerak.\n\n✍️ Ismingizni yozib yuboring:`);
 }
 
 // Mijoz ism/telefon savoliga matn bilan javob berayotganda ishlaydi.
@@ -774,7 +774,7 @@ async function completeReceiptRegistration(db, token, chatId, msg, req, receiptI
     // botga ulangan), faqat shu aniq chek uchun ball qo'shilmaydi (allaqachon
     // hisoblangan yoki xarid summasi yetarli emas).
     await customerRef.set({ ...customerData, telegramChatId: String(chatId), telegramUserId: String((msg.from && msg.from.id) || '') });
-    await sendMessage(token, chatId, `✅ Ro'yxatdan o'tdingiz, <b>${esc(name)}</b>! Endi keyingi xaridlaringiz uchun ball to'play olasiz.\n⭐ Ball holatingizni /ballarim orqali ko'rishingiz mumkin.`, { reply_markup: miniAppKeyboard(req, false) });
+    await sendMessage(token, chatId, `✅ Ro'yxatdan o'tdingiz, <b>${esc(name)}</b>! Endi keyingi xaridlaringiz uchun coin to'play olasiz.\n🪙 Coin holatingizni /coinlarim orqali ko'rishingiz mumkin.`, { reply_markup: miniAppKeyboard(req, false) });
     return;
   }
   await finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, true);
@@ -798,23 +798,23 @@ async function handleReceiptClaim(db, token, chatId, msg, req) {
   }
 
   if (r.pointsAwarded) {
-    await sendMessage(token, chatId, `🧾 Bu xarid uchun ball savdo vaqtida allaqachon hisoblangan. Joriy ball holatingizni /ballarim orqali ko'rishingiz mumkin.`, { reply_markup: kb });
+    await sendMessage(token, chatId, `🧾 Bu xarid uchun coin savdo vaqtida allaqachon hisoblangan. Joriy coin holatingizni /coinlarim orqali ko'rishingiz mumkin.`, { reply_markup: kb });
     return true;
   }
   if (r.pointsClaimed) {
     let balanceLine = '';
     if (r.pointsClaimedBy) {
       const cSnap = await db.collection('customers').where('telegramChatId', '==', String(r.pointsClaimedBy)).limit(1).get();
-      if (!cSnap.empty) balanceLine = `\n⭐ Joriy ball: <b>${cSnap.docs[0].data().points || 0}</b>`;
+      if (!cSnap.empty) balanceLine = `\n🪙 Joriy coin: <b>${cSnap.docs[0].data().points || 0}</b>`;
     }
-    await sendMessage(token, chatId, `ℹ️ Bu chek uchun ball allaqachon hisoblangan (+${r.pointsEarned || 0} ball).${balanceLine}`, { reply_markup: kb });
+    await sendMessage(token, chatId, `ℹ️ Bu chek uchun coin allaqachon hisoblangan (+${r.pointsEarned || 0} coin).${balanceLine}`, { reply_markup: kb });
     return true;
   }
 
   const total = r.total || 0;
   const { earned } = await computeReceiptPoints(db, r.items);
   if (earned <= 0) {
-    await sendMessage(token, chatId, `🧾 Chek qabul qilindi (${fmt(total)} so'm), lekin ball berish uchun xarid summasi yetarli emas yoki bu tovarlarga ball belgilanmagan.`, { reply_markup: kb });
+    await sendMessage(token, chatId, `🧾 Chek qabul qilindi (${fmt(total)} so'm), lekin coin berish uchun xarid summasi yetarli emas yoki bu tovarlarga coin belgilanmagan.`, { reply_markup: kb });
     return true;
   }
 
@@ -837,9 +837,9 @@ async function handleLoyaltyPoints(db, token, chatId, req) {
   if (customersSnap.empty) { await sendMessage(token, chatId, "Siz sodiqlik dasturiga hali ulanmagansiz. Do'kon administratoridan ulashini so'rang, keyin /start yozing."); return; }
   const c = customersSnap.docs[0].data();
   const text = `🏆 Daraja: ${customerTierName(c.totalSpent, c.tierOverride)}\n` +
-    `⭐ Ball: <b>${c.points || 0}</b>\n` +
+    `🪙 Coin: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b> (${c.purchaseCount || 0} marta)\n` +
-    (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} ballni ${fmt(Math.floor(c.points / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.` : `\nHar 10,000 so'm xariddan 1 ball, 100 ball = 10,000 so'm chegirma.`);
+    (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} coinni ${fmt(Math.floor(c.points / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.` : `\nHar 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma.`);
   await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
 }
 
@@ -1330,7 +1330,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 // buyruqlari uchun mos handler funksiyani chaqiramiz — mantiq matn buyruq
 // bilan AYNAN bir xil, faqat ikkinchi marta yozilmaydi.
 const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
-const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/ballarim']);
+const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/coinlarim']);
 
 // ============ YANGI: MIJOZ BUYURTMASI — TASDIQLASH / BEKOR QILISH ============
 // Mijoz mini-ilova katalogidan "Sotib olish" bosganda yaratilgan
@@ -1403,13 +1403,21 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
     await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n✅ <b>Tasdiqlandi — sotildi.</b>`).catch(() => {});
   }
   if (order.customerChatId) {
-    let text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Buyurtmangiz tasdiqlandi!\n\n`;
-    items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
-    text += `\n💰 Jami: <b>${fmt(order.total)} ${esc(currencySymbol)}</b>\n`;
-    if (order.pointsUsed > 0) text += `⭐ Ishlatilgan ball: <b>${order.pointsUsed}</b>\n`;
-    if (order.cashDue > 0) text += `💵 Do'konda to'lanadigan naqd: <b>${fmt(order.cashDue)} ${esc(currencySymbol)}</b>\n`;
-    if ((order.totalPoints || 0) > 0) text += `🎁 Yangi to'plangan ball: <b>+${order.totalPoints}</b>\n`;
-    text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
+    let text;
+    if (order.payMode === 'coin') {
+      text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Coin bilan sotib olish so'rovingiz tasdiqlandi!\n\n`;
+      items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
+      text += `\n🪙 Yechilgan coin: <b>${order.coinCost || order.pointsUsed || 0}</b>\n`;
+      text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
+    } else {
+      text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Buyurtmangiz tasdiqlandi!\n\n`;
+      items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
+      text += `\n💰 Jami: <b>${fmt(order.total)} ${esc(currencySymbol)}</b>\n`;
+      if (order.pointsUsed > 0) text += `🪙 Ishlatilgan coin: <b>${order.pointsUsed}</b>\n`;
+      if (order.cashDue > 0) text += `💵 Do'konda to'lanadigan naqd: <b>${fmt(order.cashDue)} ${esc(currencySymbol)}</b>\n`;
+      if ((order.totalPoints || 0) > 0) text += `🎁 Yangi to'plangan coin: <b>+${order.totalPoints}</b>\n`;
+      text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
+    }
     await sendMessage(token, order.customerChatId, text).catch(() => {});
   }
 }
@@ -1438,7 +1446,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
       try {
         if (cmd === '/qarzim') await handleCustomerMyDebts(db, token, chatId, req);
         else if (cmd === '/tarix') await handleCustomerPaymentHistory(db, token, chatId, req);
-        else if (cmd === '/ballarim') await handleLoyaltyPoints(db, token, chatId, req);
+        else if (cmd === '/coinlarim') await handleLoyaltyPoints(db, token, chatId, req);
       } catch (e) {
         console.error('Mijoz menyusi xatosi:', cmd, e);
         await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi. Qaytadan urinib ko'ring.").catch(() => {});
@@ -1637,7 +1645,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
   }
   if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId, req); return; }
   if (text === '/tarix' && !isAdmin) { await handleCustomerPaymentHistory(db, token, chatId, req); return; }
-  if (text === '/ballarim' && !isAdmin) { await handleLoyaltyPoints(db, token, chatId, req); return; }
+  if (text === '/coinlarim' && !isAdmin) { await handleLoyaltyPoints(db, token, chatId, req); return; }
   if (!isAdmin && !isKnownAny && !text.startsWith('/')) {
     // Hali tanilmagan (ro'yxatdan o'tmagan) kishi /start dan boshqa narsa
     // yozdi — bu ham birinchi murojaati hisoblanadi, shuning uchun uni
