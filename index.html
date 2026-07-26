@@ -202,6 +202,16 @@
   .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
   .modal-overlay.hidden{display:none}
+  /* TUZATILDI: #modal-confirm va #modal-prompt2 (tasdiqlash/kiritish
+     oynachalari) HTML kodda boshqa ko'plab oynalardan (Mijozlar, Yetkazib
+     beruvchilar va h.k.) OLDINROQ joylashgan edi. Ular boshqa oyna ochiq
+     turganda chaqirilsa (masalan "Mijozlar" ochiq holda "Coinni
+     to'g'irlash" bosilsa), bir xil z-index:200 bo'lgani uchun DOM
+     tartibida KEYINROQ turgan oyna (Mijozlar) tepada qolar, natijada
+     tasdiqlash oynachasi ko'rinmas holda "yashiringan" bo'lib qolardi —
+     tugma "ishlamayapti" bo'lib tuyular edi. Endi bu ikkitasi doim eng
+     tepada chiqishi uchun yuqoriroq z-index beramiz. */
+  #modal-confirm, #modal-prompt2{z-index:300}
   .modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
   .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
   .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
@@ -2133,8 +2143,9 @@ body.dark table {
     </div>
     <div class="field" style="margin-bottom:.6rem">
       <label>Bot username</label>
-      <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" oninput="updateBotCoinStatus()">
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">🎁 Shu kiritilsa, chekdagi QR kod avtomatik <b>botga (Telegram)</b> ishora qiladi — mijoz chekni skanerlashi bilan sodiqlik coini avtomatik hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa). Bo'sh qoldirsangiz, QR avvalgidek faqat chekni ko'rsatadigan sahifaga ishora qiladi.</p>
+      <div id="tg-bot-coin-status" style="font-size:12px;font-weight:600;border-radius:8px;padding:.5rem .65rem;margin-top:.4rem"></div>
     </div>
 
     <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
@@ -3746,7 +3757,8 @@ body.dark table {
         <button class="btn sm" style="white-space:nowrap" onclick="window.exportCustomersPDF && window.exportCustomersPDF()">⬇️ PDF</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--text3);margin-top:.4rem;margin-bottom:1rem">Doimiy mijozlaringizni kuzating: har 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma. Daraja (Bronza/Kumush/Oltin va h.k.) avtomatik hisoblanadi — chegaralarini "🏆 Darajalarni sozlash" tugmasidan o'zgartirishingiz mumkin.</p>
+    <p style="font-size:12px;color:var(--text3);margin-top:.4rem;margin-bottom:.6rem">Doimiy mijozlaringizni kuzating: har 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma. Daraja (Bronza/Kumush/Oltin va h.k.) avtomatik hisoblanadi — chegaralarini "🏆 Darajalarni sozlash" tugmasidan o'zgartirishingiz mumkin.</p>
+    <div id="customers-bot-status" style="font-size:12px;font-weight:600;border-radius:8px;padding:.5rem .65rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap"></div>
     <div class="form-row">
       <div class="field"><label>Ism *</label><input type="text" id="cus-name" placeholder="Mijoz ismi"></div>
       <div class="field"><label>Telefon</label><input type="text" id="cus-phone" placeholder="+998 90 123 45 67"></div>
@@ -8759,6 +8771,7 @@ window.checkAndSendTelegramAlerts = async function(){
 window.fillTelegramSettingsForm = function(){
   const t=document.getElementById('tg-bot-token'); if(t && document.activeElement!==t) t.value=DB.telegramBotToken||'';
   const u=document.getElementById('tg-bot-username'); if(u && document.activeElement!==u) u.value=DB.telegramBotUsername||'';
+  updateBotCoinStatus();
   const l=document.getElementById('tg-notify-lowstock'); if(l) l.checked=!!DB.telegramNotifyLowStock;
   const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
@@ -8909,6 +8922,27 @@ const RECEIPT_PAGE_URL = (function(){
     return `${location.origin}${dir}receipt.html`;
   }catch(e){ return fallback; }
 })();
+// YANGI: "Bot username" maydoni ostida — sozlama ochilishi bilan HAM,
+// admin yozayotganda HAM — chekni skanerlab coin yig'ish hozir ISHLAYDIMI
+// yo'qmi aniq va rangli ko'rsatadi. Bu maydon bo'sh qolib ketishi eng
+// ko'p uchraydigan sabab edi: shu holatda QR faqat oddiy "chek ko'rish"
+// sahifasiga (receipt.html) ishora qiladi, bot ochilmaydi va coin
+// UMUMAN berilmaydi — lekin buni admin ekranda payqashi qiyin edi.
+window.updateBotCoinStatus=function(){
+  const el = document.getElementById('tg-bot-coin-status');
+  if(!el) return;
+  const uEl = document.getElementById('tg-bot-username');
+  const val = (uEl ? uEl.value : (DB.telegramBotUsername||'')).trim().replace(/^@/,'');
+  if(val){
+    el.style.background = 'rgba(34,197,94,.12)';
+    el.style.color = '#16a34a';
+    el.textContent = "✅ Faol — mijoz chekni skanerlashi bilan Telegram bot ochiladi va coin avtomatik hisobiga qo'shiladi.";
+  } else {
+    el.style.background = 'rgba(239,68,68,.12)';
+    el.style.color = '#dc2626';
+    el.textContent = "⚠️ Bot username kiritilmagan — mijozlar chekni skanerlaganda faqat chek ma'lumotini ko'radi, COIN OLA OLMAYDI. Coin yig'ish ishlashi uchun yuqoriga bot username kiriting va saqlang.";
+  }
+};
 function receiptQrLink(receiptId){
   // YANGI: agar admin bot username'ini kiritgan bo'lsa, QR endi TO'G'RIDAN-TO'G'RI
   // Telegram botiga (start-parametr bilan) ishora qiladi — mijoz shunchaki QR'ni
@@ -16662,7 +16696,26 @@ document.addEventListener('keydown', function(e){
     toast2('✓ Darajalar saqlandi','green');
     if(typeof window.renderCustomersList==='function') window.renderCustomersList();
   };
-  window.openCustomersModal = function(){ window.renderCustomersList(); openModal('modal-customers'); };
+  window.openCustomersModal = function(){ window.renderCustomersList(); renderCustomersBotStatus(); openModal('modal-customers'); };
+  // Chek skanerlab coin yig'ish hozir ishlaydimi (bot username sozlangan-
+  // ligiga qarab) — mijozlar oynasi ochilganda ham darhol ko'rinsin, admin
+  // Sozlamalar bo'limiga alohida kirmasdan turib bilsin.
+  function renderCustomersBotStatus(){
+    const el = document.getElementById('customers-bot-status');
+    if(!el) return;
+    const botUser = (DB.telegramBotUsername||'').trim();
+    if(botUser){
+      el.style.background = 'rgba(34,197,94,.12)';
+      el.style.color = '#16a34a';
+      el.innerHTML = `<span>✅ Chekdagi QR ishlayapti — mijoz skanerlashi bilan bot (@${esc(botUser)}) ochiladi va coin avtomatik beriladi, faqat 1 marta.</span>`;
+    } else {
+      el.style.background = 'rgba(239,68,68,.12)';
+      el.style.color = '#dc2626';
+      el.innerHTML = `<span>⚠️ Bot ulanmagan — mijozlar chekni skanerlaganda COIN OLA OLMAYDI, faqat chek ma'lumotini ko'radi.</span>` +
+        `<button class="btn sm" style="white-space:nowrap" onclick="closeModal('modal-customers');window.showPage&&window.showPage('settings','admin');setTimeout(()=>{const c=document.getElementById('settings-telegram-card'); if(c) c.scrollIntoView({behavior:'smooth'});},150)">🤖 Botni ulash</button>`;
+    }
+  }
+  window.renderCustomersBotStatus = renderCustomersBotStatus;
   window.addCustomer = function(){
     const name = (document.getElementById('cus-name').value||'').trim();
     if(!name){ toast2('Ismini kiriting','amber'); return; }
