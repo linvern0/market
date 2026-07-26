@@ -633,26 +633,56 @@ function mergePointsByProduct(existingMap, breakdown) {
   return out;
 }
 
-// Chekka mos ballni (allaqachon ma'lum yoki hozirgina ro'yxatdan o'tgan)
-// mijozga yozadi va tasdiq xabarini yuboradi. `customerRef`/`customerData`
-// mavjud mijoz YOKI endigina yaratilgan (ism+telefon bilan) yangi mijozga
-// tegishli bo'lishi mumkin — ikkala holatda ham mantiq bir xil.
-async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, isNewRegistration) {
-  const kb = miniAppKeyboard(req, false);
+// ============ YANGI: ATOMIK (BIR MARTALIK KAFOLATLANGAN) COIN BERISH ============
+// MUHIM: bu funksiya Firestore TRANZAKSIYASI ichida ishlaydi. Sabab — ilgari
+// "chekni o'qish -> pointsClaimed tekshirish -> yozish" bosqichlari ALOHIDA-
+// ALOHIDA so'rovlar edi. Agar bitta chek uchun deyarli bir vaqtda ikkita
+// so'rov kelsa (masalan: mijoz havolani ikki marta tez ketma-ket bossa,
+// yoki Telegram serverining o'zi javobni sekin deb hisoblab xabarni QAYTA
+// yuborsa — bu Telegram botlarida odatiy holat), ikkalasi ham "hali
+// olinmagan" holatni o'qib ulgurishi va IKKALASI HAM coin yozib yuborishi
+// MUMKIN edi. Tranzaksiya bunga yo'l qo'ymaydi: Firestore o'zi ikkinchi
+// urinishni avtomatik takrorlaydi va faqat BITTASI muvaffaqiyatli yakunlanishini
+// kafolatlaydi — natijada chek qanchalik tez-tez skanerlansa ham, coin
+// ANIQ va FAQAT bir marta beriladi.
+//
+// Qaytaradi: { status:'ok', earned, newPoints, newTotalSpent, customerData }
+//         yoki { status:'already', earned }  (chek allaqachon band qilingan)
+//         yoki { status:'not_found' }        (chek Firestore'da yo'q)
+async function awardReceiptPointsAtomic(db, receiptId, customerRef, fallbackCustomerData, meta) {
   const receiptRef = db.collection('receipts').doc(receiptId);
-  const total = r.total || 0;
-  const { earned, breakdown } = await computeReceiptPoints(db, r.items);
+  return db.runTransaction(async (tx) => {
+    // Diqqat: tranzaksiya ichida BARCHA o'qishlar (get) yozishlardan (set)
+    // OLDIN bo'lishi shart — bu Firestore tranzaksiyalarining qat'iy talabi.
+    const [receiptSnap, customerSnap] = await Promise.all([
+      tx.get(receiptRef),
+      tx.get(customerRef),
+    ]);
+    if (!receiptSnap.exists) return { status: 'not_found' };
+    const r = receiptSnap.data();
 
-  const newPoints = (customerData.points || 0) + earned;
-  const newTotalSpent = (customerData.totalSpent || 0) + total;
-  const newPurchaseCount = (customerData.purchaseCount || 0) + 1;
-  const nowIso = new Date().toISOString();
-  const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned, items: breakdown };
-  const purchases = [purchaseEntry, ...(Array.isArray(customerData.purchases) ? customerData.purchases : [])].slice(0, 50);
-  const pointsByProduct = mergePointsByProduct(customerData.pointsByProduct, breakdown);
+    // ASOSIY QOPQOQ: shu tekshiruv va pastdagi yozish BITTA tranzaksiya
+    // ichida bo'lgani uchun, ikkinchi (bir vaqtda kelgan) urinish albatta
+    // yangilangan holatni ko'radi va shu yerda to'xtaydi — coin QAYTA
+    // berilmaydi, xoh chek savdo paytida (pointsAwarded), xoh oldinroq bot
+    // orqali (pointsClaimed) band qilingan bo'lsin.
+    if (r.pointsAwarded || r.pointsClaimed) {
+      return { status: 'already', earned: r.pointsEarned || 0 };
+    }
 
-  try {
-    await customerRef.set({
+    const customerData = customerSnap.exists ? customerSnap.data() : fallbackCustomerData;
+    const total = r.total || 0;
+    const earned = meta.earned;
+    const breakdown = meta.breakdown;
+    const newPoints = (customerData.points || 0) + earned;
+    const newTotalSpent = (customerData.totalSpent || 0) + total;
+    const newPurchaseCount = (customerData.purchaseCount || 0) + 1;
+    const nowIso = new Date().toISOString();
+    const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned, items: breakdown };
+    const purchases = [purchaseEntry, ...(Array.isArray(customerData.purchases) ? customerData.purchases : [])].slice(0, 50);
+    const pointsByProduct = mergePointsByProduct(customerData.pointsByProduct, breakdown);
+
+    tx.set(customerRef, {
       ...customerData,
       points: newPoints,
       totalSpent: newTotalSpent,
@@ -660,15 +690,54 @@ async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, c
       lastPurchaseAt: nowIso,
       purchases,
       pointsByProduct,
-      telegramChatId: String(chatId),
-      telegramUserId: String((msg.from && msg.from.id) || customerData.telegramUserId || ''),
+      telegramChatId: String(meta.chatId),
+      telegramUserId: String(meta.telegramUserId || customerData.telegramUserId || ''),
     }, { merge: true });
-    await receiptRef.set({ pointsClaimed: true, pointsClaimedBy: String(chatId), pointsClaimedAt: nowIso, pointsEarned: earned }, { merge: true });
+
+    // pointsClaimedAt/By shu yerda, AYNAN shu tranzaksiya ichida yoziladi —
+    // shu bilan "band qilingan" belgisi va coin yozuvi bir-biridan hech
+    // qachon ajralib qolmaydi (ikkalasi ham bo'ladi yoki ikkalasi ham yo'q).
+    tx.set(receiptRef, {
+      pointsClaimed: true, pointsClaimedBy: String(meta.chatId), pointsClaimedAt: nowIso, pointsEarned: earned,
+    }, { merge: true });
+
+    return { status: 'ok', earned, newPoints, newTotalSpent, customerData };
+  });
+}
+
+// Chekka mos ballni (allaqachon ma'lum yoki hozirgina ro'yxatdan o'tgan)
+// mijozga yozadi va tasdiq xabarini yuboradi. `customerRef`/`customerData`
+// mavjud mijoz YOKI endigina yaratilgan (ism+telefon bilan) yangi mijozga
+// tegishli bo'lishi mumkin — ikkala holatda ham mantiq bir xil. Haqiqiy
+// "bir martalik" kafolat esa yuqoridagi awardReceiptPointsAtomic ichida.
+async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, isNewRegistration) {
+  const kb = miniAppKeyboard(req, false);
+  const total = r.total || 0;
+  const { earned, breakdown } = await computeReceiptPoints(db, r.items);
+
+  let result;
+  try {
+    result = await awardReceiptPointsAtomic(db, receiptId, customerRef, customerData, {
+      earned, breakdown, chatId, telegramUserId: (msg.from && msg.from.id) || '',
+    });
   } catch (e) {
     console.error('Coin yozishda xatolik:', e);
     await sendMessage(token, chatId, "⚠️ Coin yozishda xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
     return;
   }
+
+  if (result.status === 'not_found') {
+    await sendMessage(token, chatId, "❌ Bu chek topilmadi (eskirgan yoki noto'g'ri havola bo'lishi mumkin).");
+    return;
+  }
+  if (result.status === 'already') {
+    // Boshqa (deyarli bir vaqtdagi) so'rov ulgurib coin yozib bo'lgan —
+    // shu yerda IKKINCHI marta coin berilmaydi, faqat xabar beriladi.
+    await sendMessage(token, chatId, `ℹ️ Bu chek uchun coin allaqachon hisoblangan (+${result.earned || 0} coin). Joriy coin holatingizni /coinlarim orqali ko'rishingiz mumkin.`, { reply_markup: kb || debtorMenuKeyboard(req) });
+    return;
+  }
+
+  const { newPoints, newTotalSpent } = result;
 
   await setCommandsForChat(token, chatId, false).catch(() => {});
   await setMenuButtonFor(token, chatId, req, false).catch(() => {});
