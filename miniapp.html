@@ -107,6 +107,7 @@
   .prod-card .img-wrap .no-img{font-size:34px;color:rgba(255,255,255,.22)}
   .prod-card .stock-badge{position:absolute;top:6px;right:6px}
   .prod-card .cart-badge-overlay{position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .prod-card .coin-badge-overlay{position:absolute;top:32px;right:6px;background:var(--warn);color:#1a1200;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3)}
   .prod-card .body{padding:.55rem .6rem .65rem}
   .prod-card .prod-name{font-weight:700;font-size:12.5px;margin-bottom:.2rem;overflow-wrap:anywhere;line-height:1.25}
   .prod-card .prod-meta{font-size:10.5px;color:var(--hint);margin-bottom:.15rem}
@@ -253,18 +254,20 @@ function renderCatalogGrid(){
         ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="pill ${out?'out':'in'}">${out?'Tugagan':'Mavjud'}</span></div>
+        ${p.redeemCoins>0 ? `<div class="coin-badge-overlay">🪙 ${p.redeemCoins}</div>` : ''}
         ${cartBadge}
       </div>
       <div class="body">
         <div class="prod-name">${esc(p.name)}</div>
         ${p.volume ? `<div class="prod-meta">📦 ${esc(p.volume)}</div>` : ''}
         <div class="prod-price">${fmt(p.price)} ${cs()}</div>
-        ${p.points>0 ? `<div class="prod-points">⭐ ${p.points} ball</div>` : ''}
+        ${p.points>0 ? `<div class="prod-points">🪙 ${p.points} coin</div>` : ''}
         ${out ? '' : `<div class="qty-ctrl" onclick="event.stopPropagation()">
           <button onclick="changeClientCartQty('${p.id}',-1)">−</button>
           <span style="min-width:16px;text-align:center">${qty}</span>
           <button onclick="changeClientCartQty('${p.id}',1)">+</button>
         </div>`}
+        ${(!out && p.redeemCoins>0) ? `<button class="btn small btn-outline" style="width:100%;margin-top:6px" onclick="event.stopPropagation();openCoinBuyModal('${p.id}')">🪙 Coinga sotib olish</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -306,13 +309,13 @@ function openClientCheckoutModal(){
   const d = STATE.data;
   const total = clientCartTotal();
   const myPoints = (d.loyalty && d.loyalty.points) || 0;
-  const canUsePoints = myPoints >= 100; // kamida 1 ball = 100 so'm — 100 balldan boshlab foydali
+  const canUsePoints = myPoints >= 100; // kamida 1 coin = 100 so'm — 100 coindan boshlab foydali
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:10px">Buyurtma — ${fmt(total)} ${cs()}</div>
     <div class="card" style="font-size:12.5px;color:var(--hint)">✅ Buyurtma yuborilgach, do'kon administratori tasdiqlaydi — shundan so'ng tovar sizga rasmiylashtiriladi.</div>
     <div class="chip active" id="pay-cash" onclick="setClientPayMode(false)">💵 Naqd pul</div>
-    <div class="chip ${canUsePoints?'':'hidden'}" id="pay-points" onclick="setClientPayMode(true)">⭐ Ballarim (${myPoints} ball bor)</div>
-    <div id="pay-points-info" class="hidden" style="margin-top:8px;font-size:12.5px;color:var(--hint)">1 ball = 100 ${cs()} chegirma sifatida hisoblanadi. Ballaringiz yetmasa, qolgan qismini naqd to'laysiz.</div>
+    <div class="chip ${canUsePoints?'':'hidden'}" id="pay-points" onclick="setClientPayMode(true)">🪙 Coinlarim (${myPoints} coin bor)</div>
+    <div id="pay-points-info" class="hidden" style="margin-top:8px;font-size:12.5px;color:var(--hint)">1 coin = 100 ${cs()} chegirma sifatida hisoblanadi. Coinlaringiz yetmasa, qolgan qismini naqd to'laysiz.</div>
     <button class="btn wide" onclick="submitClientOrder()">✅ Buyurtma berish</button>
   `);
 }
@@ -339,12 +342,40 @@ async function submitClientOrder(){
   }
 }
 
-function renderDebtor(app, d){
+function openCoinBuyModal(id){
+  const d = STATE.data;
+  const p = (d.products||[]).find(x=>x.id===id);
+  if (!p || p.inStock===false) return;
+  const myCoins = (d.loyalty && d.loyalty.points) || 0;
+  const cost = p.redeemCoins||0;
+  const enough = myCoins >= cost;
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px">${esc(p.name)}</div>
+    <div class="card" style="font-size:13px">🪙 Narxi: <b>${cost} coin</b><br>Sizda: <b>${myCoins} coin</b></div>
+    ${enough
+      ? `<div class="card" style="font-size:12.5px;color:var(--hint)">✅ So'rov yuborilgach, do'kon administratori tasdiqlaydi — tasdiqlansa tovar sizga beriladi va ${cost} coin hisobingizdan yechiladi.</div>
+         <button class="btn wide" onclick="submitCoinPurchase('${p.id}')">🪙 Coinga sotib olish</button>`
+      : `<div class="card" style="font-size:12.5px;color:var(--danger)">❌ Coin yetarli emas. Yana ${cost-myCoins} coin kerak.</div>`}
+  `);
+}
+async function submitCoinPurchase(productId){
+  const r = await callAction('request_coin_purchase', { productId, qty: 1 });
+  closeModal();
+  if (r.ok){
+    if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
+    toastMsg('✅ So\'rov yuborildi — admin tasdig\'ini kuting');
+    await loadData();
+    STATE.clientTab = 'catalog'; renderClient();
+  } else {
+    alert('Xatolik: ' + (r.error||''));
+  }
+}
+
   let html = '';
   if (d.loyalty){
     html += `<div class="hero">
-      <div class="label">⭐ Sodiqlik dasturi</div>
-      <div class="amount">${d.loyalty.points||0} ball</div>
+      <div class="label">🪙 Sodiqlik dasturi${d.loyalty.tier?` · ${esc(d.loyalty.tier)}`:''}</div>
+      <div class="amount">${d.loyalty.points||0} coin</div>
       <div class="sub">Jami xarid: ${fmt(d.loyalty.totalSpent||0)} ${cs()} (${d.loyalty.purchaseCount||0} marta)</div>
     </div>`;
   }
@@ -403,7 +434,7 @@ function setDebtorView(v){ STATE.debtorView = v; renderClient(); }
 const ADMIN_TABS = [
   ['main','📊','Bosh'], ['sell','🛒','Sotish'], ['debts','📋','Qarzlar'],
   ['stock','📦','Tovarlar'], ['debtors','👥','Qarzdorlar'], ['report','📈','Hisobot'],
-  ['customers','⭐','Mijozlar'], ['staff','🧑\u200d💼','Xodimlar'], ['settings','⚙️','Sozlama'],
+  ['customers','🪙','Mijozlar'], ['staff','🧑\u200d💼','Xodimlar'], ['settings','⚙️','Sozlama'],
 ];
 
 function renderAdmin(){
@@ -700,7 +731,8 @@ function openProductModal(id){
     <label class="f">Nomi *</label><input type="text" id="pf-name" value="${p?esc(p.name):''}">
     <label class="f">Narxi (sotish) *</label><input type="number" id="pf-price" value="${p?p.price:''}">
     <label class="f">Tannarx</label><input type="number" id="pf-cost" value="${p?p.cost:''}">
-    <label class="f">⭐ Sodiqlik balli (1 dona uchun, bo'sh — avtomatik narx/10000)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
+    <label class="f">🪙 Coin (1 dona uchun, bo'sh — avtomatik narx/coin kursi)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
+    <label class="f">🪙 Coinga narxi (1 dona uchun, bo'sh — avtomatik narx/coin kursi)</label><input type="number" id="pf-redeem" min="0" step="1" value="${p&&(p.redeemCoins||p.redeemCoins===0)?p.redeemCoins:''}">
     <label class="f">Qoldiq (soni)</label><input type="number" id="pf-stock" value="${p?p.stock:0}">
     <label class="f">Hajm/o'lcham (ixtiyoriy)</label><input type="text" id="pf-volume" value="${p?esc(p.volume):''}">
     <label class="f">Izoh</label><textarea id="pf-note" rows="2">${p?esc(p.note):''}</textarea>
@@ -709,11 +741,13 @@ function openProductModal(id){
 }
 async function submitProduct(id){
   const pointsRaw = document.getElementById('pf-points').value;
+  const redeemRaw = document.getElementById('pf-redeem').value;
   const patch = {
     name: document.getElementById('pf-name').value.trim(),
     price: document.getElementById('pf-price').value,
     cost: document.getElementById('pf-cost').value,
     points: pointsRaw === '' ? null : pointsRaw,
+    redeemCoins: redeemRaw === '' ? null : redeemRaw,
     stock: document.getElementById('pf-stock').value,
     volume: document.getElementById('pf-volume').value.trim(),
     note: document.getElementById('pf-note').value.trim(),
@@ -724,10 +758,11 @@ async function submitProduct(id){
   if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='stock'; renderAdmin(); }
   else alert('Xatolik: ' + (r.error||''));
 }
-async function deleteProduct(id, name){
-  if (!confirm(`"${name}" o'chirilsinmi?`)) return;
-  const r = await callAction('delete_product', { id });
-  if (r.ok){ await loadData(); STATE.tab='stock'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+function deleteProduct(id, name){
+  confirm2("Tovarni o'chirish", `"${name}" o'chirilsinmi?`, async ()=>{
+    const r = await callAction('delete_product', { id });
+    if (r.ok){ await loadData(); STATE.tab='stock'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+  });
 }
 function openRestockModal(id, name){
   showModal(`
@@ -804,10 +839,11 @@ async function submitDebtor(id){
   if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='debtors'; renderAdmin(); }
   else alert('Xatolik: ' + (r.error||''));
 }
-async function deleteDebtor(id, name){
-  if (!confirm(`"${name}" ro'yxatdan o'chirilsinmi? (Qarz yozuvlari o'chmaydi)`)) return;
-  const r = await callAction('delete_debtor', { id });
-  if (r.ok){ await loadData(); STATE.tab='debtors'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+function deleteDebtor(id, name){
+  confirm2("Qarzdorni o'chirish", `"${name}" ro'yxatdan o'chirilsinmi? (Qarz yozuvlari o'chmaydi)`, async ()=>{
+    const r = await callAction('delete_debtor', { id });
+    if (r.ok){ await loadData(); STATE.tab='debtors'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+  });
 }
 
 // ---------------- HISOBOT (kunlik/haftalik/oylik, top tovarlar, so'nggi savdolar) ----------------
@@ -871,20 +907,45 @@ function exportReportCsv(){
 }
 
 // ---------------- MIJOZLAR / SODIQLIK DASTURI ----------------
+// TUZATILDI: darajalar (Bronza/Kumush/Oltin va h.k.) va ularning necha
+// so'mdan boshlanishi ilgari shu yerda ham QATTIQ yozilgan edi (500,000 /
+// 2,000,000) va index.html'dagi ("🏆 Darajalarni sozlash") admin
+// sozlamalaridan MUTLAQO XABARSIZ edi. Endi ikkalasi ham BIR XIL manbadan
+// (Firebase'dagi dokon/settings > loyaltyTiers, shu yerga d.settings.loyaltyTiers
+// orqali keladi) o'qiydi — admin qaysi interfeysdan sozlasa ham, ikkala
+// joyda ham bir xil darajalar ko'rinadi.
+function getLoyaltyTiers(d){
+  const tiers = (d && d.settings && Array.isArray(d.settings.loyaltyTiers) && d.settings.loyaltyTiers.length)
+    ? d.settings.loyaltyTiers
+    : [{id:'bronze',name:'Bronza',emoji:'🥉',threshold:0,color:'#16a34a'},{id:'silver',name:'Kumush',emoji:'🥈',threshold:500000,color:'#2563eb'},{id:'gold',name:'Oltin',emoji:'🥇',threshold:2000000,color:'#d97706'}];
+  return tiers.slice().sort((a,b)=>(a.threshold||0)-(b.threshold||0));
+}
+function customerTierLabel(c, tiers){
+  if(c.tierOverride){
+    const f = tiers.find(t=>t.id===c.tierOverride);
+    if(f) return `${f.emoji||''} ${f.name||''}`.trim();
+  }
+  let cur = tiers[0];
+  for(const t of tiers){ if((c.totalSpent||0) >= (t.threshold||0)) cur = t; }
+  return `${cur.emoji||''} ${cur.name||''}`.trim();
+}
 function renderCustomers(app, d){
+  const tiers = getLoyaltyTiers(d);
   const list = [...(d.customers||[])].sort((a,b)=>(b.totalSpent||0)-(a.totalSpent||0));
   let html = `<div class="section-title">Mijozlar / sodiqlik (${list.length}) <button class="btn small" onclick="openCustomerModal()">+ Qo'shish</button></div>`;
+  html += `<div class="card" style="font-size:12px;color:var(--hint);display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <span>Daraja chegaralarini sozlash uchun "Boshqaruv paneli"da (index.html) 🏆 tugmasidan foydalaning.</span>
+  </div>`;
   if (!list.length){ html += `<div class="card empty">Hali sodiqlik mijozi yo'q. Mijozlar chekni Telegram botda skanerlaganda yoki shu yerdan qo'shganda avtomatik paydo bo'ladi.</div>`; }
   list.forEach(c=>{
-    const tier = c.tierOverride==='gold' ? '🥇 Oltin' : c.tierOverride==='silver' ? '🥈 Kumush' : c.tierOverride==='bronze' ? '🥉 Bronza'
-      : (c.totalSpent||0) >= 2000000 ? '🥇 Oltin' : (c.totalSpent||0) >= 500000 ? '🥈 Kumush' : '🥉 Boshlang\'ich';
+    const tier = customerTierLabel(c, tiers);
     html += `<div class="card">
       <div class="row">
-        <div><div class="name">${esc(c.name)}</div><div class="meta">${tier}${c.tierOverride?' ✋':''} · ${c.telegramUsername?'@'+esc(c.telegramUsername):(c.phone?esc(c.phone):'Telegram ulanmagan')}</div></div>
-        <div style="text-align:right"><div class="name">⭐ ${c.points||0}</div><div class="meta">${fmt(c.totalSpent||0)} ${cs()}</div></div>
+        <div><div class="name">${esc(c.name)}</div><div class="meta">${esc(tier)}${c.tierOverride?' ✋':''} · ${c.telegramUsername?'@'+esc(c.telegramUsername):(c.phone?esc(c.phone):'Telegram ulanmagan')}</div></div>
+        <div style="text-align:right"><div class="name">🪙 ${c.points||0}</div><div class="meta">${fmt(c.totalSpent||0)} ${cs()}</div></div>
       </div>
       <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-        <button class="btn small btn-outline" onclick="openPointsModal('${c.id}','${esc(c.name).replace(/'/g,"\\'")}',${c.points||0})">⭐ Ball</button>
+        <button class="btn small btn-outline" onclick="openPointsModal('${c.id}','${esc(c.name).replace(/'/g,"\\'")}',${c.points||0})">🪙 Coin</button>
         <button class="btn small btn-outline" onclick='openCustomerModal(${JSON.stringify(c.id)})'>✏️</button>
         <button class="btn small danger" onclick="deleteCustomer('${c.id}','${esc(c.name).replace(/'/g,"\\'")}')">🗑</button>
       </div>
@@ -895,18 +956,16 @@ function renderCustomers(app, d){
 function openCustomerModal(id){
   const d = STATE.data;
   const c = id ? (d.customers||[]).find(x=>x.id===id) : null;
+  const tiers = getLoyaltyTiers(d);
+  const tierOptions = `<option value="" ${!c||!c.tierOverride?'selected':''}>Avtomatik (jami xariddan)</option>` +
+    tiers.map(t=>`<option value="${t.id}" ${c&&c.tierOverride===t.id?'selected':''}>${t.emoji||''} ${esc(t.name||'')} (majburiy, ${fmt(t.threshold||0)} ${cs()}dan)</option>`).join('');
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">${c?'Mijozni tahrirlash':'Yangi mijoz'}</div>
     <label class="f">Ism *</label><input type="text" id="cf-name" value="${c?esc(c.name):''}">
     <label class="f">Telefon</label><input type="text" id="cf-phone" value="${c?esc(c.phone):''}">
     <label class="f">Telegram username (@ siz)</label><input type="text" id="cf-username" value="${c?esc(c.telegramUsername):''}">
     <label class="f">🏆 Daraja</label>
-    <select id="cf-tier">
-      <option value="" ${!c||!c.tierOverride?'selected':''}>Avtomatik (jami xariddan)</option>
-      <option value="bronze" ${c&&c.tierOverride==='bronze'?'selected':''}>🥉 Bronza (majburiy)</option>
-      <option value="silver" ${c&&c.tierOverride==='silver'?'selected':''}>🥈 Kumush (majburiy)</option>
-      <option value="gold" ${c&&c.tierOverride==='gold'?'selected':''}>🥇 Oltin (majburiy)</option>
-    </select>
+    <select id="cf-tier">${tierOptions}</select>
     <button class="btn wide" onclick="submitCustomer(${c?`'${id}'`:'null'})">Saqlash</button>
   `);
 }
@@ -924,16 +983,17 @@ async function submitCustomer(id){
   if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); await loadData(); STATE.tab='customers'; renderAdmin(); }
   else alert('Xatolik: ' + (r.error||''));
 }
-async function deleteCustomer(id, name){
-  if (!confirm(`"${name}" sodiqlik ro'yxatidan o'chirilsinmi?`)) return;
-  const r = await callAction('delete_customer', { id });
-  if (r.ok){ await loadData(); STATE.tab='customers'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+function deleteCustomer(id, name){
+  confirm2("Mijozni o'chirish", `"${name}" sodiqlik ro'yxatidan o'chirilsinmi?`, async ()=>{
+    const r = await callAction('delete_customer', { id });
+    if (r.ok){ await loadData(); STATE.tab='customers'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+  });
 }
 function openPointsModal(id, name, current){
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(name)}</div>
-    <div style="color:var(--hint);font-size:13px;margin-bottom:10px">Joriy ball: ${current}</div>
-    <label class="f">Necha ball qo'shiladi (ayirish uchun manfiy son kiriting, masalan -20)</label>
+    <div style="color:var(--hint);font-size:13px;margin-bottom:10px">Joriy coin: ${current}</div>
+    <label class="f">Necha coin qo'shiladi (ayirish uchun manfiy son kiriting, masalan -20)</label>
     <input type="number" id="pts-delta" placeholder="Masalan: 50">
     <label class="f">Sabab (ixtiyoriy)</label>
     <input type="text" id="pts-reason" placeholder="Masalan: tug'ilgan kun sovg'asi">
@@ -990,10 +1050,11 @@ async function submitStaff(){
   if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Xodim qo\'shildi ✅'); await loadData(); STATE.tab='staff'; renderAdmin(); }
   else alert('Xatolik: ' + (r.error==='pin_taken' ? "Bu PIN band" : (r.error||'')));
 }
-async function deleteStaff(id, name){
-  if (!confirm(`"${name}" xodimlikdan o'chirilsinmi?`)) return;
-  const r = await callAction('remove_seller', { id });
-  if (r.ok){ await loadData(); STATE.tab='staff'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+function deleteStaff(id, name){
+  confirm2("Xodimni o'chirish", `"${name}" xodimlikdan o'chirilsinmi?`, async ()=>{
+    const r = await callAction('remove_seller', { id });
+    if (r.ok){ await loadData(); STATE.tab='staff'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
+  });
 }
 
 // ---------------- SOZLAMALAR ----------------
@@ -1062,11 +1123,12 @@ async function submitAdmin(){
   closeModal();
   if (r.ok){ await loadData(); STATE.tab='settings'; renderAdmin(); } else alert('Xatolik: ' + (r.error||''));
 }
-async function removeAdmin(chatId, username, phone, name){
-  if (!confirm(`"${name}" adminlikdan o'chirilsinmi?`)) return;
-  const r = await callAction('remove_admin', { chatId, username, phone });
-  if (r.ok){ await loadData(); STATE.tab='settings'; renderAdmin(); }
-  else alert(r.error==='cannot_remove_self' ? "O'zingizni o'chira olmaysiz." : ('Xatolik: ' + (r.error||'')));
+function removeAdmin(chatId, username, phone, name){
+  confirm2("Adminni o'chirish", `"${name}" adminlikdan o'chirilsinmi?`, async ()=>{
+    const r = await callAction('remove_admin', { chatId, username, phone });
+    if (r.ok){ await loadData(); STATE.tab='settings'; renderAdmin(); }
+    else alert(r.error==='cannot_remove_self' ? "O'zingizni o'chira olmaysiz." : ('Xatolik: ' + (r.error||'')));
+  });
 }
 
 // ---------------- MODALLAR (umumiy) / TO'LOV ----------------
@@ -1086,6 +1148,24 @@ function showModal(inner){
   document.body.appendChild(bg);
 }
 function closeModal(){ const m = document.getElementById('modal-bg'); if(m) m.remove(); }
+// YANGI: native confirm()ning o'rnini bosuvchi oyna. SABAB: Telegram Mini
+// App ichida brauzerning confirm()/prompt() funksiyalari ko'p qurilma va
+// Telegram versiyalarida ishonchli ishlamaydi — tugma bosilganda hech
+// qanday oyna chiqmasligi mumkin. Shu sabab "O'chirish" kabi amallar
+// ba'zan "hech narsa bo'lmayapti"day tuyulardi. Bu oyna esa oddiy modal
+// bo'lgani uchun har doim bir xil ishonchli ishlaydi.
+function confirm2(title, msg, onYes){
+  showModal(`
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px">${esc(title)}</div>
+    <div style="color:var(--hint);font-size:13px;margin-bottom:14px">${esc(msg)}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn wide btn-outline" onclick="closeModal()">Yo'q</button>
+      <button class="btn wide danger" id="confirm2-yes-btn">Ha, davom etish</button>
+    </div>
+  `);
+  const btn = document.getElementById('confirm2-yes-btn');
+  if(btn) btn.onclick = ()=>{ closeModal(); onYes(); };
+}
 function openDesktopPanel(){
   const url = window.location.href.replace(/miniapp\.html([^/]*)$/, 'index.html');
   if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
