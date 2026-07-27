@@ -338,25 +338,6 @@
       </div>`;
   }
 
-  // YANGI: agar do'kon bot username sozlagan bo'lsa, chek sahifasining
-  // O'ZIDA ham (nafaqat QR kodda) botga to'g'ridan-to'g'ri o'tadigan yorqin
-  // tugma chiqariladi. Bu muhim: mijoz chekni kamera bilan skanerlamasdan,
-  // shunchaki havoladan (masalan SMS/WhatsApp orqali yuborilgan) ochib
-  // qolgan bo'lishi mumkin — bunday holatda ham u coin yig'ish imkoniga
-  // ega bo'lishi kerak, shuning uchun bu tugma botga olib boradi (u yerda
-  // coin bir marta va avtomatik hisoblanadi).
-  function botClaimButtonHtml(r){
-    const botUser = (r.telegramBotUsername||'').trim();
-    if(!botUser || !r.id) return '';
-    const link = `https://t.me/${encodeURIComponent(botUser)}?start=r_${encodeURIComponent(r.id)}`;
-    return `
-      <div class="divider"></div>
-      <a href="${esc(link)}" style="display:block;text-align:center;text-decoration:none;font-weight:700;font-size:13px;color:#fff;background:var(--accent);border-radius:10px;padding:12px 14px;letter-spacing:.02em">
-        🪙 Botda oching — coin yig'ib oling
-      </a>
-      <p style="text-align:center;font-size:11px;color:var(--ink-soft);margin-top:6px">Bosilgach Telegram ochiladi, coin avtomatik va faqat bir marta hisobingizga qo'shiladi.</p>`;
-  }
-
   function renderReceipt(r, design){
     const d = applyReceiptDesign(design, r.brandAccent1);
     const dateStr = r.date ? new Date(r.date).toLocaleString('uz-UZ') : '';
@@ -388,7 +369,6 @@
         </div>
         <div class="thanks">${esc(r.receiptFooter) || "Xaridingiz uchun rahmat!"}</div>
         ${d.showStamp ? `<div class="stamp-wrap"><span class="stamp">${esc(d.stamp)}</span></div>` : ''}
-        ${botClaimButtonHtml(r)}
         ${d.showLinks ? renderReceiptLinks(r.links, d) : ''}
       </div>`;
   }

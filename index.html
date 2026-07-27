@@ -202,16 +202,6 @@
   .section-header p{font-size:13px;color:var(--text3);margin-top:.15rem}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
   .modal-overlay.hidden{display:none}
-  /* TUZATILDI: #modal-confirm va #modal-prompt2 (tasdiqlash/kiritish
-     oynachalari) HTML kodda boshqa ko'plab oynalardan (Mijozlar, Yetkazib
-     beruvchilar va h.k.) OLDINROQ joylashgan edi. Ular boshqa oyna ochiq
-     turganda chaqirilsa (masalan "Mijozlar" ochiq holda "Coinni
-     to'g'irlash" bosilsa), bir xil z-index:200 bo'lgani uchun DOM
-     tartibida KEYINROQ turgan oyna (Mijozlar) tepada qolar, natijada
-     tasdiqlash oynachasi ko'rinmas holda "yashiringan" bo'lib qolardi —
-     tugma "ishlamayapti" bo'lib tuyular edi. Endi bu ikkitasi doim eng
-     tepada chiqishi uchun yuqoriroq z-index beramiz. */
-  #modal-confirm, #modal-prompt2{z-index:300}
   .modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
   .modal h3{font-size:18px;font-weight:700;margin-bottom:1.25rem}
   .modal-footer{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
@@ -1142,7 +1132,7 @@
   <button onclick="window.openTasksModal && window.openTasksModal();closeNavMoreMenu()">✅ <span>Vazifalar</span></button>
   <div class="nav-more-sep" id="nav-more-business-sep" style="display:none"></div>
   <button onclick="window.openSuppliersModal && window.openSuppliersModal();closeNavMoreMenu()" id="nav-more-suppliers-btn" style="display:none">🚚 <span>Yetkazib beruvchilar</span></button>
-  <button onclick="window.openCustomersModal && window.openCustomersModal();closeNavMoreMenu()" id="nav-more-customers-btn" style="display:none">👥 <span>Mijozlar / Sodiqlik</span></button>
+  <button onclick="window.openCustomersModal && window.openCustomersModal();closeNavMoreMenu()" id="nav-more-customers-btn" style="display:none">👥 <span>Mijozlar / Coin</span><span id="nav-more-coinorders-badge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;border-radius:9px;min-width:18px;height:18px;align-items:center;justify-content:center;padding:0 4px"></span></button>
   <button onclick="window.openPromotionsModal && window.openPromotionsModal();closeNavMoreMenu()" id="nav-more-promotions-btn" style="display:none">🏷️ <span>Aksiya va chegirmalar</span></button>
   <div class="nav-more-sep"></div>
   <button onclick="window.quickLock && window.quickLock();closeNavMoreMenu()">🔒 <span>Tezkor qulflash</span></button>
@@ -2143,9 +2133,8 @@ body.dark table {
     </div>
     <div class="field" style="margin-bottom:.6rem">
       <label>Bot username</label>
-      <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" oninput="updateBotCoinStatus()">
+      <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">🎁 Shu kiritilsa, chekdagi QR kod avtomatik <b>botga (Telegram)</b> ishora qiladi — mijoz chekni skanerlashi bilan sodiqlik coini avtomatik hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa). Bo'sh qoldirsangiz, QR avvalgidek faqat chekni ko'rsatadigan sahifaga ishora qiladi.</p>
-      <div id="tg-bot-coin-status" style="font-size:12px;font-weight:600;border-radius:8px;padding:.5rem .65rem;margin-top:.4rem"></div>
     </div>
 
     <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
@@ -2527,14 +2516,14 @@ body.dark table {
     </div>
     <div class="form-row full">
       <div class="field">
-        <label>🪙 Coin <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni 1 dona sotib olganda necha coin olishini belgilang — bo'sh qoldirsangiz avtomatik hisoblanadi: narx / coin ishlab topish kursi)</span></label>
+        <label>🪙 Har xariddan necha coin beriladi <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni 1 dona sotib olganda necha coin olishini belgilang — bo'sh qoldirsangiz avtomatik hisoblanadi: narx / umumiy sozlamadagi qiymat)</span></label>
         <input id="p-points" type="number" min="0" step="1" placeholder="Masalan: 1">
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
-        <label>🪙 Coinga narxi <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni COIN'ga sotib olishi uchun kerak bo'lgan coin miqdori — bo'sh qoldirsangiz avtomatik hisoblanadi: narx / coin sarflash kursi)</span></label>
-        <input id="p-redeem" type="number" min="0" step="1" placeholder="Masalan: 50">
+        <label>🪙 Coinda sotib olish narxi <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni NECHTA COINGA (naqd pulsiz) sotib ola olishini belgilang — bo'sh qoldirsangiz avtomatik hisoblanadi: narx / umumiy sozlamadagi qiymat)</span></label>
+        <input id="p-coincost" type="number" min="0" step="1" placeholder="Masalan: 500">
       </div>
     </div>
     <div class="form-row" id="p-qty-row">
@@ -2665,7 +2654,7 @@ body.dark table {
     <h3>🛒 Savat</h3>
     <div id="cart-items" style="margin-bottom:1rem"></div>
     <div class="field" style="margin-bottom:.75rem">
-      <label>🎫 Mijoz <span style="color:var(--text3);font-weight:400">(ixtiyoriy — tanlansa, xarid tarixiga va coinlariga avtomatik qo'shiladi)</span></label>
+      <label>🎫 Mijoz <span style="color:var(--text3);font-weight:400">(ixtiyoriy — tanlansa, xarid tarixiga va coiniga avtomatik qo'shiladi)</span></label>
       <select id="cart-customer-select" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)"></select>
     </div>
     <div style="border-top:1.5px solid var(--border);padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
@@ -3749,7 +3738,7 @@ body.dark table {
 <div class="modal-overlay hidden" id="modal-customers">
   <div class="modal" style="max-width:680px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;flex-wrap:wrap">
-      <h3 style="margin:0">👥 Mijozlar va sodiqlik dasturi</h3>
+      <h3 style="margin:0">👥 Mijozlar va coin dasturi</h3>
       <div style="display:flex;gap:.4rem;flex-wrap:wrap">
         <button class="btn sm" style="white-space:nowrap" onclick="window.openLoyaltyTiersModal && window.openLoyaltyTiersModal()">🏆 Darajalarni sozlash</button>
         <button class="btn sm" style="white-space:nowrap" onclick="window.broadcastToCustomers && window.broadcastToCustomers()">📢 Xabar yuborish</button>
@@ -3757,13 +3746,16 @@ body.dark table {
         <button class="btn sm" style="white-space:nowrap" onclick="window.exportCustomersPDF && window.exportCustomersPDF()">⬇️ PDF</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--text3);margin-top:.4rem;margin-bottom:.6rem">Doimiy mijozlaringizni kuzating: har 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma. Daraja (Bronza/Kumush/Oltin va h.k.) avtomatik hisoblanadi — chegaralarini "🏆 Darajalarni sozlash" tugmasidan o'zgartirishingiz mumkin.</p>
-    <div id="customers-bot-status" style="font-size:12px;font-weight:600;border-radius:8px;padding:.5rem .65rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap"></div>
+    <p style="font-size:12px;color:var(--text3);margin-top:.4rem;margin-bottom:1rem">Doimiy mijozlaringizni kuzating: har xariddan 🪙 coin to'planadi, coinlar chegirmaga yoki tovarga to'g'ridan-to'g'ri almashtirilishi mumkin. Daraja (Bronza/Kumush/Oltin va h.k.) avtomatik hisoblanadi — coin stavkalari va darajalarni "🏆 Darajalarni sozlash" tugmasidan o'zgartirishingiz mumkin.</p>
     <div class="form-row">
       <div class="field"><label>Ism *</label><input type="text" id="cus-name" placeholder="Mijoz ismi"></div>
       <div class="field"><label>Telefon</label><input type="text" id="cus-phone" placeholder="+998 90 123 45 67"></div>
     </div>
     <button class="btn blue" style="width:100%;margin-bottom:1rem" onclick="window.addCustomer && window.addCustomer()">+ Mijoz qo'shish</button>
+    <!-- YANGI: kutayotgan COINGA SOTIB OLISH so'rovlari — ilgari faqat
+         Telegram botdan (✅/❌ tugma) boshqarilardi, endi shu yerdan ham
+         ko'rinadi va boshqariladi. Bo'sh bo'lsa hech narsa ko'rsatmaydi. -->
+    <div id="coin-orders-panel" style="margin-bottom:1rem"></div>
     <div id="loyalty-report" style="margin-bottom:1rem"></div>
     <div id="customers-list" style="display:flex;flex-direction:column;gap:.5rem;max-height:42vh;overflow-y:auto"></div>
     <p id="customers-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Hozircha mijoz qo'shilmagan.</p>
@@ -3781,18 +3773,23 @@ body.dark table {
      o'zgartira olmas edi. -->
 <div class="modal-overlay hidden" id="modal-loyalty-tiers">
   <div class="modal" style="max-width:480px">
-    <h3>🏆 Sodiqlik darajalarini sozlash</h3>
-    <p style="font-size:12px;color:var(--text3);margin-top:-.9rem;margin-bottom:1rem">Mijoz jami xaridi necha so'mdan boshlab qaysi darajaga o'tishini belgilang. Pastdagi "+" tugmasi bilan xohlagancha yangi daraja qo'shishingiz mumkin.</p>
-    <div id="loyalty-tiers-list" style="display:flex;flex-direction:column;gap:.6rem;max-height:46vh;overflow-y:auto;margin-bottom:1rem"></div>
-    <button class="btn" style="width:100%;margin-bottom:.5rem" onclick="window.addLoyaltyTier()">+ Yangi daraja qo'shish</button>
-    <div style="border-top:1px dashed var(--border2);margin:.9rem 0 .7rem;padding-top:.8rem">
-      <p style="font-size:12.5px;font-weight:600;margin-bottom:.5rem">🪙 Coin kursi (umumiy, tovarga alohida belgilanmagan bo'lsa shu formula ishlatiladi)</p>
+    <h3>🏆 Sodiqlik darajalari va 🪙 Coin sozlamalari</h3>
+    <!-- YANGI: umumiy COIN qoidalari — necha so'mlik xariddan 1 coin
+         beriladi va 1 coin qancha so'mlik chegirma qiymatiga teng. Bu
+         faqat "products" bo'limida biror tovarga ALOHIDA coin qiymati
+         belgilanmagan hollarda ishlatiladi (standart/zaxira qoida). -->
+    <div style="border:1px solid var(--border);border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem;background:var(--bg2,rgba(0,0,0,.02))">
+      <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">🪙 Umumiy coin qoidasi (standart)</div>
       <div class="form-row">
-        <div class="field"><label style="font-size:12px">Necha so'mdan 1 coin BERILADI</label><input type="number" min="1" id="coin-earn-rate" placeholder="10000"></div>
-        <div class="field"><label style="font-size:12px">1 coin necha so'mga TENG (sotib olishda)</label><input type="number" min="1" id="coin-spend-rate" placeholder="100"></div>
+        <div class="field"><label style="font-size:12px">Necha so'mlik xariddan 1 coin</label><input id="coin-earn-rate" type="number" min="1" placeholder="10000"></div>
+        <div class="field"><label style="font-size:12px">1 coin necha so'mlik qiymat</label><input id="coin-redeem-rate" type="number" min="1" placeholder="100"></div>
       </div>
-      <p style="font-size:11px;color:var(--text3);margin-top:.2rem">Masalan standart bo'yicha: har 10 000 so'm xariddan 1 coin beriladi, va 1 coin = 100 so'm qiymatida hisoblanadi (ya'ni 100 coin = 10 000 so'm chegirma/tovar). Har bir tovarga alohida coin sonini "Tovarlar" bo'limida belgilashingiz mumkin.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem;margin-bottom:0">Masalan standart bilan: 10,000 so'mlik xariddan 1 coin beriladi, 100 coin = 10,000 so'm chegirma qiymatiga teng. Bitta tovarga ALOHIDA coin qiymati kerak bo'lsa — shu tovarni tahrirlashda belgilang (u holda shu umumiy qoida o'sha tovar uchun e'tiborga olinmaydi).</p>
     </div>
+    <h3 style="margin-bottom:.3rem">🏆 Darajalar</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:0;margin-bottom:1rem">Mijoz jami xaridi necha so'mdan boshlab qaysi darajaga o'tishini belgilang. Pastdagi "+" tugmasi bilan xohlagancha yangi daraja qo'shishingiz mumkin.</p>
+    <div id="loyalty-tiers-list" style="display:flex;flex-direction:column;gap:.6rem;max-height:35vh;overflow-y:auto;margin-bottom:1rem"></div>
+    <button class="btn" style="width:100%;margin-bottom:.5rem" onclick="window.addLoyaltyTier()">+ Yangi daraja qo'shish</button>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-loyalty-tiers')">Bekor qilish</button>
       <button class="btn green" onclick="window.saveLoyaltyTiers()">✓ Saqlash</button>
@@ -3803,7 +3800,7 @@ body.dark table {
 <!-- YANGI: Mijoz (sodiqlik dasturi)ni Telegram botga biriktirish — xuddi
      qarzdorlardagi "Telegram bot ulash" bilan bir xil mantiq: telefon,
      username yoki Telegram ID orqali, bot /start yozganda avtomatik
-     tanib oladi va coin/chegirma holatini ko'rsatadi. -->
+     tanib oladi va ball/chegirma holatini ko'rsatadi. -->
 <div class="modal-overlay hidden" id="modal-customer-link">
   <div class="modal" style="max-width:420px">
     <h3>🤖 Mijozni Telegram botga ulash</h3>
@@ -4157,7 +4154,30 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinEarnRate: 10000, coinSpendRate: 100 };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinOrders: [] };
+// YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
+// qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
+// qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
+// mahsulotda ALOHIDA "coin narxi" belgilanmagan hollarda ishlatiladi.
+window.getDefaultCoinSettings = function(){
+  return { earnPerAmount: 10000, redeemValuePerCoin: 100 };
+};
+window.getCoinSettings = function(){
+  const s = (window.DB && DB.coinSettings) || {};
+  const def = window.getDefaultCoinSettings();
+  return {
+    earnPerAmount: Number(s.earnPerAmount) > 0 ? Number(s.earnPerAmount) : def.earnPerAmount,
+    redeemValuePerCoin: Number(s.redeemValuePerCoin) > 0 ? Number(s.redeemValuePerCoin) : def.redeemValuePerCoin,
+  };
+};
+// Bitta mahsulotni COIN evaziga sotib olish narxi: mahsulotda alohida
+// "coinCost" belgilangan bo'lsa — shuni, aks holda narx/redeemValuePerCoin
+// formulasidan avtomatik hisoblaydi.
+window.getProductCoinCost = function(product){
+  if(product && Number(product.coinCost) > 0) return Math.round(Number(product.coinCost));
+  const { redeemValuePerCoin } = window.getCoinSettings();
+  return Math.max(1, Math.ceil((product && product.price || 0) / redeemValuePerCoin));
+};
 // YANGI: SODIQLIK DASTURI DARAJALARI — endi ADMIN o'zi sozlaydi (nomi, emoji,
 // rang va necha so'mdan boshlanishini, hatto yangi daraja qo'shishni ham).
 // Ilgari Bronza/Kumush/Oltin va ularning chegaralari (500,000 / 2,000,000)
@@ -4443,7 +4463,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinEarnRate:DB.coinEarnRate||10000,coinSpendRate:DB.coinSpendRate||100,_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -4882,8 +4902,7 @@ function startListeners(){
       DB.restrictedAdminPin=d.restrictedAdminPin||'';
       DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
       DB.loyaltyTiers=(Array.isArray(d.loyaltyTiers)&&d.loyaltyTiers.length)?d.loyaltyTiers:window.getDefaultLoyaltyTiers();
-      DB.coinEarnRate=(typeof d.coinEarnRate==='number'&&d.coinEarnRate>0)?d.coinEarnRate:10000;
-      DB.coinSpendRate=(typeof d.coinSpendRate==='number'&&d.coinSpendRate>0)?d.coinSpendRate:100;
+      DB.coinSettings=(d.coinSettings && typeof d.coinSettings==='object')?d.coinSettings:window.getDefaultCoinSettings();
       if(document.getElementById('modal-customers') && !document.getElementById('modal-customers').classList.contains('hidden') && typeof window.renderCustomersList==='function') window.renderCustomersList();
       if(currentRole==='admin' && typeof window.applyRestrictedAdminUI==='function') window.applyRestrictedAdminUI();
       if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts();
@@ -4989,6 +5008,17 @@ function startListeners(){
     DB.promotions = snap.docs.map(d=>d.data());
     if(typeof window.renderPromotionsList==='function') window.renderPromotionsList();
     if(typeof window.decoratePromoBadges==='function') window.decoratePromoBadges();
+  });
+  // YANGI: COINGA SOTIB OLISH SO'ROVLARI — mijoz mini-ilovadan "faqat
+  // coinga sotib olish" so'rovi yuborganda, ilgari BU FAQAT Telegram
+  // bot xabaridagi ✅/❌ tugmalar orqali ko'rinardi. Endi admin panelida
+  // ("👥 Mijozlar / Coin" oynasida) ham "kutayotgan" so'rovlar ro'yxati
+  // ko'rinadi va shu yerdan ham tasdiqlash/bekor qilish mumkin — admin
+  // doim telefonida Telegram ochib turishi shart emas.
+  onSnapshot(collection(db,'coinOrders'), snap=>{
+    DB.coinOrders = snap.docs.map(d=>d.data()).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    if(typeof window.renderCoinOrdersPanel==='function') window.renderCoinOrdersPanel();
+    if(typeof window.updateCoinOrdersBadge==='function') window.updateCoinOrdersBadge();
   });
 }
 
@@ -5135,13 +5165,11 @@ async function init(){
           DB.restrictedAdminPin=d.restrictedAdminPin||'';
           DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
           DB.loyaltyTiers=(Array.isArray(d.loyaltyTiers)&&d.loyaltyTiers.length)?d.loyaltyTiers:window.getDefaultLoyaltyTiers();
-          DB.coinEarnRate=(typeof d.coinEarnRate==='number'&&d.coinEarnRate>0)?d.coinEarnRate:10000;
-          DB.coinSpendRate=(typeof d.coinSpendRate==='number'&&d.coinSpendRate>0)?d.coinSpendRate:100;
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:window.getDefaultLoyaltyTiers(),coinEarnRate:10000,coinSpendRate:100}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:window.getDefaultLoyaltyTiers()}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -5843,7 +5871,7 @@ function updateAssignQueueBtn(){
 window.openAddProduct=function(){
   editingProductId=null;
   document.getElementById('modal-product-title').textContent="Yangi tovar qo'shish";
-  ['p-name','p-price','p-cost','p-points','p-redeem','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['p-name','p-price','p-cost','p-points','p-coincost','p-qty','p-img','p-note','p-barcode','p-qrcode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('p-volume').value='';
   document.getElementById('p-img-file').value='';
   document.getElementById('img-preview-wrap').style.display='none';
@@ -5858,7 +5886,7 @@ window.openEditProduct=function(id){
   document.getElementById('p-price').value=p.price;
   document.getElementById('p-cost').value=p.cost||'';
   document.getElementById('p-points').value=(p.points===0||p.points)?p.points:'';
-  document.getElementById('p-redeem').value=(p.redeemCoins===0||p.redeemCoins)?p.redeemCoins:'';
+  document.getElementById('p-coincost').value=(p.coinCost===0||p.coinCost)?p.coinCost:'';
   document.getElementById('p-img').value=p.img||'';
   document.getElementById('p-note').value=p.note||'';
   document.getElementById('p-volume').value=p.volume||'';
@@ -5908,9 +5936,9 @@ window.saveProduct=async function(){
   const pointsRaw=document.getElementById('p-points').value;
   // Bo'sh qoldirilsa (null) — sotuvda avtomatik narx/10000 formula ishlatiladi.
   const points=pointsRaw===''||pointsRaw===null||isNaN(parseInt(pointsRaw,10)) ? null : Math.max(0,parseInt(pointsRaw,10));
-  const redeemRaw=document.getElementById('p-redeem').value;
-  // Bo'sh qoldirilsa (null) — sotuvda avtomatik narx/coin-sarflash-kursi formula ishlatiladi.
-  const redeemCoins=redeemRaw===''||redeemRaw===null||isNaN(parseInt(redeemRaw,10)) ? null : Math.max(0,parseInt(redeemRaw,10));
+  const coinCostRaw=document.getElementById('p-coincost').value;
+  // Bo'sh qoldirilsa (null) — coinda sotib olish narxi umumiy sozlamadan avtomatik hisoblanadi.
+  const coinCost=coinCostRaw===''||coinCostRaw===null||isNaN(parseInt(coinCostRaw,10)) ? null : Math.max(0,parseInt(coinCostRaw,10));
   const img=document.getElementById('p-img').value.trim();
   const note=document.getElementById('p-note').value.trim();
   const volume=document.getElementById('p-volume').value;
@@ -5936,31 +5964,31 @@ window.saveProduct=async function(){
     // sifatida bilib qolish o'rniga — SAQLASH PAYTIDA darhol ogohlantiramiz.
     if(cost>0 && price>0 && price<cost){
       confirm2('⚠️ Narx tannarxdan past', `Sotish narxi (${fmt(price)} so'm) tannarxdan (${fmt(cost)} so'm) past — har bir sotuvda zarar ko'rasiz. Baribir shunday saqlansinmi?`, ()=>{
-        finishSaveExistingProduct(p, {name,price,cost,points,redeemCoins,img,note,volume,barcode,qrCode});
+        finishSaveExistingProduct(p, {name,price,cost,points,coinCost,img,note,volume,barcode,qrCode});
       });
       return;
     }
-    finishSaveExistingProduct(p, {name,price,cost,points,redeemCoins,img,note,volume,barcode,qrCode});
+    finishSaveExistingProduct(p, {name,price,cost,points,coinCost,img,note,volume,barcode,qrCode});
   } else {
     const qty=parseInt(document.getElementById('p-qty').value);
     if(isNaN(qty)||qty<0){ toast("Miqdorni kiriting",'red'); return; }
     if(cost>0 && price>0 && price<cost){
       confirm2('⚠️ Narx tannarxdan past', `Sotish narxi (${fmt(price)} so'm) tannarxdan (${fmt(cost)} so'm) past — har bir sotuvda zarar ko'rasiz. Baribir shunday saqlansinmi?`, ()=>{
-        finishSaveNewProduct(name,price,cost,points,redeemCoins,img,note,volume,barcode,qrCode,qty);
+        finishSaveNewProduct(name,price,cost,points,coinCost,img,note,volume,barcode,qrCode,qty);
       });
       return;
     }
-    finishSaveNewProduct(name,price,cost,points,redeemCoins,img,note,volume,barcode,qrCode,qty);
+    finishSaveNewProduct(name,price,cost,points,coinCost,img,note,volume,barcode,qrCode,qty);
   }
 }
-function finishSaveNewProduct(name,price,cost,points,redeemCoins,img,note,volume,barcode,qrCode,qty){
+function finishSaveNewProduct(name,price,cost,points,coinCost,img,note,volume,barcode,qrCode,qty){
     const newProd = {
     id: uid(),
     name,
     price,
     cost,
     points,
-    redeemCoins,
+    coinCost,
     stock: qty,
     img,
     note,
@@ -8771,7 +8799,6 @@ window.checkAndSendTelegramAlerts = async function(){
 window.fillTelegramSettingsForm = function(){
   const t=document.getElementById('tg-bot-token'); if(t && document.activeElement!==t) t.value=DB.telegramBotToken||'';
   const u=document.getElementById('tg-bot-username'); if(u && document.activeElement!==u) u.value=DB.telegramBotUsername||'';
-  updateBotCoinStatus();
   const l=document.getElementById('tg-notify-lowstock'); if(l) l.checked=!!DB.telegramNotifyLowStock;
   const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
@@ -8922,27 +8949,6 @@ const RECEIPT_PAGE_URL = (function(){
     return `${location.origin}${dir}receipt.html`;
   }catch(e){ return fallback; }
 })();
-// YANGI: "Bot username" maydoni ostida — sozlama ochilishi bilan HAM,
-// admin yozayotganda HAM — chekni skanerlab coin yig'ish hozir ISHLAYDIMI
-// yo'qmi aniq va rangli ko'rsatadi. Bu maydon bo'sh qolib ketishi eng
-// ko'p uchraydigan sabab edi: shu holatda QR faqat oddiy "chek ko'rish"
-// sahifasiga (receipt.html) ishora qiladi, bot ochilmaydi va coin
-// UMUMAN berilmaydi — lekin buni admin ekranda payqashi qiyin edi.
-window.updateBotCoinStatus=function(){
-  const el = document.getElementById('tg-bot-coin-status');
-  if(!el) return;
-  const uEl = document.getElementById('tg-bot-username');
-  const val = (uEl ? uEl.value : (DB.telegramBotUsername||'')).trim().replace(/^@/,'');
-  if(val){
-    el.style.background = 'rgba(34,197,94,.12)';
-    el.style.color = '#16a34a';
-    el.textContent = "✅ Faol — mijoz chekni skanerlashi bilan Telegram bot ochiladi va coin avtomatik hisobiga qo'shiladi.";
-  } else {
-    el.style.background = 'rgba(239,68,68,.12)';
-    el.style.color = '#dc2626';
-    el.textContent = "⚠️ Bot username kiritilmagan — mijozlar chekni skanerlaganda faqat chek ma'lumotini ko'radi, COIN OLA OLMAYDI. Coin yig'ish ishlashi uchun yuqoriga bot username kiriting va saqlang.";
-  }
-};
 function receiptQrLink(receiptId){
   // YANGI: agar admin bot username'ini kiritgan bo'lsa, QR endi TO'G'RIDAN-TO'G'RI
   // Telegram botiga (start-parametr bilan) ishora qiladi — mijoz shunchaki QR'ni
@@ -9233,7 +9239,23 @@ window.partialReset = function(type){
 }
 
 // ===== UTILITY =====
-window.openModal=function(id){ document.getElementById(id).classList.remove('hidden'); }
+window.openModal=function(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('hidden');
+  // TUZATISH: ilgari oynalar HTML kodidagi tartibda (yozilgan joyi bo'yicha)
+  // qatlamlanardi. Agar bitta oyna ochiq turganda ustiga yana boshqa oyna
+  // ochilsa-yu, u HTML'da avvalroq yozilgan bo'lsa (masalan "Coin hadya
+  // qilish"/"Coinni to'g'irlash"/"Coinni ishlatish" so'rov oynalari
+  // "Mijozlar" oynasidan oldinroq turadi) — u pastda qolib ketardi va
+  // ustidagi (avvalgi) oyna barcha bosishlarni "ushlab qolardi": tugmalar
+  // ko'rinsa ham amalda bosilmasdi, hech qanday xatolik ham chiqmasdi.
+  // Endi HAR SAFAR ochilganda oyna document.body'ning ENG OXIRIGA
+  // ko'chiriladi — shu bilan doim eng oxirgi ochilgan oyna eng tepada
+  // (va bosish uchun ochiq) bo'lishi kafolatlanadi, ochilish tartibidan
+  // qat'i nazar.
+  document.body.appendChild(el);
+}
 window.closeModal=function(id){ document.getElementById(id).classList.add('hidden'); }
 window.openShortcutsModal=function(){ openModal('modal-shortcuts'); }
 
@@ -16618,7 +16640,7 @@ document.addEventListener('keydown', function(e){
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
     const tiers = loyaltyTiersSorted();
     const options = [{value:'', label:'Avtomatik (jami xariddan hisoblanadi)'}]
-      .concat(tiers.map(t=>({ value:t.id, label:`${t.emoji||''} ${t.name||''} (majburiy, ${fmt(t.threshold||0)} so'mdan)` })));
+      .concat(tiers.map(t=>({ value:t.id, label:`${t.emoji||''} ${t.name||''} (majburiy, ${fmt2(t.threshold||0)} so'mdan)` })));
     window.prompt2({
       title: `${c.name} — daraja`,
       message: "Mijozga doimiy daraja belgilamoqchi bo'lsangiz tanlang. \"Avtomatik\" tanlansa, daraja jami xarid summasidan o'zi hisoblanadi.",
@@ -16642,8 +16664,9 @@ document.addEventListener('keydown', function(e){
   window.openLoyaltyTiersModal = function(){
     _editingTiers = loyaltyTiersSorted().map(t=>Object.assign({}, t));
     renderLoyaltyTiersEditor();
-    const er=document.getElementById('coin-earn-rate'); if(er) er.value = DB.coinEarnRate||10000;
-    const sr=document.getElementById('coin-spend-rate'); if(sr) sr.value = DB.coinSpendRate||100;
+    const cs = window.getCoinSettings();
+    document.getElementById('coin-earn-rate').value = cs.earnPerAmount;
+    document.getElementById('coin-redeem-rate').value = cs.redeemValuePerCoin;
     openModal('modal-loyalty-tiers');
   };
   function renderLoyaltyTiersEditor(){
@@ -16686,36 +16709,20 @@ document.addEventListener('keydown', function(e){
       color: t.color || '#16a34a'
     })).sort((a,b)=>a.threshold-b.threshold);
     if(!cleaned.length){ toast2('Kamida bitta daraja kerak','amber'); return; }
+    const earnRaw = parseFloat(document.getElementById('coin-earn-rate').value);
+    const redeemRaw = parseFloat(document.getElementById('coin-redeem-rate').value);
+    const def = window.getDefaultCoinSettings();
     DB.loyaltyTiers = cleaned;
-    const erVal=parseFloat(document.getElementById('coin-earn-rate')?.value);
-    const srVal=parseFloat(document.getElementById('coin-spend-rate')?.value);
-    DB.coinEarnRate = (!isNaN(erVal)&&erVal>0) ? erVal : 10000;
-    DB.coinSpendRate = (!isNaN(srVal)&&srVal>0) ? srVal : 100;
+    DB.coinSettings = {
+      earnPerAmount: earnRaw>0 ? Math.round(earnRaw) : def.earnPerAmount,
+      redeemValuePerCoin: redeemRaw>0 ? Math.round(redeemRaw) : def.redeemValuePerCoin,
+    };
     if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
     closeModal('modal-loyalty-tiers');
-    toast2('✓ Darajalar saqlandi','green');
+    toast2('✓ Darajalar va coin sozlamalari saqlandi','green');
     if(typeof window.renderCustomersList==='function') window.renderCustomersList();
   };
-  window.openCustomersModal = function(){ window.renderCustomersList(); renderCustomersBotStatus(); openModal('modal-customers'); };
-  // Chek skanerlab coin yig'ish hozir ishlaydimi (bot username sozlangan-
-  // ligiga qarab) — mijozlar oynasi ochilganda ham darhol ko'rinsin, admin
-  // Sozlamalar bo'limiga alohida kirmasdan turib bilsin.
-  function renderCustomersBotStatus(){
-    const el = document.getElementById('customers-bot-status');
-    if(!el) return;
-    const botUser = (DB.telegramBotUsername||'').trim();
-    if(botUser){
-      el.style.background = 'rgba(34,197,94,.12)';
-      el.style.color = '#16a34a';
-      el.innerHTML = `<span>✅ Chekdagi QR ishlayapti — mijoz skanerlashi bilan bot (@${esc(botUser)}) ochiladi va coin avtomatik beriladi, faqat 1 marta.</span>`;
-    } else {
-      el.style.background = 'rgba(239,68,68,.12)';
-      el.style.color = '#dc2626';
-      el.innerHTML = `<span>⚠️ Bot ulanmagan — mijozlar chekni skanerlaganda COIN OLA OLMAYDI, faqat chek ma'lumotini ko'radi.</span>` +
-        `<button class="btn sm" style="white-space:nowrap" onclick="closeModal('modal-customers');window.showPage&&window.showPage('settings','admin');setTimeout(()=>{const c=document.getElementById('settings-telegram-card'); if(c) c.scrollIntoView({behavior:'smooth'});},150)">🤖 Botni ulash</button>`;
-    }
-  }
-  window.renderCustomersBotStatus = renderCustomersBotStatus;
+  window.openCustomersModal = function(){ window.renderCustomersList(); openModal('modal-customers'); };
   window.addCustomer = function(){
     const name = (document.getElementById('cus-name').value||'').trim();
     if(!name){ toast2('Ismini kiriting','amber'); return; }
@@ -16840,7 +16847,10 @@ document.addEventListener('keydown', function(e){
     const c = DB.customers.find(x=>x.id===customerId);
     if(!c || !amount || amount<=0) return;
     const beforeTier = customerTier(c.totalSpent||0, c.tierOverride);
-    const earned = Math.floor(amount/10000);
+    // TUZATILDI: "narx/10000" nisbati endi qattiq yozilmagan — admin buni
+    // "🏆 Darajalarni sozlash" oynasidagi "🪙 Umumiy coin qoidasi"dan
+    // o'zgartira oladi.
+    const earned = Math.floor(amount/window.getCoinSettings().earnPerAmount);
     const breakdown = splitPointsByItemsLocal(items, amount, earned);
     c.totalSpent = (c.totalSpent||0) + amount;
     c.purchaseCount = (c.purchaseCount||0) + 1;
@@ -16870,37 +16880,38 @@ document.addEventListener('keydown', function(e){
       onConfirm: ([amt])=>{
         if(!amt || amt<=0){ toast2("To'g'ri summa kiriting",'amber'); return false; }
         window.applyCustomerPurchase(id, amt, '');
-        toast2(`✓ ${Math.floor(amt/10000)} coin qo'shildi`,'green');
+        toast2(`✓ ${Math.floor(amt/window.getCoinSettings().earnPerAmount)} coin qo'shildi`,'green');
       }
     });
   };
   window.redeemCustomerPoints = function(id){
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
-    if((c.points||0) < 100){ toast2("Kamida 100 coin kerak (10,000 so'm chegirma uchun)",'amber'); return; }
+    const { redeemValuePerCoin } = window.getCoinSettings();
+    if((c.points||0) < 100){ toast2(`Kamida 100 coin kerak (${fmt2(redeemValuePerCoin*100)} so'm chegirma uchun)`,'amber'); return; }
     const usedPoints = Math.floor(c.points/100)*100;
-    const discount = (usedPoints/100)*10000;
+    const discount = (usedPoints/100)*(redeemValuePerCoin*100);
     confirm2("Coinni ishlatish", `${usedPoints} coin ${fmt2(discount)} so'm chegirmaga almashtirilsinmi?`, ()=>{
       c.points = c.points - usedPoints;
-      // YANGI: nechta ball nimaga (qancha chegirmaga) sarflanganini alohida
-      // saqlaymiz — admin mijoz kartochkasida va umumiy ballar hisobotida
-      // "ballar nimaga sarflandi" degan savolga aniq javob ola oladi.
+      // YANGI: nechta coin nimaga (qancha chegirmaga) sarflanganini alohida
+      // saqlaymiz — admin mijoz kartochkasida va umumiy coin hisobotida
+      // "coin nimaga sarflandi" degan savolga aniq javob ola oladi.
       c.redemptions = Array.isArray(c.redemptions) ? c.redemptions : [];
       c.redemptions = [{ date: new Date().toISOString(), pointsUsed: usedPoints, discount }, ...c.redemptions].slice(0,50);
       fbSaveCustomer(c);
       toast2(`✓ ${fmt2(discount)} so'm chegirma qo'llanildi`,'green');
     });
   };
-  // ============ YANGI: BALLARNI TO'LIQ NAZORAT QILISH ============
-  // Admin endi ballarni faqat xaridlar orqali emas, balki QO'LDA ham
-  // to'liq nazorat qila oladi: (1) hadya sifatida ball qo'shish (masalan
+  // ============ YANGI: COINLARNI TO'LIQ NAZORAT QILISH ============
+  // Admin endi coinlarni faqat xaridlar orqali emas, balki QO'LDA ham
+  // to'liq nazorat qila oladi: (1) hadya sifatida coin qo'shish (masalan
   // tug'ilgan kun sovg'asi, bonus aksiya) va (2) ixtiyoriy tuzatish
-  // (musbat yoki manfiy — xato yozilgan ballni to'g'irlash uchun). Har
+  // (musbat yoki manfiy — xato yozilgan coinni to'g'irlash uchun). Har
   // ikkisi ham tarixga (c.pointsAdjustments) yoziladi va mijoz botga
   // ulangan bo'lsa, unga darhol xabar boradi.
   window.giftCustomerPoints = function(id){
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
     window.prompt2({
-      title: '🪙 Coin hadya qilish',
+      title: '🎁 Coin hadya qilish',
       message: `${esc(c.name)}ga nechta coin hadya qilmoqchisiz?`,
       fields: [
         { label:'Coin miqdori', type:'number', placeholder:'Masalan: 50' },
@@ -16942,7 +16953,7 @@ document.addEventListener('keydown', function(e){
         fbSaveCustomer(c);
         toast2(`✓ Coin ${delta>0?'+':''}${delta} ga o'zgartirildi`,'green');
         if(c.telegramChatId && typeof window.sendTelegramMessageToChatId==='function'){
-          const text = `ℹ️ Coinlaringiz ${delta>0?'+':''}${delta} ga o'zgartirildi.${reason?`\n📝 ${esc(reason)}`:''}\n\n🪙 Joriy coin: <b>${c.points}</b>`;
+          const text = `ℹ️ Coiningiz ${delta>0?'+':''}${delta} ga o'zgartirildi.${reason?`\n📝 ${esc(reason)}`:''}\n\n🪙 Joriy coin: <b>${c.points}</b>`;
           window.sendTelegramMessageToChatId(c.telegramChatId, text).catch(()=>{});
         }
       }
@@ -16965,7 +16976,7 @@ document.addEventListener('keydown', function(e){
     const sel = document.getElementById('cue-tier');
     const tiers = loyaltyTiersSorted();
     sel.innerHTML = `<option value="">Avtomatik (jami xariddan hisoblanadi)</option>` +
-      tiers.map(t=>`<option value="${t.id}">${t.emoji||''} ${esc(t.name||'')} (majburiy, ${fmt(t.threshold||0)} so'mdan)</option>`).join('');
+      tiers.map(t=>`<option value="${t.id}">${t.emoji||''} ${esc(t.name||'')} (majburiy, ${fmt2(t.threshold||0)} so'mdan)</option>`).join('');
     sel.value = c.tierOverride||'';
     // YANGI: VIP belgisi va eslatma matni.
     document.getElementById('cue-vip').checked = !!c.vip;
@@ -16998,10 +17009,92 @@ document.addEventListener('keydown', function(e){
     const c = DB.customers.find(x=>x.id===id); if(!c) return;
     confirm2("Mijozni o'chirish", `${c.name} butunlay o'chirilsinmi?`, ()=>{ fbDeleteCustomer(id); toast2("O'chirildi",'green'); });
   };
+  // ============ YANGI: COINGA SOTIB OLISH SO'ROVLARI — ADMIN PANELIDA ============
+  // Ilgari coinOrders FAQAT Telegram bot xabaridagi ✅ Tasdiqlash/❌ Bekor
+  // qilish tugmalari orqali boshqarilardi. Endi admin xohlasa shu yerdan
+  // (Mijozlar/Coin oynasi) ham qaror qabul qilishi mumkin — mantiq
+  // serverdagi handleCoinOrderDecision (api/telegram-webhook.js) bilan BIR
+  // XIL: tasdiqlashda tovar ombordan yechiladi, mijozning coinidan mos
+  // summa ayiriladi va bu naqd savdo ("sales") hisobiga YOZILMAYDI.
+  window.renderCoinOrdersPanel = function(){
+    const box = document.getElementById('coin-orders-panel');
+    if(!box || !window.DB) return;
+    const pending = (DB.coinOrders||[]).filter(o=>o.status==='pending');
+    if(!pending.length){ box.innerHTML=''; return; }
+    box.innerHTML = `
+      <div style="border:1px solid var(--amber,#d97706);border-radius:10px;padding:.7rem .8rem;background:rgba(217,119,6,.08)">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.5rem">🪙 Kutayotgan coinga sotib olish so'rovlari (${pending.length})</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          ${pending.map(o=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;background:var(--bg1,#fff);border:1px solid var(--border);border-radius:8px;padding:.5rem .6rem">
+              <div style="font-size:12px;line-height:1.5">
+                <b>${esc(o.customerName||"Noma'lum")}</b> — ${esc(o.productName||'')} ${o.qty>1?`× ${o.qty}`:''}<br>
+                <span style="color:var(--text3)">🪙 ${o.totalCoinCost||0} coin · ${o.createdAt?new Date(o.createdAt).toLocaleString('uz-UZ'):''}</span>
+              </div>
+              <div style="display:flex;gap:.35rem">
+                <button class="btn sm green" onclick="window.confirmCoinOrder('${o.id}')">✅ Tasdiqlash</button>
+                <button class="btn sm red" onclick="window.cancelCoinOrder('${o.id}')">❌ Bekor qilish</button>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  };
+  window.updateCoinOrdersBadge = function(){
+    const el = document.getElementById('nav-more-coinorders-badge');
+    if(!el || !window.DB) return;
+    const n = (DB.coinOrders||[]).filter(o=>o.status==='pending').length;
+    if(n>0){ el.textContent = n>99?'99+':String(n); el.style.display='flex'; }
+    else { el.style.display='none'; }
+  };
+  window.cancelCoinOrder = function(id){
+    const o = (DB.coinOrders||[]).find(x=>x.id===id); if(!o) return;
+    if(o.status!=='pending'){ toast2("Bu so'rov allaqachon hal qilingan",'amber'); return; }
+    confirm2("So'rovni bekor qilish", `${o.customerName||"Mijoz"}ning "${esc(o.productName||'')}" ni coinga olish so'rovi bekor qilinsinmi? Coin yechilmaydi.`, ()=>{
+      setSyncing(true);
+      withRetry(()=>updateDoc(doc(db,'coinOrders',id), { status:'cancelled', decidedAt:new Date().toISOString(), decidedBy:'admin-panel' }))
+        .then(()=>{
+          toast2("So'rov bekor qilindi",'green');
+          if(o.customerChatId && typeof window.sendTelegramMessageToChatId==='function'){
+            window.sendTelegramMessageToChatId(o.customerChatId, `❌ <b>${esc(DB.shopName||"Do'kon")}</b>\n\nAfsuski, "${esc(o.productName||'')}" ni coinga sotib olish so'rovingiz bekor qilindi. Coiningiz o'zgarishsiz qoladi.`).catch(()=>{});
+          }
+        })
+        .catch(e=>{ setSyncError(); console.error(e); toast2("Xatolik yuz berdi",'red'); })
+        .finally(()=>setSyncing(false));
+    });
+  };
+  window.confirmCoinOrder = function(id){
+    const o = (DB.coinOrders||[]).find(x=>x.id===id); if(!o) return;
+    if(o.status!=='pending'){ toast2("Bu so'rov allaqachon hal qilingan",'amber'); return; }
+    const prod = (DB.products||[]).find(p=>p.id===o.productId);
+    if(!prod || (prod.stock||0) < (o.qty||1)){ toast2(`"${o.productName||''}" omborda yetarli emas`,'amber'); return; }
+    const cust = (DB.customers||[]).find(c=>c.id===o.customerId);
+    if(!cust || (cust.points||0) < (o.totalCoinCost||0)){ toast2("Mijozning coini endi yetarli emas",'amber'); return; }
+    confirm2("So'rovni tasdiqlash", `"${esc(o.productName||'')}" (${o.qty||1} ta) ${o.totalCoinCost||0} coin evaziga ${o.customerName||"mijoz"}ga berilsinmi? Tovar ombordan yechiladi.`, ()=>{
+      setSyncing(true);
+      const now = new Date().toISOString();
+      Promise.all([
+        withRetry(()=>updateDoc(doc(db,'products',o.productId), { stock: increment(-(o.qty||1)) })),
+        withRetry(()=>updateDoc(doc(db,'customers',o.customerId), {
+          points: increment(-(o.totalCoinCost||0)),
+          redemptions: arrayUnion({ date: now, pointsUsed: o.totalCoinCost||0, discount: 0, productName: o.productName||'', qty: o.qty||1 }),
+        })),
+        withRetry(()=>updateDoc(doc(db,'coinOrders',id), { status:'confirmed', decidedAt: now, decidedBy:'admin-panel' })),
+      ])
+        .then(()=>{
+          toast2("✅ Tasdiqlandi — tovar coinga berildi",'green');
+          if(o.customerChatId && typeof window.sendTelegramMessageToChatId==='function'){
+            window.sendTelegramMessageToChatId(o.customerChatId, `✅ <b>${esc(DB.shopName||"Do'kon")}</b>\n\n🎉 "${esc(o.productName||'')}" (${o.qty||1} ta) coin evaziga sotib olindi!\n\n🪙 Sarflangan coin: <b>${o.totalCoinCost||0}</b>\n📦 Tovaringizni do'kondan olishingiz mumkin.`).catch(()=>{});
+          }
+        })
+        .catch(e=>{ setSyncError(); console.error(e); toast2("Xatolik yuz berdi",'red'); })
+        .finally(()=>setSyncing(false));
+    });
+  };
   window.renderCustomersList = function(){
     const wrap = document.getElementById('customers-list'); const empty = document.getElementById('customers-empty');
     if(!wrap || !window.DB) return;
     if(typeof window.renderLoyaltyReport==='function') window.renderLoyaltyReport();
+    if(typeof window.renderCoinOrdersPanel==='function') window.renderCoinOrdersPanel();
     // YANGI: VIP mijozlar ro'yxat boshida ko'rinadi, qolganlari xarid
     // summasi bo'yicha kamayish tartibida.
     const list = (DB.customers||[]).slice().sort((a,b)=>(!!b.vip-!!a.vip) || ((b.totalSpent||0)-(a.totalSpent||0)));
@@ -17025,9 +17118,9 @@ document.addEventListener('keydown', function(e){
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
           <button class="btn sm" onclick="window.openCustomerEdit('${c.id}')">✏️ Tahrirlash</button>
           <button class="btn sm blue" onclick="window.logCustomerPurchase('${c.id}')">+ Xarid qayd etish</button>
-          <button class="btn sm green" onclick="window.giftCustomerPoints('${c.id}')">🪙 Coin hadya qilish</button>
+          <button class="btn sm green" onclick="window.giftCustomerPoints('${c.id}')">🎁 Coin hadya qilish</button>
           <button class="btn sm" onclick="window.adjustCustomerPoints('${c.id}')">✏️ Coinni to'g'irlash</button>
-          <button class="btn sm amber" onclick="window.redeemCustomerPoints('${c.id}')">🪙 Coinni ishlatish</button>
+          <button class="btn sm amber" onclick="window.redeemCustomerPoints('${c.id}')">🎁 Coinni ishlatish</button>
           <button class="btn sm" onclick="window.openCustomerHistory('${c.id}')">📜 To'liq tarix${histCount?` (${histCount})`:''}</button>
           <button class="btn sm" onclick="window.openCustomerLink('${c.id}')">🤖 Botga ulash</button>
           <button class="btn sm red" onclick="window.deleteCustomer('${c.id}')">✕ O'chirish</button>
@@ -17055,10 +17148,13 @@ document.addEventListener('keydown', function(e){
       title: a.type==='gift' ? `🎁 Hadya qilingan coin` : `✏️ Coin tuzatildi`,
       sub: `${a.delta>0?'+':''}${a.delta} coin${a.reason?` — ${a.reason}`:''}`,
     }));
+    // YANGI: mijoz mini-ilova katalogidan bitta tovarni to'g'ridan-to'g'ri
+    // COINGA sotib olgan bo'lsa (productName mavjud bo'lsa), buni ham shu
+    // xronologik ro'yxatda alohida ko'rsatamiz.
     (Array.isArray(c.redemptions)?c.redemptions:[]).forEach(r=>events.push({
       date: r.date, kind:'redeem',
-      title: `🪙 Coin ishlatildi`,
-      sub: `-${r.pointsUsed} coin → ${fmt2(r.discount)} so'm chegirma`,
+      title: r.productName ? `🪙 Coinga sotib olindi: ${esc(r.productName)}${r.qty>1?` (${r.qty} ta)`:''}` : `🎁 Coin ishlatildi`,
+      sub: r.productName ? `-${r.pointsUsed} coin` : `-${r.pointsUsed} coin → ${fmt2(r.discount)} so'm chegirma`,
     }));
     events.sort((a,b)=> new Date(b.date) - new Date(a.date));
     const kindColor = { purchase:'#2563eb', gift:'#16a34a', adjust:'#d97706', redeem:'#7c3aed' };
@@ -17073,7 +17169,7 @@ document.addEventListener('keydown', function(e){
       ${!events.length ? `<p style="color:var(--text3);text-align:center;padding:1.5rem 0">Hali hech qanday voqea yo'q.</p>` : events.map(e=>`
         <div style="border-left:3px solid ${kindColor[e.kind]||'#999'};padding:.3rem .7rem;margin-bottom:.5rem">
           <div style="display:flex;justify-content:space-between;gap:.5rem;font-size:13px">
-            <b>${esc(e.title)}</b>
+            <b>${e.title}</b>
             <span style="color:var(--text3);white-space:nowrap;font-size:11px">${new Date(e.date).toLocaleString('uz-UZ')}</span>
           </div>
           ${e.sub ? `<div style="font-size:12px;color:var(--text3)">${esc(e.sub)}</div>` : ''}
@@ -17107,7 +17203,7 @@ document.addEventListener('keydown', function(e){
     });
     if(typeof window.exportToPDF==='function' && window.exportToPDF({
       filename:`mijozlar_royxati_${new Date().toISOString().slice(0,10)}.pdf`,
-      title:'Mijozlar va sodiqlik dasturi',
+      title:'Mijozlar va coin dasturi',
       summaryLines:[`Jami mijozlar: ${list.length} ta`],
       headers, rows
     })){
@@ -17206,7 +17302,7 @@ document.addEventListener('keydown', function(e){
         </div>
       </div>
       <div style="border:1px solid var(--border);border-radius:10px;padding:.7rem .8rem;background:var(--bg2,rgba(0,0,0,.02))">
-        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.4rem">📊 Coinlar bo'yicha umumiy hisobot</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.4rem">📊 Coin bo'yicha umumiy hisobot</div>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;font-size:12px;color:var(--text3);margin-bottom:${topProducts.length?'.5rem':'0'}">
           <span>Faol coin (hozir): <b style="color:var(--text2)">${activePoints}</b></span>
           <span>·</span><span>Jami to'plangan: <b style="color:var(--text2)">${everEarnedPoints}</b></span>

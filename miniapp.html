@@ -106,8 +106,8 @@
   .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
   .prod-card .img-wrap .no-img{font-size:34px;color:rgba(255,255,255,.22)}
   .prod-card .stock-badge{position:absolute;top:6px;right:6px}
+  .prod-card .coin-price-badge{position:absolute;top:32px;right:6px;background:#7c3aed;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;gap:2px}
   .prod-card .cart-badge-overlay{position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-  .prod-card .coin-badge-overlay{position:absolute;top:32px;right:6px;background:var(--warn);color:#1a1200;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3)}
   .prod-card .body{padding:.55rem .6rem .65rem}
   .prod-card .prod-name{font-weight:700;font-size:12.5px;margin-bottom:.2rem;overflow-wrap:anywhere;line-height:1.25}
   .prod-card .prod-meta{font-size:10.5px;color:var(--hint);margin-bottom:.15rem}
@@ -249,28 +249,67 @@ function renderCatalogGrid(){
     const qty = STATE.clientCart[p.id] || 0;
     const out = p.inStock === false;
     const cartBadge = qty>0 ? `<div class="cart-badge-overlay">${qty}</div>` : '';
+    // YANGI: "coinCost" — bu tovarni FAQAT COIN evaziga (naqd pulsiz)
+    // sotib olish uchun kerakli coin miqdori. Admin tovar tahrirlashda
+    // alohida belgilagan bo'lishi mumkin; aks holda narx/umumiy sozlamadan
+    // (d.settings.coinSettings) avtomatik hisoblanadi.
+    const coinCost = getProductCoinCostClient(p, d);
     return `<div class="prod-card ${out?'out':''}" data-id="${p.id}" onclick="clientCardTap(event,'${p.id}')">
       <div class="img-wrap">
         ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="pill ${out?'out':'in'}">${out?'Tugagan':'Mavjud'}</span></div>
-        ${p.redeemCoins>0 ? `<div class="coin-badge-overlay">🪙 ${p.redeemCoins}</div>` : ''}
+        ${out ? '' : `<div class="coin-price-badge">🪙 ${coinCost}</div>`}
         ${cartBadge}
       </div>
       <div class="body">
         <div class="prod-name">${esc(p.name)}</div>
         ${p.volume ? `<div class="prod-meta">📦 ${esc(p.volume)}</div>` : ''}
         <div class="prod-price">${fmt(p.price)} ${cs()}</div>
-        ${p.points>0 ? `<div class="prod-points">🪙 ${p.points} coin</div>` : ''}
+        ${p.points>0 ? `<div class="prod-points">🪙 +${p.points} coin</div>` : ''}
         ${out ? '' : `<div class="qty-ctrl" onclick="event.stopPropagation()">
           <button onclick="changeClientCartQty('${p.id}',-1)">−</button>
           <span style="min-width:16px;text-align:center">${qty}</span>
           <button onclick="changeClientCartQty('${p.id}',1)">+</button>
         </div>`}
-        ${(!out && p.redeemCoins>0) ? `<button class="btn small btn-outline" style="width:100%;margin-top:6px" onclick="event.stopPropagation();openCoinBuyModal('${p.id}')">🪙 Coinga sotib olish</button>` : ''}
+        ${out ? '' : `<button class="btn small btn-outline" style="width:100%;margin-top:6px" onclick="event.stopPropagation();buyWithCoin('${p.id}',${coinCost})">🪙 Coinga sotib olish</button>`}
       </div>
     </div>`;
   }).join('');
+}
+// Umumiy sozlamadan (yoki tovarga alohida belgilangan qiymatdan) coin
+// narxini hisoblaydi — index.html/api tarafidagi mantiq bilan bir xil.
+function getProductCoinCostClient(p, d){
+  if (p && Number(p.coinCost) > 0) return Math.round(Number(p.coinCost));
+  const cs = (d && d.coinSettings) || (d && d.settings && d.settings.coinSettings) || {};
+  const redeemValuePerCoin = Number(cs.redeemValuePerCoin) > 0 ? Number(cs.redeemValuePerCoin) : 100;
+  return Math.max(1, Math.ceil((p && p.price || 0) / redeemValuePerCoin));
+}
+// YANGI: mijoz bitta tovarni TO'LIQ coin evaziga (naqd pulsiz) sotib olish
+// so'rovini yuboradi. Coin yetarli bo'lsa, admin botdan Tasdiqlash/Bekor
+// qilish tugmasi bilan qaror qabul qiladi.
+function buyWithCoin(productId, coinCost){
+  const d = STATE.data;
+  const p = (d.products||[]).find(x=>x.id===productId);
+  if (!p) return;
+  const myCoins = (d.loyalty && d.loyalty.points) || 0;
+  if (myCoins < coinCost){
+    toastMsg(`🪙 Coin yetarli emas (kerak: ${coinCost}, sizda: ${myCoins})`);
+    return;
+  }
+  confirm2("🪙 Coinga sotib olish", `"${p.name}" ni ${coinCost} coinga sotib olish so'rovini yuborasizmi? Admin tasdiqlashi bilan tovar sizga beriladi va coiningizdan ${coinCost} ta ayiriladi.`, async ()=>{
+    const r = await callAction('create_coin_order', { productId, qty: 1 });
+    if (r.ok){
+      if (tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
+      toastMsg("✅ So'rov yuborildi — admin tasdiqlashini kuting");
+    } else {
+      const msg = r.error==='not_enough_stock' ? "Omborda yetarli emas"
+        : r.error==='not_enough_coins' ? `Coin yetarli emas (kerak: ${r.need}, sizda: ${r.have})`
+        : r.error==='not_registered' ? "Avval sodiqlik dasturiga ro'yxatdan o'ting"
+        : ('Xatolik: ' + (r.error||''));
+      toastMsg(msg);
+    }
+  });
 }
 // Kartaning rasm/nom qismiga bosilganda — admin panelidagi "Sotish" gridi
 // kabi — bitta dona darhol savatga qo'shiladi (miqdor tugmalari esa
@@ -309,13 +348,19 @@ function openClientCheckoutModal(){
   const d = STATE.data;
   const total = clientCartTotal();
   const myPoints = (d.loyalty && d.loyalty.points) || 0;
-  const canUsePoints = myPoints >= 100; // kamida 1 coin = 100 so'm — 100 coindan boshlab foydali
+  // TUZATILDI: ilgira bu yerda "1 coin = 100 so'm" matni qattiq yozilgan
+  // edi — admin sozlamalarda coin qiymatini o'zgartirsa, mijozga bu yerda
+  // hamon eski (noto'g'ri) qiymat ko'rsatilardi. Endi haqiqiy
+  // (d.coinSettings.redeemValuePerCoin) qiymatdan foydalanadi.
+  const cSet = d.coinSettings || {};
+  const redeemValuePerCoin = Number(cSet.redeemValuePerCoin) > 0 ? Number(cSet.redeemValuePerCoin) : 100;
+  const canUsePoints = myPoints >= 100; // kamida 100 coin to'plangach foydalanish mumkin
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:10px">Buyurtma — ${fmt(total)} ${cs()}</div>
     <div class="card" style="font-size:12.5px;color:var(--hint)">✅ Buyurtma yuborilgach, do'kon administratori tasdiqlaydi — shundan so'ng tovar sizga rasmiylashtiriladi.</div>
     <div class="chip active" id="pay-cash" onclick="setClientPayMode(false)">💵 Naqd pul</div>
     <div class="chip ${canUsePoints?'':'hidden'}" id="pay-points" onclick="setClientPayMode(true)">🪙 Coinlarim (${myPoints} coin bor)</div>
-    <div id="pay-points-info" class="hidden" style="margin-top:8px;font-size:12.5px;color:var(--hint)">1 coin = 100 ${cs()} chegirma sifatida hisoblanadi. Coinlaringiz yetmasa, qolgan qismini naqd to'laysiz.</div>
+    <div id="pay-points-info" class="hidden" style="margin-top:8px;font-size:12.5px;color:var(--hint)">1 coin = ${fmt(redeemValuePerCoin)} ${cs()} chegirma sifatida hisoblanadi. Coiningiz yetmasa, qolgan qismini naqd to'laysiz.</div>
     <button class="btn wide" onclick="submitClientOrder()">✅ Buyurtma berish</button>
   `);
 }
@@ -342,39 +387,11 @@ async function submitClientOrder(){
   }
 }
 
-function openCoinBuyModal(id){
-  const d = STATE.data;
-  const p = (d.products||[]).find(x=>x.id===id);
-  if (!p || p.inStock===false) return;
-  const myCoins = (d.loyalty && d.loyalty.points) || 0;
-  const cost = p.redeemCoins||0;
-  const enough = myCoins >= cost;
-  showModal(`
-    <div style="font-weight:700;font-size:16px;margin-bottom:6px">${esc(p.name)}</div>
-    <div class="card" style="font-size:13px">🪙 Narxi: <b>${cost} coin</b><br>Sizda: <b>${myCoins} coin</b></div>
-    ${enough
-      ? `<div class="card" style="font-size:12.5px;color:var(--hint)">✅ So'rov yuborilgach, do'kon administratori tasdiqlaydi — tasdiqlansa tovar sizga beriladi va ${cost} coin hisobingizdan yechiladi.</div>
-         <button class="btn wide" onclick="submitCoinPurchase('${p.id}')">🪙 Coinga sotib olish</button>`
-      : `<div class="card" style="font-size:12.5px;color:var(--danger)">❌ Coin yetarli emas. Yana ${cost-myCoins} coin kerak.</div>`}
-  `);
-}
-async function submitCoinPurchase(productId){
-  const r = await callAction('request_coin_purchase', { productId, qty: 1 });
-  closeModal();
-  if (r.ok){
-    if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
-    toastMsg('✅ So\'rov yuborildi — admin tasdig\'ini kuting');
-    await loadData();
-    STATE.clientTab = 'catalog'; renderClient();
-  } else {
-    alert('Xatolik: ' + (r.error||''));
-  }
-}
-
+function renderDebtor(app, d){
   let html = '';
   if (d.loyalty){
     html += `<div class="hero">
-      <div class="label">🪙 Sodiqlik dasturi${d.loyalty.tier?` · ${esc(d.loyalty.tier)}`:''}</div>
+      <div class="label">🪙 Coin dasturi${d.loyalty.tier?` · ${esc(d.loyalty.tier)}`:''}</div>
       <div class="amount">${d.loyalty.points||0} coin</div>
       <div class="sub">Jami xarid: ${fmt(d.loyalty.totalSpent||0)} ${cs()} (${d.loyalty.purchaseCount||0} marta)</div>
     </div>`;
@@ -731,8 +748,8 @@ function openProductModal(id){
     <label class="f">Nomi *</label><input type="text" id="pf-name" value="${p?esc(p.name):''}">
     <label class="f">Narxi (sotish) *</label><input type="number" id="pf-price" value="${p?p.price:''}">
     <label class="f">Tannarx</label><input type="number" id="pf-cost" value="${p?p.cost:''}">
-    <label class="f">🪙 Coin (1 dona uchun, bo'sh — avtomatik narx/coin kursi)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
-    <label class="f">🪙 Coinga narxi (1 dona uchun, bo'sh — avtomatik narx/coin kursi)</label><input type="number" id="pf-redeem" min="0" step="1" value="${p&&(p.redeemCoins||p.redeemCoins===0)?p.redeemCoins:''}">
+    <label class="f">🪙 Har xariddan necha coin beriladi (1 dona uchun, bo'sh — avtomatik narx/umumiy sozlama)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
+    <label class="f">🪙 Coinda sotib olish narxi (bo'sh — avtomatik narx/umumiy sozlama)</label><input type="number" id="pf-coincost" min="0" step="1" value="${p&&(p.coinCost||p.coinCost===0)?p.coinCost:''}">
     <label class="f">Qoldiq (soni)</label><input type="number" id="pf-stock" value="${p?p.stock:0}">
     <label class="f">Hajm/o'lcham (ixtiyoriy)</label><input type="text" id="pf-volume" value="${p?esc(p.volume):''}">
     <label class="f">Izoh</label><textarea id="pf-note" rows="2">${p?esc(p.note):''}</textarea>
@@ -741,13 +758,13 @@ function openProductModal(id){
 }
 async function submitProduct(id){
   const pointsRaw = document.getElementById('pf-points').value;
-  const redeemRaw = document.getElementById('pf-redeem').value;
+  const coinCostRaw = document.getElementById('pf-coincost').value;
   const patch = {
     name: document.getElementById('pf-name').value.trim(),
     price: document.getElementById('pf-price').value,
     cost: document.getElementById('pf-cost').value,
     points: pointsRaw === '' ? null : pointsRaw,
-    redeemCoins: redeemRaw === '' ? null : redeemRaw,
+    coinCost: coinCostRaw === '' ? null : coinCostRaw,
     stock: document.getElementById('pf-stock').value,
     volume: document.getElementById('pf-volume').value.trim(),
     note: document.getElementById('pf-note').value.trim(),
@@ -1003,10 +1020,10 @@ function openPointsModal(id, name, current){
 async function submitPoints(id){
   const delta = parseInt(document.getElementById('pts-delta').value, 10);
   const reason = document.getElementById('pts-reason').value.trim();
-  if (!delta){ alert("Ball miqdorini kiriting."); return; }
+  if (!delta){ alert("Coin miqdorini kiriting."); return; }
   const r = await callAction('adjust_customer_points', { id, delta, reason });
   closeModal();
-  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Ball yangilandi ✅'); await loadData(); STATE.tab='customers'; renderAdmin(); }
+  if (r.ok){ if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'); toastMsg('Coin yangilandi ✅'); await loadData(); STATE.tab='customers'; renderAdmin(); }
   else alert('Xatolik: ' + (r.error||''));
 }
 
