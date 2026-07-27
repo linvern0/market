@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
 const admin = require('firebase-admin');
+const { computeCustomerTier, getCoinSettings, productCoinCost } = require('./_loyalty');
 
 let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
@@ -269,7 +270,7 @@ function debtorMenuKeyboard(req) {
   const rows = [
     [{ text: '💰 Mening qarzim', callback_data: 'cmd:/qarzim' }],
     [{ text: "🧾 To'lovlar tarixi", callback_data: 'cmd:/tarix' }],
-    [{ text: '🪙 Coinlarim', callback_data: 'cmd:/coinlarim' }],
+    [{ text: '🪙 Coinlarim', callback_data: 'cmd:/ballarim' }],
   ];
   const mini = miniAppKeyboard(req, false);
   if (mini) rows.push(...mini.inline_keyboard);
@@ -446,7 +447,7 @@ async function autoRegisterCustomer(db, token, msg, kb) {
   await db.collection('customers').add(data);
   const text = `👋 Xush kelibsiz, <b>${esc(name)}</b>!\n\n` +
     `✅ Siz do'konning sodiqlik dasturiga avtomatik ro'yxatdan o'tdingiz.\n\n` +
-    `🏆 Daraja: ${customerTierName(0)}\n🪙 Coin: <b>0</b>\n\n` +
+    `🏆 Daraja: ${await customerTierName(db, 0)}\n🪙 Coin: <b>0</b>\n\n` +
     `📱 Tovarlar katalogini ko'rish va o'z ma'lumotlaringizni kuzatish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.\n` +
     `🪙 Coin holatingizni istalgan vaqt /coinlarim buyrug'i orqali ko'rishingiz mumkin.`;
   await setCommandsForChat(token, chatId, false).catch(() => {});
@@ -458,18 +459,15 @@ async function autoRegisterCustomer(db, token, msg, kb) {
 // "debtors" (qarzdorlar) bilan bir xil mantiq, lekin alohida "customers"
 // (ball/chegirma) kolleksiyasi uchun. Bir kishi ham qarzdor, ham sodiqlik
 // mijozi bo'lishi mumkin — ikkisi mustaqil ishlaydi.
-function customerTierName(totalSpent, override) {
-  // TUZATILDI: admin panelida ("Do'kon Boshqaruvi" > Mijozlar) mijozga
-  // qo'lda belgilangan daraja bo'lsa (c.tierOverride: 'bronze'|'silver'|'gold'),
-  // bot ham AYNAN o'sha darajani ko'rsatishi kerak — aks holda admin
-  // panelidagi va botdagi daraja bir-biriga mos kelmay qolardi.
-  if (override === 'gold') return '🥇 Oltin';
-  if (override === 'silver') return '🥈 Kumush';
-  if (override === 'bronze') return '🥉 Bronza';
-  const v = totalSpent || 0;
-  if (v >= 2000000) return '🥇 Oltin';
-  if (v >= 500000) return '🥈 Kumush';
-  return '🥉 Bronza';
+// TUZATILDI: bu funksiya ilgari Bronza/Kumush/Oltin va ularning
+// chegaralarini (500,000/2,000,000) QATTIQ yozilgan holda hisoblardi —
+// admin panelida ("🏆 Darajalarni sozlash") admin bu chegaralarni
+// o'zgartirsa ham, bot xabarlarida ESKI daraja ko'rsatilardi. Endi
+// hammasi BIR XIL manbadan (Firebase'dagi dokon/settings > loyaltyTiers,
+// api/_loyalty.js orqali) hisoblanadi.
+async function customerTierName(db, totalSpent, override, presetSettings) {
+  const settingsData = presetSettings || (await db.collection('dokon').doc('settings').get()).data() || null;
+  return computeCustomerTier(totalSpent, override, settingsData).label;
 }
 async function sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb) {
   const batch = db.batch();
@@ -477,7 +475,7 @@ async function sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb) {
   await batch.commit();
   const c = matches[0].data();
   const text = `✅ Ro'yxatdan o'tdingiz: <b>${esc(c.name)}</b>\n\n` +
-    `🏆 Daraja: ${customerTierName(c.totalSpent, c.tierOverride)}\n` +
+    `🏆 Daraja: ${await customerTierName(db, c.totalSpent, c.tierOverride)}\n` +
     `🪙 Coin: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b>\n\n` +
     `Coin holatingizni istalgan vaqt /coinlarim buyrug'i orqali ko'rishingiz mumkin.`;
@@ -597,7 +595,7 @@ function splitPointsByItems(items, total, earned) {
 // uchun) belgilagan bo'lsa — chekda ham AYNAN o'sha ball ishlatiladi.
 // Belgilanmagan tovarlar uchun eski formulaga (narx/10000) qaytiladi.
 // Chekdagi tovar nomi bo'yicha (productId chekda saqlanmaydi) moslashtiriladi.
-async function computeReceiptPoints(db, items) {
+async function computeReceiptPoints(db, items, settingsData) {
   const list = Array.isArray(items) ? items.filter((i) => i && (i.total || 0) > 0) : [];
   if (!list.length) return { earned: 0, breakdown: [] };
   let productsByName = {};
@@ -609,6 +607,9 @@ async function computeReceiptPoints(db, items) {
       if (key) productsByName[key] = p;
     });
   } catch (e) { /* jim: mahsulotlarni o'qib bo'lmasa, eski formulaga tushamiz */ }
+  // TUZATILDI: "narx/10000" nisbati endi qattiq yozilmagan — admin buni
+  // sozlashlardan (necha so'mlik xariddan 1 COIN) o'zgartira oladi.
+  const { earnPerAmount } = getCoinSettings(settingsData);
 
   let earned = 0;
   const breakdown = list.map((it) => {
@@ -616,7 +617,7 @@ async function computeReceiptPoints(db, items) {
     const prod = productsByName[String(it.name || '').trim().toLowerCase()];
     let unitPoints;
     if (prod && (prod.points || prod.points === 0)) unitPoints = Math.max(0, parseInt(prod.points, 10) || 0);
-    else unitPoints = Math.floor((it.price || (it.total / qty) || 0) / 10000);
+    else unitPoints = Math.floor((it.price || (it.total / qty) || 0) / earnPerAmount);
     const linePoints = Math.max(0, unitPoints * qty);
     earned += linePoints;
     return { name: it.name || "Noma'lum tovar", amount: it.total || 0, points: linePoints };
@@ -625,64 +626,37 @@ async function computeReceiptPoints(db, items) {
 }
 
 // Mijozning "pointsByProduct" xaritasini (mahsulot nomi -> jami to'plangan
-// ball) yangi taqsimot bilan qo'shib chiqadi. Admin panelida mijoz
-// kartochkasida va umumiy ballar hisobotida shu xaritadan foydalaniladi.
+// coin) yangi taqsimot bilan qo'shib chiqadi. Admin panelida mijoz
+// kartochkasida va umumiy coin hisobotida shu xaritadan foydalaniladi.
 function mergePointsByProduct(existingMap, breakdown) {
   const out = Object.assign({}, existingMap || {});
   breakdown.forEach((b) => { out[b.name] = (out[b.name] || 0) + b.points; });
   return out;
 }
 
-// ============ YANGI: ATOMIK (BIR MARTALIK KAFOLATLANGAN) COIN BERISH ============
-// MUHIM: bu funksiya Firestore TRANZAKSIYASI ichida ishlaydi. Sabab — ilgari
-// "chekni o'qish -> pointsClaimed tekshirish -> yozish" bosqichlari ALOHIDA-
-// ALOHIDA so'rovlar edi. Agar bitta chek uchun deyarli bir vaqtda ikkita
-// so'rov kelsa (masalan: mijoz havolani ikki marta tez ketma-ket bossa,
-// yoki Telegram serverining o'zi javobni sekin deb hisoblab xabarni QAYTA
-// yuborsa — bu Telegram botlarida odatiy holat), ikkalasi ham "hali
-// olinmagan" holatni o'qib ulgurishi va IKKALASI HAM coin yozib yuborishi
-// MUMKIN edi. Tranzaksiya bunga yo'l qo'ymaydi: Firestore o'zi ikkinchi
-// urinishni avtomatik takrorlaydi va faqat BITTASI muvaffaqiyatli yakunlanishini
-// kafolatlaydi — natijada chek qanchalik tez-tez skanerlansa ham, coin
-// ANIQ va FAQAT bir marta beriladi.
-//
-// Qaytaradi: { status:'ok', earned, newPoints, newTotalSpent, customerData }
-//         yoki { status:'already', earned }  (chek allaqachon band qilingan)
-//         yoki { status:'not_found' }        (chek Firestore'da yo'q)
-async function awardReceiptPointsAtomic(db, receiptId, customerRef, fallbackCustomerData, meta) {
+// Chekka mos coinni (allaqachon ma'lum yoki hozirgina ro'yxatdan o'tgan)
+// mijozga yozadi va tasdiq xabarini yuboradi. `customerRef`/`customerData`
+// mavjud mijoz YOKI endigina yaratilgan (ism+telefon bilan) yangi mijozga
+// tegishli bo'lishi mumkin — ikkala holatda ham mantiq bir xil.
+async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, isNewRegistration) {
+  const kb = miniAppKeyboard(req, false);
   const receiptRef = db.collection('receipts').doc(receiptId);
-  return db.runTransaction(async (tx) => {
-    // Diqqat: tranzaksiya ichida BARCHA o'qishlar (get) yozishlardan (set)
-    // OLDIN bo'lishi shart — bu Firestore tranzaksiyalarining qat'iy talabi.
-    const [receiptSnap, customerSnap] = await Promise.all([
-      tx.get(receiptRef),
-      tx.get(customerRef),
-    ]);
-    if (!receiptSnap.exists) return { status: 'not_found' };
-    const r = receiptSnap.data();
+  const total = r.total || 0;
+  const settingsSnap = await db.collection('dokon').doc('settings').get();
+  const settingsData = settingsSnap.exists ? settingsSnap.data() : null;
+  const { earned, breakdown } = await computeReceiptPoints(db, r.items, settingsData);
+  const { redeemValuePerCoin } = getCoinSettings(settingsData);
 
-    // ASOSIY QOPQOQ: shu tekshiruv va pastdagi yozish BITTA tranzaksiya
-    // ichida bo'lgani uchun, ikkinchi (bir vaqtda kelgan) urinish albatta
-    // yangilangan holatni ko'radi va shu yerda to'xtaydi — coin QAYTA
-    // berilmaydi, xoh chek savdo paytida (pointsAwarded), xoh oldinroq bot
-    // orqali (pointsClaimed) band qilingan bo'lsin.
-    if (r.pointsAwarded || r.pointsClaimed) {
-      return { status: 'already', earned: r.pointsEarned || 0 };
-    }
+  const newPoints = (customerData.points || 0) + earned;
+  const newTotalSpent = (customerData.totalSpent || 0) + total;
+  const newPurchaseCount = (customerData.purchaseCount || 0) + 1;
+  const nowIso = new Date().toISOString();
+  const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned, items: breakdown };
+  const purchases = [purchaseEntry, ...(Array.isArray(customerData.purchases) ? customerData.purchases : [])].slice(0, 50);
+  const pointsByProduct = mergePointsByProduct(customerData.pointsByProduct, breakdown);
 
-    const customerData = customerSnap.exists ? customerSnap.data() : fallbackCustomerData;
-    const total = r.total || 0;
-    const earned = meta.earned;
-    const breakdown = meta.breakdown;
-    const newPoints = (customerData.points || 0) + earned;
-    const newTotalSpent = (customerData.totalSpent || 0) + total;
-    const newPurchaseCount = (customerData.purchaseCount || 0) + 1;
-    const nowIso = new Date().toISOString();
-    const purchaseEntry = { date: nowIso, amount: total, receiptId, pointsEarned: earned, items: breakdown };
-    const purchases = [purchaseEntry, ...(Array.isArray(customerData.purchases) ? customerData.purchases : [])].slice(0, 50);
-    const pointsByProduct = mergePointsByProduct(customerData.pointsByProduct, breakdown);
-
-    tx.set(customerRef, {
+  try {
+    await customerRef.set({
       ...customerData,
       points: newPoints,
       totalSpent: newTotalSpent,
@@ -690,54 +664,15 @@ async function awardReceiptPointsAtomic(db, receiptId, customerRef, fallbackCust
       lastPurchaseAt: nowIso,
       purchases,
       pointsByProduct,
-      telegramChatId: String(meta.chatId),
-      telegramUserId: String(meta.telegramUserId || customerData.telegramUserId || ''),
+      telegramChatId: String(chatId),
+      telegramUserId: String((msg.from && msg.from.id) || customerData.telegramUserId || ''),
     }, { merge: true });
-
-    // pointsClaimedAt/By shu yerda, AYNAN shu tranzaksiya ichida yoziladi —
-    // shu bilan "band qilingan" belgisi va coin yozuvi bir-biridan hech
-    // qachon ajralib qolmaydi (ikkalasi ham bo'ladi yoki ikkalasi ham yo'q).
-    tx.set(receiptRef, {
-      pointsClaimed: true, pointsClaimedBy: String(meta.chatId), pointsClaimedAt: nowIso, pointsEarned: earned,
-    }, { merge: true });
-
-    return { status: 'ok', earned, newPoints, newTotalSpent, customerData };
-  });
-}
-
-// Chekka mos ballni (allaqachon ma'lum yoki hozirgina ro'yxatdan o'tgan)
-// mijozga yozadi va tasdiq xabarini yuboradi. `customerRef`/`customerData`
-// mavjud mijoz YOKI endigina yaratilgan (ism+telefon bilan) yangi mijozga
-// tegishli bo'lishi mumkin — ikkala holatda ham mantiq bir xil. Haqiqiy
-// "bir martalik" kafolat esa yuqoridagi awardReceiptPointsAtomic ichida.
-async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, customerRef, customerData, isNewRegistration) {
-  const kb = miniAppKeyboard(req, false);
-  const total = r.total || 0;
-  const { earned, breakdown } = await computeReceiptPoints(db, r.items);
-
-  let result;
-  try {
-    result = await awardReceiptPointsAtomic(db, receiptId, customerRef, customerData, {
-      earned, breakdown, chatId, telegramUserId: (msg.from && msg.from.id) || '',
-    });
+    await receiptRef.set({ pointsClaimed: true, pointsClaimedBy: String(chatId), pointsClaimedAt: nowIso, pointsEarned: earned }, { merge: true });
   } catch (e) {
     console.error('Coin yozishda xatolik:', e);
     await sendMessage(token, chatId, "⚠️ Coin yozishda xatolik yuz berdi, birozdan so'ng qayta urinib ko'ring.");
     return;
   }
-
-  if (result.status === 'not_found') {
-    await sendMessage(token, chatId, "❌ Bu chek topilmadi (eskirgan yoki noto'g'ri havola bo'lishi mumkin).");
-    return;
-  }
-  if (result.status === 'already') {
-    // Boshqa (deyarli bir vaqtdagi) so'rov ulgurib coin yozib bo'lgan —
-    // shu yerda IKKINCHI marta coin berilmaydi, faqat xabar beriladi.
-    await sendMessage(token, chatId, `ℹ️ Bu chek uchun coin allaqachon hisoblangan (+${result.earned || 0} coin). Joriy coin holatingizni /coinlarim orqali ko'rishingiz mumkin.`, { reply_markup: kb || debtorMenuKeyboard(req) });
-    return;
-  }
-
-  const { newPoints, newTotalSpent } = result;
 
   await setCommandsForChat(token, chatId, false).catch(() => {});
   await setMenuButtonFor(token, chatId, req, false).catch(() => {});
@@ -745,10 +680,10 @@ async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, c
     `🧾 Xarid: <b>${fmt(total)} so'm</b>\n` +
     `🪙 Siz to'pladingiz: <b>+${earned} coin</b>\n` +
     `💳 Jami coin: <b>${newPoints}</b>\n` +
-    `🏆 Daraja: ${customerTierName(newTotalSpent, customerData.tierOverride)}\n\n` +
+    `🏆 Daraja: ${await customerTierName(db, newTotalSpent, customerData.tierOverride, settingsData)}\n\n` +
     (newPoints >= 100
-      ? `🎁 ${Math.floor(newPoints / 100) * 100} ballni ${fmt(Math.floor(newPoints / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.`
-      : `Har 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma.`);
+      ? `🎁 ${Math.floor(newPoints / 100) * 100} coinni ${fmt(Math.floor(newPoints / 100) * redeemValuePerCoin)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi. Yoki mini-ilova katalogidan biror tovarni to'g'ridan-to'g'ri coinga sotib olishingiz mumkin.`
+      : `Har ${fmt(getCoinSettings(settingsData).earnPerAmount)} so'm xariddan 1 coin, 100 coin = ${fmt(redeemValuePerCoin * 100)} so'm chegirma.`);
   // Mumkin bo'lsa, mini-ilova tugmasi ustiga "chekni to'liq ko'rish" tugmasi
   // ham qo'shiladi — mijoz tovarlar ro'yxatini, chek dizaynini ko'ra oladi.
   let replyMarkup = kb || debtorMenuKeyboard(req);
@@ -905,10 +840,13 @@ async function handleLoyaltyPoints(db, token, chatId, req) {
   const customersSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
   if (customersSnap.empty) { await sendMessage(token, chatId, "Siz sodiqlik dasturiga hali ulanmagansiz. Do'kon administratoridan ulashini so'rang, keyin /start yozing."); return; }
   const c = customersSnap.docs[0].data();
-  const text = `🏆 Daraja: ${customerTierName(c.totalSpent, c.tierOverride)}\n` +
+  const settingsSnap = await db.collection('dokon').doc('settings').get();
+  const settingsData = settingsSnap.exists ? settingsSnap.data() : null;
+  const { earnPerAmount, redeemValuePerCoin } = getCoinSettings(settingsData);
+  const text = `🏆 Daraja: ${await customerTierName(db, c.totalSpent, c.tierOverride, settingsData)}\n` +
     `🪙 Coin: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b> (${c.purchaseCount || 0} marta)\n` +
-    (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} coinni ${fmt(Math.floor(c.points / 100) * 10000)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi.` : `\nHar 10,000 so'm xariddan 1 coin, 100 coin = 10,000 so'm chegirma.`);
+    (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} coinni ${fmt(Math.floor(c.points / 100) * redeemValuePerCoin)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi. Yoki mini-ilova katalogidan biror tovarni to'g'ridan-to'g'ri coinga sotib olishingiz mumkin.` : `\nHar ${fmt(earnPerAmount)} so'm xariddan 1 coin, 100 coin = ${fmt(redeemValuePerCoin * 100)} so'm chegirma.`);
   await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
 }
 
@@ -1399,7 +1337,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 // buyruqlari uchun mos handler funksiyani chaqiramiz — mantiq matn buyruq
 // bilan AYNAN bir xil, faqat ikkinchi marta yozilmaydi.
 const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
-const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/coinlarim']);
+const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/ballarim', '/coinlarim']);
 
 // ============ YANGI: MIJOZ BUYURTMASI — TASDIQLASH / BEKOR QILISH ============
 // Mijoz mini-ilova katalogidan "Sotib olish" bosganda yaratilgan
@@ -1472,21 +1410,88 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
     await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n✅ <b>Tasdiqlandi — sotildi.</b>`).catch(() => {});
   }
   if (order.customerChatId) {
-    let text;
-    if (order.payMode === 'coin') {
-      text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Coin bilan sotib olish so'rovingiz tasdiqlandi!\n\n`;
-      items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
-      text += `\n🪙 Yechilgan coin: <b>${order.coinCost || order.pointsUsed || 0}</b>\n`;
-      text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
-    } else {
-      text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Buyurtmangiz tasdiqlandi!\n\n`;
-      items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
-      text += `\n💰 Jami: <b>${fmt(order.total)} ${esc(currencySymbol)}</b>\n`;
-      if (order.pointsUsed > 0) text += `🪙 Ishlatilgan coin: <b>${order.pointsUsed}</b>\n`;
-      if (order.cashDue > 0) text += `💵 Do'konda to'lanadigan naqd: <b>${fmt(order.cashDue)} ${esc(currencySymbol)}</b>\n`;
-      if ((order.totalPoints || 0) > 0) text += `🎁 Yangi to'plangan coin: <b>+${order.totalPoints}</b>\n`;
-      text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
+    let text = `✅ <b>${esc(shopName)}</b>\n\n🎉 Buyurtmangiz tasdiqlandi!\n\n`;
+    items.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta\n`; });
+    text += `\n💰 Jami: <b>${fmt(order.total)} ${esc(currencySymbol)}</b>\n`;
+    if (order.pointsUsed > 0) text += `🪙 Ishlatilgan coin: <b>${order.pointsUsed}</b>\n`;
+    if (order.cashDue > 0) text += `💵 Do'konda to'lanadigan naqd: <b>${fmt(order.cashDue)} ${esc(currencySymbol)}</b>\n`;
+    if ((order.totalPoints || 0) > 0) text += `🎁 Yangi to'plangan coin: <b>+${order.totalPoints}</b>\n`;
+    text += `\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
+    await sendMessage(token, order.customerChatId, text).catch(() => {});
+  }
+}
+
+// ============ YANGI: COIN EVAZIGA SOTIB OLISH — TASDIQLASH / BEKOR QILISH ============
+// Mijoz mini-ilova katalogidan bitta tovarni FAQAT COIN evaziga (naqd
+// pulsiz) sotib olish so'rovi yuborganda yaratiladi ("coinOrders"
+// hujjati). Bu yerda admin bot xabaridagi tugma orqali tasdiqlaydi yoki
+// bekor qiladi. Tasdiqlansa: tovar ombordan yechiladi, mijozning
+// coin (points) balansidan mos summa ayiriladi VA bu "sales" (naqd
+// savdo) to'plamiga YOZILMAYDI — chunki pul emas, coin bilan to'landi;
+// aks holda kunlik tushum/foyda hisobotlari noto'g'ri bo'lib qolardi.
+// O'rniga mijozning o'z tarixiga (customers/{id}.redemptions) yoziladi.
+async function handleCoinOrderDecision(db, token, settingsRef, cq, coinOrderId, isConfirm, req) {
+  const adminChatId = cq.message && cq.message.chat && cq.message.chat.id;
+  const orderRef = db.collection('coinOrders').doc(coinOrderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists) { await answerCallbackQuery(token, cq.id, "Bu so'rov topilmadi.", true); return; }
+  const order = orderSnap.data();
+  if (order.status !== 'pending') {
+    await answerCallbackQuery(token, cq.id, order.status === 'confirmed' ? "Bu so'rov allaqachon tasdiqlangan." : "Bu so'rov allaqachon bekor qilingan.", true);
+    return;
+  }
+  const settingsSnap = await settingsRef.get();
+  const shopName = settingsSnap.data()?.shopName || "Do'kon";
+
+  if (!isConfirm) {
+    await orderRef.update({ status: 'cancelled', decidedAt: new Date().toISOString(), decidedBy: String(adminChatId) });
+    await answerCallbackQuery(token, cq.id, "❌ So'rov bekor qilindi.");
+    if (cq.message && cq.message.text) {
+      await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n❌ <b>Bekor qilindi.</b>`).catch(() => {});
     }
+    if (order.customerChatId) {
+      await sendMessage(token, order.customerChatId, `❌ <b>${esc(shopName)}</b>\n\nAfsuski, "${esc(order.productName)}" ni coinga sotib olish so'rovingiz bekor qilindi. Coiningiz o'zgarishsiz qoladi.`).catch(() => {});
+    }
+    return;
+  }
+
+  // Tasdiqlashdan oldin zaxira va coin balansini qayta tekshiramiz
+  // (so'rov berilgandan beri boshqa savdo/so'rov bo'lgan bo'lishi mumkin).
+  const productRef = db.collection('products').doc(order.productId);
+  const productSnap = await productRef.get();
+  if (!productSnap.exists || (productSnap.data().stock || 0) < order.qty) {
+    await answerCallbackQuery(token, cq.id, `⚠️ "${order.productName}" omborda yetarli emas.`, true);
+    return;
+  }
+  let customerData = null;
+  if (order.customerId) {
+    const customerSnap = await db.collection('customers').doc(order.customerId).get();
+    customerData = customerSnap.exists ? customerSnap.data() : null;
+  }
+  if (!customerData || (customerData.points || 0) < order.totalCoinCost) {
+    await answerCallbackQuery(token, cq.id, `⚠️ Mijozning coini endi yetarli emas.`, true);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  await productRef.update({ stock: admin.firestore.FieldValue.increment(-order.qty) });
+  if (order.customerId) {
+    await db.collection('customers').doc(order.customerId).set({
+      points: admin.firestore.FieldValue.increment(-order.totalCoinCost),
+      redemptions: admin.firestore.FieldValue.arrayUnion({
+        date: now, pointsUsed: order.totalCoinCost, discount: 0,
+        productName: order.productName, qty: order.qty,
+      }),
+    }, { merge: true }).catch(() => {});
+  }
+
+  await orderRef.update({ status: 'confirmed', decidedAt: now, decidedBy: String(adminChatId) });
+  await answerCallbackQuery(token, cq.id, "✅ Tasdiqlandi — tovar coinga berildi!");
+  if (cq.message && cq.message.text) {
+    await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n✅ <b>Tasdiqlandi — berildi.</b>`).catch(() => {});
+  }
+  if (order.customerChatId) {
+    const text = `✅ <b>${esc(shopName)}</b>\n\n🎉 "${esc(order.productName)}" (${order.qty} ta) coin evaziga sotib olindi!\n\n🪙 Sarflangan coin: <b>${order.totalCoinCost}</b>\n📦 Tovaringizni do'kondan olishingiz mumkin.`;
     await sendMessage(token, order.customerChatId, text).catch(() => {});
   }
 }
@@ -1515,7 +1520,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
       try {
         if (cmd === '/qarzim') await handleCustomerMyDebts(db, token, chatId, req);
         else if (cmd === '/tarix') await handleCustomerPaymentHistory(db, token, chatId, req);
-        else if (cmd === '/coinlarim') await handleLoyaltyPoints(db, token, chatId, req);
+        else if (cmd === '/ballarim' || cmd === '/coinlarim') await handleLoyaltyPoints(db, token, chatId, req);
       } catch (e) {
         console.error('Mijoz menyusi xatosi:', cmd, e);
         await sendMessage(token, chatId, "⚠️ Xatolik yuz berdi. Qaytadan urinib ko'ring.").catch(() => {});
@@ -1536,6 +1541,14 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     const isConfirm = data.startsWith('order_confirm:');
     const orderId = data.slice(data.indexOf(':') + 1);
     await handleOrderDecision(db, token, settingsRef, cq, orderId, isConfirm, req);
+    return;
+  }
+
+  // ============ YANGI: COIN EVAZIGA SOTIB OLISH — TASDIQLASH / BEKOR QILISH ============
+  if (data.startsWith('coinorder_confirm:') || data.startsWith('coinorder_cancel:')) {
+    const isConfirm = data.startsWith('coinorder_confirm:');
+    const coinOrderId = data.slice(data.indexOf(':') + 1);
+    await handleCoinOrderDecision(db, token, settingsRef, cq, coinOrderId, isConfirm, req);
     return;
   }
 
@@ -1714,7 +1727,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
   }
   if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId, req); return; }
   if (text === '/tarix' && !isAdmin) { await handleCustomerPaymentHistory(db, token, chatId, req); return; }
-  if (text === '/coinlarim' && !isAdmin) { await handleLoyaltyPoints(db, token, chatId, req); return; }
+  if ((text === '/ballarim' || text === '/coinlarim') && !isAdmin) { await handleLoyaltyPoints(db, token, chatId, req); return; }
   if (!isAdmin && !isKnownAny && !text.startsWith('/')) {
     // Hali tanilmagan (ro'yxatdan o'tmagan) kishi /start dan boshqa narsa
     // yozdi — bu ham birinchi murojaati hisoblanadi, shuning uchun uni

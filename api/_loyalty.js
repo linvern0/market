@@ -41,4 +41,33 @@ function computeCustomerTier(totalSpent, override, settingsOrTiers) {
   return { id: cur.id, label: `${cur.emoji || ''} ${cur.name || ''}`.trim(), idx: sorted.indexOf(cur) };
 }
 
-module.exports = { defaultLoyaltyTiers, getLoyaltyTiers, computeCustomerTier };
+function defaultCoinSettings() {
+  // earnPerAmount: necha so'mlik xariddan 1 COIN beriladi (mahsulotda
+  // alohida belgilanmagan bo'lsa ishlatiladigan standart qoida).
+  // redeemValuePerCoin: 1 COIN qancha so'mlik qiymatga teng (mahsulotda
+  // "coinda sotib olish narxi" alohida belgilanmagan bo'lsa, standart
+  // narx/redeemValuePerCoin formula bilan hisoblanadi).
+  return { earnPerAmount: 10000, redeemValuePerCoin: 100 };
+}
+
+function getCoinSettings(settings) {
+  const s = (settings && settings.coinSettings) || {};
+  const def = defaultCoinSettings();
+  const earnPerAmount = Number(s.earnPerAmount) > 0 ? Number(s.earnPerAmount) : def.earnPerAmount;
+  const redeemValuePerCoin = Number(s.redeemValuePerCoin) > 0 ? Number(s.redeemValuePerCoin) : def.redeemValuePerCoin;
+  return { earnPerAmount, redeemValuePerCoin };
+}
+
+// Bitta mahsulotni COIN evaziga sotib olish uchun kerakli COIN miqdorini
+// hisoblaydi: agar mahsulotda alohida "coinCost" belgilangan bo'lsa — shuni
+// ishlatadi, aks holda narxdan (settings.coinSettings.redeemValuePerCoin
+// orqali) avtomatik hisoblaydi.
+function productCoinCost(product, settings) {
+  if (product && (product.coinCost || product.coinCost === 0) && Number(product.coinCost) > 0) {
+    return Math.round(Number(product.coinCost));
+  }
+  const { redeemValuePerCoin } = getCoinSettings(settings);
+  return Math.max(1, Math.ceil((product && product.price || 0) / redeemValuePerCoin));
+}
+
+module.exports = { defaultLoyaltyTiers, getLoyaltyTiers, computeCustomerTier, defaultCoinSettings, getCoinSettings, productCoinCost };

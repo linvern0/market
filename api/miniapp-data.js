@@ -20,7 +20,7 @@
 
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
-const { getLoyaltyTiers, computeCustomerTier } = require('./_loyalty');
+const { getLoyaltyTiers, computeCustomerTier, getCoinSettings } = require('./_loyalty');
 
 function getDb() { return require('./_firebase').getDb(); }
 
@@ -194,6 +194,9 @@ async function buildAdminPayload(db, settings) {
       // mini-ilova o'zining (eskirgan, qattiq yozilgan) chegaralarini
       // ishlatib qolar edi — ikkala interfeys bir-biriga mos kelmasdi.
       loyaltyTiers: getLoyaltyTiers(settings),
+      // YANGI: umumiy coin qoidasi (necha so'mdan 1 coin, 1 coin necha
+      // so'mlik qiymat) — admin mini-ilova orqali ham ko'rishi mumkin.
+      coinSettings: getCoinSettings(settings),
     },
   };
 }
@@ -214,35 +217,25 @@ async function fetchDebtsByDebtorIds(db, ids) {
 // BO'LIMIDAGI HAMMA MA'LUMOTNI (nomi, narxi, hajmi, izohi) ko'radi, LEKIN
 // ombordagi mavjud miqdori (stock) HECH QACHON unga yuborilmaydi — bu
 // faqat administrator uchun ichki ma'lumot.
-function productUnitPoints(p, settings) {
-  // Admin aniq coin belgilagan bo'lsa — o'shani ishlatamiz (0 ham bo'lishi
-  // mumkin, masalan aksiya tovarlari uchun coin berilmasin desa). Aks
-  // holda avtomatik: narx / coin ishlab topish kursi (standart 10000 so'm).
+function productUnitPoints(p) {
+  // Admin aniq ball belgilagan bo'lsa — o'shani ishlatamiz (0 ham bo'lishi
+  // mumkin, masalan aksiya tovarlari uchun ball berilmasin desa). Aks
+  // holda avtomatik: narx/10000 (chekdagi umumiy formula bilan bir xil).
   if (p.points || p.points === 0) return Math.max(0, parseInt(p.points, 10) || 0);
-  const earnRate = (settings && settings.coinEarnRate > 0) ? settings.coinEarnRate : 10000;
-  return Math.floor((p.price || 0) / earnRate);
+  return Math.floor((p.price || 0) / 10000);
 }
 
-// Tovarni COIN'ga sotib olish uchun kerak bo'lgan coin miqdori. Admin aniq
-// belgilagan bo'lsa o'sha ishlatiladi, aks holda narx / coin sarflash
-// kursi (standart 1 coin = 100 so'm) bo'yicha avtomatik hisoblanadi.
-function productRedeemCoins(p, settings) {
-  if (p.redeemCoins || p.redeemCoins === 0) return Math.max(0, parseInt(p.redeemCoins, 10) || 0);
-  const spendRate = (settings && settings.coinSpendRate > 0) ? settings.coinSpendRate : 100;
-  return Math.max(0, Math.ceil((p.price || 0) / spendRate));
-}
-
-async function buildClientProducts(db, settings) {
+async function buildClientProducts(db) {
   const productsSnap = await db.collection('products').get();
   return productsSnap.docs
     .map((d) => d.data())
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     // Diqqat: aniq qoldiq (stock soni) mijozga ko'rsatilmaydi — faqat
-    // "mavjud/tugagan" (inStock true/false), sotib olganda necha coin
-    // berilishi (points) va COIN'ga sotib olish narxi (redeemCoins)
-    // ko'rsatiladi. Rasm (img) esa yuboriladi — chunki admin panelidagi
-    // "Sotish" bo'limi kabi katalog ham rasm bilan ko'rsatilishi kerak.
-    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '', points: productUnitPoints(p, settings), redeemCoins: productRedeemCoins(p, settings), inStock: (p.stock || 0) > 0, img: p.img || '' }));
+    // "mavjud/tugagan" (inStock true/false) va sotib olganda necha ball
+    // berilishi (points) ko'rsatiladi. Rasm (img) esa yuboriladi — chunki
+    // admin panelidagi "Sotish" bo'limi kabi katalog ham rasm bilan
+    // ko'rsatilishi kerak (bu ilgari yuborilmagan edi — kamchilik edi).
+    .map((p) => ({ id: p.id, name: p.name, price: p.price, volume: p.volume || '', note: p.note || '', points: productUnitPoints(p), inStock: (p.stock || 0) > 0, img: p.img || '' }));
 }
 
 // Agar Telegram foydalanuvchisi hali "customers" (sodiqlik) kolleksiyasida
@@ -274,7 +267,7 @@ async function buildDebtorPayload(db, settings, chatId, user) {
   const [debtorsSnap, customerRecord, products] = await Promise.all([
     db.collection('debtors').where('telegramChatId', '==', String(chatId)).get(),
     ensureCustomerRegistered(db, chatId, user || {}),
-    buildClientProducts(db, settings),
+    buildClientProducts(db),
   ]);
 
   if (debtorsSnap.empty) {
@@ -299,6 +292,9 @@ async function buildDebtorPayload(db, settings, chatId, user) {
         purchaseCount: customerRecord.purchaseCount || 0,
         tier: computeCustomerTier(customerRecord.totalSpent || 0, customerRecord.tierOverride || '', settings).label,
       },
+      // YANGI: mini-ilova katalogida har bir tovarning "coinda sotib olish"
+      // narxini hisoblashi uchun (getProductCoinCostClient — miniapp.html).
+      coinSettings: getCoinSettings(settings),
       products,
     };
   }
@@ -363,6 +359,7 @@ async function buildDebtorPayload(db, settings, chatId, user) {
       purchaseCount: customerRecord.purchaseCount || 0,
       tier: computeCustomerTier(customerRecord.totalSpent || 0, customerRecord.tierOverride || '', settings).label,
     } : null,
+    coinSettings: getCoinSettings(settings),
     products,
   };
 }

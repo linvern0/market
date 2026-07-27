@@ -25,10 +25,13 @@
 //   adjust_customer_points { id, delta, reason? }            -> ball qo'lda +/-
 //   upsert_seller   { id?, name, pin, telegramUsername }     -> xodim/sotuvchi
 //   remove_seller   { id }
+//   create_order    { items:[{productId,qty}], usePoints? }  -> mijoz (admin EMAS): savatni buyurtma qiladi, admin botdan tasdiqlaydi
+//   create_coin_order { productId, qty? }                    -> mijoz: BITTA tovarni FAQAT COIN evaziga sotib olish so'rovi, admin botdan tasdiqlaydi/bekor qiladi
 // ----------------------------------------------------------------------------
 
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
+const { productCoinCost, getCoinSettings } = require('./_loyalty');
 
 function getDb() { return require('./_firebase').getDb(); }
 
@@ -95,6 +98,14 @@ module.exports = async (req, res) => {
       const customerRef = customerSnap.docs[0].ref;
       const customerData = customerSnap.docs[0].data();
 
+      // TUZATILDI: ilgari bu yerda "narx/10000" va "1 coin = 100 so'm"
+      // qattiq yozilgan edi — admin sozlamalardan (coinSettings) coin
+      // qoidasini o'zgartirsa ham, mini-ilova katalogidan to'g'ridan-to'g'ri
+      // buyurtma berishda ESKI (10000/100) nisbat ishlatilardi. Endi
+      // boshqa hamma joy (chek orqali coin, coinga sotib olish) kabi
+      // markazlashtirilgan getCoinSettings() dan foydalanadi.
+      const { earnPerAmount, redeemValuePerCoin } = getCoinSettings(settings);
+
       const productRefs = items.map((it) => db.collection('products').doc(String(it.productId)));
       const productSnaps = await Promise.all(productRefs.map((r) => r.get()));
       const lineItems = [];
@@ -105,22 +116,21 @@ module.exports = async (req, res) => {
         const prod = snap.data();
         if (!qty || qty <= 0) { res.status(400).json({ ok: false, error: 'bad_qty' }); return; }
         if ((prod.stock || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
-        const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / (settings.coinEarnRate > 0 ? settings.coinEarnRate : 10000));
+        const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / earnPerAmount);
         const subtotal = (prod.price || 0) * qty;
         lineItems.push({ productId: prod.id, name: prod.name, qty, price: prod.price || 0, points: unitPoints * qty, subtotal });
       }
       const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
       const totalPoints = lineItems.reduce((a, x) => a + x.points, 0);
 
-      // Coin bilan to'lash: 1 coin = coinSpendRate so'm chegirma (standart
-      // 100 so'm, admin sozlashi mumkin). Mijozning coini yetarli bo'lmasa,
-      // faqat mavjud qadar ishlatiladi, qolgani naqd bo'ladi.
+      // Ball bilan to'lash: 1 ball = redeemValuePerCoin so'm chegirma (admin
+      // sozlagan qiymat). Mijozning ballari yetarli bo'lmasa, faqat mavjud
+      // qadar ishlatiladi, qolgani naqd bo'ladi.
       let pointsUsed = 0, cashDue = total;
-      const spendRate = settings.coinSpendRate > 0 ? settings.coinSpendRate : 100;
       if (usePoints) {
-        const neededPoints = Math.ceil(total / spendRate);
+        const neededPoints = Math.ceil(total / redeemValuePerCoin);
         pointsUsed = Math.min(customerData.points || 0, neededPoints);
-        cashDue = Math.max(0, total - pointsUsed * spendRate);
+        cashDue = Math.max(0, total - pointsUsed * redeemValuePerCoin);
       }
 
       const orderRef = db.collection('orders').doc();
@@ -137,7 +147,7 @@ module.exports = async (req, res) => {
       let text = `🛒 <b>Yangi buyurtma!</b>\n\n👤 Mijoz: <b>${esc(customerData.name || 'Noma\'lum')}</b>\n\n`;
       lineItems.forEach((it) => { text += `• ${esc(it.name)} — ${it.qty} ta × ${fmt(it.price)} ${esc(currencySymbol)} = ${fmt(it.subtotal)} ${esc(currencySymbol)}\n`; });
       text += `\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>\n`;
-      if (pointsUsed > 0) text += `🪙 Coindan to'langan: <b>${pointsUsed} coin</b> (${fmt(pointsUsed * spendRate)} ${esc(currencySymbol)})\n💵 Naqd to'lanadigan: <b>${fmt(cashDue)} ${esc(currencySymbol)}</b>\n`;
+      if (pointsUsed > 0) text += `⭐ Balldan to'langan: <b>${pointsUsed} ball</b> (${fmt(pointsUsed * redeemValuePerCoin)} ${esc(currencySymbol)})\n💵 Naqd to'lanadigan: <b>${fmt(cashDue)} ${esc(currencySymbol)}</b>\n`;
       else text += `💵 To'lov turi: Naqd pul\n`;
       text += `\n✅ Tasdiqlasangiz — tovar avtomatik sotiladi va ombordan yechiladi.`;
       const keyboard = { inline_keyboard: [[
@@ -154,54 +164,49 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // ---------------- MIJOZ: TOVARNI TO'LIQ COIN'GA SOTIB OLISH ----------------
-    // Naqd/ball-chegirma buyurtmasidan farqli o'laroq — bu yerda tovar
-    // TO'LIQ coin hisobidan "sotib olinadi" (narxning bir qismi emas).
-    // Xuddi create_order kabi 'orders' kolleksiyasiga pending holatda
-    // yoziladi va ADMINGA xuddi shu Tasdiqlash/Bekor qilish tugmalari
-    // bilan yuboriladi (telegram-webhook.js > handleOrderDecision buni
-    // ham qayta ishlaydi — payMode:'coin' bo'lgani uchun avtomatik coin
-    // ayiriladi, naqd/qo'shimcha coin berilmaydi).
-    if (action === 'request_coin_purchase') {
+    // ---------------- MIJOZ: BITTA TOVARNI FAQAT COIN EVAZIGA SOTIB OLISH ----------------
+    // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Mijoz mini-ilova
+    // katalogidan bitta tovarni tanlab, uni TO'LIQ coin evaziga (naqd
+    // pulsiz) sotib olish so'rovini yuboradi. Kerakli coin miqdori —
+    // mahsulotda alohida belgilangan "coinCost" (yoki bo'lmasa, umumiy
+    // sozlamadagi narx/qiymat formulasidan avtomatik hisoblanadi). Coin
+    // yetarli bo'lmasa so'rov yaratilmaydi. Admin botdan Tasdiqlash/Bekor
+    // qilish tugmasi bilan qaror qabul qiladi (coinOrders to'plami,
+    // handleCoinOrderDecision — telegram-webhook.js).
+    if (action === 'create_coin_order') {
       if (isAdmin) { res.status(400).json({ ok: false, error: 'admins_cannot_order' }); return; }
-      const { productId, qty } = p;
-      const q = Math.max(1, parseInt(qty, 10) || 1);
-      if (!productId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const productId = String(p.productId || '');
+      const qty = Math.max(1, parseInt(p.qty, 10) || 1);
+      if (!productId) { res.status(400).json({ ok: false, error: 'no_product' }); return; }
 
       const customerSnap = await db.collection('customers').where('telegramChatId', '==', chatId).limit(1).get();
       if (customerSnap.empty) { res.status(400).json({ ok: false, error: 'not_registered' }); return; }
       const customerRef = customerSnap.docs[0].ref;
       const customerData = customerSnap.docs[0].data();
 
-      const productRef = db.collection('products').doc(String(productId));
-      const productSnap = await productRef.get();
+      const productSnap = await db.collection('products').doc(productId).get();
       if (!productSnap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       const prod = productSnap.data();
-      if ((prod.stock || 0) < q) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
+      if ((prod.stock || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
 
-      const unitRedeem = (prod.redeemCoins || prod.redeemCoins === 0)
-        ? Math.max(0, parseInt(prod.redeemCoins, 10) || 0)
-        : Math.max(0, Math.ceil((prod.price || 0) / (settings.coinSpendRate > 0 ? settings.coinSpendRate : 100)));
-      const totalCoins = unitRedeem * q;
-      if ((customerData.points || 0) < totalCoins) { res.status(400).json({ ok: false, error: 'not_enough_coins' }); return; }
+      const unitCoinCost = productCoinCost(prod, settings);
+      const totalCoinCost = unitCoinCost * qty;
+      const balance = customerData.points || 0;
+      if (balance < totalCoinCost) { res.status(400).json({ ok: false, error: 'not_enough_coins', need: totalCoinCost, have: balance }); return; }
 
-      const orderRef = db.collection('orders').doc();
+      const coinOrderRef = db.collection('coinOrders').doc();
       const now = new Date().toISOString();
-      const lineItems = [{ productId: prod.id, name: prod.name, qty: q, price: prod.price || 0, points: 0, subtotal: (prod.price || 0) * q }];
-      const orderDoc = {
-        id: orderRef.id, customerId: customerRef.id, customerName: customerData.name || '', customerChatId: chatId,
-        items: lineItems, total: 0, totalPoints: 0, usePoints: true, pointsUsed: totalCoins, cashDue: 0,
-        payMode: 'coin', coinCost: totalCoins,
+      const coinOrderDoc = {
+        id: coinOrderRef.id, customerId: customerRef.id, customerName: customerData.name || '', customerChatId: chatId,
+        productId, productName: prod.name || '', qty, unitCoinCost, totalCoinCost,
         status: 'pending', createdAt: now,
       };
-      await orderRef.set(orderDoc);
+      await coinOrderRef.set(coinOrderDoc);
 
-      let text = `🪙 <b>Coin bilan sotib olish so'rovi!</b>\n\n👤 Mijoz: <b>${esc(customerData.name || "Noma'lum")}</b>\n\n`;
-      text += `• ${esc(prod.name)} — ${q} ta\n\n🪙 Coin narxi: <b>${totalCoins} coin</b> (mijozda: ${customerData.points || 0} coin)\n`;
-      text += `\n✅ Tasdiqlasangiz — tovar sotiladi, ombordan yechiladi va mijozdan ${totalCoins} coin yechiladi.`;
+      let text = `🪙 <b>Yangi COIN xarid so'rovi!</b>\n\n👤 Mijoz: <b>${esc(customerData.name || "Noma'lum")}</b>\n📦 Tovar: <b>${esc(prod.name)}</b> — ${qty} ta\n🪙 Coin narxi: <b>${totalCoinCost}</b> (mijozda: ${balance})\n\n✅ Tasdiqlasangiz — tovar sotiladi, ombordan yechiladi va mijozning coinidan ${totalCoinCost} ta ayiriladi.`;
       const keyboard = { inline_keyboard: [[
-        { text: '✅ Tasdiqlash', callback_data: `order_confirm:${orderRef.id}` },
-        { text: '❌ Bekor qilish', callback_data: `order_cancel:${orderRef.id}` },
+        { text: '✅ Tasdiqlash', callback_data: `coinorder_confirm:${coinOrderRef.id}` },
+        { text: '❌ Bekor qilish', callback_data: `coinorder_cancel:${coinOrderRef.id}` },
       ]] };
       const targets = admins.filter((a) => a.chatId).map((a) => a.chatId);
       await Promise.allSettled(targets.map((cid) => fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -209,7 +214,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({ chat_id: cid, text, parse_mode: 'HTML', reply_markup: keyboard }),
       })));
 
-      res.status(200).json({ ok: true, orderId: orderRef.id, coinCost: totalCoins });
+      res.status(200).json({ ok: true, coinOrderId: coinOrderRef.id, totalCoinCost });
       return;
     }
 
@@ -259,13 +264,13 @@ module.exports = async (req, res) => {
 
     // ---------------- TOVAR: YARATISH / TAHRIRLASH / O'CHIRISH ----------------
     if (action === 'create_product') {
-      const { name, price, cost, points, redeemCoins, stock, volume, note } = p;
+      const { name, price, cost, points, coinCost, stock, volume, note } = p;
       if (!name || isNaN(parseFloat(price))) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const id = uid();
       const doc = {
         id, name: String(name).trim(), price: parseFloat(price) || 0, cost: parseFloat(cost) || 0,
         points: (points === null || points === undefined || points === '') ? null : Math.max(0, parseInt(points, 10) || 0),
-        redeemCoins: (redeemCoins === null || redeemCoins === undefined || redeemCoins === '') ? null : Math.max(0, parseInt(redeemCoins, 10) || 0),
+        coinCost: (coinCost === null || coinCost === undefined || coinCost === '') ? null : Math.max(0, parseInt(coinCost, 10) || 0),
         stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: '',
       };
       await db.collection('products').doc(id).set(doc);
@@ -276,13 +281,13 @@ module.exports = async (req, res) => {
     if (action === 'update_product') {
       const { id, patch } = p;
       if (!id || !patch) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
-      const allowed = ['name', 'price', 'cost', 'points', 'redeemCoins', 'stock', 'volume', 'note'];
+      const allowed = ['name', 'price', 'cost', 'points', 'coinCost', 'stock', 'volume', 'note'];
       const clean = {};
       allowed.forEach((k) => {
         if (patch[k] === undefined) return;
         if (k === 'price' || k === 'cost') clean[k] = parseFloat(patch[k]) || 0;
         else if (k === 'stock') clean[k] = parseInt(patch[k], 10) || 0;
-        else if (k === 'points' || k === 'redeemCoins') clean[k] = (patch[k] === null || patch[k] === '') ? null : Math.max(0, parseInt(patch[k], 10) || 0);
+        else if (k === 'points' || k === 'coinCost') clean[k] = (patch[k] === null || patch[k] === '') ? null : Math.max(0, parseInt(patch[k], 10) || 0);
         else clean[k] = patch[k];
       });
       if (!Object.keys(clean).length) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
@@ -633,8 +638,8 @@ module.exports = async (req, res) => {
       await ref.update({ points: newPoints, pointsAdjustments: admin.firestore.FieldValue.arrayUnion(entry) });
       if (cur.telegramChatId) {
         const text = d2 > 0
-          ? `🪙 <b>${esc(shopName)}</b>\n\nSizga <b>+${d2} coin</b> qo'shildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami coin: <b>${newPoints}</b>`
-          : `ℹ️ <b>${esc(shopName)}</b>\n\nCoinlaringizdan ${Math.abs(d2)} coin ayirildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami coin: <b>${newPoints}</b>`;
+          ? `⭐ <b>${esc(shopName)}</b>\n\nSizga <b>+${d2} ball</b> qo'shildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`
+          : `ℹ️ <b>${esc(shopName)}</b>\n\nBallaringizdan ${Math.abs(d2)} ball ayirildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`;
         await tgSendMessage(token, cur.telegramChatId, text);
       }
       res.status(200).json({ ok: true, points: newPoints });
