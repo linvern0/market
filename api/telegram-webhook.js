@@ -395,12 +395,12 @@ async function handleCustomerContact(db, token, msg, kb, req) {
   return true;
 }
 
-async function tryLinkCustomerByUsername(db, token, msg, kb, req) {
+async function tryLinkCustomerByUsername(db, token, msg, kb, req, debtorsSnap) {
   const chatId = msg.chat.id;
   const uKey = usernameKey(msg.from && msg.from.username);
   if (!uKey) return false;
-  const debtorsSnap = await db.collection('debtors').get();
-  const matches = debtorsSnap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
+  const snap = debtorsSnap || (await db.collection('debtors').get());
+  const matches = snap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
   return true;
@@ -411,12 +411,12 @@ async function tryLinkCustomerByUsername(db, token, msg, kb, req) {
 // Telegram ID'sini (raqam) kiritgan bo'lsa, shu orqali ham hech qanday
 // tugmasiz avtomatik tanib olamiz — chunki Telegram ID har doim, hatto
 // username bo'lmasa ham, har bir xabarda botga avtomatik keladi.
-async function tryLinkCustomerByTelegramId(db, token, msg, kb, req) {
+async function tryLinkCustomerByTelegramId(db, token, msg, kb, req, debtorsSnap) {
   const chatId = msg.chat.id;
   const idKey = String((msg.from && msg.from.id) || '').trim();
   if (!idKey) return false;
-  const debtorsSnap = await db.collection('debtors').get();
-  const matches = debtorsSnap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
+  const snap = debtorsSnap || (await db.collection('debtors').get());
+  const matches = snap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
   return true;
@@ -427,7 +427,7 @@ async function tryLinkCustomerByTelegramId(db, token, msg, kb, req) {
 // botga /start bosgan HAR QANDAY kishi avtomatik ravishda "customers"
 // (sodiqlik dasturi) kolleksiyasiga yoziladi va shu zahoti mijoz sifatida
 // tanilib, Mini-ilovadan (tovarlar katalogi) foydalana oladi.
-async function autoRegisterCustomer(db, token, msg, kb) {
+async function autoRegisterCustomer(db, token, msg, kb, welcomeText) {
   const chatId = msg.chat.id;
   const from = msg.from || {};
   const name = [from.first_name, from.last_name].filter(Boolean).join(' ').trim()
@@ -445,7 +445,12 @@ async function autoRegisterCustomer(db, token, msg, kb) {
     createdAt: new Date().toISOString(),
   };
   await db.collection('customers').add(data);
-  const text = `👋 Xush kelibsiz, <b>${esc(name)}</b>!\n\n` +
+  // YANGI: admin Sozlamalar > Telegram bo'limida o'zining maxsus xush
+  // kelibsiz matnini kiritgan bo'lsa, u standart matnning ustiga (nomdan
+  // keyin, "ro'yxatdan o'tdingiz" xabaridan OLDIN) alohida qator sifatida
+  // qo'shiladi. Bo'sh bo'lsa xatti-harakat avvalgidek qoladi.
+  const customLine = (welcomeText && String(welcomeText).trim()) ? `${esc(String(welcomeText).trim())}\n\n` : '';
+  const text = `👋 Xush kelibsiz, <b>${esc(name)}</b>!\n\n` + customLine +
     `✅ Siz do'konning sodiqlik dasturiga avtomatik ro'yxatdan o'tdingiz.\n\n` +
     `🏆 Daraja: ${await customerTierName(db, 0)}\n🪙 Coin: <b>0</b>\n\n` +
     `📱 Tovarlar katalogini ko'rish va o'z ma'lumotlaringizni kuzatish uchun pastdagi "Mini-ilovani ochish" tugmasidan foydalaning.\n` +
@@ -481,22 +486,22 @@ async function sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb) {
     `Coin holatingizni istalgan vaqt /coinlarim buyrug'i orqali ko'rishingiz mumkin.`;
   await sendMessage(token, chatId, text, { reply_markup: kb || { remove_keyboard: true } });
 }
-async function tryLinkLoyaltyCustomerByUsername(db, token, msg, kb) {
+async function tryLinkLoyaltyCustomerByUsername(db, token, msg, kb, customersSnap) {
   const chatId = msg.chat.id;
   const uKey = usernameKey(msg.from && msg.from.username);
   if (!uKey) return false;
-  const customersSnap = await db.collection('customers').get();
-  const matches = customersSnap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
+  const snap = customersSnap || (await db.collection('customers').get());
+  const matches = snap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
   if (!matches.length) return false;
   await sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb);
   return true;
 }
-async function tryLinkLoyaltyCustomerByTelegramId(db, token, msg, kb) {
+async function tryLinkLoyaltyCustomerByTelegramId(db, token, msg, kb, customersSnap) {
   const chatId = msg.chat.id;
   const idKey = String((msg.from && msg.from.id) || '').trim();
   if (!idKey) return false;
-  const customersSnap = await db.collection('customers').get();
-  const matches = customersSnap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
+  const snap = customersSnap || (await db.collection('customers').get());
+  const matches = snap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
   if (!matches.length) return false;
   await sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb);
   return true;
@@ -1097,14 +1102,16 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     // hisobot uchun kerakli sana oralig'i (joriy + solishtiriladigan
     // oldingi davr) o'qiladi — bu tarix yillar davomida to'plansa ham
     // hisobot tezligini bir xil saqlaydi.
-    const salesSnap = await db.collection('sales').where('date', '>=', prevFromStr).get();
+    const [salesSnap, debtsSnap] = await Promise.all([
+      db.collection('sales').where('date', '>=', prevFromStr).get(),
+      db.collection('debts').where('date', '>=', fromStr).get(),
+    ]);
     const allSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
     const periodSales = allSales.filter((s) => (s.date || '').slice(0, 10) >= fromStr);
     const prevSales = allSales.filter((s) => { const d = (s.date || '').slice(0, 10); return d >= prevFromStr && d <= prevToStr; });
     const revenue = periodSales.reduce((a, s) => a + (s.total || 0), 0);
     const profit = periodSales.reduce((a, s) => a + (s.price - (s.cost || 0)) * s.qty, 0);
     const prevRevenue = prevSales.reduce((a, s) => a + (s.total || 0), 0);
-    const debtsSnap = await db.collection('debts').where('date', '>=', fromStr).get();
     const newDebts = debtsSnap.docs.map((d) => d.data());
     const newDebtTotal = newDebts.reduce((a, d) => a + (d.total || 0), 0);
     const avgCheck = periodSales.length ? revenue / periodSales.length : 0;
@@ -1587,7 +1594,8 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
 // Bitta kelgan update'ni (Telegram webhook'dan) qayta ishlaydi.
 // Eski polling (telegram-bot.js) dagi for-loop tanasi bilan bir xil mantiq —
 // farqi shu yerda faqat BITTA update keladi, offset/state boshqarish shart emas.
-async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) {
+async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, settingsData) {
+  const welcomeText = settingsData && settingsData.telegramWelcomeText;
   if (upd.callback_query) { await handleCallbackQuery(db, token, settingsRef, admins, upd.callback_query, req); return; }
   const msg = upd.message;
   if (!msg) return;
@@ -1680,20 +1688,34 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
   let isKnownDebtor = false;
   let isKnownLoyalty = false;
   if (!isAdmin) {
-    const alreadyLinkedSnap = await db.collection('debtors').where('telegramChatId', '==', String(chatId)).limit(1).get();
+    const [alreadyLinkedSnap, alreadyLoyaltySnap] = await Promise.all([
+      db.collection('debtors').where('telegramChatId', '==', String(chatId)).limit(1).get(),
+      db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get(),
+    ]);
     isKnownDebtor = !alreadyLinkedSnap.empty;
-    const alreadyLoyaltySnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
     isKnownLoyalty = !alreadyLoyaltySnap.empty;
+    // TUZATILDI — SEKINLIK: ilgari quyidagi 4 ta funksiya (username/ID
+    // bo'yicha qarzdor va sodiqlik mijozini izlash) HAR BIRI o'zicha
+    // butun 'debtors' yoki 'customers' kolleksiyasini QAYTA-QAYTA (jami
+    // 4 marta, ketma-ket) o'qirdi — bu har bir ulanmagan foydalanuvchi
+    // yozgan HAR BIR xabarda sezilarli kechikishga sabab bo'lardi,
+    // ayniqsa mijozlar/qarzdorlar soni ko'p bo'lgan do'konlarda. Endi:
+    // kerakli kolleksiyalar FAQAT BIR MARTA, PARALLEL o'qiladi va
+    // natija ikkala (username + telegram ID) tekshiruvga qayta ishlatiladi.
+    const [debtorsSnap, customersSnap] = await Promise.all([
+      !isKnownDebtor ? db.collection('debtors').get() : Promise.resolve(null),
+      !isKnownLoyalty ? db.collection('customers').get() : Promise.resolve(null),
+    ]);
     if (!isKnownDebtor) {
-      const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg, kbDebtor, req);
+      const linkedByUsername = await tryLinkCustomerByUsername(db, token, msg, kbDebtor, req, debtorsSnap);
       if (linkedByUsername) return;
-      const linkedById = await tryLinkCustomerByTelegramId(db, token, msg, kbDebtor, req);
+      const linkedById = await tryLinkCustomerByTelegramId(db, token, msg, kbDebtor, req, debtorsSnap);
       if (linkedById) return;
     }
     if (!isKnownLoyalty) {
-      const linkedLoyaltyByUsername = await tryLinkLoyaltyCustomerByUsername(db, token, msg, kbDebtor);
+      const linkedLoyaltyByUsername = await tryLinkLoyaltyCustomerByUsername(db, token, msg, kbDebtor, customersSnap);
       if (linkedLoyaltyByUsername) return;
-      const linkedLoyaltyById = await tryLinkLoyaltyCustomerByTelegramId(db, token, msg, kbDebtor);
+      const linkedLoyaltyById = await tryLinkLoyaltyCustomerByTelegramId(db, token, msg, kbDebtor, customersSnap);
       if (linkedLoyaltyById) return;
     }
   }
@@ -1710,18 +1732,22 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
       if (isKnownAny) {
         await setCommandsForChat(token, chatId, false).catch(() => {});
         await setMenuButtonFor(token, chatId, req, false).catch(() => {});
-        await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + helpText(false), { reply_markup: debtorMenuKeyboard(req) || kbDebtor || { remove_keyboard: true } });
+        const customLine0 = (welcomeText && String(welcomeText).trim()) ? `${esc(String(welcomeText).trim())}\n\n` : '';
+        await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + customLine0 + helpText(false), { reply_markup: debtorMenuKeyboard(req) || kbDebtor || { remove_keyboard: true } });
         return;
       }
       // Hali hech qanday ro'yxatda (qarzdor yoki mijoz) topilmadi — admin
       // kutmasdan, shu zahoti avtomatik "mijoz" sifatida ro'yxatga olamiz.
-      await autoRegisterCustomer(db, token, msg, kbDebtor);
+      await autoRegisterCustomer(db, token, msg, kbDebtor, welcomeText);
       await setMenuButtonFor(token, chatId, req, false).catch(() => {});
       return;
     }
     await setAdminMenuButton(token, chatId, req);
     await setCommandsForChat(token, chatId, true).catch(() => {});
-    await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + helpText(isAdmin), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
+    {
+      const customLine0 = (welcomeText && String(welcomeText).trim()) ? `${esc(String(welcomeText).trim())}\n\n` : '';
+      await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + customLine0 + helpText(isAdmin), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
+    }
     return;
   }
   if (text === '/menu' || text === '/menyu') {
@@ -1736,7 +1762,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req) 
     // Hali tanilmagan (ro'yxatdan o'tmagan) kishi /start dan boshqa narsa
     // yozdi — bu ham birinchi murojaati hisoblanadi, shuning uchun uni
     // shu yerda ham avtomatik mijoz sifatida ro'yxatga olamiz.
-    await autoRegisterCustomer(db, token, msg, kbDebtor);
+    await autoRegisterCustomer(db, token, msg, kbDebtor, welcomeText);
     await setMenuButtonFor(token, chatId, req, false).catch(() => {});
     return;
   }
@@ -1811,7 +1837,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    await processUpdate(db, token, settingsRef, admins, sellers, upd, req);
+    await processUpdate(db, token, settingsRef, admins, sellers, upd, req, s);
 
     res.status(200).json({ ok: true });
   } catch (e) {

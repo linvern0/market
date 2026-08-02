@@ -633,6 +633,22 @@ module.exports = async (req, res) => {
       const snap = await ref.get();
       if (!snap.exists) { res.status(404).json({ ok: false, error: 'customer_not_found' }); return; }
       const cur = snap.data();
+      // TUZATILDI — IKKI MARTA COIN YOZILISH XATOSINING OLDINI OLISH
+      // (SERVER TOMONDA): frontendda ham himoya qo'yilgan, lekin tarmoq
+      // ikkilanib so'rovni qayta yuborishi yoki ikki qurilmadan bir vaqtda
+      // bosilishi kabi holatlar uchun bu yerda ham qo'shimcha tekshiruv
+      // qo'yamiz. Agar aynan shu mijozga, aynan shu delta+sabab bilan
+      // so'nggi 5 soniya ichida allaqachon yozuv qo'shilgan bo'lsa —
+      // buni takroriy so'rov deb hisoblab, QAYTA QO'SHMASDAN joriy holatni
+      // qaytaramiz.
+      const lastAdj = Array.isArray(cur.pointsAdjustments) ? cur.pointsAdjustments[0] : null;
+      if (lastAdj && lastAdj.delta === d2 && (lastAdj.reason || '') === (reason || '')) {
+        const lastTime = new Date(lastAdj.date || 0).getTime();
+        if (Date.now() - lastTime < 5000) {
+          res.status(200).json({ ok: true, points: cur.points || 0, duplicate: true });
+          return;
+        }
+      }
       const newPoints = Math.max(0, (cur.points || 0) + d2);
       const entry = { date: new Date().toISOString(), delta: d2, reason: reason || '', by: 'Mini App admin' };
       await ref.update({ points: newPoints, pointsAdjustments: admin.firestore.FieldValue.arrayUnion(entry) });
