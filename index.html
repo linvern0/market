@@ -2136,6 +2136,16 @@ body.dark table {
       <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">🎁 Shu kiritilsa, chekdagi QR kod avtomatik <b>botga (Telegram)</b> ishora qiladi — mijoz chekni skanerlashi bilan sodiqlik coini avtomatik hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa). Bo'sh qoldirsangiz, QR avvalgidek faqat chekni ko'rsatadigan sahifaga ishora qiladi.</p>
     </div>
+    <div class="field" style="margin-bottom:.6rem">
+      <label>🧾 Xariddan keyingi chekdagi QR kod nima uchun ishlatilsin?</label>
+      <select id="tg-receipt-qr-mode" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+        <option value="auto">⚙️ Avtomatik (Bot username kiritilgan bo'lsa — Coin olish, aks holda — Xarid tasdig'i)</option>
+        <option value="coin">🪙 Coin olish (Telegram bot orqali sodiqlik coini)</option>
+        <option value="receipt">🧾 Xarid tasdig'i (faqat onlayn chekni ko'rsatish)</option>
+        <option value="none">🚫 QR kod chiqarilmasin</option>
+      </select>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu tanlov barcha YANGI chiqariladigan cheklarga qo'llanadi (eski, allaqachon chop etilgan cheklar o'zgarmaydi). "Coin olish" tanlansa-yu Bot username bo'sh qoldirilsa, QR baribir xarid tasdig'i sahifasiga ishora qiladi.</p>
+    </div>
 
     <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
       <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.5rem">👤 Telegram adminlari</label>
@@ -4154,7 +4164,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinOrders: [] };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], receiptQrMode: 'auto', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinOrders: [] };
 // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
 // qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
 // qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
@@ -4463,7 +4473,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -4888,6 +4898,7 @@ function startListeners(){
       DB.workSchedule=d.workSchedule||null;
       DB.pinMinLength=d.pinMinLength||4;
       DB.telegramBotToken=d.telegramBotToken||''; DB.telegramBotUsername=d.telegramBotUsername||'';
+      DB.receiptQrMode=d.receiptQrMode||'auto';
       DB.telegramChatId=d.telegramChatId||'';
       DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
       DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
@@ -4925,7 +4936,7 @@ function startListeners(){
   let prodDebounce=null;
   onSnapshot(collection(db,'products'), snap=>{
     if(!snap.metadata.fromCache) markSyncedNow();
-    DB.products = snap.docs.map(d=>d.data());
+    DB.products = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
     migrateLegacyProductCodes();
     clearTimeout(prodDebounce);
@@ -4938,7 +4949,7 @@ function startListeners(){
   });
   let salesDebounce=null;
   onSnapshot(collection(db,'sales'), snap=>{
-    const incoming = snap.docs.map(d=>d.data());
+    const incoming = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     if(knownSaleIds !== null && currentRole==='admin'){
       incoming.forEach(s=>{
         if(!knownSaleIds.has(s.id) && !s.reverted){
@@ -4958,7 +4969,7 @@ function startListeners(){
   });
   let shDebounce=null;
   onSnapshot(collection(db,'restocks'), snap=>{
-    DB.restocks = snap.docs.map(d=>d.data());
+    DB.restocks = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
     clearTimeout(shDebounce);
     shDebounce=setTimeout(()=>{
@@ -4967,7 +4978,7 @@ function startListeners(){
   });
   let debtDebounce=null;
   onSnapshot(collection(db,'debts'), snap=>{
-    DB.debts = snap.docs.map(d=>d.data());
+    DB.debts = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.debts.sort((a,b)=>new Date(b.date)-new Date(a.date));
     clearTimeout(debtDebounce);
     debtDebounce=setTimeout(()=>{
@@ -4975,7 +4986,7 @@ function startListeners(){
     },120);
   });
   onSnapshot(collection(db,'debtors'), { includeMetadataChanges: true }, snap=>{
-    DB.debtors = snap.docs.map(d=>d.data());
+    DB.debtors = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     snap.docs.forEach(d=> trackDocSyncState('debtors', d, d.data().name||'Qarzdor'));
     updateSyncDot();
     if(document.getElementById('page-debts')?.classList.contains('active') && typeof window.debouncedRenderDebts==='function') window.debouncedRenderDebts();
@@ -4983,7 +4994,7 @@ function startListeners(){
   // YANGI: Xarajatlar (10.1-bo'lim) — real-vaqtda sinxronlash
   let expDebounce=null;
   onSnapshot(collection(db,'expenses'), snap=>{
-    DB.expenses = snap.docs.map(d=>d.data());
+    DB.expenses = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.expenses.sort((a,b)=>new Date(b.date)-new Date(a.date));
     clearTimeout(expDebounce);
     expDebounce=setTimeout(()=>{
@@ -4993,19 +5004,19 @@ function startListeners(){
   });
   // YANGI: Yetkazib beruvchilar, Mijozlar, Aksiyalar — real-vaqtda sinxronlash
   onSnapshot(collection(db,'suppliers'), snap=>{
-    DB.suppliers = snap.docs.map(d=>d.data());
+    DB.suppliers = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.suppliers.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     if(typeof window.renderSuppliersList==='function') window.renderSuppliersList();
   });
   onSnapshot(collection(db,'customers'), { includeMetadataChanges: true }, snap=>{
-    DB.customers = snap.docs.map(d=>d.data());
+    DB.customers = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.customers.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     snap.docs.forEach(d=> trackDocSyncState('customers', d, d.data().name||'Mijoz'));
     updateSyncDot();
     if(typeof window.renderCustomersList==='function') window.renderCustomersList();
   });
   onSnapshot(collection(db,'promotions'), snap=>{
-    DB.promotions = snap.docs.map(d=>d.data());
+    DB.promotions = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     if(typeof window.renderPromotionsList==='function') window.renderPromotionsList();
     if(typeof window.decoratePromoBadges==='function') window.decoratePromoBadges();
   });
@@ -5016,7 +5027,7 @@ function startListeners(){
   // ko'rinadi va shu yerdan ham tasdiqlash/bekor qilish mumkin — admin
   // doim telefonida Telegram ochib turishi shart emas.
   onSnapshot(collection(db,'coinOrders'), snap=>{
-    DB.coinOrders = snap.docs.map(d=>d.data()).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    DB.coinOrders = snap.docs.map(d=>({ ...d.data(), id: d.id })).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
     if(typeof window.renderCoinOrdersPanel==='function') window.renderCoinOrdersPanel();
     if(typeof window.updateCoinOrdersBadge==='function') window.updateCoinOrdersBadge();
   });
@@ -5151,6 +5162,7 @@ async function init(){
           DB.workSchedule=d.workSchedule||null;
           DB.pinMinLength=d.pinMinLength||4;
           DB.telegramBotToken=d.telegramBotToken||''; DB.telegramBotUsername=d.telegramBotUsername||'';
+          DB.receiptQrMode=d.receiptQrMode||'auto';
           DB.telegramChatId=d.telegramChatId||'';
           DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
           DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
@@ -5174,28 +5186,28 @@ async function init(){
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
       if(prodsR.status==='fulfilled'){
-        DB.products = prodsR.value.docs.map(d=>d.data());
+        DB.products = prodsR.value.docs.map(d=>({ ...d.data(), id: d.id }));
         DB.products.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
         migrateLegacyProductCodes();
       } else console.error("Mahsulotlarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", prodsR.reason);
 
       if(salesR.status==='fulfilled'){
-        DB.sales = salesR.value.docs.map(d=>d.data());
+        DB.sales = salesR.value.docs.map(d=>({ ...d.data(), id: d.id }));
         DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
       } else console.error("Savdolarni dastlabki yuklashda xatolik:", salesR.reason);
 
       if(restocksR.status==='fulfilled'){
-        DB.restocks = restocksR.value.docs.map(d=>d.data());
+        DB.restocks = restocksR.value.docs.map(d=>({ ...d.data(), id: d.id }));
         DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
       } else console.error("Kirim tarixini dastlabki yuklashda xatolik:", restocksR.reason);
 
       if(debtsR.status==='fulfilled'){
-        DB.debts = debtsR.value.docs.map(d=>d.data());
+        DB.debts = debtsR.value.docs.map(d=>({ ...d.data(), id: d.id }));
         DB.debts.sort((a,b)=>new Date(b.date)-new Date(a.date));
       } else console.error("Qarzlarni dastlabki yuklashda xatolik:", debtsR.reason);
 
       if(debtorsR.status==='fulfilled'){
-        DB.debtors = debtorsR.value.docs.map(d=>d.data());
+        DB.debtors = debtorsR.value.docs.map(d=>({ ...d.data(), id: d.id }));
       } else console.error("Qarzdorlarni dastlabki yuklashda xatolik:", debtorsR.reason);
     } else {
       console.error("Firebase'dan dastlabki javob 6 soniyada kelmadi — offline keshga va keyingi onSnapshot yangilanishlariga tayanamiz.");
@@ -8799,6 +8811,7 @@ window.checkAndSendTelegramAlerts = async function(){
 window.fillTelegramSettingsForm = function(){
   const t=document.getElementById('tg-bot-token'); if(t && document.activeElement!==t) t.value=DB.telegramBotToken||'';
   const u=document.getElementById('tg-bot-username'); if(u && document.activeElement!==u) u.value=DB.telegramBotUsername||'';
+  const qm=document.getElementById('tg-receipt-qr-mode'); if(qm && document.activeElement!==qm) qm.value=DB.receiptQrMode||'auto';
   const l=document.getElementById('tg-notify-lowstock'); if(l) l.checked=!!DB.telegramNotifyLowStock;
   const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
@@ -8808,6 +8821,8 @@ window.saveTelegramSettings = function(silent){
   DB.telegramBotToken = (document.getElementById('tg-bot-token').value||'').trim();
   const uEl = document.getElementById('tg-bot-username');
   DB.telegramBotUsername = uEl ? (uEl.value||'').trim().replace(/^@/,'').replace(/^https?:\/\/t\.me\//i,'') : (DB.telegramBotUsername||'');
+  const qmEl = document.getElementById('tg-receipt-qr-mode');
+  DB.receiptQrMode = qmEl ? (qmEl.value||'auto') : (DB.receiptQrMode||'auto');
   DB.telegramNotifyLowStock = !!document.getElementById('tg-notify-lowstock').checked;
   DB.telegramNotifyOverdueDebts = !!document.getElementById('tg-notify-overdue').checked;
   DB.telegramNotifyDailyReport = !!document.getElementById('tg-notify-daily').checked;
@@ -8949,15 +8964,28 @@ const RECEIPT_PAGE_URL = (function(){
     return `${location.origin}${dir}receipt.html`;
   }catch(e){ return fallback; }
 })();
+// YANGI: admin Sozlamalar > Telegram bo'limida chekdagi QR kod nima uchun
+// ishlatilishini aniq tanlashi mumkin: "coin" (bot orqali ball olish),
+// "receipt" (faqat xarid tasdig'i/onlayn chek) yoki "none" (QR umuman
+// chiqmasin). "auto" (yoki hali sozlanmagan/eski o'rnatilmalar) — avvalgi
+// xatti-harakatni saqlaydi: Bot username kiritilgan bo'lsa "coin", aks
+// holda "receipt".
+function effectiveReceiptQrMode(){
+  const mode = (DB.receiptQrMode||'').trim();
+  if(mode==='coin' || mode==='receipt' || mode==='none') return mode;
+  return (DB.telegramBotUsername||'').trim() ? 'coin' : 'receipt';
+}
 function receiptQrLink(receiptId){
-  // YANGI: agar admin bot username'ini kiritgan bo'lsa, QR endi TO'G'RIDAN-TO'G'RI
-  // Telegram botiga (start-parametr bilan) ishora qiladi — mijoz shunchaki QR'ni
-  // skanerlashi bilan bot ochiladi va xarid summasiga mos ball avtomatik
-  // hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa).
-  // Bot username kiritilmagan bo'lsa — avvalgidek faqat chekni ko'rsatuvchi
-  // sahifaga (receipt.html) ishora qiladi.
-  const botUser = (DB.telegramBotUsername||'').trim();
-  if(botUser) return `https://t.me/${encodeURIComponent(botUser)}?start=r_${encodeURIComponent(receiptId)}`;
+  const mode = effectiveReceiptQrMode();
+  if(mode==='none') return '';
+  if(mode==='coin'){
+    const botUser = (DB.telegramBotUsername||'').trim();
+    // "Coin olish" tanlangan bo'lsa ham, Bot username hali kiritilmagan
+    // bo'lsa, botga bo'lmagan havola yaratib bo'lmaydi — shu holatda ham
+    // baribir chekni ko'rsatuvchi sahifaga tushamiz (QR'ning butunlay
+    // ishlamay qolishining oldini olish uchun).
+    if(botUser) return `https://t.me/${encodeURIComponent(botUser)}?start=r_${encodeURIComponent(receiptId)}`;
+  }
   return `${RECEIPT_PAGE_URL}?id=${encodeURIComponent(receiptId)}`;
 }
 // ESKI usul (zaxira sifatida qoldirildi): tashqi serverga so'rov yuborib rasm
@@ -9065,10 +9093,11 @@ window.openReceiptModal=function(receiptData){
   const qrImg = document.getElementById('receipt-qr-img');
   const qrCaption = document.getElementById('receipt-qr-caption');
   if(qrImg){
-    if(receiptData.id){
+    const qrMode = effectiveReceiptQrMode();
+    if(receiptData.id && qrMode!=='none'){
       qrImg.style.display = 'inline-block';
       generateReceiptQR(qrImg, receiptData.id);
-      if(qrCaption) qrCaption.textContent = (DB.telegramBotUsername||'').trim()
+      if(qrCaption) qrCaption.textContent = (qrMode==='coin' && (DB.telegramBotUsername||'').trim())
         ? '📷 Skanerlab Telegram botda sodiqlik coinini yig\'ing'
         : '📷 Chekni onlayn ko\'rish uchun skanerlang';
     } else {
