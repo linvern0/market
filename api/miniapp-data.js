@@ -37,25 +37,41 @@ function debtSummary(d) {
 }
 
 async function buildAdminPayload(db, settings) {
-  const [debtsSnap, productsSnap, salesSnap, debtorsSnap, customersSnap] = await Promise.all([
-    db.collection('debts').get(),
+  const todayStr = new Date().toISOString().slice(0, 10);
+  // TEZLASHTIRISH: ilgari BUTUN "debts" va "sales" to'plami (loyihaning
+  // butun tarixi — yillar davomida cheksiz o'sadi) har safar Mini App
+  // admin panelini ochganda to'liq o'qilardi, bu ma'lumot ko'payishi bilan
+  // progressiv sekinlashardi. Endi faqat kerakli qism o'qiladi:
+  //  - "debts": to'lanmagan qarzlar SERVER TOMONDA filtrlanadi (paid==false)
+  //    — bu ro'yxat vaqt o'tishi bilan cheksiz o'smaydi (to'langan qarzlar
+  //    chiqarib tashlanadi), shuning uchun har doim tez.
+  //  - Statistika (kunlik grafik + oy/oy solishtiruv) uchun oxirgi ~70
+  //    kunlik yozuvlar yetarli (eng uzun holat: oy boshi bilan oldingi
+  //    oyni solishtirish, bu 62 kungacha borishi mumkin — 70 kun bilan
+  //    xavfsiz zахира qoldirilgan).
+  const statsFromDate = (() => { const d0 = new Date(); d0.setDate(d0.getDate() - 70); return d0.toISOString().slice(0, 10); })();
+
+  const [unpaidDebtsSnap, recentDebtsSnap, productsSnap, recentSalesSnap, debtorsSnap, customersSnap] = await Promise.all([
+    db.collection('debts').where('paid', '==', false).get(),
+    db.collection('debts').where('date', '>=', statsFromDate).get(),
     db.collection('products').get(),
-    db.collection('sales').get(),
+    db.collection('sales').where('date', '>=', statsFromDate).get(),
     db.collection('debtors').get(),
     db.collection('customers').get(),
   ]);
 
-  const allDebts = debtsSnap.docs.map((d) => d.data());
-  const activeDebts = allDebts.filter((d) => !d.paid).sort((a, b) => debtRemaining(b) - debtRemaining(a));
+  const activeDebts = unpaidDebtsSnap.docs.map((d) => d.data()).sort((a, b) => debtRemaining(b) - debtRemaining(a));
   const totalDebt = activeDebts.reduce((a, d) => a + debtRemaining(d), 0);
+  // Statistikada "shu kun/davrda yozilgan yangi qarz" uchun ishlatiladi —
+  // to'langan yoki to'lanmaganidan qat'i nazar, sanaga qarab kesilgan.
+  const allDebts = recentDebtsSnap.docs.map((d) => d.data());
 
   const products = productsSnap.docs.map((d) => d.data());
   const threshold = settings.lowStockThreshold || 5;
   const lowStock = products.filter((p) => p.stock > 0 && p.stock <= threshold);
   const outOfStock = products.filter((p) => p.stock === 0);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const allSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
+  const allSales = recentSalesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
   const todaySales = allSales.filter((s) => (s.date || '').slice(0, 10) === todayStr);
   const revenue = todaySales.reduce((a, s) => a + (s.total || 0), 0);
   const profit = todaySales.reduce((a, s) => a + ((s.price || 0) - (s.cost || 0)) * (s.qty || 0), 0);

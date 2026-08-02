@@ -361,7 +361,7 @@ async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req) {
   const batch = db.batch();
   matches.forEach((d) => batch.set(d.ref, { telegramChatId: String(chatId) }, { merge: true }));
   await batch.commit();
-  const debtsSnap = await db.collection('debts').get();
+  const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
   const names = [...new Set(matches.map((d) => d.data().name))];
   let text = `✅ Ro'yxatdan o'tdingiz: <b>${esc(names.join(', '))}</b>\n\nEndi qarz va to'lovlaringiz haqida shu yerga xabar keladi.\n\n`;
   const org = matches.find((d) => d.data().org)?.data().org || '';
@@ -369,8 +369,8 @@ async function sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req) {
   const debtorIds = matches.map((d) => d.id);
   const allDebts = debtsSnap.docs.map((d) => d.data());
   const myDebts = isOrgViewer
-    ? allDebts.filter((d) => d.org === org && !d.paid)
-    : allDebts.filter((d) => debtorIds.includes(d.debtorId) && !d.paid);
+    ? allDebts.filter((d) => d.org === org)
+    : allDebts.filter((d) => debtorIds.includes(d.debtorId));
   if (myDebts.length) {
     const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
     text += `💰 Joriy qarzingiz: <b>${fmt(total)} so'm</b> (${myDebts.length} ta yozuv)`;
@@ -1006,8 +1006,8 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/yordam' || cmd === '/start' || cmd === '/help') return sendMessage(token, chatId, helpText(true), kb ? { reply_markup: kb } : undefined);
 
   if (cmd === '/qarzlar') {
-    const debtsSnap = await db.collection('debts').get();
-    const active = debtsSnap.docs.map((d) => d.data()).filter((d) => !d.paid).sort((a, b) => debtRemaining(b) - debtRemaining(a)).slice(0, 15);
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
+    const active = debtsSnap.docs.map((d) => d.data()).sort((a, b) => debtRemaining(b) - debtRemaining(a)).slice(0, 15);
     if (!active.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q.");
     let text = `📋 <b>Faol qarzlar</b> (eng kattadan)\n\n`;
     active.forEach((d) => { text += `• ${esc(d.debtorName || d.org || '?')} — ${fmt(debtRemaining(d))} so'm\n  ID: <code>${esc(d.id)}</code>\n`; });
@@ -1019,8 +1019,8 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/qarz') {
     const q = argStr.trim().toLowerCase();
     if (!q) return sendMessage(token, chatId, "Qidiruv uchun ism yoki telefon kiriting: /qarz Aziz");
-    const debtsSnap = await db.collection('debts').get();
-    const found = debtsSnap.docs.map((d) => d.data()).filter((d) => !d.paid && ((d.debtorName || '').toLowerCase().includes(q) || (d.org || '').toLowerCase().includes(q) || (d.phone || '').includes(q)));
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
+    const found = debtsSnap.docs.map((d) => d.data()).filter((d) => (d.debtorName || '').toLowerCase().includes(q) || (d.org || '').toLowerCase().includes(q) || (d.phone || '').includes(q));
     if (!found.length) return sendMessage(token, chatId, "Hech narsa topilmadi.");
     const total = found.reduce((a, d) => a + debtRemaining(d), 0);
     let text = `🔎 "${esc(argStr.trim())}" bo'yicha: <b>${fmt(total)} so'm</b>\n\n`;
@@ -1093,15 +1093,19 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
       prevFromStr = pm.toISOString().slice(0, 10);
       prevToStr = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
     }
-    const salesSnap = await db.collection('sales').get();
+    // TEZLASHTIRISH: butun savdo/qarz tarixini o'qish o'rniga, faqat shu
+    // hisobot uchun kerakli sana oralig'i (joriy + solishtiriladigan
+    // oldingi davr) o'qiladi — bu tarix yillar davomida to'plansa ham
+    // hisobot tezligini bir xil saqlaydi.
+    const salesSnap = await db.collection('sales').where('date', '>=', prevFromStr).get();
     const allSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
     const periodSales = allSales.filter((s) => (s.date || '').slice(0, 10) >= fromStr);
     const prevSales = allSales.filter((s) => { const d = (s.date || '').slice(0, 10); return d >= prevFromStr && d <= prevToStr; });
     const revenue = periodSales.reduce((a, s) => a + (s.total || 0), 0);
     const profit = periodSales.reduce((a, s) => a + (s.price - (s.cost || 0)) * s.qty, 0);
     const prevRevenue = prevSales.reduce((a, s) => a + (s.total || 0), 0);
-    const debtsSnap = await db.collection('debts').get();
-    const newDebts = debtsSnap.docs.map((d) => d.data()).filter((d) => (d.date || '').slice(0, 10) >= fromStr);
+    const debtsSnap = await db.collection('debts').where('date', '>=', fromStr).get();
+    const newDebts = debtsSnap.docs.map((d) => d.data());
     const newDebtTotal = newDebts.reduce((a, d) => a + (d.total || 0), 0);
     const avgCheck = periodSales.length ? revenue / periodSales.length : 0;
     const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -1134,8 +1138,8 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   }
 
   if (cmd === '/top') {
-    const debtsSnap = await db.collection('debts').get();
-    const active = debtsSnap.docs.map((d) => d.data()).filter((d) => !d.paid);
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
+    const active = debtsSnap.docs.map((d) => d.data());
     const byPerson = new Map();
     active.forEach((d) => {
       const key = d.debtorId || d.debtorName || d.org || '?';
@@ -1188,8 +1192,8 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   }
 
   if (cmd === '/export') {
-    const debtsSnap = await db.collection('debts').get();
-    const active = debtsSnap.docs.map((d) => d.data()).filter((d) => !d.paid).sort((a, b) => debtRemaining(b) - debtRemaining(a));
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
+    const active = debtsSnap.docs.map((d) => d.data()).sort((a, b) => debtRemaining(b) - debtRemaining(a));
     if (!active.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q, eksport qilinadigan narsa yo'q.");
     const rows = [['Ism/Tashkilot', 'Telefon', 'Sana', 'Jami', "To'langan", 'Qoldiq', 'ID']];
     active.forEach((d) => rows.push([d.debtorName || d.org || '', d.phone || '', (d.date || '').slice(0, 10), d.total || 0, d.paidAmount || 0, debtRemaining(d), d.id]));
