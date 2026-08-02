@@ -104,6 +104,24 @@
     color:var(--ink-soft);
     margin-top:16px;
   }
+  .receipt-number{
+    text-align:center;
+    font-size:10px;
+    color:var(--ink-soft);
+    letter-spacing:.06em;
+    margin-top:4px;
+  }
+  .custom-lines{
+    margin-top:10px;
+    padding-top:8px;
+    border-top:1px dashed var(--line);
+  }
+  .custom-line{
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
   .stamp{
     display:inline-block;
     margin:14px auto 0;
@@ -281,7 +299,7 @@
       font:'mono', width:380,
       eyebrow:"Xarid tasdig'i", totalLabel:"Jami to'lov", stamp:'✓ Tasdiqlangan', linksTitle:"Bog'lanish va havolalar",
       showLogo:true, showAddress:true, showPhone:true, showHours:true, showSeller:true,
-      showUnitPrice:true, showStamp:true, showLinks:true
+      showUnitPrice:true, showStamp:true, showLinks:true, showReceiptNumber:true, customLines:[]
     };
   }
 
@@ -352,6 +370,9 @@
 
     const shopMeta = [d.showAddress && r.shopAddress, d.showPhone && r.shopPhone, d.showHours && r.workHours].filter(Boolean).join(' · ');
     const logoHtml = (d.showLogo && r.shopLogo) ? `<img src="${esc(r.shopLogo)}" alt="" style="width:44px;height:44px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:8px">` : '';
+    const customLinesHtml = (Array.isArray(d.customLines) && d.customLines.filter(l=>l && l.text).length)
+      ? `<div class="custom-lines">${d.customLines.filter(l=>l && l.text).map(l=>`<div class="custom-line">${esc(l.text)}</div>`).join('')}</div>`
+      : '';
     appEl.innerHTML = `
       <div class="receipt">
         <div class="eyebrow">${esc(d.eyebrow)}</div>
@@ -368,7 +389,9 @@
           <span class="value">${fmt(r.total)} so'm</span>
         </div>
         <div class="thanks">${esc(r.receiptFooter) || "Xaridingiz uchun rahmat!"}</div>
+        ${(d.showReceiptNumber && r.id) ? `<div class="receipt-number">Chek №: ${esc(String(r.id).slice(-8).toUpperCase())}</div>` : ''}
         ${d.showStamp ? `<div class="stamp-wrap"><span class="stamp">${esc(d.stamp)}</span></div>` : ''}
+        ${customLinesHtml}
         ${d.showLinks ? renderReceiptLinks(r.links, d) : ''}
       </div>`;
   }

@@ -504,22 +504,74 @@ function renderWeekChart(days){
 }
 
 // ---------------- SOTISH ----------------
+// ---------------- SOTUVCHI: SOTISH (kassa) ----------------
+// Boshqaruv panelidagi (index.html) "Sotish" bo'limi (#sell-grid) bilan BIR
+// XIL rasm-kartochka dizayni: rasm, zaxira miqdori belgisi, savatdagi son
+// va narx bitta kartada, ustida qidiruv maydoni. Ilgari bu yerda faqat
+// oddiy matnli ro'yxat bo'lgan — endi mijoz katalogidagi bilan bir xil
+// vizual uslub ishlatiladi (pastdagi CSS ham umumiy: .product-grid, .prod-card).
 function renderSell(app, d){
-  let html = `<div class="section-title">Tovar tanlang</div>`;
-  if (!d.products.length){ html += `<div class="card empty">Tovarlar yo'q. "Tovarlar" bo'limidan qo'shing.</div>`; }
-  d.products.forEach(p=>{
+  let html = `<div class="section-title">Tovar tanlang</div>
+    <input type="text" class="catalog-search" id="sell-search" placeholder="🔍 Tovar qidirish..." value="${esc(STATE.sellSearch||'')}" oninput="STATE.sellSearch=this.value; renderSellGrid()">`;
+  html += `<div class="product-grid" id="sell-grid-mini"></div>`;
+  app.innerHTML = html;
+  renderSellGrid();
+  renderCartBar(d);
+}
+// Faqat gridni qayta chizadi (qidiruv inputini emas) — foydalanuvchi
+// yozayotganda input fokusi/kursor joyi yo'qolmasligi uchun (katalogdagi
+// bilan bir xil mantiq).
+function renderSellGrid(){
+  const d = STATE.data;
+  const products = d.products || [];
+  const q = (STATE.sellSearch||'').trim().toLowerCase();
+  const filtered = q ? products.filter(p=>p.name.toLowerCase().includes(q)) : products;
+  const grid = document.getElementById('sell-grid-mini');
+  if (!grid) return;
+  if (!products.length){
+    grid.outerHTML = `<div class="card empty" id="sell-grid-empty">Tovarlar yo'q. "Tovarlar" bo'limidan qo'shing.</div>`;
+    return;
+  }
+  if (!filtered.length){
+    grid.innerHTML = '';
+    grid.insertAdjacentHTML('afterend', `<div class="card empty" id="sell-no-match">Hech narsa topilmadi.</div>`);
+    return;
+  }
+  const oldEmpty = document.getElementById('sell-no-match'); if (oldEmpty) oldEmpty.remove();
+  const lowStockThreshold = d.lowStockThreshold || 5;
+  grid.innerHTML = filtered.map(p=>{
     const qty = STATE.cart[p.id] || 0;
-    html += `<div class="card row">
-      <div><div class="name">${esc(p.name)}</div><div class="meta">${fmt(p.price)} ${cs()} · qoldiq: ${p.stock}</div></div>
-      <div class="qty-ctrl">
-        <button onclick="changeCartQty('${p.id}',-1)">−</button>
-        <span style="min-width:18px;text-align:center">${qty}</span>
-        <button onclick="changeCartQty('${p.id}',1)">+</button>
+    const out = p.stock === 0;
+    const low = !out && p.stock <= lowStockThreshold;
+    const cartBadge = qty>0 ? `<div class="cart-badge-overlay">${qty}</div>` : '';
+    return `<div class="prod-card ${out?'out':''}" data-id="${p.id}" onclick="sellCardTap(event,'${p.id}')">
+      <div class="img-wrap">
+        ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+        <div class="stock-badge"><span class="pill ${out?'out':low?'low':'in'}">${p.stock} ta</span></div>
+        ${cartBadge}
+      </div>
+      <div class="body">
+        <div class="prod-name">${esc(p.name)}</div>
+        ${p.volume ? `<div class="prod-meta">📦 ${esc(p.volume)}</div>` : ''}
+        <div class="prod-price">${fmt(p.price)} ${cs()}</div>
+        ${out ? '' : `<div class="qty-ctrl" onclick="event.stopPropagation()">
+          <button onclick="changeCartQty('${p.id}',-1)">−</button>
+          <span style="min-width:16px;text-align:center">${qty}</span>
+          <button onclick="changeCartQty('${p.id}',1)">+</button>
+        </div>`}
       </div>
     </div>`;
-  });
-  app.innerHTML = html;
-  renderCartBar(d);
+  }).join('');
+}
+// Kartaning rasm/nom qismiga bosilganda — katalogdagi bilan bir xil — bitta
+// dona darhol savatga qo'shiladi (miqdor tugmalari alohida, event.stopPropagation bilan himoyalangan).
+function sellCardTap(e, id){
+  const d = STATE.data;
+  const p = (d.products||[]).find(x=>x.id===id);
+  if (!p || p.stock===0) return;
+  changeCartQty(id, 1);
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 function changeCartQty(id, delta){
   const d = STATE.data;
@@ -530,7 +582,8 @@ function changeCartQty(id, delta){
   if (next < 0) next = 0;
   if (next > p.stock) { if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('error'); next = p.stock; }
   if (next === 0) delete STATE.cart[id]; else STATE.cart[id] = next;
-  renderSell(document.getElementById('app'), d);
+  renderSellGrid();
+  renderCartBar(d);
 }
 function cartTotal(){
   const d = STATE.data;
@@ -1188,13 +1241,32 @@ function openDesktopPanel(){
   if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
 }
 
+// TUZATILDI — IKKI MARTA BOSISH / QAYTA YUBORISH XATOSI: ilgari har bir
+// callAction() chaqiruvi hech qanday tekshiruvsiz darhol yangi tarmoq
+// so'rovi yuborardi. Sekin internetda yoki mobil ekranda tugmani ikki
+// marta bossa (masalan "Saqlash"), IKKI XIL so'rov ketardi va backend
+// amalni (masalan coin qo'shish) IKKI MARTA bajarardi — natijada 500
+// coin o'rniga 1000 coin yozilib qolgan holatlar shundan kelib chiqqan.
+// Endi: bir xil action+payload bilan so'rov hali javob kutayotgan bo'lsa,
+// YANGI tarmoq so'rovi yuborilmaydi — o'sha DAVOM ETAYOTGAN so'rovning
+// natijasi qaytariladi.
+const _pendingActionCalls = {};
 async function callAction(action, payload){
+  const sig = action + '::' + JSON.stringify(payload || {});
+  if (_pendingActionCalls[sig]) {
+    // Bu aynan shu amal allaqachon serverga yuborilgan va javob kutilmoqda —
+    // qayta yubormasdan o'sha so'rovning natijasini qaytaramiz.
+    return _pendingActionCalls[sig];
+  }
   const initData = tg ? tg.initData : '';
-  const res = await fetch(API_BASE + '/api/miniapp-action', {
+  const promise = fetch(API_BASE + '/api/miniapp-action', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ initData, action, payload })
+  }).then(res => res.json()).finally(() => {
+    delete _pendingActionCalls[sig];
   });
-  return res.json();
+  _pendingActionCalls[sig] = promise;
+  return promise;
 }
 
 async function submitPay(debtId){
