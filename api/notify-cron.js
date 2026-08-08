@@ -110,30 +110,55 @@ async function runNotify() {
     }
   }
 
-  // ---------- 2.5) Muddati belgilangan (dueDate) qarzlar — qarzdorga
-  // to'g'ridan-to'g'ri avtomatik eslatma (bir marta, muddat kelgan/o'tgan
-  // kunda, kuniga 1 marta) ----------
+  // ---------- 2.5) Muddati belgilangan (dueDate) qarzlar — KO'P BOSQICHLI
+  // avto-eslatma jadvali. YANGI: ilgari faqat BITTA eslatma yuborilardi
+  // (muddat kelgan/o'tgan kuni, kuniga 1 marta — lastAutoReminderDate orqali
+  // nazorat qilinardi). Endi admin Sozlamalar'da butun jadval belgilashi
+  // mumkin (`debtReminderOffsets`, masalan [-3,-1,0,3,7] — muddatdan necha
+  // kun OLDIN yoki necha kun O'TGACH eslatish kerakligi). Har bir bosqich
+  // faqat BIR MARTA yuboriladi — yuborilgan bosqichlar debt.remindersSent
+  // massivida saqlanadi (eski lastAutoReminderDate maydoni endi
+  // ishlatilmaydi, lekin eski yozuvlarga ham ta'sir qilmaydi). ----------
   {
+    const offsets = (Array.isArray(s.debtReminderOffsets) && s.debtReminderOffsets.length)
+      ? [...new Set(s.debtReminderOffsets.map((n) => parseInt(n, 10)).filter((n) => !isNaN(n)))].sort((a, b) => a - b)
+      : [0, 3, 7]; // standart: muddat kunida, 3 va 7 kun o'tgach
     const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
-    const dueToday = debtsSnap.docs.filter((docSnap) => {
-      const d = docSnap.data();
-      if (!d.dueDate) return false;
-      if (d.dueDate.slice(0, 10) > todayStr) return false; // muddat hali kelmagan
-      return d.lastAutoReminderDate !== todayStr; // bugun hali yuborilmagan
-    });
-    for (const docSnap of dueToday) {
+    const withDue = debtsSnap.docs.filter((docSnap) => docSnap.data().dueDate);
+    for (const docSnap of withDue) {
       const d = docSnap.data();
       const remaining = (d.total || 0) - (d.paidAmount || 0);
       if (remaining <= 0.5) continue;
+      const dueMs = new Date(d.dueDate.slice(0, 10)).getTime();
+      const daysFromDue = Math.round((new Date(todayStr).getTime() - dueMs) / 86400000);
+      // Bugungi kunga mos keladigan (yoki o'tib ketgan, hali yuborilmagan
+      // eng yaqin) bosqich(lar)ni topamiz. Faqat "daysFromDue >= offset"
+      // bo'lgan eng so'nggi (kattaroq) offsetni yuboramiz — shunda
+      // Cron bir kun ishlamay qolsa ham, oraliq bosqich butunlay
+      // tashlab ketilmaydi (eng yaqin mos bosqich baribir yuboriladi).
+      const sent = Array.isArray(d.remindersSent) ? d.remindersSent : [];
+      const dueOffsets = offsets.filter((off) => daysFromDue >= off && !sent.includes(off));
+      if (!dueOffsets.length) continue;
+      const stage = dueOffsets[dueOffsets.length - 1]; // eng yaqin/so'nggi mos bosqich
+
       let cid = null;
       if (d.debtorId) {
         const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
         cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
       }
-      const overdue = d.dueDate.slice(0, 10) < todayStr;
-      const text = `⏰ <b>${esc(shopName)}</b>\n\n${overdue ? "Qarzingizni to'lash muddati o'tib ketdi." : "Bugun qarzingizni to'lash muddati keldi."}\n💰 Qoldiq: <b>${fmt(remaining)} ${esc(currencySymbol)}</b>${d.note ? `\n📝 ${esc(d.note)}` : ''}`;
+      let situationText;
+      if (stage < 0) situationText = `Qarzingizni to'lash muddatiga ${Math.abs(stage)} kun qoldi.`;
+      else if (stage === 0) situationText = "Bugun qarzingizni to'lash muddati keldi.";
+      else situationText = `Qarzingizni to'lash muddati ${stage} kun oldin o'tib ketgan.`;
+      const text = `⏰ <b>${esc(shopName)}</b>\n\n${situationText}\n💰 Qoldiq: <b>${fmt(remaining)} ${esc(currencySymbol)}</b>${d.note ? `\n📝 ${esc(d.note)}` : ''}`;
       if (cid) await sendTelegramMessage(token, cid, text);
-      await docSnap.ref.update({ lastAutoReminderDate: todayStr });
+      // Bosqichlar ORTIB borgan holda saqlanadi — bugun bir nechta
+      // bosqich "yetib kelgan" bo'lsa (masalan cron bir necha kun
+      // ishlamagan), hammasi bir vaqtda "yuborilgan" deb belgilanadi
+      // (mijozga faqat bitta, eng dolzarb xabar yuboriladi, lekin
+      // o'tkazib yuborilgan bosqichlar qayta-qayta yuborilib
+      // yubormaydi).
+      await docSnap.ref.update({ remindersSent: admin.firestore.FieldValue.arrayUnion(...dueOffsets), lastAutoReminderDate: todayStr });
     }
   }
 

@@ -26,7 +26,11 @@ function verifyInitData(initData, botToken) {
     const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
     const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
-    if (computedHash !== hash) return null;
+    // XAVFSIZLIK: vaqt-hujumidan (timing attack) himoyalanish uchun
+    // oddiy !== o'rniga timingSafeEqual ishlatiladi.
+    const computedBuf = Buffer.from(computedHash, 'hex');
+    const hashBuf = Buffer.from(hash, 'hex');
+    if (computedBuf.length !== hashBuf.length || !crypto.timingSafeEqual(computedBuf, hashBuf)) return null;
 
     const authDate = parseInt(params.get('auth_date') || '0', 10);
     if (!authDate) return null;

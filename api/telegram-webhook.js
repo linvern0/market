@@ -27,6 +27,11 @@
 
 const admin = require('firebase-admin');
 const { computeCustomerTier, getCoinSettings, productCoinCost } = require('./_loyalty');
+// YANGI (Xavfsizlik/rollar kengaytmasi): batafsil huquqlar tekshiruvi va
+// amallar jurnali — miniapp-action.js'da ishlatilgan BIR XIL modullar,
+// shunda bot va Mini App bir xil qoidalar bilan ishlaydi.
+const { hasPermission } = require('./_permissions');
+const { logAction } = require('./_audit');
 
 let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
@@ -246,7 +251,23 @@ function adminRole(admins, chatId) {
   return (a && a.role) || 'owner';
 }
 function isOwnerChat(admins, chatId) { return adminRole(admins, chatId) === 'owner'; }
-const OWNER_ONLY_COMMANDS = new Set(['/admin_qoshish', '/admin_ochirish', '/admin_rol', '/broadcast']);
+function findAdminEntry(admins, chatId) { return admins.find((a) => String(a.chatId).trim() === String(chatId).trim()); }
+// YANGI: OLDIN faqat "owner/admin" ikki darajali tekshiruv bor edi (pastdagi
+// OWNER_ONLY_COMMANDS). Endi har bir buyruq kerakli BATAFSIL huquq (8 tadan
+// biri, api/_permissions.js) bilan bog'langan — owner har doim hammasiga
+// ruxsatli, oddiy admin esa faqat unga aniq berilgan huquqlar doirasida.
+// Buyruq shu ro'yxatda bo'lmasa — hech qanday alohida huquq talab qilinmaydi
+// (masalan /qarzlar, /statistika, /ombor kabi faqat KO'RISH buyruqlari).
+const COMMAND_PERMISSIONS = {
+  '/tolov': 'manageDebts',
+  '/qarz_qoshish': 'manageDebts',
+  '/tovar_narx': 'manageProducts',
+  '/broadcast': 'broadcast',
+  '/admin_qoshish': 'manageAdmins',
+  '/admin_ochirish': 'manageAdmins',
+  '/admin_rol': 'manageAdmins',
+  '/admin_huquq': 'manageAdmins',
+};
 
 // ============ YANGI: TUGMALI (INLINE) MENYU ============
 // Endi admin va mijoz buyruqlarni qo'lda yozmasdan, to'g'ridan-to'g'ri
@@ -257,7 +278,8 @@ const OWNER_ONLY_COMMANDS = new Set(['/admin_qoshish', '/admin_ochirish', '/admi
 // takrorlanmaydi.
 function adminMenuKeyboard(req) {
   const rows = [
-    [{ text: '📋 Qarzlar', callback_data: 'cmd:/qarzlar' }, { text: '🏆 TOP qarzdorlar', callback_data: 'cmd:/top' }],
+    [{ text: '📋 Qarzlar', callback_data: 'cmd:/qarzlar' }, { text: '🗓 Muddatlar', callback_data: 'cmd:/muddatlar' }],
+    [{ text: '🏆 TOP qarzdorlar', callback_data: 'cmd:/top' }],
     [{ text: '📊 Bugungi', callback_data: 'cmd:/statistika' }, { text: '📆 Haftalik', callback_data: 'cmd:/haftalik' }, { text: '🗓 Oylik', callback_data: 'cmd:/oylik' }],
     [{ text: '📦 Ombor holati', callback_data: 'cmd:/ombor' }, { text: '📄 Export (CSV)', callback_data: 'cmd:/export' }],
     [{ text: '👤 Adminlar', callback_data: 'cmd:/adminlar' }],
@@ -300,6 +322,7 @@ function helpText(isAdmin) {
       `🗂 /menu — Tugmali tezkor menyu (qarzlar, statistika, ombor va h.k. — hech narsa yozmasdan, bosish bilan)\n\n` +
       `Buyruqlar ixtiyoriy, tezkor holatlar uchun hamon mavjud:\n` +
       `/qarzlar — faol (to'lanmagan) qarzlar ro'yxati\n` +
+      `/muddatlar — muddati yaqinlashgan/o'tgan qarzlar ro'yxati (dueDate belgilanganlar)\n` +
       `/qarz &lt;ism yoki telefon&gt; — muayyan mijoz qarzlarini qidirish\n` +
       `/tolov &lt;ID&gt; &lt;summa&gt; — qarzga to'lov qo'shish\n` +
       `/qarz_qoshish Ism; Telefon; Summa; Izoh — yangi qarz yozish\n` +
@@ -316,16 +339,20 @@ function helpText(isAdmin) {
       `/adminlar — admin ro'yxati (rollari bilan)\n` +
       `/admin_qoshish &lt;chatId/@username/tel&gt; &lt;Ism&gt; [owner] — yangi admin qo'shish 👑\n` +
       `/admin_ochirish &lt;chatId/@username/tel&gt; — adminni o'chirish 👑\n` +
-      `/admin_rol &lt;chatId/@username/tel&gt; &lt;owner|admin&gt; — admin rolini o'zgartirish 👑\n\n` +
+      `/admin_rol &lt;chatId/@username/tel&gt; &lt;owner|admin&gt; — admin rolini o'zgartirish 👑\n` +
+      `/admin_huquq &lt;chatId/@username/tel&gt; &lt;huquq&gt; &lt;yes|off&gt; — bitta admin huquqini yoqish/o'chirish 👑\n\n` +
       `🛒 <b>Sotuvchilarni ham botga ulash mumkin:</b> Boshqaruv paneli -> Sozlamalar -> ` +
       `Sotuvchilar bo'limida sotuvchining Telegram username'ini kiriting — u botga ` +
       `/start yozganda, PIN kiritmasdan avtomatik o'z hisobi bilan savdo panelini ocha oladi.\n\n` +
       `💡 /qarzlar va /qarz natijalarida endi har bir qarz ostida ` +
       `"✅ To'liq to'landi" tugmasi bor — bosilsa, qo'lda summa yozmasdan ` +
       `bir zumda to'liq yopiladi.\n\n` +
-      `👑 belgili buyruqlar faqat <b>bosh admin (owner)</b> uchun. Oddiy ` +
-      `adminlar (sotuvchilar) qolgan barcha buyruqlarni to'liq ishlata oladi, ` +
-      `lekin admin qo'shish/o'chirish va ommaviy xabar (/broadcast) yubora olmaydi.`;
+      `👑 belgili buyruqlar standart holatda faqat <b>bosh admin (owner)</b> ` +
+      `uchun ishlaydi. Oddiy adminlar (sotuvchilar) kundalik buyruqlarni ` +
+      `to'liq ishlata oladi, lekin bosh admin ularga aniq huquq bermagan ` +
+      `bo'lsa, admin qo'shish/o'chirish va ommaviy xabar (/broadcast) kabi ` +
+      `amallarni bajara olmaydi (huquqlar boshqaruv panelidagi "🔐 Adminlar ` +
+      `va huquqlar" oynasidan sozlanadi).`;
   } else {
     t += `Bu bot orqali qarzingiz va to'lovlaringiz haqida xabar olasiz.\n\n` +
       `✅ Hech qanday tugma bosish shart emas — do'kon administratori sizni ` +
@@ -998,10 +1025,13 @@ async function handleCustomerPaymentHistory(db, token, chatId, req) {
 async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req) {
   const shopName = (await settingsRef.get()).data()?.shopName || "Do'kon";
 
-  // YANGI: rol tekshiruvi — admin boshqaruvi va ommaviy xabar faqat
-  // "owner" (bosh admin) uchun. Oddiy admin (sotuvchi) shu yerda to'xtaydi.
-  if (OWNER_ONLY_COMMANDS.has(cmd) && !isOwnerChat(admins, chatId)) {
-    return sendMessage(token, chatId, "⛔ Bu buyruq faqat bosh admin (owner) uchun mavjud. Ruxsat kerak bo'lsa, bosh administratorga murojaat qiling.");
+  // YANGI: batafsil huquq tekshiruvi (owner har doim ruxsatli, oddiy admin
+  // faqat unga aniq berilgan huquqlar doirasida) — avvalgi ikki darajali
+  // (OWNER_ONLY_COMMANDS) tekshiruv o'rniga.
+  const adminEntry = findAdminEntry(admins, chatId);
+  const requiredPerm = COMMAND_PERMISSIONS[cmd];
+  if (requiredPerm && !hasPermission(adminEntry, requiredPerm)) {
+    return sendMessage(token, chatId, `⛔ Bu buyruq uchun sizda ruxsat yo'q (kerakli huquq: ${requiredPerm}). Ruxsat kerak bo'lsa, bosh administratorga murojaat qiling.`);
   }
 
   if (cmd === '/menu' || cmd === '/menyu') {
@@ -1018,6 +1048,27 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     active.forEach((d) => { text += `• ${esc(d.debtorName || d.org || '?')} — ${fmt(debtRemaining(d))} so'm\n  ID: <code>${esc(d.id)}</code>\n`; });
     text += `\nQisman to'lov: <code>/tolov ID summa</code>\nYoki pastdagi tugma orqali bir zumda to'liq yoping:`;
     const keyboard = { inline_keyboard: active.map((d) => [{ text: `✅ ${(d.debtorName || d.org || '?').slice(0, 20)} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
+    return sendMessage(token, chatId, text, { reply_markup: keyboard });
+  }
+
+  // YANGI: muddati belgilangan (dueDate) qarzlar ro'yxati — muddatdan
+  // o'tganlar tepada (🔴), so'ng eng yaqin muddatlilar (🟡), muddat
+  // bo'yicha o'sish tartibida.
+  if (cmd === '/muddatlar') {
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
+    const withDue = debtsSnap.docs.map((d) => d.data()).filter((d) => d.dueDate);
+    if (!withDue.length) return sendMessage(token, chatId, "✅ Muddati belgilangan faol qarz yo'q.");
+    const todayStr = new Date().toISOString().slice(0, 10);
+    withDue.sort((a, b) => a.dueDate.slice(0, 10).localeCompare(b.dueDate.slice(0, 10)));
+    let text = `🗓 <b>Muddati belgilangan qarzlar</b> (${withDue.length} ta)\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n`;
+    const shown = withDue.slice(0, 20);
+    shown.forEach((d) => {
+      const dueStr = d.dueDate.slice(0, 10);
+      const badge = dueStr < todayStr ? '🔴 o\'tgan' : dueStr === todayStr ? '🟠 bugun' : '🟡 kutilmoqda';
+      text += `${badge} — <b>${esc(d.debtorName || d.org || '?')}</b> — ${fmt(debtRemaining(d))} so'm\n  Muddat: ${new Date(dueStr).toLocaleDateString('uz-UZ')} · ID: <code>${esc(d.id)}</code>\n`;
+    });
+    if (withDue.length > shown.length) text += `\n… va yana ${withDue.length - shown.length} ta. To'liq ro'yxat uchun boshqaruv panelidagi "🗓 Muddat kalendari"dan foydalaning.`;
+    const keyboard = { inline_keyboard: shown.map((d) => [{ text: `✅ ${(d.debtorName || d.org || '?').slice(0, 20)} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
     return sendMessage(token, chatId, text, { reply_markup: keyboard });
   }
 
@@ -1055,6 +1106,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const patch = { paidAmount: admin.firestore.FieldValue.increment(applied), payments: admin.firestore.FieldValue.arrayUnion(payment) };
     if (isFullyPaid) { patch.paid = true; patch.paidDate = payment.date; }
     await debtDoc.ref.update(patch);
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_payment', detail: `${d.debtorName || d.org || '?'} — ${applied} so'm (/tolov)` });
     await sendMessage(token, chatId, `✅ ${fmt(applied)} so'm to'lov qabul qilindi: ${esc(d.debtorName || d.org || '')}${isFullyPaid ? '\n🎉 Qarz to\'liq yopildi!' : `\nQoldiq: ${fmt(remaining - applied)} so'm`}`);
     if (d.debtorId) {
       const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
@@ -1077,6 +1129,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const debtId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const debt = { id: debtId, debtorId, debtorName: name, org: '', phone: phone || '', items: [], total: amount, paid: false, paidDate: null, date: now, note: note || 'Telegram bot orqali qo\'shildi', seller: 'Telegram admin', type: 'person' };
     await db.collection('debts').doc(debtId).set(debt);
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_create', detail: `${name} — ${amount} so'm (/qarz_qoshish)` });
     await sendMessage(token, chatId, `✅ Yangi qarz yozildi: ${esc(name)} — ${fmt(amount)} so'm`);
     return;
   }
@@ -1195,6 +1248,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
       const results = await Promise.allSettled(chunk.map((cid) => sendMessage(token, cid, `📢 <b>${esc(shopName)}</b>\n\n${esc(text)}`)));
       sent += results.filter((r) => r.status === 'fulfilled' && r.value && r.value.ok).length;
     }
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'broadcast', detail: `${sent}/${targets.length} ta mijozga: "${text.slice(0, 80)}"` });
     return sendMessage(token, chatId, `✅ Xabar ${sent}/${targets.length} ta mijozga yetkazildi.`);
   }
 
@@ -1242,7 +1296,9 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const found = productsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q));
     if (!found.length) return sendMessage(token, chatId, "Tovar topilmadi.");
     if (found.length > 1) return sendMessage(token, chatId, `Bir nechta tovar topildi, aniqroq nom kiriting:\n${found.slice(0, 10).map((d) => '• ' + esc(d.data().name)).join('\n')}`);
+    const oldPrice = found[0].data().price;
     await found[0].ref.update({ price: newPrice });
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'product_price_update', detail: `${found[0].data().name}: ${oldPrice} → ${newPrice} so'm (/tovar_narx)` });
     return sendMessage(token, chatId, `✅ "${esc(found[0].data().name)}" narxi ${fmt(newPrice)} so'mga yangilandi.`);
   }
 
@@ -1287,6 +1343,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     admins.push(newAdmin);
     await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_add', detail: `${name} — ${role} (/admin_qoshish)` });
     const roleLabel = role === 'owner' ? '👑 owner (bosh admin)' : '🧑‍💼 admin (cheklangan)';
     if (newAdmin.chatId) {
       await sendMessage(token, chatId, `✅ Yangi admin qo'shildi: ${esc(name)} (${esc(newAdmin.chatId)}) — ${roleLabel}`);
@@ -1314,7 +1371,35 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     const remaining = admins.filter((a) => a !== targetAdmin);
     await settingsRef.set({ telegramAdmins: remaining }, { merge: true });
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_remove', detail: `${targetAdmin.name || target} (/admin_ochirish)` });
     return sendMessage(token, chatId, `✅ Admin o'chirildi (${esc(targetAdmin.name || target)}).`);
+  }
+
+  // YANGI: bitta huquqni yoqish/o'chirish — Mini App/panel'dagi
+  // "update_admin_permissions" amali bilan bir xil natija, botdan ham.
+  if (cmd === '/admin_huquq') {
+    const parts = argStr.trim().split(/\s+/);
+    const target = parts[0];
+    const permKey = parts[1];
+    const val = parts[2];
+    const { PERMISSION_KEYS, defaultPermissionsForRole } = require('./_permissions');
+    const validKeys = PERMISSION_KEYS.map((p) => p.key);
+    if (!target || !validKeys.includes(permKey) || (val !== 'yes' && val !== 'off')) {
+      return sendMessage(token, chatId, `Foydalanish: /admin_huquq <chatId/@username/tel> <huquq> <yes|off>\nHuquqlar: ${validKeys.join(', ')}`);
+    }
+    const uKey = usernameKey(target);
+    const pKey = phoneKey(target);
+    const targetAdmin = admins.find((a) => String(a.chatId) === target || (target.startsWith('@') && usernameKey(a.username) === uKey) || (pKey && phoneKey(a.phone) === pKey));
+    if (!targetAdmin) return sendMessage(token, chatId, "Bunday admin topilmadi.");
+    if ((targetAdmin.role || 'owner') === 'owner') return sendMessage(token, chatId, "👑 Owner har doim barcha huquqlarga ega — cheklab bo'lmaydi.");
+    const perms = targetAdmin.permissions && typeof targetAdmin.permissions === 'object' ? { ...targetAdmin.permissions } : defaultPermissionsForRole('admin');
+    perms[permKey] = val === 'yes';
+    targetAdmin.permissions = perms;
+    await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_permission_update', detail: `${targetAdmin.name || target}: ${permKey} → ${val} (/admin_huquq)` });
+    await sendMessage(token, chatId, `✅ ${esc(targetAdmin.name || target)} uchun "${permKey}" huquqi ${val === 'yes' ? 'YOQILDI' : "O'CHIRILDI"}.`);
+    if (targetAdmin.chatId) await sendMessage(token, targetAdmin.chatId, `ℹ️ Sizning "${permKey}" huquqingiz ${val === 'yes' ? 'yoqildi' : "o'chirildi"}.`).catch(() => {});
+    return;
   }
 
   if (cmd === '/admin_rol') {
@@ -1332,6 +1417,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     targetAdmin.role = newRole;
     await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_role_update', detail: `${targetAdmin.name || target} → ${newRole} (/admin_rol)` });
     await sendMessage(token, chatId, `✅ ${esc(targetAdmin.name || target)} roli — ${newRole === 'owner' ? '👑 owner' : '🧑‍💼 admin'} qilib o'zgartirildi.`);
     if (targetAdmin.chatId) await sendMessage(token, targetAdmin.chatId, `ℹ️ Sizning admin rolingiz ${newRole === 'owner' ? '👑 owner (bosh admin)' : '🧑‍💼 admin (cheklangan)'} ga o'zgartirildi.`).catch(() => {});
     return;
@@ -1347,7 +1433,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 // keladi. Admin buyruqlari uchun handleAdminCommand'ni, mijoz (qarzdor)
 // buyruqlari uchun mos handler funksiyani chaqiramiz — mantiq matn buyruq
 // bilan AYNAN bir xil, faqat ikkinchi marta yozilmaydi.
-const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
+const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/muddatlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
 const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/ballarim', '/coinlarim']);
 
 // ============ YANGI: MIJOZ BUYURTMASI — TASDIQLASH / BEKOR QILISH ============
@@ -1564,6 +1650,10 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   }
 
   if (!data.startsWith('pay_full:')) { await answerCallbackQuery(token, cq.id); return; }
+  // YANGI: qarzni to'lash "manageDebts" huquqini talab qiladi — owner har
+  // doim ruxsatli, cheklangan admin esa faqat shu huquq berilgan bo'lsa.
+  const cqAdminEntry = findAdminEntry(admins, chatId);
+  if (!hasPermission(cqAdminEntry, 'manageDebts')) { await answerCallbackQuery(token, cq.id, "⛔ Sizda qarzlarni boshqarish huquqi yo'q.", true); return; }
   const debtId = data.slice('pay_full:'.length);
   const debtRef = db.collection('debts').doc(debtId);
   const debtSnap = await debtRef.get();
@@ -1579,6 +1669,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     paid: true,
     paidDate: payment.date,
   });
+  await logAction(db, { source: 'bot', actorName: cqAdminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_payment', detail: `${d.debtorName || d.org || '?'} — ${remaining} so'm (tez tugma to'liq to'lov)` });
   await answerCallbackQuery(token, cq.id, `✅ ${fmt(remaining)} so'm — to'liq yopildi!`);
   if (cq.message && cq.message.text) {
     const newText = cq.message.text + `\n\n✅ <b>${esc(d.debtorName || d.org || '?')}</b> qarzi (${fmt(remaining)} so'm) hozir to'liq yopildi.`;

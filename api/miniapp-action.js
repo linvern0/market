@@ -11,7 +11,9 @@
 //   delete_product  { id }
 //   restock         { id, qty }              -> omborga tovar kirimi
 //   sell            { items:[{productId,qty}], mode:'cash'|'debt',
-//                      debtorId?, name?, org?, phone?, note? }
+//                      debtorId?, name?, org?, phone?, note?, customerId? }
+//                      (customerId — faqat naqd sotuvda, sodiqlik mijoziga coin/xarid tarixini bog'lash uchun)
+//   revert_sale     { receiptId }                             -> savdoni bekor qilish/qaytarish (faqat revertMinutes ichida)
 //   upsert_debtor   { id?, name, org, phone, telegramUsername, viewScope }
 //   delete_debtor   { id }
 //   send_debt_reminder { debtorId }          -> shu odamga batafsil eslatma
@@ -32,6 +34,8 @@
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
 const { productCoinCost, getCoinSettings } = require('./_loyalty');
+const { hasPermission } = require('./_permissions');
+const { logAction } = require('./_audit');
 
 function getDb() { return require('./_firebase').getDb(); }
 
@@ -63,6 +67,18 @@ function debtDetailText(d, currencySymbol) {
   return text;
 }
 
+// YANGI: "Qarz limiti". Har bir qarzdorda ixtiyoriy `creditLimit` maydoni
+// bo'lishi mumkin (0/bo'sh — cheklovsiz). Agar bo'lmasa, umumiy sozlamadagi
+// `defaultCreditLimit` ishlatiladi (u ham 0/bo'sh bo'lsa — cheklovsiz).
+// Qaytaradi: { limit, currentRemaining, wouldExceed }.
+async function checkCreditLimit(db, debtorData, settings, newAmount) {
+  const limit = (debtorData && debtorData.creditLimit) ? Number(debtorData.creditLimit) : (Number(settings.defaultCreditLimit) || 0);
+  if (!limit || limit <= 0) return { limit: 0, currentRemaining: 0, wouldExceed: false };
+  const snap = await db.collection('debts').where('debtorId', '==', debtorData.id).where('paid', '==', false).get();
+  const currentRemaining = snap.docs.reduce((a, d) => a + debtRemaining(d.data()), 0);
+  return { limit, currentRemaining, wouldExceed: (currentRemaining + newAmount) > limit };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ ok: false, error: 'method_not_allowed' }); return; }
   try {
@@ -81,8 +97,27 @@ module.exports = async (req, res) => {
 
     const chatId = String(user.id);
     const admins = Array.isArray(settings.telegramAdmins) ? settings.telegramAdmins : [];
-    const isAdmin = admins.some((a) => String(a.chatId).trim() === chatId);
+    // YANGI (Xavfsizlik/rollar): endi shunchaki "adminmi/emasmi" emas, balki
+    // BUTUN admin yozuvi (role + permissions) saqlanadi — quyida har bir
+    // xavfli amal shu yozuv asosida (forbid()) tekshiriladi.
+    const adminEntry = admins.find((a) => String(a.chatId).trim() === chatId) || null;
+    const isAdmin = !!adminEntry;
+    const actorName = (adminEntry && adminEntry.name) || (user.first_name || '') + (user.last_name ? ' ' + user.last_name : '') || 'Admin';
     const p = payload || {};
+    // Ruxsat yo'q bo'lsa 403 qaytaradi (va true qaytaradi — chaqiruvchi
+    // shundan keyin darhol `return` qilishi kerak).
+    function forbid(permKey) {
+      if (!hasPermission(adminEntry, permKey)) {
+        res.status(403).json({ ok: false, error: 'no_permission', permission: permKey });
+        return true;
+      }
+      return false;
+    }
+    // Har bir muhim amaldan so'ng chaqiriladi — xatolik bo'lsa ham asosiy
+    // amalga ta'sir qilmaydi (logAction ichida try/catch bor).
+    function audit(action, detail) {
+      logAction(db, { source: 'miniapp', actorName, actorChatId: chatId, action, detail });
+    }
 
     // ---------------- MIJOZ (SODIQLIK DASTURI): BUYURTMA BERISH ----------------
     // Bu yagona amal — admin bo'lmagan foydalanuvchi ham chaqira oladi
@@ -222,6 +257,7 @@ module.exports = async (req, res) => {
 
     // ---------------- QARZGA TO'LOV ----------------
     if (action === 'pay_debt') {
+      if (forbid('manageDebts')) return;
       const { debtId, amount } = p;
       const amt = parseFloat(amount);
       if (!debtId || isNaN(amt) || amt <= 0) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
@@ -238,6 +274,7 @@ module.exports = async (req, res) => {
       const patch = { paidAmount: admin.firestore.FieldValue.increment(applied), payments: admin.firestore.FieldValue.arrayUnion(paymentRec) };
       if (isFullyPaid) { patch.paid = true; patch.paidDate = paymentRec.date; }
       await debtRef.update(patch);
+      audit('pay_debt', `${d.debtorName || ''} — ${fmt(applied)} ${currencySymbol}${isFullyPaid ? ' (to\'liq yopildi)' : ''}`);
 
       if (d.debtorId) {
         const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
@@ -252,6 +289,7 @@ module.exports = async (req, res) => {
 
     // ---------------- ESKI: FAQAT NARX (moslik uchun saqlab qolindi) ----------------
     if (action === 'update_price') {
+      if (forbid('manageProducts')) return;
       const { productName, price } = p;
       const newPrice = parseFloat(price);
       if (!productName || isNaN(newPrice) || newPrice < 0) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
@@ -264,14 +302,15 @@ module.exports = async (req, res) => {
 
     // ---------------- TOVAR: YARATISH / TAHRIRLASH / O'CHIRISH ----------------
     if (action === 'create_product') {
-      const { name, price, cost, points, coinCost, stock, volume, note } = p;
+      if (forbid('manageProducts')) return;
+      const { name, price, cost, points, coinCost, stock, volume, note, img } = p;
       if (!name || isNaN(parseFloat(price))) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const id = uid();
       const doc = {
         id, name: String(name).trim(), price: parseFloat(price) || 0, cost: parseFloat(cost) || 0,
         points: (points === null || points === undefined || points === '') ? null : Math.max(0, parseInt(points, 10) || 0),
         coinCost: (coinCost === null || coinCost === undefined || coinCost === '') ? null : Math.max(0, parseInt(coinCost, 10) || 0),
-        stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: '',
+        stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: img || '',
       };
       await db.collection('products').doc(id).set(doc);
       res.status(200).json({ ok: true, product: doc });
@@ -279,9 +318,10 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'update_product') {
+      if (forbid('manageProducts')) return;
       const { id, patch } = p;
       if (!id || !patch) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
-      const allowed = ['name', 'price', 'cost', 'points', 'coinCost', 'stock', 'volume', 'note'];
+      const allowed = ['name', 'price', 'cost', 'points', 'coinCost', 'stock', 'volume', 'note', 'img'];
       const clean = {};
       allowed.forEach((k) => {
         if (patch[k] === undefined) return;
@@ -300,14 +340,18 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'delete_product') {
+      if (forbid('manageProducts') || forbid('deleteRecords')) return;
       const { id } = p;
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const pSnap = await db.collection('products').doc(id).get();
       await db.collection('products').doc(id).delete();
+      audit('delete_product', pSnap.exists ? pSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;
     }
 
     if (action === 'restock') {
+      if (forbid('manageProducts')) return;
       const { id, qty } = p;
       const q = parseInt(qty, 10);
       if (!id || isNaN(q) || q <= 0) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
@@ -325,9 +369,12 @@ module.exports = async (req, res) => {
 
     // ---------------- SOTISH (naqd yoki nasiya/qarzga) ----------------
     if (action === 'sell') {
-      const { items, mode, debtorId, name, org, phone, note, dueDate } = p;
+      const { items, mode, debtorId, name, org, phone, note, dueDate, customerId, forceOverLimit } = p;
       if (!Array.isArray(items) || !items.length) { res.status(400).json({ ok: false, error: 'no_items' }); return; }
-      if (mode === 'debt' && !debtorId && !(name || '').trim()) { res.status(400).json({ ok: false, error: 'debtor_name_required' }); return; }
+      if (mode === 'debt') {
+        if (forbid('manageDebts')) return;
+        if (!debtorId && !(name || '').trim()) { res.status(400).json({ ok: false, error: 'debtor_name_required' }); return; }
+      }
 
       // Tovarlarni o'qib, zaxirani tekshiramiz
       const productRefs = items.map((it) => db.collection('products').doc(it.productId));
@@ -345,6 +392,11 @@ module.exports = async (req, res) => {
       const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
       const now = new Date().toISOString();
       const seller = 'Admin (Mini App)';
+      // YANGI: bitta xarid (checkout) ichidagi barcha qatorlarni bitta
+      // receiptId bilan bog'laymiz — bu web-panelidagi ("index.html")
+      // savdo tarixi bilan BIR XIL mantiq: chek chop etish va "↩ Qaytarish"
+      // (revert_sale) shu receiptId orqali butun xaridni birdaniga qaytaradi.
+      const receiptId = uid();
 
       // Zaxirani kamaytiramiz
       await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(-x.qty) })));
@@ -371,6 +423,20 @@ module.exports = async (req, res) => {
           }
         }
 
+        // YANGI: qarz limiti tekshiruvi (agar shu qarzdor/umumiy sozlamada
+        // belgilangan bo'lsa). Limitdan oshsa va admin ataylab
+        // (forceOverLimit) tasdiqlamagan bo'lsa — savdo YOZILMAYDI (lekin
+        // zaxira allaqachon kamaytirilgan bo'lishi mumkin, shu sabab avval
+        // tekshirib, keyin zaxirani kamaytirish tartibiga rioya qilamiz —
+        // pastda buni to'g'rilaymiz).
+        const limitCheck = await checkCreditLimit(db, debtorData, settings, total);
+        if (limitCheck.wouldExceed && !forceOverLimit) {
+          // Bu holatda zaxira allaqachon kamaytirilgan (yuqorida) — qaytaramiz.
+          await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(x.qty) })));
+          res.status(409).json({ ok: false, error: 'credit_limit_exceeded', limit: limitCheck.limit, currentRemaining: limitCheck.currentRemaining, newAmount: total });
+          return;
+        }
+
         const debtItems = lineItems.map((x) => ({ productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price, subtotal: x.subtotal }));
         const debtId = uid();
         const debtDoc = {
@@ -380,7 +446,7 @@ module.exports = async (req, res) => {
         await db.collection('debts').doc(debtId).set(debtDoc);
 
         await Promise.all(lineItems.map((x) => db.collection('sales').doc(uid()).set({
-          id: uid(), productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
+          id: uid(), receiptId, productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
           cost: x.product.cost || 0, total: x.subtotal, seller, date: now, reverted: false, isDebt: true, debtorName: debtorData.name, org: debtorData.org || '',
         })));
 
@@ -388,6 +454,7 @@ module.exports = async (req, res) => {
           const text = `🧾 <b>${esc(shopName)}</b>\n\nSizga yangi qarz yozildi:\n\n${debtDetailText(debtDoc, currencySymbol)}\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>`;
           await tgSendMessage(token, debtorData.telegramChatId, text);
         }
+        audit('sell_debt', `${debtorData.name || ''} — ${fmt(total)} ${currencySymbol}`);
 
         res.status(200).json({ ok: true, total, debtId, debtorId: debtorData.id });
         return;
@@ -395,10 +462,63 @@ module.exports = async (req, res) => {
 
       // Naqd sotish
       await Promise.all(lineItems.map((x) => db.collection('sales').doc(uid()).set({
-        id: uid(), productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
+        id: uid(), receiptId, productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
         cost: x.product.cost || 0, total: x.subtotal, seller, date: now, reverted: false, isDebt: false,
       })));
-      res.status(200).json({ ok: true, total });
+
+      // YANGI: agar naqd sotuv sodiqlik mijoziga bog'langan bo'lsa (mijoz
+      // katalogdan tanlangan) — web-paneldagi applyCustomerPurchase bilan
+      // BIR XIL mantiq: totalSpent/purchaseCount oshadi va coin hisoblanadi
+      // (settings.coinSettings.earnPerAmount bo'yicha).
+      let pointsEarned = 0;
+      if (customerId) {
+        const custRef = db.collection('customers').doc(customerId);
+        const custSnap = await custRef.get();
+        if (custSnap.exists) {
+          const { earnPerAmount } = getCoinSettings(settings);
+          pointsEarned = Math.floor(total / earnPerAmount);
+          const c = custSnap.data();
+          await custRef.update({
+            totalSpent: admin.firestore.FieldValue.increment(total),
+            purchaseCount: admin.firestore.FieldValue.increment(1),
+            points: admin.firestore.FieldValue.increment(pointsEarned),
+            lastPurchaseAt: now,
+          });
+        }
+      }
+      res.status(200).json({ ok: true, total, receiptId, pointsEarned });
+      return;
+    }
+
+    // ---------------- SAVDONI BEKOR QILISH / QAYTARISH ----------------
+    // Web-paneldagi ("index.html") revertSaleGroup/adminRevertGroup bilan BIR
+    // XIL mantiq: receiptId bo'yicha barcha (hali qaytarilmagan) savdo
+    // qatorlari "reverted:true" deb belgilanadi va omborga tovar qaytariladi.
+    // Faqat admin va faqat sozlamalardagi "revertMinutes" oynasi ichida.
+    if (action === 'revert_sale') {
+      if (!isAdmin) { res.status(403).json({ ok: false, error: 'not_admin' }); return; }
+      const { receiptId } = p;
+      if (!receiptId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const salesSnap = await db.collection('sales').where('receiptId', '==', receiptId).get();
+      const docs = salesSnap.docs.filter((d) => !d.data().reverted);
+      if (!docs.length) { res.status(404).json({ ok: false, error: 'sale_not_found' }); return; }
+      const revertMinutes = settings.revertMinutes || 30;
+      const nowMs = Date.now();
+      const expired = docs.some((d) => {
+        const t = new Date(d.data().date).getTime();
+        return isNaN(t) || (nowMs - t) / 60000 > revertMinutes;
+      });
+      if (expired) { res.status(400).json({ ok: false, error: 'revert_window_expired' }); return; }
+      await Promise.all(docs.map(async (d) => {
+        const s = d.data();
+        await d.ref.update({ reverted: true });
+        if (s.productId) {
+          await db.collection('products').doc(s.productId)
+            .update({ stock: admin.firestore.FieldValue.increment(s.qty || 0) })
+            .catch(() => {});
+        }
+      }));
+      res.status(200).json({ ok: true });
       return;
     }
 
@@ -406,7 +526,8 @@ module.exports = async (req, res) => {
     // Tovar sotilmaydi — kassadan to'g'ridan-to'g'ri naqd pul beriladi va bu
     // pul qarz sifatida yoziladi (mahsulot/ombor/sales'ga tegmaydi).
     if (action === 'cash_loan') {
-      const { debtorId, name, org, phone, amount, note, dueDate } = p;
+      if (forbid('manageDebts')) return;
+      const { debtorId, name, org, phone, amount, note, dueDate, forceOverLimit } = p;
       const amt = parseFloat(amount);
       if (isNaN(amt) || amt <= 0) { res.status(400).json({ ok: false, error: 'bad_amount' }); return; }
       if (!debtorId && !(name || '').trim()) { res.status(400).json({ ok: false, error: 'debtor_name_required' }); return; }
@@ -432,6 +553,12 @@ module.exports = async (req, res) => {
         }
       }
 
+      const limitCheck = await checkCreditLimit(db, debtorData, settings, amt);
+      if (limitCheck.wouldExceed && !forceOverLimit) {
+        res.status(409).json({ ok: false, error: 'credit_limit_exceeded', limit: limitCheck.limit, currentRemaining: limitCheck.currentRemaining, newAmount: amt });
+        return;
+      }
+
       const now = new Date().toISOString();
       const debtId = uid();
       const debtDoc = {
@@ -441,6 +568,7 @@ module.exports = async (req, res) => {
         type: debtorData.org ? 'organization' : 'person', isCashLoan: true,
       };
       await db.collection('debts').doc(debtId).set(debtDoc);
+      audit('cash_loan', `${debtorData.name || ''} — ${fmt(amt)} ${currencySymbol}`);
 
       // Kassadan naqd pul chiqimi sifatida ham qayd etamiz (hisobot/eksport uchun).
       await db.collection('cashLoans').doc(debtId).set({
@@ -459,10 +587,13 @@ module.exports = async (req, res) => {
 
     // ---------------- QARZDORLAR: YARATISH / TAHRIRLASH / O'CHIRISH ----------------
     if (action === 'upsert_debtor') {
-      const { id, name, org, phone, telegramUsername, telegramUserId, viewScope } = p;
+      if (forbid('manageDebts')) return;
+      const { id, name, org, phone, telegramUsername, telegramUserId, viewScope, creditLimit } = p;
       if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const cleanScope = viewScope === 'org' ? 'org' : 'own';
       const cleanTgId = String(telegramUserId || '').replace(/\D/g, '');
+      // YANGI: qarz limiti — bo'sh/0 = cheklovsiz.
+      const cleanCreditLimit = (creditLimit === undefined) ? undefined : (Math.max(0, parseFloat(creditLimit) || 0) || 0);
       const now = new Date().toISOString();
       if (id) {
         const ref = db.collection('debtors').doc(id);
@@ -472,6 +603,7 @@ module.exports = async (req, res) => {
           name: String(name).trim(), org: org || '', phone: phone || '',
           telegramUsername: (telegramUsername || '').replace(/^@/, ''), telegramUserId: cleanTgId, viewScope: cleanScope,
         };
+        if (cleanCreditLimit !== undefined) patch.creditLimit = cleanCreditLimit;
         // Agar username yoki Telegram ID BOSHQA (bo'sh emas) qiymatga
         // o'zgartirilgan bo'lsa, eski chatId endi mos kelmasligi mumkin -
         // shuning uchun tozalaymiz, bot keyingi murojaatda avtomatik qayta
@@ -495,6 +627,7 @@ module.exports = async (req, res) => {
       const doc = {
         id: newId, name: String(name).trim(), org: org || '', phone: phone || '', login: '', password: '',
         telegramUsername: (telegramUsername || '').replace(/^@/, ''), telegramUserId: cleanTgId, viewScope: cleanScope, createdAt: now,
+        creditLimit: cleanCreditLimit || 0,
       };
       await db.collection('debtors').doc(newId).set(doc);
       res.status(200).json({ ok: true, id: newId });
@@ -502,15 +635,19 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'delete_debtor') {
+      if (forbid('manageDebts') || forbid('deleteRecords')) return;
       const { id } = p;
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const dSnap = await db.collection('debtors').doc(id).get();
       await db.collection('debtors').doc(id).delete();
+      audit('delete_debtor', dSnap.exists ? dSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;
     }
 
     // ---------------- QARZDORGA BATAFSIL ESLATMA YUBORISH ----------------
     if (action === 'send_debt_reminder') {
+      if (forbid('manageDebts')) return;
       const { debtorId } = p;
       if (!debtorId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const debtorSnap = await db.collection('debtors').doc(debtorId).get();
@@ -531,49 +668,88 @@ module.exports = async (req, res) => {
 
     // ---------------- SOZLAMALAR ----------------
     if (action === 'update_settings') {
+      if (forbid('manageSettings')) return;
       const patch = p.patch || {};
-      const allowed = ['shopName', 'currencySymbol', 'lowStockThreshold', 'overdueDaysGlobal', 'telegramNotifyLowStock', 'telegramNotifyOverdueDebts', 'telegramNotifyDailyReport'];
+      // YANGI: `defaultCreditLimit` (umumiy qarz limiti) va
+      // `debtReminderOffsets` (avto-eslatma jadvali, kunlar ro'yxati,
+      // masalan [-3,-1,0,3,7]) endi shu yerdan ham sozlanadi.
+      const allowed = ['shopName', 'currencySymbol', 'lowStockThreshold', 'overdueDaysGlobal', 'telegramNotifyLowStock', 'telegramNotifyOverdueDebts', 'telegramNotifyDailyReport', 'defaultCreditLimit', 'debtReminderOffsets'];
       const clean = {};
       allowed.forEach((k) => {
         if (patch[k] === undefined) return;
-        if (k === 'lowStockThreshold' || k === 'overdueDaysGlobal') clean[k] = parseInt(patch[k], 10) || 0;
+        if (k === 'lowStockThreshold' || k === 'overdueDaysGlobal' || k === 'defaultCreditLimit') clean[k] = parseInt(patch[k], 10) || 0;
         else if (k.startsWith('telegramNotify')) clean[k] = !!patch[k];
+        else if (k === 'debtReminderOffsets') clean[k] = Array.isArray(patch[k]) ? patch[k].map((n) => parseInt(n, 10)).filter((n) => !isNaN(n)).slice(0, 20) : [];
         else clean[k] = String(patch[k]);
       });
       if (!Object.keys(clean).length) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       await settingsRef.set(clean, { merge: true });
+      audit('update_settings', Object.keys(clean).join(', '));
       res.status(200).json({ ok: true });
       return;
     }
 
     // ---------------- ADMINLAR: QO'SHISH / O'CHIRISH ----------------
     if (action === 'upsert_admin') {
-      const { name, phone, username } = p;
+      if (forbid('manageAdmins')) return;
+      const { name, phone, username, role, permissions } = p;
       if (!name || (!phone && !username)) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const list = Array.isArray(settings.telegramAdmins) ? [...settings.telegramAdmins] : [];
-      list.push({ name: String(name).trim(), phone: phone || '', username: (username || '').replace(/^@/, ''), chatId: '' });
+      // YANGI: rol endi majburiy ravishda 'admin' (cheklangan) yoki 'owner'
+      // — ilgari bu yerda umuman belgilanmasdi, natijada rolsiz yozuv
+      // (ya'ni "owner" bilan bir xil to'liq huquqli deb hisoblanadi)
+      // yaratilardi. Endi standart holat — xavfsizroq 'admin'.
+      // `permissions` — ixtiyoriy, PERMISSION_KEYS bo'yicha {key:true/false}.
+      const cleanRole = role === 'owner' ? 'owner' : 'admin';
+      const cleanPerms = (permissions && typeof permissions === 'object') ? permissions : undefined;
+      const entry = { name: String(name).trim(), phone: phone || '', username: (username || '').replace(/^@/, ''), chatId: '', role: cleanRole };
+      if (cleanPerms) entry.permissions = cleanPerms;
+      list.push(entry);
       await settingsRef.set({ telegramAdmins: list }, { merge: true });
+      audit('upsert_admin', `${entry.name} — ${cleanRole}`);
       res.status(200).json({ ok: true });
       return;
     }
 
     if (action === 'remove_admin') {
+      if (forbid('manageAdmins')) return;
       const { chatId: targetChatId, username: targetUsername, phone: targetPhone } = p;
       const list = Array.isArray(settings.telegramAdmins) ? [...settings.telegramAdmins] : [];
-      const filtered = list.filter((a) => !(
+      const removed = list.find((a) => (
         (targetChatId && String(a.chatId) === String(targetChatId)) ||
         (targetUsername && (a.username || '').toLowerCase() === String(targetUsername).toLowerCase()) ||
         (targetPhone && a.phone === targetPhone)
       ));
+      const filtered = list.filter((a) => a !== removed);
       if (filtered.length === list.length) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
       if (String(chatId) === String(targetChatId)) { res.status(400).json({ ok: false, error: 'cannot_remove_self' }); return; }
       await settingsRef.set({ telegramAdmins: filtered }, { merge: true });
+      audit('remove_admin', removed ? removed.name : '');
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // YANGI: bitta adminning rolini/huquqlarini yangilash (o'chirib qayta
+    // qo'shmasdan) — index.html "🔐 Adminlar va huquqlar" oynasidagi
+    // checkboxlar shu amalga yozadi.
+    if (action === 'update_admin_permissions') {
+      if (forbid('manageAdmins')) return;
+      const { chatId: targetChatId, role, permissions } = p;
+      if (!targetChatId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const list = Array.isArray(settings.telegramAdmins) ? [...settings.telegramAdmins] : [];
+      const idx = list.findIndex((a) => String(a.chatId) === String(targetChatId));
+      if (idx === -1) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
+      if (role === 'owner' || role === 'admin') list[idx].role = role;
+      if (permissions && typeof permissions === 'object') list[idx].permissions = permissions;
+      await settingsRef.set({ telegramAdmins: list }, { merge: true });
+      audit('update_admin_permissions', `${list[idx].name || targetChatId}`);
       res.status(200).json({ ok: true });
       return;
     }
 
     // ---------------- MIJOZLAR / SODIQLIK DASTURI ----------------
     if (action === 'upsert_customer') {
+      if (forbid('manageCustomers')) return;
       const { id, name, phone, telegramUsername, tierOverride } = p;
       if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const cleanUsername = (telegramUsername || '').replace(/^@/, '');
@@ -616,9 +792,12 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'delete_customer') {
+      if (forbid('manageCustomers') || forbid('deleteRecords')) return;
       const { id } = p;
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const cSnap = await db.collection('customers').doc(id).get();
       await db.collection('customers').doc(id).delete();
+      audit('delete_customer', cSnap.exists ? cSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;
     }
@@ -626,6 +805,7 @@ module.exports = async (req, res) => {
     // Ballarni qo'lda qo'shish/ayirish (masalan sovg'a yoki tuzatish uchun).
     // delta manfiy bo'lsa — ball ayiriladi (0 dan pastga tushmaydi).
     if (action === 'adjust_customer_points') {
+      if (forbid('manageCustomers')) return;
       const { id, delta, reason } = p;
       const d2 = parseInt(delta, 10);
       if (!id || !d2) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
@@ -652,6 +832,7 @@ module.exports = async (req, res) => {
       const newPoints = Math.max(0, (cur.points || 0) + d2);
       const entry = { date: new Date().toISOString(), delta: d2, reason: reason || '', by: 'Mini App admin' };
       await ref.update({ points: newPoints, pointsAdjustments: admin.firestore.FieldValue.arrayUnion(entry) });
+      audit('adjust_customer_points', `${cur.name || ''} — ${d2 > 0 ? '+' : ''}${d2}${reason ? ' (' + reason + ')' : ''}`);
       if (cur.telegramChatId) {
         const text = d2 > 0
           ? `⭐ <b>${esc(shopName)}</b>\n\nSizga <b>+${d2} ball</b> qo'shildi${reason ? ` (${esc(reason)})` : ''}.\n💳 Jami ball: <b>${newPoints}</b>`
@@ -664,6 +845,7 @@ module.exports = async (req, res) => {
 
     // ---------------- XODIMLAR (SOTUVCHILAR): QO'SHISH / O'CHIRISH ----------------
     if (action === 'upsert_seller') {
+      if (forbid('manageStaff')) return;
       const { id, name, pin, telegramUsername } = p;
       if (!name || !String(name).trim()) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       if (pin && !/^\d{4}$/.test(String(pin))) { res.status(400).json({ ok: false, error: 'bad_pin' }); return; }
@@ -678,15 +860,19 @@ module.exports = async (req, res) => {
         list.push({ id: uid(), name: String(name).trim(), pin: String(pin || ''), telegramUsername: cleanUsername, telegramChatId: '' });
       }
       await settingsRef.set({ sellers: list }, { merge: true });
+      audit('upsert_seller', String(name).trim());
       res.status(200).json({ ok: true });
       return;
     }
 
     if (action === 'remove_seller') {
+      if (forbid('manageStaff') || forbid('deleteRecords')) return;
       const { id } = p;
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      const removed = (Array.isArray(settings.sellers) ? settings.sellers : []).find((s) => s.id === id);
       const list = (Array.isArray(settings.sellers) ? settings.sellers : []).filter((s) => s.id !== id);
       await settingsRef.set({ sellers: list }, { merge: true });
+      audit('remove_seller', removed ? removed.name : id);
       res.status(200).json({ ok: true });
       return;
     }

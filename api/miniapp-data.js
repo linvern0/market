@@ -71,7 +71,12 @@ async function buildAdminPayload(db, settings) {
   const lowStock = products.filter((p) => p.stock > 0 && p.stock <= threshold);
   const outOfStock = products.filter((p) => p.stock === 0);
 
-  const allSales = recentSalesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
+  // TUZATILDI: ilgari faqat d.data() olinardi va Firestore hujjatining
+  // HAQIQIY id'si (d.id) yo'qolardi (hujjat ichidagi "id" maydoni bilan mos
+  // kelmasligi mumkin — "sell" amalida ikkalasi alohida tasodifiy qiymat).
+  // Endi haqiqiy hujjat id'si saqlanadi — bu "So'nggi savdolar"ni
+  // qaytarish (revert_sale) uchun receiptId bilan birga kerak.
+  const allSales = recentSalesSnap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((s) => !s.reverted);
   const todaySales = allSales.filter((s) => (s.date || '').slice(0, 10) === todayStr);
   const revenue = todaySales.reduce((a, s) => a + (s.total || 0), 0);
   const profit = todaySales.reduce((a, s) => a + ((s.price || 0) - (s.cost || 0)) * (s.qty || 0), 0);
@@ -139,11 +144,18 @@ async function buildAdminPayload(db, settings) {
     reportStats[per] = { revenue: st.revenue, profit: st.profit, salesCount: st.salesCount, newDebt: st.newDebt, changePct: st.changePct };
     topProducts[per] = topProductsFor(per);
   });
+  // YANGI: id, receiptId va productId ham qo'shildi — Mini App'dagi
+  // "So'nggi savdolar" ro'yxatida web-panel bilan BIR XIL "↩ Qaytarish"
+  // (revert_sale) tugmasini ko'rsatish/chaqirish uchun.
   const recentSales = allSales
     .slice()
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 25)
-    .map((s) => ({ productName: s.productName, qty: s.qty, price: s.price, total: s.total, date: s.date, seller: s.seller || '', isDebt: !!s.isDebt }));
+    .map((s) => ({
+      id: s.id, receiptId: s.receiptId || s.id, productId: s.productId || '',
+      productName: s.productName, qty: s.qty, price: s.price, total: s.total, date: s.date,
+      seller: s.seller || '', isDebt: !!s.isDebt,
+    }));
 
   const debtors = debtorsSnap.docs.map((d) => {
     const x = d.data();
@@ -151,11 +163,15 @@ async function buildAdminPayload(db, settings) {
       id: x.id, name: x.name || '', org: x.org || '', phone: x.phone || '',
       telegramUsername: x.telegramUsername || '', telegramUserId: x.telegramUserId || '', linked: !!x.telegramChatId,
       viewScope: x.viewScope === 'org' ? 'org' : 'own',
+      creditLimit: x.creditLimit || 0, // YANGI: qarz limiti
     };
   });
 
+  // YANGI: role va permissions ham yuboriladi — admin panelidagi
+  // "🔐 Adminlar va huquqlar" oynasi shundan foydalanadi.
   const admins = (Array.isArray(settings.telegramAdmins) ? settings.telegramAdmins : []).map((a) => ({
     name: a.name || '', phone: a.phone || '', username: a.username || '', chatId: a.chatId || '', linked: !!a.chatId,
+    role: a.role || 'owner', permissions: a.permissions || null,
   }));
 
   // YANGI: Xodimlar (sotuvchilar) ro'yxati — "Xodimlar" bo'limi uchun.
@@ -183,6 +199,7 @@ async function buildAdminPayload(db, settings) {
     stats: { revenue, profit, salesCount: todaySales.length },
     last7Days,
     report: { ...reportStats, topProducts, recentSales },
+    revertMinutes: settings.revertMinutes || 30,
     debts: activeDebts.map(debtSummary),
     totalDebt,
     stock: {
@@ -191,7 +208,7 @@ async function buildAdminPayload(db, settings) {
     },
     products: products
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-      .map((p) => ({ id: p.id, name: p.name, price: p.price, cost: p.cost || 0, points: (p.points || p.points === 0) ? p.points : null, stock: p.stock || 0, volume: p.volume || '', note: p.note || '' })),
+      .map((p) => ({ id: p.id, name: p.name, price: p.price, cost: p.cost || 0, points: (p.points || p.points === 0) ? p.points : null, stock: p.stock || 0, volume: p.volume || '', note: p.note || '', img: p.img || '' })),
     debtors: debtors.sort((a, b) => (a.org || a.name).localeCompare(b.org || b.name)),
     sellers,
     customers,
@@ -204,6 +221,10 @@ async function buildAdminPayload(db, settings) {
       telegramNotifyOverdueDebts: !!settings.telegramNotifyOverdueDebts,
       telegramNotifyDailyReport: !!settings.telegramNotifyDailyReport,
       telegramAdmins: admins,
+      // YANGI: qarz limiti (umumiy) va ko'p bosqichli avto-eslatma jadvali
+      // (kunlar ro'yxati, masalan [-3,-1,0,3,7]).
+      defaultCreditLimit: settings.defaultCreditLimit || 0,
+      debtReminderOffsets: Array.isArray(settings.debtReminderOffsets) && settings.debtReminderOffsets.length ? settings.debtReminderOffsets : [0, 3, 7],
       // YANGI: sodiqlik darajalari (Bronza/Kumush/Oltin va h.k., necha
       // so'mdan boshlanishi) — index.html'dagi "🏆 Darajalarni sozlash"
       // oynasida admin belgilagan ro'yxat. Bu yerga yuborilmasa,
@@ -344,12 +365,15 @@ async function buildDebtorPayload(db, settings, chatId, user) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   // Tashkilot vakili bo'lsa - har bir xodim bo'yicha yig'indi ham chiqaramiz
+  // TUZATILDI: ilgari faqat debtorName bo'yicha guruhlangani sabab, bir xil
+  // ismli ikkita turli xodimning qarzi bitta qatorga qo'shilib ko'rsatilardi.
+  // Endi mavjud bo'lsa debtorId asosiy kalit sifatida ishlatiladi.
   let byPerson = null;
   if (isOrgViewer) {
     const map = {};
     activeDebts.forEach((d) => {
-      const key = d.debtorName || 'Noma\'lum';
-      if (!map[key]) map[key] = { name: key, total: 0 };
+      const key = d.debtorId || ('legacy:' + (d.debtorName || 'Noma\'lum'));
+      if (!map[key]) map[key] = { name: d.debtorName || 'Noma\'lum', total: 0 };
       map[key].total += debtRemaining(d);
     });
     byPerson = Object.values(map).sort((a, b) => b.total - a.total);
