@@ -1889,6 +1889,23 @@ body.dark table {
     </div>
   </div>
   <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">💳 Standart qarz limiti</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Qarzdorning o'zida alohida limit belgilanmagan bo'lsa, shu standart limit ishlatiladi. 0 = cheklovsiz.</p>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="number" id="default-credit-limit" min="0" step="1000" style="width:140px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="0 = cheklovsiz">
+      <span style="font-size:14px;color:var(--text2)">so'm</span>
+      <button class="btn sm blue" onclick="saveDefaultCreditLimit()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🔔 Qarz eslatma jadvali</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">To'lov muddatiga (dueDate) nisbatan necha kun oldin/keyin Telegram orqali eslatma yuborilsin. Vergul bilan ajrating: manfiy son — muddatdan OLDIN, 0 — muddat kunida, musbat son — muddatdan KEYIN.</p>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <input type="text" id="debt-reminder-offsets" style="width:180px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none" placeholder="-3,-1,0,3,7">
+      <button class="btn sm blue" onclick="saveDebtReminderOffsets()">Saqlash</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:420px;margin-top:1rem">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.75rem">🎯 Kunlik savdo maqsadi</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Bosh sahifada shu kunlik maqsadga qarab jarayon chizig'i ko'rsatiladi — jamoani rag'batlantirish uchun foydali.</p>
     <div style="display:flex;gap:.75rem;align-items:center">
@@ -2125,6 +2142,24 @@ body.dark table {
     <div id="auditlog-list" style="max-height:340px;overflow-y:auto"></div>
   </div>
 
+  <!-- YANGI: 📜 Amallar jurnali — server (api/_audit.js) tomonidan yoziladigan
+       'actionLogs' to'plami. Yuqoridagi eski 'auditLog' (faqat index.html'dan
+       bajarilgan ba'zi amallar) bilan ARALASHTIRILMAYDI — bu Telegram bot,
+       Mini App va admin panelning HAMMASIDAN kelgan (huquq tekshiruvi,
+       qarz, tovar narxi, admin/xodim boshqaruvi, broadcast kabi) amallarni
+       bitta joyda ko'rsatadi. -->
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-actionlogs-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">📜 Amallar jurnali (bot + panel)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Telegram bot va Mini App orqali bajarilgan muhim amallar (qarz, tovar narxi, admin/xodim boshqaruvi, ommaviy xabar va h.k.). So'nggi 200 ta yozuv saqlanadi.</p>
+    <select id="actionlogs-filter" onchange="renderActionLogs()" style="margin-bottom:.75rem;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:13px;background:var(--surface2)">
+      <option value="">Barcha manbalar</option>
+      <option value="bot">🤖 Telegram bot</option>
+      <option value="miniapp">📱 Mini App</option>
+      <option value="panel">💻 Admin panel</option>
+    </select>
+    <div id="actionlogs-list" style="max-height:340px;overflow-y:auto"></div>
+  </div>
+
   <div class="card" style="max-width:640px;margin-top:1rem" id="settings-telegram-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🤖 Telegram bot bildirishnomalari</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.5rem">Kam qolgan tovar, muddati o'tgan qarz va kunlik hisobotni Telegram orqali olish uchun sozlang. Xabarlar qo'shilgan barcha adminlarga yuboriladi. Bundan tashqari, <b>yangi qarz yozilganda</b> va <b>to'lov qabul qilinganda</b> ham adminlarga (va bog'langan bo'lsa mijozning o'ziga ham) darhol xabar boradi.</p>
@@ -2189,6 +2224,72 @@ body.dark table {
     </div>
   </div>
 
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-salereceipt-card">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧾 Sotuv cheki sozlamalari (tovar sotilganda chiqadigan chek)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Bu — tovar sotilganda ochiladigan va chop etiladigan/mijozga beriladigan qog'oz chek (kassa cheki) sozlamalari. <b>Diqqat:</b> bu pastdagi "Chek sahifasi dizayni" (QR skanerlanganda ochiladigan onlayn sahifa — receipt.html) BILAN BOG'LIQ EMAS, alohida sozlanadi.</p>
+
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">✏️ Matnlar</div>
+    <div class="field" style="margin-bottom:.85rem">
+      <label>Yuqori yozuv (ixtiyoriy)</label>
+      <input type="text" id="srd-eyebrow" maxlength="40" placeholder="Masalan: Xarid tasdig'i" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">👁️ Qaysi qismlar ko'rinsin</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;margin-bottom:1rem">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-logo" checked> Do'kon logotipi</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-address" checked> Manzil</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-phone" checked> Telefon</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-hours" checked> Ish vaqti</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-seller" checked> Sotuvchi ismi</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-date" checked> Sana/vaqt</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-unitprice"> Har bir tovarning dona narxi</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-receipt-number"> Chek raqami (ID)</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-qr" checked> QR kod</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="srd-show-footer" checked> Pastki rahmat matni</label>
+    </div>
+
+    <!-- YANGI: matnlar qalinligi (font-weight) — admin butun chekdagi
+         matnlarni yupqadan (oddiy) tortib eng qalinigacha (maksimal qora)
+         sozlashi mumkin. Termoprinterlarda ko'pincha yupqa shrift yaxshi
+         ko'rinmaydi, shu sabab bu sozlama qo'shildi. -->
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">🔠 Matnlar qalinligi (shrift qalinligi)</div>
+    <div class="field" style="margin-bottom:1rem;max-width:280px">
+      <select id="srd-font-weight" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+        <option value="400">Oddiy</option>
+        <option value="500">O'rtacha</option>
+        <option value="700">Qalin</option>
+        <option value="900">Eng qalin (maksimal)</option>
+      </select>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu — chekdagi barcha (tovar nomlari, sana, footer va h.k.) matnlarga qo'llanadi. Termoprinterda yaxshi chiqishi uchun "Eng qalin"ni tanlang.</p>
+    </div>
+
+    <!-- YANGI: MIJOZGA COIN OLISHDA YORDAM BERADIGAN MATN — QR "coin"
+         rejimida (Telegram bot ulangan) bo'lganda, chekdagi QR ostida
+         admin o'zi xohlagan matnni chiqarish imkoni. Masalan mijozga
+         "QR ni skaner qiling — coin oling" kabi aniq ko'rsatma berish uchun. -->
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">🎁 Coin olish haqida targ'ibot matni</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">QR "Coin olish" rejimida ishlayotganda (Sozlamalar → Telegram bot ulangan bo'lsa), chekdagi QR ostida shu matn chiqadi — mijozga chekni skanerlab coin olishini aniq tushuntirish uchun.</p>
+    <label style="display:flex;align-items:center;gap:.4rem;font-size:13px;margin-bottom:.5rem"><input type="checkbox" id="srd-show-coin-promo" checked> Yoqilgan</label>
+    <div class="field" style="margin-bottom:.85rem">
+      <input type="text" id="srd-coin-promo-text" maxlength="140" placeholder="Masalan: 🎁 QR kodni skanerlab, xaridingiz uchun coin oling!" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
+
+    <!-- YANGI: QO'SHIMCHA MATN QATORLARI — shu sotuv cheki uchun mustaqil
+         ro'yxat (pastdagi onlayn chek sahifasi dizaynidagi qatorlardan
+         ALOHIDA). Masalan: STIR/INN, qaytarish shartlari, ijtimoiy tarmoq. -->
+    <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">➕ Qo'shimcha matn qatorlari (ixtiyoriy)</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Masalan: STIR/INN raqami, qaytarish shartlari, ijtimoiy tarmoq, reklama matni. Chekning pastki qismida (footer matnidan keyin), siz kiritgan tartibda chiqadi.</p>
+    <div id="srd-custom-lines-list" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem"></div>
+    <button class="btn sm" type="button" onclick="addSaleReceiptCustomLine()">➕ Qator qo'shish</button>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:1rem">
+      <button class="btn sm blue" onclick="saveSaleReceiptSettings()">💾 Saqlash (barcha qurilmalarda)</button>
+      <button class="btn sm" onclick="previewSaleReceiptSettings()">👁️ Sinov chekini ko'rish</button>
+      <button class="btn sm" onclick="resetSaleReceiptSettingsDefaults()">↺ Standart holatga qaytarish</button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:.6rem">💡 "Sinov chekini ko'rish" — hozir formadagi (hali saqlanmagan) sozlamalar bilan namunaviy chekni to'g'ridan-to'g'ri ochib ko'rsatadi.</p>
+  </div>
+
   <div class="card" style="max-width:640px;margin-top:1rem" id="settings-receiptdesign-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧾 Chek sahifasi dizayni (mijoz ko'radigan onlayn chek)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">QR kod skanerlanganda ochiladigan onlayn chek sahifasining ko'rinishini — ranglar, matnlar va qaysi qismlar ko'rinishini — to'liq o'zingizga moslang. O'zgarishlar barcha qurilmalarda, shu jumladan avval chop etilgan cheklarda ham darhol qo'llanadi.</p>
@@ -2214,6 +2315,12 @@ body.dark table {
         <option value="340">Ixcham (340px)</option>
         <option value="380">Oddiy (380px)</option>
         <option value="420">Keng (420px)</option>
+      </select>
+      <select id="rd-font-weight" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="400">Matn qalinligi: Oddiy</option>
+        <option value="500">Matn qalinligi: O'rtacha</option>
+        <option value="700">Matn qalinligi: Qalin</option>
+        <option value="900">Matn qalinligi: Eng qalin</option>
       </select>
     </div>
 
@@ -2291,7 +2398,10 @@ body.dark table {
 <div class="page" id="page-debts">
   <div class="section-header">
     <div><h2>💳 Qarzlar boshqaruvi</h2><p>Tashkilot va shaxslar bo'yicha</p></div>
-    <button class="btn amber" onclick="openCashLoanModal()" title="Tovar sotmasdan, kassadan to'g'ridan-to'g'ri naqd pul berib, buni qarz sifatida yozish">💵 Kassadan naqd qarz berish</button>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn" onclick="openDueCalendarModal()" title="To'lov muddati belgilangan faol qarzlarni muddat bo'yicha ko'rish">🗓 Muddat kalendari</button>
+      <button class="btn amber" onclick="openCashLoanModal()" title="Tovar sotmasdan, kassadan to'g'ridan-to'g'ri naqd pul berib, buni qarz sifatida yozish">💵 Kassadan naqd qarz berish</button>
+    </div>
   </div>
   <div class="filter-bar">
     <button class="btn sm" id="db-btn-all" onclick="setDebtFilter('all')">Barchasi</button>
@@ -2749,6 +2859,20 @@ body.dark table {
       <div style="font-size:12px;color:#92400e;margin-top:.35rem" id="debt-items-preview"></div>
     </div>
 
+    <div class="form-row" style="margin-bottom:.5rem">
+      <div class="field">
+        <label>🗓 To'lov muddati <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+        <input id="debt-duedate" type="date">
+        <p style="font-size:11px;color:var(--text3);margin-top:.25rem">Belgilansa, muddat kalendarida va Telegram bot orqali avtomatik eslatmalar shu sanaga qarab yuboriladi.</p>
+      </div>
+      <div class="field">
+        <label>💳 Qarz limiti (so'm) <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+        <input id="debt-creditlimit" type="number" min="0" step="1000" placeholder="Standart limit ishlatiladi">
+        <p style="font-size:11px;color:var(--text3);margin-top:.25rem" id="debt-creditlimit-hint">Bo'sh qoldirsangiz, sozlamalardagi standart limit ishlatiladi (0 = cheklovsiz).</p>
+      </div>
+    </div>
+    <div id="debt-limit-warning" style="display:none;background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:.7rem .85rem;margin-bottom:.85rem;font-size:12.5px;color:var(--red)"></div>
+
     <div class="field" style="margin-bottom:.5rem">
       <label>Izoh <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
       <input id="debt-note" placeholder="Qo'shimcha ma'lumot">
@@ -2821,6 +2945,18 @@ body.dark table {
       </div>
     </div>
 
+    <div class="form-row" style="margin-bottom:.5rem">
+      <div class="field">
+        <label>🗓 To'lov muddati <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+        <input id="cl-duedate" type="date">
+      </div>
+      <div class="field">
+        <label>💳 Qarz limiti (so'm) <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+        <input id="cl-creditlimit" type="number" min="0" step="1000" placeholder="Standart limit ishlatiladi">
+      </div>
+    </div>
+    <div id="cl-limit-warning" style="display:none;background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:.7rem .85rem;margin-bottom:.85rem;font-size:12.5px;color:var(--red)"></div>
+
     <div class="field" style="margin-bottom:.5rem">
       <label>Izoh <span style="color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
       <input id="cl-note" placeholder="Qo'shimcha ma'lumot">
@@ -2829,6 +2965,34 @@ body.dark table {
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-cash-loan')">Bekor qilish</button>
       <button class="btn amber" onclick="doCashLoan()">💵 Naqd pul qarzga berish</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: 🗓 MUDDAT KALENDARI — dueDate belgilangan faol qarzlarni muddat
+     bo'yicha o'sish tartibida ko'rsatadi (Telegram botdagi /muddatlar bilan
+     bir xil mantiq: 🔴 o'tgan / 🟠 bugun / 🟡 kutilayotgan). -->
+<div class="modal-overlay hidden" id="modal-due-calendar">
+  <div class="modal" style="max-width:640px">
+    <h3>🗓 Muddat kalendari</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.75rem;margin-bottom:1rem">Faqat to'lov muddati (dueDate) belgilangan va hali to'lanmagan qarzlar ko'rsatiladi.</p>
+    <div id="due-calendar-body" style="max-height:65vh;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-due-calendar')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: 🔐 ADMIN HUQUQLARI — bitta 'admin' (owner emas) roldagi shaxsning
+     8 ta batafsil huquqini yoqish/o'chirish oynasi. -->
+<div class="modal-overlay hidden" id="modal-admin-permissions">
+  <div class="modal" style="max-width:460px">
+    <h3 id="admin-perm-title">🔐 Huquqlar</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:-.75rem;margin-bottom:.5rem">Bu admin faqat belgilangan huquqlar doirasida amal bajara oladi (Telegram bot va admin panelda).</p>
+    <div id="admin-perm-body"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-admin-permissions')">Bekor qilish</button>
+      <button class="btn blue" onclick="saveAdminPermissions()">💾 Saqlash</button>
     </div>
   </div>
 </div>
@@ -3253,21 +3417,25 @@ body.dark table {
 <div class="modal-overlay hidden" id="modal-receipt">
   <div class="modal" style="max-width:380px">
     <div id="receipt-content" style="font-family:'Courier New',monospace;font-size:13px;color:#111">
+      <div id="receipt-eyebrow" style="text-align:center;font-size:11px;color:#777;letter-spacing:.03em;margin-bottom:.2rem;display:none"></div>
       <div style="text-align:center;margin-bottom:.75rem">
         <img id="receipt-logo" src="" style="max-width:110px;max-height:55px;object-fit:contain;display:none;margin:0 auto .3rem">
         <div id="receipt-shopname" style="font-size:18px;font-weight:700">🏪 Do'kon</div>
         <div id="receipt-shopmeta" style="font-size:11px;color:#555"></div>
         <div id="receipt-date" style="font-size:12px;color:#555"></div>
         <div id="receipt-seller" style="font-size:12px;color:#555"></div>
+        <div id="receipt-number" style="font-size:11px;color:#888;display:none"></div>
       </div>
       <div style="border-top:1px dashed #999;border-bottom:1px dashed #999;padding:.5rem 0;margin-bottom:.5rem" id="receipt-items"></div>
       <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px">
         <span>JAMI:</span><span id="receipt-total">0 so'm</span>
       </div>
       <div id="receipt-footer-text" style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
+      <div id="receipt-custom-lines" style="text-align:center;margin-top:.4rem;font-size:11px;color:#777"></div>
       <div id="receipt-qr" style="text-align:center;margin-top:.6rem">
         <img id="receipt-qr-img" src="" alt="QR" style="width:110px;height:110px;display:none;margin:0 auto">
         <div id="receipt-qr-caption" style="font-size:10px;color:#777;margin-top:.25rem"></div>
+        <div id="receipt-coin-promo" style="font-size:11px;color:#a8462f;font-weight:700;margin-top:.3rem;display:none"></div>
       </div>
     </div>
     <div class="modal-footer" style="flex-wrap:wrap">
@@ -3764,8 +3932,14 @@ body.dark table {
 <!-- ============ YANGI: YETKAZIB BERUVCHILAR MODALI ============ -->
 <div class="modal-overlay hidden" id="modal-suppliers">
   <div class="modal" style="max-width:640px">
-    <h3>🚚 Yetkazib beruvchilar</h3>
-    <p style="font-size:12px;color:var(--text3);margin-top:-.9rem;margin-bottom:1rem">Yetkazib beruvchilar ro'yxati, aloqa ma'lumotlari va ular bilan hisob-kitob balansi. Barcha qurilmalarda sinxronlanadi.</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h3 style="margin:0">🚚 Yetkazib beruvchilar</h3>
+      <div style="display:flex;gap:.4rem">
+        <button class="btn sm" onclick="window.exportSuppliersExcel && window.exportSuppliersExcel()">⬇️ Excel</button>
+        <button class="btn sm" onclick="window.exportSuppliersPDF && window.exportSuppliersPDF()">⬇️ PDF</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:.3rem;margin-bottom:1rem">Yetkazib beruvchilar ro'yxati, aloqa ma'lumotlari va ular bilan hisob-kitob balansi. Barcha qurilmalarda sinxronlanadi.</p>
     <div class="form-row">
       <div class="field"><label>Nomi *</label><input type="text" id="sup-name" placeholder="Masalan: ABC Trade MChJ"></div>
       <div class="field"><label>Telefon</label><input type="text" id="sup-phone" placeholder="+998 90 123 45 67"></div>
@@ -4204,7 +4378,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinOrders: [] };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinOrders: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7] };
 // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
 // qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
 // qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
@@ -4513,7 +4687,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -4622,6 +4796,24 @@ function logAudit(action, summary){
     };
     window.DB_AUDIT_LOG = [entry, ...(window.DB_AUDIT_LOG||[])].slice(0,200);
     setDoc(doc(db,'auditLog',entry.id), entry).catch(e=>console.error('Audit yozishda xatolik:', e));
+  }catch(e){ console.error(e); }
+}
+
+// ================== YANGI: 📜 AMALLAR JURNALI ('actionLogs') ==================
+// api/_audit.js orqali server (Telegram bot va Mini App) tomonidan yoziladigan
+// umumiy jurnal. Yuqoridagi eski 'auditLog' bilan ARALASHTIRILMAYDI — alohida
+// to'plam, alohida panel (Sozlamalar > "📜 Amallar jurnali (bot + panel)").
+window.DB_ACTION_LOGS = [];
+let actionLogsListenerStarted = false;
+function startActionLogsListener(){
+  if(actionLogsListenerStarted) return;
+  actionLogsListenerStarted = true;
+  try{
+    const q = query(collection(db,'actionLogs'), orderBy('ts','desc'), limit(200));
+    onSnapshot(q, snap=>{
+      window.DB_ACTION_LOGS = snap.docs.map(d=>d.data());
+      if(document.getElementById('page-settings')?.classList.contains('active') && typeof window.renderActionLogs==='function') window.renderActionLogs();
+    }, e=>console.error('Amallar jurnali listener xatosi:', e));
   }catch(e){ console.error(e); }
 }
 
@@ -4934,6 +5126,7 @@ function startListeners(){
       DB.labelSettings=d.labelSettings||null;
       DB.labelTemplates=d.labelTemplates||null;
       DB.receiptDesign=d.receiptDesign||null;
+      DB.saleReceiptDesign=d.saleReceiptDesign||null;
       DB.backupReminderDays=d.backupReminderDays||7;
       DB.workSchedule=d.workSchedule||null;
       DB.pinMinLength=d.pinMinLength||4;
@@ -4955,6 +5148,9 @@ function startListeners(){
       DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
       DB.loyaltyTiers=(Array.isArray(d.loyaltyTiers)&&d.loyaltyTiers.length)?d.loyaltyTiers:window.getDefaultLoyaltyTiers();
       DB.coinSettings=(d.coinSettings && typeof d.coinSettings==='object')?d.coinSettings:window.getDefaultCoinSettings();
+      DB.defaultCreditLimit=(typeof d.defaultCreditLimit==='number')?d.defaultCreditLimit:0;
+      DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
+      if(document.getElementById('page-debts')?.classList.contains('active') && typeof window.renderDebtSettingsFields==='function') window.renderDebtSettingsFields();
       if(document.getElementById('modal-customers') && !document.getElementById('modal-customers').classList.contains('hidden') && typeof window.renderCustomersList==='function') window.renderCustomersList();
       if(currentRole==='admin' && typeof window.applyRestrictedAdminUI==='function') window.applyRestrictedAdminUI();
       if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts();
@@ -4967,9 +5163,11 @@ function startListeners(){
         if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
         if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
         if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
+        if(typeof window.fillSaleReceiptSettingsForm==='function') window.fillSaleReceiptSettingsForm();
         if(typeof window.fillRestrictedAdminForm==='function') window.fillRestrictedAdminForm();
         if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
         if(typeof window.renderAuditLog==='function') window.renderAuditLog();
+        if(typeof window.renderActionLogs==='function') window.renderActionLogs();
         if(typeof window.fillTelegramSettingsForm==='function') window.fillTelegramSettingsForm();
       }
     }
@@ -5199,6 +5397,7 @@ async function init(){
           DB.labelSettings=d.labelSettings||null;
           DB.labelTemplates=d.labelTemplates||null;
           DB.receiptDesign=d.receiptDesign||null;
+          DB.saleReceiptDesign=d.saleReceiptDesign||null;
           DB.backupReminderDays=d.backupReminderDays||7;
           DB.workSchedule=d.workSchedule||null;
           DB.pinMinLength=d.pinMinLength||4;
@@ -5219,11 +5418,13 @@ async function init(){
           DB.restrictedAdminPin=d.restrictedAdminPin||'';
           DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
           DB.loyaltyTiers=(Array.isArray(d.loyaltyTiers)&&d.loyaltyTiers.length)?d.loyaltyTiers:window.getDefaultLoyaltyTiers();
+          DB.defaultCreditLimit=(typeof d.defaultCreditLimit==='number')?d.defaultCreditLimit:0;
+          DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:window.getDefaultLoyaltyTiers()}).catch(()=>{});
+          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,saleReceiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:window.getDefaultLoyaltyTiers()}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -5388,6 +5589,7 @@ window.completeLogin = function(role, sellerName, sellerId, isRestrictedAdmin){
     document.getElementById('nav-admin').style.display='flex';
     document.getElementById('nav-seller').style.display='none';
     startAuditLogListener();
+    startActionLogsListener();
     ['dashboard','products','history','debts'].forEach(t=>{
       const el=document.getElementById('mtab-'+t); if(el) el.style.display='flex';
     });
@@ -5494,6 +5696,8 @@ window.showPage = function(page, role){
   if(page==='settings'){
     document.getElementById('revert-minutes').value=DB.revertMinutes;
     const lst=document.getElementById('low-stock-threshold'); if(lst) lst.value=DB.lowStockThreshold;
+    const dcl=document.getElementById('default-credit-limit'); if(dcl) dcl.value = DB.defaultCreditLimit||'';
+    const dro=document.getElementById('debt-reminder-offsets'); if(dro) dro.value = Array.isArray(DB.debtReminderOffsets) ? DB.debtReminderOffsets.join(',') : '0,3,7';
     renderSellersManager();
     const shn=document.getElementById('shop-name-input'); if(shn) shn.value=DB.shopName||"Do'kon";
     const slp=document.getElementById('shop-logo-preview'), slb=document.getElementById('shop-logo-remove-btn');
@@ -5504,9 +5708,11 @@ window.showPage = function(page, role){
     if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
     if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
     if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
+    if(typeof window.fillSaleReceiptSettingsForm==='function') window.fillSaleReceiptSettingsForm();
     if(typeof window.fillRestrictedAdminForm==='function') window.fillRestrictedAdminForm();
     if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
     if(typeof window.renderAuditLog==='function') window.renderAuditLog();
+    if(typeof window.renderActionLogs==='function') window.renderActionLogs();
     if(typeof window.fillTelegramSettingsForm==='function') window.fillTelegramSettingsForm();
     if(typeof window.renderBackupStatus==='function') window.renderBackupStatus();
   }
@@ -6391,9 +6597,11 @@ window.openDebtModal = function(){
   const orgVal = document.getElementById('debt-org').value.trim();
   updateDebtLoginType(orgVal);
   
-  ['debt-org','debt-name','debt-phone','debt-username','debt-note','debt-login','debt-password'].forEach(id=>{
+  ['debt-org','debt-name','debt-phone','debt-username','debt-note','debt-login','debt-password','debt-duedate','debt-creditlimit'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
+  const dw=document.getElementById('debt-limit-warning'); if(dw) dw.style.display='none';
+  window._debtSellForceOverLimit = false;
   closeModal('modal-cart');
   openModal('modal-debt');
   setTimeout(()=>document.getElementById('debt-org').focus(), 100);
@@ -6477,6 +6685,39 @@ document.addEventListener('click', e=>{
     document.getElementById('debt-name-suggestions').style.display='none';
 });
 
+// ============ YANGI: QARZ LIMITI (💳 Qarz boshqaruvi) ============
+// Har bir qarzdorda ixtiyoriy creditLimit (so'mda) bo'lishi mumkin — agar
+// yozuvda bo'lmasa, DB.defaultCreditLimit (sozlamalardagi standart) ishlatiladi.
+// 0/bo'sh = cheklovsiz. Bu funksiya berilgan odamning JORIY (faol, to'lanmagan)
+// qarzi + yangi summa limitdan oshadimi-yo'qmi tekshiradi va natija qaytaradi.
+// server (api/miniapp-action.js) tomonidagi xuddi shu mantiq bilan mos.
+function getDebtorCreditLimit(debtorId, explicitLimit){
+  if(typeof explicitLimit==='number' && explicitLimit>0) return explicitLimit;
+  const debtor = debtorId ? DB.debtors.find(d=>d.id===debtorId) : null;
+  if(debtor && typeof debtor.creditLimit==='number' && debtor.creditLimit>0) return debtor.creditLimit;
+  return DB.defaultCreditLimit || 0;
+}
+function checkCreditLimit(debtorId, newAmount, explicitLimit){
+  const limit = getDebtorCreditLimit(debtorId, explicitLimit);
+  if(!limit) return { exceeded:false, limit:0, currentDebt:0, wouldBe:newAmount };
+  const currentDebt = DB.debts.filter(d=>!d.paid && (d.debtorId===debtorId)).reduce((a,d)=>a+debtRemaining(d),0);
+  const wouldBe = currentDebt + newAmount;
+  return { exceeded: wouldBe>limit, limit, currentDebt, wouldBe };
+}
+// Limitdan oshgan holatda ogohlantirish ko'rsatib, admin ataylab tasdiqlasa
+// (forceOverLimit) baribir davom etadigan umumiy oqim. onConfirmed — limitdan
+// oshmagan yoki admin tasdiqlagandan keyin chaqiriladigan davom funksiyasi.
+function confirmOrWarnCreditLimit(warnElId, debtorId, newAmount, explicitLimit, onConfirmed){
+  const check = checkCreditLimit(debtorId, newAmount, explicitLimit);
+  const warnEl = document.getElementById(warnElId);
+  if(!check.exceeded){ if(warnEl) warnEl.style.display='none'; onConfirmed(); return; }
+  if(warnEl){
+    warnEl.style.display='block';
+    warnEl.innerHTML = `⚠️ <b>Qarz limiti oshib ketadi!</b><br>Limit: ${fmt(check.limit)} so'm · Joriy qarz: ${fmt(check.currentDebt)} so'm · Yangi jami: ${fmt(check.wouldBe)} so'm`;
+  }
+  confirm2('Qarz limiti oshib ketadi', `Bu odamning qarz limiti ${fmt(check.limit)} so'm, joriy qarzi bilan yangi summa qo'shilsa ${fmt(check.wouldBe)} so'm bo'ladi (limitdan ${fmt(check.wouldBe-check.limit)} so'm ko'p). Baribir davom etilsinmi?`, ()=>{ onConfirmed(); });
+}
+
 window.doDebtSell = async function(){
   const name = document.getElementById('debt-name').value.trim();
   const org = document.getElementById('debt-org').value.trim();
@@ -6485,6 +6726,9 @@ window.doDebtSell = async function(){
   const note = document.getElementById('debt-note').value.trim();
   const loginVal = document.getElementById('debt-login').value.trim();
   const passVal = document.getElementById('debt-password').value.trim();
+  const dueDateVal = document.getElementById('debt-duedate')?.value || '';
+  const creditLimitVal = document.getElementById('debt-creditlimit')?.value;
+  const explicitLimit = creditLimitVal!=='' && creditLimitVal!=null ? Number(creditLimitVal) : null;
 
   if(!name){ toast('Qarz oluvchi ismini kiriting','red'); document.getElementById('debt-name').focus(); return; }
 
@@ -6496,6 +6740,24 @@ window.doDebtSell = async function(){
 
   const total = cartTotal();
   const now = new Date().toISOString();
+
+  // Qarz limiti tekshiruvi — mavjud debtorId topilgan bo'lsa shu bo'yicha,
+  // aks holda (yangi odam) faqat izohli ogohlantirish (currentDebt=0 bo'ladi).
+  const existingDebtorForLimit = org
+    ? DB.debtors.find(d=>d.org===org && d.name===name && !d.isOrgAccount)
+    : DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
+  if(!window._debtSellForceOverLimit){
+    const limitCheck = checkCreditLimit(existingDebtorForLimit?existingDebtorForLimit.id:null, total, explicitLimit);
+    if(limitCheck.exceeded){
+      confirmOrWarnCreditLimit('debt-limit-warning', existingDebtorForLimit?existingDebtorForLimit.id:null, total, explicitLimit, ()=>{
+        window._debtSellForceOverLimit = true;
+        window.doDebtSell();
+      });
+      return;
+    }
+  }
+  window._debtSellForceOverLimit = false;
+  document.getElementById('debt-limit-warning').style.display='none';
 
   // Debtor topish yoki yangi ID yaratish (local)
   // TUZATILDI: ilgari topilmasa "faqat ism bo'yicha" (d.name===name) HAR QANDAY
@@ -6557,8 +6819,13 @@ window.doDebtSell = async function(){
     id: uid(), debtorId, debtorName: name, org: org||'', phone: phone||'',
     items: debtItems, total, paid: false, paidDate: null,
     date: now, note, seller: currentRole==='admin'?'Admin':(currentSellerName||'Sotuvchi'),
-    type: org ? 'organization' : 'person'
+    type: org ? 'organization' : 'person',
+    dueDate: dueDateVal || null, remindersSent: []
   };
+  // Ochiq qoldirilgan limit maydoni shu QARZDORNING keyingi barcha qarzlari
+  // uchun ham eslab qolinishi uchun debtor yozuvida saqlanadi.
+  if(explicitLimit!=null && explicitLimit>=0) newDebtor.creditLimit = explicitLimit;
+  else if(debtor && typeof debtor.creditLimit==='number') newDebtor.creditLimit = debtor.creditLimit;
 
   // Local ga darhol qo'sh
   DB.debts.unshift(debt);
@@ -6605,10 +6872,12 @@ window.doDebtSell = async function(){
 // berilgan naqd qarzlar ham, veb-panel orqali berilganlari ham BIR XIL
 // joyda, bitta hisobotda ko'rinadi.
 window.openCashLoanModal = function(){
-  ['cl-org','cl-name','cl-phone','cl-username','cl-amount','cl-note'].forEach(id=>{
+  ['cl-org','cl-name','cl-phone','cl-username','cl-amount','cl-note','cl-duedate','cl-creditlimit'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('cl-amount-show').textContent = "0 so'm";
+  const w=document.getElementById('cl-limit-warning'); if(w) w.style.display='none';
+  window._cashLoanForceOverLimit = false;
   openModal('modal-cash-loan');
   setTimeout(()=>document.getElementById('cl-name').focus(), 100);
 }
@@ -6679,6 +6948,9 @@ window.doCashLoan = async function(){
   const username = document.getElementById('cl-username').value.trim().replace(/^@/,'').toLowerCase();
   const note = document.getElementById('cl-note').value.trim();
   const amount = parseFloat(document.getElementById('cl-amount').value);
+  const dueDateVal = document.getElementById('cl-duedate')?.value || '';
+  const creditLimitVal = document.getElementById('cl-creditlimit')?.value;
+  const explicitLimit = creditLimitVal!=='' && creditLimitVal!=null ? Number(creditLimitVal) : null;
 
   if(!name){ toast('Qarz oluvchi ismini kiriting','red'); document.getElementById('cl-name').focus(); return; }
   if(!amount || amount<=0){ toast("To'g'ri summa kiriting",'red'); document.getElementById('cl-amount').focus(); return; }
@@ -6690,6 +6962,20 @@ window.doCashLoan = async function(){
     : DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
   if(!debtor && org) debtor = DB.debtors.find(d=>d.name===name && !d.org && !d.isOrgAccount);
 
+  // Qarz limiti tekshiruvi — doDebtSell() bilan bir xil mantiq.
+  if(!window._cashLoanForceOverLimit){
+    const limitCheck = checkCreditLimit(debtor?debtor.id:null, amount, explicitLimit);
+    if(limitCheck.exceeded){
+      confirmOrWarnCreditLimit('cl-limit-warning', debtor?debtor.id:null, amount, explicitLimit, ()=>{
+        window._cashLoanForceOverLimit = true;
+        window.doCashLoan();
+      });
+      return;
+    }
+  }
+  window._cashLoanForceOverLimit = false;
+  const clWarnEl = document.getElementById('cl-limit-warning'); if(clWarnEl) clWarnEl.style.display='none';
+
   const debtorId = debtor ? debtor.id : uid();
   const newDebtor = {
     id: debtorId, name, org: org||'', phone: phone||debtor?.phone||'',
@@ -6698,6 +6984,10 @@ window.doCashLoan = async function(){
     telegramChatId: debtor?.telegramChatId || '',
     telegramUsername: username || debtor?.telegramUsername || ''
   };
+  // Ochiq qoldirilgan limit maydoni shu qarzdorning keyingi barcha qarzlari
+  // uchun ham eslab qolinishi uchun debtor yozuvida saqlanadi (doDebtSell bilan bir xil).
+  if(explicitLimit!=null && explicitLimit>=0) newDebtor.creditLimit = explicitLimit;
+  else if(debtor && typeof debtor.creditLimit==='number') newDebtor.creditLimit = debtor.creditLimit;
 
   const di = DB.debtors.findIndex(x=>x.id===debtorId);
   if(di>=0) DB.debtors[di]=newDebtor; else DB.debtors.push(newDebtor);
@@ -6708,7 +6998,8 @@ window.doCashLoan = async function(){
     items: [], total: amount, paid: false, paidDate: null,
     date: now, note: note || "Kassadan naqd pul qarzga olindi",
     seller: currentRole==='admin'?'Admin (naqd pul)':((currentSellerName||'Sotuvchi')+' (naqd pul)'),
-    type: org ? 'organization' : 'person', isCashLoan: true
+    type: org ? 'organization' : 'person', isCashLoan: true,
+    dueDate: dueDateVal || null, remindersSent: []
   };
   const cashLoanDoc = {
     id: debtId, debtId, debtorId, debtorName: name, org: org||'',
@@ -6728,6 +7019,50 @@ window.doCashLoan = async function(){
     withRetry(()=>setDoc(doc(db,'cashLoans',debtId), cashLoanDoc))
   ];
   Promise.all(writes).catch(e=>{ console.error(e); setSyncError(); toast('Firebase saqlashda xatolik','red'); });
+}
+
+// ===== 🗓 MUDDAT KALENDARI — dueDate belgilangan faol qarzlar =====
+// Telegram botdagi /muddatlar buyrug'i bilan bir xil mantiq: 🔴 o'tgan /
+// 🟠 bugun / 🟡 kutilayotgan, muddat bo'yicha o'sish tartibida.
+window.openDueCalendarModal = function(){
+  renderDueCalendar();
+  openModal('modal-due-calendar');
+}
+window.renderDueCalendar = function(){
+  const body = document.getElementById('due-calendar-body');
+  if(!body) return;
+  const list = DB.debts.filter(d=>!d.paid && d.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  if(!list.length){
+    body.innerHTML = `<p style="color:var(--text3);text-align:center;padding:2rem">To'lov muddati belgilangan faol qarz yo'q.</p>`;
+    return;
+  }
+  const todayStr = new Date().toDateString();
+  body.innerHTML = list.map(d=>{
+    const remaining = debtRemaining(d);
+    const daysLeft = Math.ceil((new Date(d.dueDate+'T00:00:00') - new Date(todayStr))/86400000);
+    let icon='🟡', color='amber', label=`${daysLeft} kundan so'ng`;
+    if(daysLeft<0){ icon='🔴'; color='red'; label=`${Math.abs(daysLeft)} kun o'tdi`; }
+    else if(daysLeft===0){ icon='🟠'; color='amber'; label=`bugun`; }
+    const who = d.org ? `${esc(d.debtorName)} (🏢 ${esc(d.org)})` : esc(d.debtorName);
+    return `<div style="border:1px solid var(--${color}-border);background:var(--${color}-bg);border-radius:10px;padding:.7rem .85rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <div style="font-weight:700;font-size:14px">${icon} ${who}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:.15rem">Muddat: ${d.dueDate} · ${label} · ${fmt(remaining)} so'm</div>
+      </div>
+      <button class="btn sm green" onclick="quickPayFromCalendar('${d.id}')" title="Qarzni to'liq to'langan deb belgilash">✅ To'landi</button>
+    </div>`;
+  }).join('');
+}
+window.quickPayFromCalendar = function(id){
+  const d = DB.debts.find(x=>x.id===id);
+  if(!d) return;
+  const remaining = debtRemaining(d);
+  confirm2('Qarzni to\'langan deb belgilash', `${d.debtorName} — qolgan ${fmt(remaining)} so'm bir yo'la to'landimi?`, ()=>{
+    fbApplyDebtPayment(id, remaining, "To'liq yopildi").then(()=>{
+      toast('Qarz to\'liq to\'landi deb belgilandi','green');
+      renderDueCalendar();
+    }).catch(e=>{ console.error(e); toast('Yangilashda xatolik','red'); });
+  });
 }
 
 // ===== DEBTS ADMIN =====
@@ -6805,15 +7140,27 @@ window.renderDebts = function(){
   // Eski kod faqat tashkilot bo'yicha guruhlab, faqat BITTA ismni ko'rsatardi —
   // shu sabab "Axror * Moyka" kabi noto'g'ri sarlavha chiqib, Abduqodirning
   // qarzi "yashiringan" edi. Endi tashkilot ichida HAR BIR odam alohida ko'rinadi.
+  //
+  // TUZATILDI (MUHIM): guruhlash ilgari FAQAT ISM (d.debtorName) bo'yicha
+  // qilinardi. Agar tashkilotsiz (shaxs) ikkita TURLI odam tasodifan bir xil
+  // ismga ega bo'lsa (masalan ikkita "Aziz"), ularning qarzlari BITTA kartaga
+  // BIRLASHTIRILIB ko'rsatilardi. Shu sabab birining qarzini to'lasangiz,
+  // umumiy (ikkalasi qo'shilgan) summa o'zgarib, xuddi "boshqa qarzdorning
+  // qarzi aralashib/yo'qolib ketayotgandek" ko'rinardi. Endi har bir qarz
+  // yozuvidagi NOYOB debtorId (agar mavjud bo'lsa) asosiy kalit sifatida
+  // ishlatiladi — shunda bir xil ismli, lekin BOSHQA-BOSHQA odamlar hech
+  // qachon bir-biriga aralashtirilmaydi. Faqat juda eski (debtorId'siz)
+  // yozuvlar uchun ism+telefon bo'yicha zaxira kalit ishlatiladi.
   const grouped = {};
   list.forEach(d=>{
-    const orgKey = d.org ? 'org:'+d.org : 'person:'+d.debtorName;
+    const identityKey = d.debtorId || ('legacy:'+d.debtorName+'|'+(d.phone||''));
+    const orgKey = d.org ? 'org:'+d.org : 'person:'+identityKey;
     if(!grouped[orgKey]){
       grouped[orgKey] = { org:d.org||'', isOrg:!!d.org, people:{} };
     }
-    const personKey = d.debtorName;
+    const personKey = identityKey;
     if(!grouped[orgKey].people[personKey]){
-      grouped[orgKey].people[personKey] = { debtorName:d.debtorName, phone:d.phone||'', debts:[] };
+      grouped[orgKey].people[personKey] = { debtorName:d.debtorName, debtorId:d.debtorId||'', phone:d.phone||'', debts:[] };
     }
     grouped[orgKey].people[personKey].debts.push(d);
   });
@@ -6853,7 +7200,12 @@ window.renderDebts = function(){
       <div style="display:flex;flex-direction:column;gap:.85rem">
         ${people.map(p=>{
           const personOwed = p.debts.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
-          const debtor = DB.debtors.find(dd=>dd.name===p.debtorName && !dd.isOrgAccount && (dd.org===g.org || (!g.org && !dd.org)));
+          // TUZATILDI: avval faqat ism bo'yicha izlangani uchun, bir xil
+          // ismli boshqa qarzdorning login/parolini ko'rsatib qo'yish xavfi
+          // bor edi. Endi mavjud bo'lsa debtorId orqali ANIQ shu odam topiladi.
+          const debtor = p.debtorId
+            ? DB.debtors.find(dd=>dd.id===p.debtorId)
+            : DB.debtors.find(dd=>dd.name===p.debtorName && !dd.isOrgAccount && (dd.org===g.org || (!g.org && !dd.org)));
           const loginInfo = debtor?.login ? `<div style="font-size:12px;color:var(--text3);margin-top:.2rem">🔐 Login: <strong>${esc(debtor.login)}</strong> · Parol: <strong>${esc(debtor.password)}</strong></div>` : '';
           const loginBtn = debtor
             ? `<button class="btn sm" style="margin-top:.4rem" onclick="openDebtorLogin('${debtor.id}')">🔐 Login/Parol tahrirlash</button>`
@@ -6868,16 +7220,16 @@ window.renderDebts = function(){
               </div>
               <div style="text-align:right">
                 <div style="font-size:13px;font-weight:700;color:${personOwed>0?'var(--amber)':'var(--green)'}">${fmt(personOwed)} so'm</div>
-                <button class="btn sm" style="margin-top:.3rem" onclick="printPersonDebt('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Shu shaxsning qarzini alohida chop etish">🖨 Shaxsiy chek</button>
-                ${personOwed>0?`<button class="btn sm amber" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
-                ${personOwed>0&&p.phone?`<button class="btn sm green" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
+                <button class="btn sm" style="margin-top:.3rem" onclick="printPersonDebt('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}','${(p.debtorId||'').replace(/'/g,"\\'")}')" title="Shu shaxsning qarzini alohida chop etish">🖨 Shaxsiy chek</button>
+                ${personOwed>0?`<button class="btn sm amber" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}',false,'${(p.debtorId||'').replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+                ${personOwed>0&&p.phone?`<button class="btn sm green" style="margin-top:.3rem" onclick="shareDebtReminder('${(g.org||'').replace(/'/g,"\\'")}','${p.debtorName.replace(/'/g,"\\'")}',true,'${(p.debtorId||'').replace(/'/g,"\\'")}')" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
               </div>
             </div>`:`<div style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
               <div>${p.phone?`<div style="font-size:13px;color:var(--text3);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">📞 <a href="tel:${p.phone.replace(/\s+/g,'')}" style="color:var(--accent);text-decoration:none" title="Qo'ng'iroq qilish">${esc(p.phone)}</a></div>`:''}${loginInfo}${loginBtn}</div>
               <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-                <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
-                ${personOwed>0?`<button class="btn sm amber" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
-                ${personOwed>0&&p.phone?`<button class="btn sm green" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}',true)" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
+                <button class="btn sm" onclick="printPersonDebt('','${p.debtorName.replace(/'/g,"\\'")}','${(p.debtorId||'').replace(/'/g,"\\'")}')" title="Qarzni chop etish">🖨 Chop etish</button>
+                ${personOwed>0?`<button class="btn sm amber" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}',false,'${(p.debtorId||'').replace(/'/g,"\\'")}')" title="Qarzdorga eslatma matnini ulashish/nusxalash">🔔 Eslatma</button>`:''}
+                ${personOwed>0&&p.phone?`<button class="btn sm green" onclick="shareDebtReminder('','${p.debtorName.replace(/'/g,"\\'")}',true,'${(p.debtorId||'').replace(/'/g,"\\'")}')" title="WhatsApp orqali to'g'ridan-to'g'ri yuborish">🟢 WhatsApp</button>`:''}
               </div>
             </div>`}
             <div style="display:flex;flex-direction:column;gap:.5rem">
@@ -6890,12 +7242,21 @@ window.renderDebts = function(){
                 const stateColor = d.paid?'green':isPartial?'blue':overdue?'red':'amber';
                 const stateVarPrefix = stateColor==='blue' ? 'accent' : stateColor;
                 const stateLabel = d.paid?'✅ To\'langan':isPartial?`🔵 Qisman to'langan (${pct}%)`:overdue?`⏰ Muddati o'tgan (${daysOld} kun)`:'⏳ Kutilmoqda';
+                // YANGI: 🗓 to'lov muddati (dueDate) ko'rsatkichi — botdagi /muddatlar
+                // buyrug'i bilan bir xil mantiq: 🔴 o'tgan / 🟠 bugun / 🟡 kutilayotgan.
+                const dueBadge = (!d.paid && d.dueDate) ? (()=>{
+                  const dueDaysLeft = Math.ceil((new Date(d.dueDate+'T00:00:00') - new Date(new Date().toDateString()))/86400000);
+                  if(dueDaysLeft<0) return `<span class="badge red" title="Muddat: ${d.dueDate}">🔴 Muddat ${Math.abs(dueDaysLeft)} kun o'tdi</span>`;
+                  if(dueDaysLeft===0) return `<span class="badge amber" title="Muddat: ${d.dueDate}">🟠 Muddat bugun</span>`;
+                  return `<span class="badge" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a" title="Muddat: ${d.dueDate}">🟡 Muddat ${dueDaysLeft} kundan so'ng</span>`;
+                })() : '';
                 return `
                 <div style="border:1px solid var(--${stateVarPrefix}-border);border-radius:10px;padding:.7rem .85rem;background:var(--${stateVarPrefix}-bg)">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
                     <div>
                       <span style="font-size:13px;color:var(--text2)">${timeStr(d.date)}</span>
                       <span class="badge ${stateColor}" style="margin-left:.5rem">${stateLabel}</span>
+                      ${dueBadge?`<span style="margin-left:.4rem">${dueBadge}</span>`:''}
                     </div>
                     <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
                       <span style="font-weight:700;font-size:15px">${isPartial ? `${fmt(remaining)} so'm <span style="font-size:11px;font-weight:400;color:var(--text3)">(jami ${fmt(d.total)})</span>` : `${fmt(d.total)} so'm`}</span>
@@ -7835,12 +8196,17 @@ window.printDebtsList=function(){
 // — shu sababli bir xil ismli, lekin boshqa tashkilotdagi odam aralashib
 // ketmaydi. Chekda: shaxsning barcha qarz yozuvlari (sana, tovarlar, summa,
 // holat, izoh), faol/to'langan jami summalar va telefon raqami ko'rsatiladi.
-window.printPersonDebt=function(org, debtorName){
+window.printPersonDebt=function(org, debtorName, debtorId){
   // TUZATILDI: sahifada qaysi filtr tanlangan bo'lsa (masalan "Faol qarzlar"),
   // shaxsiy chek ham FAQAT o'sha filtrga mos yozuvlarni chiqarishi kerak.
   // Ilgari BARCHA yozuvlar (to'langanlari ham) chekka tushib ketardi — bu
   // "Faol qarzlar" bo'limida turib chek olganda chalkashlik tug'dirardi.
-  let list = DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''));
+  // TUZATILDI (MUHIM): agar debtorId berilgan bo'lsa, ANIQ shu odamning
+  // yozuvlari olinadi — aks holda bir xil ismli (lekin boshqa) qarzdorning
+  // qarzlari ham noto'g'ri shu chekka qo'shilib ketishi mumkin edi.
+  let list = debtorId
+    ? DB.debts.filter(d=> d.debtorId===debtorId)
+    : DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''));
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -8373,6 +8739,33 @@ window.saveOverdueThreshold = function(){
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
 }
+// YANGI: 💳 standart qarz limiti (getDebtorCreditLimit/checkCreditLimit
+// tomonidan ishlatiladi — qarang: doDebtSell/doCashLoan yaqinidagi kod).
+window.saveDefaultCreditLimit = function(){
+  const raw = document.getElementById('default-credit-limit').value;
+  const v = raw==='' ? 0 : Number(raw);
+  if(isNaN(v) || v<0){ toast("Noto'g'ri qiymat",'red'); return; }
+  DB.defaultCreditLimit = v;
+  toast('✓ Saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+// YANGI: 🔔 ko'p bosqichli qarz eslatma jadvali — api/notify-cron.js dagi
+// mantiq bilan bir xil formatda (masalan "-3,-1,0,3,7"). Noto'g'ri/bo'sh
+// kiritilsa standart [0,3,7] ishlatiladi.
+window.saveDebtReminderOffsets = function(){
+  const raw = (document.getElementById('debt-reminder-offsets').value||'').trim();
+  let offsets;
+  if(!raw){ offsets = [0,3,7]; }
+  else {
+    offsets = raw.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
+    if(!offsets.length){ toast("Noto'g'ri format — masalan: -3,-1,0,3,7",'red'); return; }
+  }
+  offsets = [...new Set(offsets)].sort((a,b)=>a-b);
+  DB.debtReminderOffsets = offsets;
+  document.getElementById('debt-reminder-offsets').value = offsets.join(',');
+  toast('✓ Saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
 // YANGI: admin sotuvchining chek/hisobotlarda ko'rinadigan ismini
 // belgilashi mumkin (masalan, umumiy "Sotuvchi" o'rniga xodimning ismi).
 // Hozir tizimda faqat bitta umumiy sotuvchi login/PIN bo'lgani uchun, bu
@@ -8589,7 +8982,7 @@ window.fillReceiptDesignForm = function(){
   const setChk=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.checked=!!val; };
   set('rd-paper', s.paper); set('rd-ink', s.ink); set('rd-ink-soft', s.inkSoft); set('rd-line', s.line); set('rd-bg', s.bg); set('rd-accent', s.accent);
   setChk('rd-accent-follow-brand', s.accentFollowBrand);
-  set('rd-font', s.font); set('rd-width', String(s.width));
+  set('rd-font', s.font); set('rd-width', String(s.width)); set('rd-font-weight', String(s.fontWeight||400));
   set('rd-eyebrow', s.eyebrow); set('rd-total-label', s.totalLabel); set('rd-stamp', s.stamp); set('rd-links-title', s.linksTitle);
   setChk('rd-show-logo', s.showLogo); setChk('rd-show-address', s.showAddress); setChk('rd-show-phone', s.showPhone);
   setChk('rd-show-hours', s.showHours); setChk('rd-show-seller', s.showSeller); setChk('rd-show-unitprice', s.showUnitPrice);
@@ -8603,7 +8996,7 @@ function collectReceiptDesignForm(){
     paper: val('rd-paper')||'#fbfaf6', ink: val('rd-ink')||'#1e1d1a', inkSoft: val('rd-ink-soft')||'#6b6558',
     line: val('rd-line')||'#d8d2c2', bg: val('rd-bg')||'#e9e4d8', accent: val('rd-accent')||'#a8462f',
     accentFollowBrand: chk('rd-accent-follow-brand'),
-    font: val('rd-font')||'mono', width: parseInt(val('rd-width'),10)||380,
+    font: val('rd-font')||'mono', width: parseInt(val('rd-width'),10)||380, fontWeight: parseInt(val('rd-font-weight'),10)||400,
     eyebrow: (val('rd-eyebrow')||"Xarid tasdig'i").trim(), totalLabel: (val('rd-total-label')||"Jami to'lov").trim(),
     stamp: (val('rd-stamp')||'✓ Tasdiqlangan').trim(), linksTitle: (val('rd-links-title')||"Bog'lanish va havolalar").trim(),
     showLogo: chk('rd-show-logo'), showAddress: chk('rd-show-address'), showPhone: chk('rd-show-phone'),
@@ -8654,6 +9047,113 @@ function updateReceiptPreviewDraft(){
   };
   try{ localStorage.setItem(RECEIPT_PREVIEW_STORAGE_KEY, JSON.stringify(draft)); }catch(e){}
 }
+// ===== YANGI: SOTUV CHEKI (chop etish/mijozga chiqadigan qog'oz chek) SOZLAMALARI =====
+// MUHIM: bu yuqoridagi "Chek sahifasi dizayni" (receiptDesign / receipt.html —
+// QR skanerlanganda ochiladigan ONLAYN sahifa) BILAN ADASHTIRILMASIN. Bu yerdagi
+// sozlamalar tovar sotilganda ochiladigan #modal-receipt oynasini (openReceiptModal)
+// va undan chop etiladigan/ulashiladigan qog'oz chekni boshqaradi — mijozga
+// qo'lda beriladigan yoki termoprinterdan chiqadigan chekning o'zi.
+function defaultSaleReceiptDesign(){
+  return {
+    eyebrow: '',
+    showLogo:true, showAddress:true, showPhone:true, showHours:true,
+    showSeller:true, showDate:true, showUnitPrice:false, showReceiptNumber:false, showQr:true,
+    // YANGI: chekning eng pastidagi "Xaridingiz uchun rahmat!" matnini
+    // ham admin xohlasa butunlay o'chirib qo'yishi mumkin.
+    showFooterText:true,
+    // Coin dasturi haqida chekda chiqadigan, admin o'zi yozadigan matn —
+    // faqat QR "coin" rejimida (Telegram bot ulangan) bo'lganda ko'rinadi.
+    showCoinPromo:true,
+    coinPromoText: "🎁 Chekdagi QR kodni skanerlab, xaridingiz uchun sodiqlik coinini hisobingizga oling!",
+    // YANGI: chekdagi matnlar qalinligi (CSS font-weight). 400=oddiy,
+    // 500=o'rtacha, 700=qalin, 900=eng qalin/maksimal qora.
+    fontWeight: 400,
+    // Har biri: {text: string}. Admin qo'shgan ixtiyoriy qo'shimcha matn
+    // qatorlari — chekning pastki qismida (footer matnidan keyin) shu
+    // tartibda chiqadi. receipt.html'ning qo'shimcha qatorlaridan MUSTAQIL.
+    customLines: []
+  };
+}
+function renderSaleReceiptCustomLinesList(lines){
+  const wrap = document.getElementById('srd-custom-lines-list');
+  if(!wrap) return;
+  const list = Array.isArray(lines) ? lines : [];
+  wrap.innerHTML = list.map((l,i)=>`
+    <div style="display:flex;gap:.4rem;align-items:center">
+      <input type="text" class="srd-custom-line-input" data-idx="${i}" maxlength="120" value="${esc(l.text||'')}" placeholder="Masalan: Almashtirish 3 kun ichida" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
+      <button class="btn sm red" type="button" onclick="removeSaleReceiptCustomLine(${i})" title="O'chirish">✕</button>
+    </div>`).join('') || `<p style="font-size:12px;color:var(--text3)">Hali qo'shilmagan.</p>`;
+}
+function getSaleReceiptCustomLinesFromDOM(){
+  return Array.from(document.querySelectorAll('.srd-custom-line-input')).map(el=>({text: el.value}));
+}
+window.addSaleReceiptCustomLine = function(){
+  const lines = getSaleReceiptCustomLinesFromDOM();
+  lines.push({text:''});
+  renderSaleReceiptCustomLinesList(lines);
+  const inputs = document.querySelectorAll('.srd-custom-line-input');
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+window.removeSaleReceiptCustomLine = function(idx){
+  const lines = getSaleReceiptCustomLinesFromDOM();
+  lines.splice(idx,1);
+  renderSaleReceiptCustomLinesList(lines);
+}
+window.fillSaleReceiptSettingsForm = function(){
+  const s = Object.assign(defaultSaleReceiptDesign(), DB.saleReceiptDesign||{});
+  const set=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.value=val; };
+  const setChk=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.checked=!!val; };
+  set('srd-eyebrow', s.eyebrow||'');
+  setChk('srd-show-logo', s.showLogo); setChk('srd-show-address', s.showAddress); setChk('srd-show-phone', s.showPhone);
+  setChk('srd-show-hours', s.showHours); setChk('srd-show-seller', s.showSeller); setChk('srd-show-date', s.showDate);
+  setChk('srd-show-unitprice', s.showUnitPrice); setChk('srd-show-receipt-number', s.showReceiptNumber); setChk('srd-show-qr', s.showQr);
+  setChk('srd-show-footer', s.showFooterText);
+  setChk('srd-show-coin-promo', s.showCoinPromo);
+  set('srd-coin-promo-text', s.coinPromoText||'');
+  set('srd-font-weight', String(s.fontWeight||400));
+  renderSaleReceiptCustomLinesList(Array.isArray(s.customLines) ? s.customLines : []);
+}
+function collectSaleReceiptSettingsForm(){
+  const val=(id)=>document.getElementById(id)?.value;
+  const chk=(id)=>!!document.getElementById(id)?.checked;
+  return {
+    eyebrow: (val('srd-eyebrow')||'').trim(),
+    showLogo: chk('srd-show-logo'), showAddress: chk('srd-show-address'), showPhone: chk('srd-show-phone'),
+    showHours: chk('srd-show-hours'), showSeller: chk('srd-show-seller'), showDate: chk('srd-show-date'),
+    showUnitPrice: chk('srd-show-unitprice'), showReceiptNumber: chk('srd-show-receipt-number'), showQr: chk('srd-show-qr'),
+    showFooterText: chk('srd-show-footer'),
+    showCoinPromo: chk('srd-show-coin-promo'),
+    coinPromoText: (val('srd-coin-promo-text')||'').trim(),
+    fontWeight: parseInt(val('srd-font-weight'), 10) || 400,
+    customLines: getSaleReceiptCustomLinesFromDOM().map(l=>({text:(l.text||'').trim()})).filter(l=>l.text)
+  };
+}
+window.saveSaleReceiptSettings = function(){
+  DB.saleReceiptDesign = collectSaleReceiptSettingsForm();
+  toast('✓ Sotuv cheki sozlamalari saqlandi (barcha qurilmalarda)','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+window.resetSaleReceiptSettingsDefaults = function(){
+  confirm2('Standart holatga qaytarish', 'Sotuv cheki sozlamalari asl (standart) holatiga qaytariladi. Davom etilsinmi?', ()=>{
+    DB.saleReceiptDesign = defaultSaleReceiptDesign();
+    window.fillSaleReceiptSettingsForm();
+    toast('✓ Standart holatga qaytarildi — saqlashni unutmang','amber');
+  });
+}
+// "Sinov cheki" — sozlamalarni saqlamasdan turib, joriy formadagi qiymatlar
+// bilan haqiqiy #modal-receipt oynasini namuna ma'lumotlar bilan ochadi.
+window.previewSaleReceiptSettings = function(){
+  const draftDesign = collectSaleReceiptSettingsForm();
+  const prevDesign = DB.saleReceiptDesign;
+  DB.saleReceiptDesign = draftDesign; // vaqtincha — faqat shu sinov chek uchun
+  const sample = buildReceiptFromItems([
+    {name:"Coca-Cola 1.5L", qty:2, price:14000, total:28000},
+    {name:"Non", qty:3, price:3000, total:9000},
+    {name:"Yog' 1L", qty:1, price:22000, total:22000}
+  ], (DB.sellers&&DB.sellers[0]?.name) || 'Aziz', 59000, 'preview_'+uid());
+  window.openReceiptModal(sample, true);
+  DB.saleReceiptDesign = prevDesign; // formadagi qiymatlarni saqlab qo'ymaymiz, faqat ko'rsatib beramiz
+}
 window.renderAuditLog = function(){
   const wrap = document.getElementById('auditlog-list');
   if(!wrap) return;
@@ -8664,6 +9164,25 @@ window.renderAuditLog = function(){
     <div style="display:flex;justify-content:space-between;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border2)">
       <div style="font-size:13px">${esc(e.summary)}</div>
       <div style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">${esc(e.actor)}<br>${timeStr(e.ts)}</div>
+    </div>`).join('');
+}
+
+// renderActionLogs — yangi 'actionLogs' (bot + Mini App + panel) jurnali
+// uchun. source bo'yicha filtrlash, har biriga mos ikonka bilan.
+window.renderActionLogs = function(){
+  const wrap = document.getElementById('actionlogs-list');
+  if(!wrap) return;
+  const filterVal = document.getElementById('actionlogs-filter')?.value || '';
+  const list = (window.DB_ACTION_LOGS||[]).filter(e=>!filterVal || e.source===filterVal);
+  if(!list.length){ wrap.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem">Hozircha yozuv yo\'q</p>'; return; }
+  const sourceIcon = { bot:'🤖', miniapp:'📱', panel:'💻' };
+  wrap.innerHTML = list.map(e=>`
+    <div style="display:flex;justify-content:space-between;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border2)">
+      <div>
+        <div style="font-size:13px">${sourceIcon[e.source]||'💻'} ${esc(e.detail||e.action||'')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:.15rem">${esc(e.actorName||'')}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right;flex-shrink:0">${timeStr(e.ts)}</div>
     </div>`).join('');
 }
 
@@ -8847,9 +9366,54 @@ window.renderTelegramAdminsList = function(){
         <option value="owner" ${role==='owner'?'selected':''}>👑 owner</option>
         <option value="admin" ${role==='admin'?'selected':''}>🧑‍💼 admin</option>
       </select>
+      ${role==='admin'?`<button class="btn sm" style="flex-shrink:0" onclick="openAdminPermissionsModal('${a.id}')" title="Bu adminning aniq huquqlarini sozlash">🔐 Huquqlar</button>`:''}
       <button class="btn sm red" style="flex-shrink:0" onclick="removeTelegramAdmin('${a.id}')">🗑</button>
     </div>`;
   }).join('');
+}
+
+// ============ YANGI: 🔐 ADMIN HUQUQLARI (batafsil, checkbox asosida) ============
+// api/_permissions.js dagi PERMISSION_KEYS va defaultPermissionsForRole bilan
+// AYNAN mos — server va admin panel bir xil ro'yxat/standart qiymatlardan
+// foydalanadi. 'owner' har doim hamma narsaga ruxsatli bo'lgani uchun bu
+// oyna faqat role==='admin' bo'lgan yozuvlar uchun ochiladi.
+const PERMISSION_KEYS = [
+  { key: 'manageProducts', label: "Tovarlar (qo'shish/tahrirlash/kirim)" },
+  { key: 'manageDebts', label: "Qarzlar (yozish/to'lov qabul qilish)" },
+  { key: 'manageCustomers', label: 'Mijozlar / COIN (tahrirlash, coin berish)' },
+  { key: 'manageStaff', label: "Xodimlar (sotuvchi qo'shish/o'chirish)" },
+  { key: 'deleteRecords', label: "O'chirish (tovar, qarzdor, mijoz, xodim)" },
+  { key: 'broadcast', label: 'Ommaviy xabarnoma yuborish' },
+  { key: 'manageSettings', label: "Sozlamalar (do'kon, bildirishnoma, coin qoidasi)" },
+  { key: 'manageAdmins', label: "Adminlar ro'yxatini boshqarish" },
+];
+function defaultPermissionsForRole(role){
+  if(role==='owner'){ const all={}; PERMISSION_KEYS.forEach(p=>all[p.key]=true); return all; }
+  return { manageProducts:true, manageDebts:true, manageCustomers:true, manageStaff:false, deleteRecords:false, broadcast:false, manageSettings:false, manageAdmins:false };
+}
+let currentPermissionsAdminId = null;
+window.openAdminPermissionsModal = function(adminId){
+  const admin = (DB.telegramAdmins||[]).find(a=>a.id===adminId);
+  if(!admin) return;
+  currentPermissionsAdminId = adminId;
+  const perms = (admin.permissions && typeof admin.permissions==='object') ? admin.permissions : defaultPermissionsForRole(admin.role||'admin');
+  document.getElementById('admin-perm-title').textContent = `🔐 ${admin.name||'Admin'} — huquqlar`;
+  document.getElementById('admin-perm-body').innerHTML = PERMISSION_KEYS.map(p=>`
+    <label style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" id="perm-${p.key}" ${perms[p.key]?'checked':''} style="width:18px;height:18px;flex-shrink:0">
+      <span style="font-size:13.5px">${p.label}</span>
+    </label>`).join('');
+  openModal('modal-admin-permissions');
+}
+window.saveAdminPermissions = function(){
+  const admin = (DB.telegramAdmins||[]).find(a=>a.id===currentPermissionsAdminId);
+  if(!admin) return;
+  const perms = {};
+  PERMISSION_KEYS.forEach(p=>{ perms[p.key] = !!document.getElementById('perm-'+p.key)?.checked; });
+  admin.permissions = perms;
+  closeModal('modal-admin-permissions');
+  toast('✓ Huquqlar saqlandi','green');
+  saveTelegramSettings(true);
 }
 window.sendTelegramTestMessage = async function(){
   const token = document.getElementById('tg-bot-token')?.value.trim();
@@ -9164,45 +9728,95 @@ function saveReceiptRecord(receiptData){
     console.error('Chek yozuvini saqlashda xatolik:', e);
   });
 }
-window.openReceiptModal=function(receiptData){
+window.openReceiptModal=function(receiptData, skipSave){
   lastReceiptData = receiptData;
-  document.getElementById('receipt-shopname').textContent = (DB.shopLogo?'':'🏪 ') + (DB.shopName||"Do'kon");
+  // TUZATILDI: bu o'zgaruvchi <script type="module"> ichida "let" bilan
+  // e'lon qilingani sabab, sahifadagi BOSHQA (module bo'lmagan) skriptlar
+  // (masalan "🔊 Aytish" tugmasi) uni umuman ko'ra olmasdi — ular
+  // window.lastReceiptData'ni qidirardi, u esa hech qachon to'ldirilmagan
+  // edi. Shu sabab tugma bosilganda doim "Chek topilmadi" chiqardi. Endi
+  // shu yerda ham global (window) nusxasi yangilanadi.
+  window.lastReceiptData = receiptData;
+  // YANGI: Sozlamalar > "Sotuv cheki sozlamalari"da belgilangan qiymatlar
+  // (receipt.html'ning "Chek sahifasi dizayni"dan MUSTAQIL — bu shu yerda,
+  // mol sotilganda ochiladigan/chop etiladigan chek uchun).
+  const srd = Object.assign(defaultSaleReceiptDesign(), DB.saleReceiptDesign||{});
+  const show=(id,visible)=>{ const el=document.getElementById(id); if(el) el.style.display = visible ? '' : 'none'; };
+
+  // YANGI: matnlar qalinligi — wrapper'ga qo'yiladi, shu orqali o'zining
+  // aniq font-weight'i bo'lmagan barcha ichki matnlarga (tovarlar, sana,
+  // footer va h.k.) meros bo'lib o'tadi.
+  const receiptContentEl = document.getElementById('receipt-content');
+  if(receiptContentEl) receiptContentEl.style.fontWeight = String(srd.fontWeight||400);
+
+  const eyebrowEl = document.getElementById('receipt-eyebrow');
+  if(eyebrowEl){
+    if(srd.eyebrow){ eyebrowEl.textContent = srd.eyebrow; eyebrowEl.style.display=''; }
+    else eyebrowEl.style.display='none';
+  }
+
+  document.getElementById('receipt-shopname').textContent = (DB.shopLogo && srd.showLogo?'':'🏪 ') + (DB.shopName||"Do'kon");
   const receiptLogoEl = document.getElementById('receipt-logo');
-  if(DB.shopLogo){ receiptLogoEl.src = DB.shopLogo; receiptLogoEl.style.display='inline-block'; }
+  if(DB.shopLogo && srd.showLogo){ receiptLogoEl.src = DB.shopLogo; receiptLogoEl.style.display='inline-block'; }
   else { receiptLogoEl.style.display='none'; }
-  // YANGI: manzil/telefon/ish vaqti — Sozlamalar > "Do'kon rekvizitlari"da belgilansa chekda ko'rinadi
-  const metaParts = [DB.shopAddress, DB.shopPhone, DB.workHours].filter(Boolean);
+  // YANGI: manzil/telefon/ish vaqti — Sozlamalar > "Do'kon rekvizitlari"da belgilansa VA
+  // shu chek sozlamalarida yoqilgan bo'lsa chekda ko'rinadi
+  const metaParts = [srd.showAddress?DB.shopAddress:'', srd.showPhone?DB.shopPhone:'', srd.showHours?DB.workHours:''].filter(Boolean);
   const shopMetaEl = document.getElementById('receipt-shopmeta');
-  if(shopMetaEl) shopMetaEl.textContent = metaParts.join(' · ');
+  if(shopMetaEl){ shopMetaEl.textContent = metaParts.join(' · '); show('receipt-shopmeta', !!metaParts.length); }
   const footerEl = document.getElementById('receipt-footer-text');
   if(footerEl) footerEl.textContent = DB.receiptFooter || 'Xaridingiz uchun rahmat!';
+  show('receipt-footer-text', srd.showFooterText);
+  show('receipt-date', srd.showDate);
   document.getElementById('receipt-date').textContent = receiptData.date.toLocaleString('uz-UZ');
+  show('receipt-seller', srd.showSeller);
   document.getElementById('receipt-seller').textContent = 'Sotuvchi: '+receiptData.sellerName;
+  const numberEl = document.getElementById('receipt-number');
+  if(numberEl){
+    if(srd.showReceiptNumber && receiptData.id){ numberEl.textContent = 'Chek №: '+String(receiptData.id).slice(-8).toUpperCase(); numberEl.style.display=''; }
+    else numberEl.style.display='none';
+  }
   const copiesEl = document.getElementById('receipt-copies');
   if(copiesEl) copiesEl.value = '1';
   document.getElementById('receipt-items').innerHTML = receiptData.items.map(i=>`
     <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
-      <span>${esc(i.name)} x${i.qty}</span>
+      <span>${esc(i.name)} x${i.qty}${srd.showUnitPrice && i.qty>1 ? ` <span style="color:#888">(${fmt(i.price!=null?i.price:Math.round(i.total/i.qty))}/dona)</span>`:''}</span>
       <span>${fmt(i.total)}</span>
     </div>`).join('');
   document.getElementById('receipt-total').textContent = fmt(receiptData.total)+" so'm";
+  // YANGI: admin qo'shgan qo'shimcha matn qatorlari (STIR, qaytarish shartlari va h.k.)
+  const customLinesEl = document.getElementById('receipt-custom-lines');
+  if(customLinesEl){
+    const lines = Array.isArray(srd.customLines) ? srd.customLines.filter(l=>l && l.text) : [];
+    customLinesEl.innerHTML = lines.map(l=>`<div>${esc(l.text)}</div>`).join('');
+    show('receipt-custom-lines', !!lines.length);
+  }
   // YANGI: QR kodni chek tagiga chiqarish
   const qrImg = document.getElementById('receipt-qr-img');
   const qrCaption = document.getElementById('receipt-qr-caption');
+  const coinPromoEl = document.getElementById('receipt-coin-promo');
+  const qrMode = effectiveReceiptQrMode();
   if(qrImg){
-    const qrMode = effectiveReceiptQrMode();
-    if(receiptData.id && qrMode!=='none'){
+    if(srd.showQr && receiptData.id && qrMode!=='none'){
       qrImg.style.display = 'inline-block';
       generateReceiptQR(qrImg, receiptData.id);
-      if(qrCaption) qrCaption.textContent = (qrMode==='coin' && (DB.telegramBotUsername||'').trim())
+      const isCoinMode = (qrMode==='coin' && (DB.telegramBotUsername||'').trim());
+      if(qrCaption) qrCaption.textContent = isCoinMode
         ? '📷 Skanerlab Telegram botda sodiqlik coinini yig\'ing'
         : '📷 Chekni onlayn ko\'rish uchun skanerlang';
+      // Coin dasturi haqida admin yozgan qo'shimcha (targ'ibot) matni —
+      // faqat coin rejimida va admin matn kiritgan/yoqqan bo'lsa ko'rinadi.
+      if(coinPromoEl){
+        if(isCoinMode && srd.showCoinPromo && srd.coinPromoText){ coinPromoEl.textContent = srd.coinPromoText; coinPromoEl.style.display=''; }
+        else coinPromoEl.style.display='none';
+      }
     } else {
       qrImg.style.display = 'none';
       if(qrCaption) qrCaption.textContent = '';
+      if(coinPromoEl) coinPromoEl.style.display='none';
     }
   }
-  saveReceiptRecord(receiptData);
+  if(!skipSave) saveReceiptRecord(receiptData);
   openModal('modal-receipt');
 }
 // TUZATILDI: ilgari window.print() butun sahifani chop etishga urinardi va
@@ -9226,7 +9840,11 @@ window.printReceipt=function(){
     : content;
   // 58mm qog'oz / 48mm bosiladigan maydon uchun kichikroq shrift (printHTML
   // ichidagi @page va body o'lchamlari bilan birga ishlaydi).
-  printHTML(fullContent, {title:'Chek', pageStyle:'font-family:\'Courier New\',monospace;font-size:12px;color:#000;font-weight:700'});
+  // TUZATILDI: ilgari qalinlik har doim 700 (qalin) qattiq yozilgan edi —
+  // endi "Sotuv cheki sozlamalari"da admin tanlagan qalinlik (400/500/700/900)
+  // ishlatiladi, shunda ekrandagi ko'rinish va chop etilgan chek bir xil bo'ladi.
+  const srdPrint = Object.assign(defaultSaleReceiptDesign(), DB.saleReceiptDesign||{});
+  printHTML(fullContent, {title:'Chek', pageStyle:`font-family:'Courier New',monospace;font-size:12px;color:#000;font-weight:${srdPrint.fontWeight||400}`});
 }
 // YANGI: printer bo'lmagan yoki qo'lda emas balki masofadan (masalan
 // Telegram orqali) chek yuborish kerak bo'lgan holatlar uchun — chekni
@@ -9266,8 +9884,12 @@ window.shareReceipt=function(){
 // Web Share API orqali ulashadi (Telegram/WhatsApp/SMS'ga tashlash uchun) —
 // qo'llab-quvvatlamasa, matn buferga (clipboard) nusxalanadi. shareReceipt
 // bilan bir xil uslubda ishlaydi, faqat mazmuni qarz haqida.
-window.shareDebtReminder = function(org, debtorName, viaWhatsapp){
-  const list = DB.debts.filter(d=>d.debtorName===debtorName && (d.org||'')===(org||'') && !d.paid)
+window.shareDebtReminder = function(org, debtorName, viaWhatsapp, debtorId){
+  // TUZATILDI: debtorId mavjud bo'lsa shu bo'yicha aniq filtrlanadi — bir
+  // xil ismli boshqa qarzdorning qarzlari eslatmaga qo'shilib ketmasligi uchun.
+  const list = (debtorId
+    ? DB.debts.filter(d=>d.debtorId===debtorId && !d.paid)
+    : DB.debts.filter(d=>d.debtorName===debtorName && (d.org||'')===(org||'') && !d.paid))
     .slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
   if(!list.length){ toast("Bu shaxsning faol qarzi yo'q",'amber'); return; }
   const total = list.reduce((a,d)=>a+(d.paid?d.total:debtRemaining(d)),0);
@@ -9523,9 +10145,10 @@ window.prompt2=function(opts){
         <textarea id="prompt2-field-${i}" rows="${f.rows||4}" placeholder="${(f.placeholder||'').replace(/"/g,'&quot;')}" style="width:100%;resize:vertical">${(f.value==null?'':String(f.value))}</textarea>
       </div>`;
     }
+    const inputType = f.type==='number' ? 'number' : (f.type==='password' ? 'password' : 'text');
     return `<div class="field" style="margin-bottom:.7rem">
       <label>${f.label||''}</label>
-      <input type="${f.type==='number'?'number':'text'}" id="prompt2-field-${i}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${(f.placeholder||'').replace(/"/g,'&quot;')}" value="${(f.value==null?'':String(f.value)).replace(/"/g,'&quot;')}">
+      <input type="${inputType}" id="prompt2-field-${i}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${(f.placeholder||'').replace(/"/g,'&quot;')}" value="${(f.value==null?'':String(f.value)).replace(/"/g,'&quot;')}">
     </div>`;
   }).join('');
   const okBtn = document.getElementById('prompt2-ok');
@@ -13458,19 +14081,28 @@ window.onLabelTemplateSelectChange = function(kind){
 };
 window.saveLabelTemplate = function(kind){
   const cfg = labelTemplateConfig(kind);
-  const name = prompt('Shablon nomini kiriting (masalan: "58mm narx yorlig\'i" yoki "10x2 mayda yorliq"):');
-  if(!name || !name.trim()) return;
-  const s = cfg.read();
-  const all = loadLabelTemplates();
-  if(!all[kind]) all[kind] = [];
-  const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  all[kind].push({id, name:name.trim(), settings:s});
-  persistLabelTemplates(all);
-  populateLabelTemplateSelect(kind);
-  const sel = document.getElementById(cfg.selectId);
-  if(sel) sel.value = id;
-  toggleLabelTemplateButtons(cfg, true);
-  toast('✓ Shablon saqlandi: "'+name.trim()+'"','green');
+  // TUZATILDI: native prompt() Telegram ichida ishlamasligi mumkin edi — endi prompt2 ishlatiladi.
+  window.prompt2({
+    title: 'Shablonni saqlash',
+    message: 'Shablon nomini kiriting (masalan: "58mm narx yorlig\'i" yoki "10x2 mayda yorliq"):',
+    fields: [{label:'Nomi', type:'text', placeholder:'Shablon nomi'}],
+    okLabel: 'Saqlash',
+    onConfirm: (values)=>{
+      const name = (values[0]||'').trim();
+      if(!name) return false;
+      const s = cfg.read();
+      const all = loadLabelTemplates();
+      if(!all[kind]) all[kind] = [];
+      const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      all[kind].push({id, name, settings:s});
+      persistLabelTemplates(all);
+      populateLabelTemplateSelect(kind);
+      const sel = document.getElementById(cfg.selectId);
+      if(sel) sel.value = id;
+      toggleLabelTemplateButtons(cfg, true);
+      toast('✓ Shablon saqlandi: "'+name+'"','green');
+    }
+  });
 };
 window.updateLabelTemplate = function(kind){
   const cfg = labelTemplateConfig(kind);
@@ -13479,10 +14111,11 @@ window.updateLabelTemplate = function(kind){
   const all = loadLabelTemplates();
   const t = (all[kind]||[]).find(x=>x.id===sel.value);
   if(!t) return;
-  if(!confirm(`"${t.name}" shabloni JORIY (hozirgi formadagi) sozlamalar bilan yangilansinmi?`)) return;
-  t.settings = cfg.read();
-  persistLabelTemplates(all);
-  toast('✓ Shablon yangilandi: "'+t.name+'"','green');
+  window.confirm2('Shablonni yangilash', `"${t.name}" shabloni JORIY (hozirgi formadagi) sozlamalar bilan yangilansinmi?`, ()=>{
+    t.settings = cfg.read();
+    persistLabelTemplates(all);
+    toast('✓ Shablon yangilandi: "'+t.name+'"','green');
+  });
 };
 window.renameLabelTemplate = function(kind){
   const cfg = labelTemplateConfig(kind);
@@ -13491,14 +14124,22 @@ window.renameLabelTemplate = function(kind){
   const all = loadLabelTemplates();
   const t = (all[kind]||[]).find(x=>x.id===sel.value);
   if(!t) return;
-  const name = prompt('Shablonning yangi nomi:', t.name);
-  if(!name || !name.trim() || name.trim()===t.name) return;
-  t.name = name.trim();
-  persistLabelTemplates(all);
-  populateLabelTemplateSelect(kind);
-  sel.value = t.id;
-  toggleLabelTemplateButtons(cfg, true);
-  toast('✓ Shablon nomi o\'zgartirildi','green');
+  window.prompt2({
+    title: 'Shablon nomini o\'zgartirish',
+    message: 'Shablonning yangi nomini kiriting:',
+    fields: [{label:'Nomi', type:'text', value:t.name}],
+    okLabel: 'Saqlash',
+    onConfirm: (values)=>{
+      const name = (values[0]||'').trim();
+      if(!name || name===t.name) return false;
+      t.name = name;
+      persistLabelTemplates(all);
+      populateLabelTemplateSelect(kind);
+      sel.value = t.id;
+      toggleLabelTemplateButtons(cfg, true);
+      toast('✓ Shablon nomi o\'zgartirildi','green');
+    }
+  });
 };
 window.deleteLabelTemplate = function(kind){
   if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
@@ -13507,11 +14148,12 @@ window.deleteLabelTemplate = function(kind){
   if(!sel || !sel.value) return;
   const all = loadLabelTemplates();
   const t = (all[kind]||[]).find(x=>x.id===sel.value);
-  if(!confirm(`"${t?t.name:'Shablon'}" o'chirilsinmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
-  all[kind] = (all[kind]||[]).filter(x=>x.id!==sel.value);
-  persistLabelTemplates(all);
-  populateLabelTemplateSelect(kind);
-  toast('✓ Shablon o\'chirildi','green');
+  window.confirm2('Shablonni o\'chirish', `"${t?t.name:'Shablon'}" o'chirilsinmi? Bu amalni ortga qaytarib bo'lmaydi.`, ()=>{
+    all[kind] = (all[kind]||[]).filter(x=>x.id!==sel.value);
+    persistLabelTemplates(all);
+    populateLabelTemplateSelect(kind);
+    toast('✓ Shablon o\'chirildi','green');
+  });
 };
 
 // ===== 1-QADAM: PRINTER TURINI TANLASH =====
@@ -16749,18 +17391,47 @@ document.addEventListener('keydown', function(e){
   // Sotuv yakunlanganda chek summasini ovoz orqali o'qib berish — shovqinli
   // do'konlarda yoki qo'llar band bo'lganda foydali. Faqat O'QIYDI (lastReceiptData),
   // hech narsa yozmaydi.
+  // TUZATILDI: ilgari tili qattiq "ru-RU" (rus) qilib qo'yilgan edi, shu
+  // sabab o'zbekcha matn (masalan "so'm") rus talaffuzida, tushunarsiz
+  // o'qilardi. Endi: (1) qurilmada o'zbekcha ovoz (uz-UZ) mavjud bo'lsa —
+  // aynan o'shani ishlatadi; (2) topilmasa ham, tilni baribir "uz-UZ" qilib
+  // qo'yamiz — bu ko'plab qurilmalarda standart ovozning o'zbekcha
+  // harflarni to'g'riroq (ruschadan ko'ra) talaffuz qilishiga yordam beradi;
+  // (3) ba'zi brauzerlarda ovozlar ro'yxati birinchi chaqiriqda hali
+  // yuklanmagan bo'lishi mumkin — shu holat ham hisobga olingan.
+  function pickUzVoice(){
+    if(!window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    return voices.find(v=>/^uz/i.test(v.lang)) || null;
+  }
   window.announceReceipt = function(){
     if(!window.speechSynthesis){ safeToast("Bu qurilma ovozli o'qishni qo'llab-quvvatlamaydi", 'red'); return; }
-    let total = 0, sellerName = '';
-    try{ total = window.lastReceiptData ? window.lastReceiptData.total : 0; sellerName = window.lastReceiptData ? window.lastReceiptData.sellerName : ''; }catch(e){}
-    if(!total){ safeToast('Chek topilmadi', 'red'); return; }
-    try{
-      const utter = new SpeechSynthesisUtterance(`Jami summa: ${Math.round(total).toLocaleString('uz-UZ')} so'm`);
-      utter.lang = 'ru-RU';
-      utter.rate = 0.95;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
-    }catch(e){ safeToast("Ovozli o'qishda xatolik", 'red'); }
+    const rd = window.lastReceiptData;
+    if(!rd || !rd.total){ safeToast('Avval bitta sotuv yakunlang, keyin qayta urining', 'red'); return; }
+    const speakNow = ()=>{
+      try{
+        const sum = Math.round(rd.total).toLocaleString('uz-UZ').replace(/,/g,' ');
+        const utter = new SpeechSynthesisUtterance(`Xarid qabul qilindi. Jami summa: ${sum} so'm. Rahmat!`);
+        const uzVoice = pickUzVoice();
+        if(uzVoice) utter.voice = uzVoice;
+        utter.lang = 'uz-UZ';
+        utter.rate = 0.92;
+        utter.pitch = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utter);
+      }catch(e){ safeToast("Ovozli o'qishda xatolik", 'red'); }
+    };
+    // Ba'zi brauzerlarda (ayniqsa Chrome) ovozlar ro'yxati asinxron
+    // yuklanadi — birinchi chaqiriqda bo'sh bo'lishi mumkin. Shu holatda
+    // bir marta "voiceschanged" hodisasini kutib, keyin gapiramiz.
+    const voices = window.speechSynthesis.getVoices();
+    if(!voices || !voices.length){
+      window.speechSynthesis.addEventListener('voiceschanged', speakNow, { once:true });
+      // Zaxira: agar hodisa umuman kelmasa ham, baribir gapirib ko'ramiz.
+      setTimeout(speakNow, 300);
+    } else {
+      speakNow();
+    }
   };
   window.addEventListener('load', function(){
     if(window.speechSynthesis){
@@ -16862,19 +17533,56 @@ document.addEventListener('keydown', function(e){
   };
   window.adjustSupplierBalance = function(id, delta){
     const s = DB.suppliers.find(x=>x.id===id); if(!s) return;
-    const raw = prompt(delta>0 ? "Qo'shimcha qarz summasi (so'm):" : "To'lov summasi (so'm):", '');
-    const amt = parseFloat(raw||'');
-    if(!amt || amt<=0) return;
-    s.balance = (s.balance||0) + (delta>0 ? amt : -amt);
-    s.ledger = s.ledger||[];
-    s.ledger.unshift({ ts:new Date().toISOString(), amount: delta>0?amt:-amt, type: delta>0?'qarz':'tolov' });
-    fbSaveSupplier(s);
-    toast2('✓ Yangilandi','green');
+    // TUZATILDI: native prompt() Telegram ichida ishlamasligi mumkin edi — endi prompt2 ishlatiladi.
+    window.prompt2({
+      title: delta>0 ? "Qo'shimcha qarz" : "To'lov",
+      message: delta>0 ? "Qo'shimcha qarz summasini kiriting (so'm):" : "To'lov summasini kiriting (so'm):",
+      fields: [{label:'Summa (so\'m)', type:'number', placeholder:'0'}],
+      okLabel: delta>0 ? "Qarz qo'shish" : "To'lov qilish",
+      onConfirm: (values)=>{
+        const amt = parseFloat(values[0]);
+        if(!amt || amt<=0) return false;
+        s.balance = (s.balance||0) + (delta>0 ? amt : -amt);
+        s.ledger = s.ledger||[];
+        s.ledger.unshift({ ts:new Date().toISOString(), amount: delta>0?amt:-amt, type: delta>0?'qarz':'tolov' });
+        fbSaveSupplier(s);
+        toast2('✓ Yangilandi','green');
+      }
+    });
   };
   window.deleteSupplier = function(id){
     if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
     const s = DB.suppliers.find(x=>x.id===id); if(!s) return;
     confirm2("Yetkazib beruvchini o'chirish", `${s.name} butunlay o'chirilsinmi?`, ()=>{ fbDeleteSupplier(id); toast2("O'chirildi",'green'); });
+  };
+  // YANGI: yetkazib beruvchilar ro'yxatini Excel/PDF ko'rinishida yuklab olish
+  // (mavjud umumiy exportToExcel/exportToPDF vositalaridan foydalanadi —
+  // xuddi mijozlar/tovarlar ro'yxati eksporti kabi).
+  function suppliersExportRows(){
+    const list = (DB.suppliers||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    const headers = ['Nomi','Telefon','Tovar turi','Balans (so\'m)','Izoh'];
+    const rows = list.map(s=>[ s.name||'', s.phone||'', s.category||'', Math.round(s.balance||0), s.note||'' ]);
+    return { headers, rows, list };
+  }
+  window.exportSuppliersExcel = function(){
+    const { headers, rows, list } = suppliersExportRows();
+    if(!list.length){ toast2("Eksport uchun yetkazib beruvchi yo'q",'amber'); return; }
+    if(typeof window.exportToExcel==='function'){
+      window.exportToExcel(`yetkazib_beruvchilar_${new Date().toISOString().slice(0,10)}.xlsx`, 'Yetkazib beruvchilar', headers, rows);
+    }
+  };
+  window.exportSuppliersPDF = function(){
+    const { headers, rows, list } = suppliersExportRows();
+    if(!list.length){ toast2("Eksport uchun yetkazib beruvchi yo'q",'amber'); return; }
+    const totalDebt = list.reduce((a,s)=>a+(s.balance>0?s.balance:0),0);
+    if(typeof window.exportToPDF==='function'){
+      window.exportToPDF({
+        filename: `yetkazib_beruvchilar_${new Date().toISOString().slice(0,10)}.pdf`,
+        title: 'Yetkazib beruvchilar ro\'yxati',
+        summaryLines: [`Jami yetkazib beruvchi: ${list.length} ta`, `Jami qarzimiz: ${fmt2(totalDebt)} so'm`],
+        headers, rows
+      });
+    }
   };
   window.renderSuppliersList = function(){
     const wrap = document.getElementById('suppliers-list'); const empty = document.getElementById('suppliers-empty');
@@ -17937,31 +18645,56 @@ document.addEventListener('keydown', function(e){
       let raw;
       try{ raw = JSON.parse(e.target.result); }catch(err){ if(typeof window.toast==='function') window.toast("Fayl noto'g'ri formatda",'red'); inputEl.value=''; return; }
 
+      // TUZATILDI: native prompt() Telegram ichida ishlamasligi mumkin edi —
+      // endi butun oqim prompt2/confirm2 orqali, kerak bo'lsa ketma-ket
+      // (parol -> PIN -> tasdiqlash) davom etadi.
+      const afterDecrypt = (payload)=>{
+        if(!payload || !payload.cloud){ if(typeof window.toast==='function') window.toast("Bu fayl zaxira nusxa emas",'red'); inputEl.value=''; return; }
+        // Xavfsizlik: tiklashdan oldin admin PIN talab qilinadi (buni faqat
+        // admin bajarishi kerak — noto'g'ri qo'l bilan tiklab yuborish xavfini kamaytiradi)
+        window.prompt2({
+          title: 'Xavfsizlik tekshiruvi',
+          message: 'Xavfsizlik uchun ADMIN PIN kodini kiriting:',
+          fields: [{label:'ADMIN PIN', type:'password', placeholder:'****'}],
+          okLabel: 'Tasdiqlash',
+          onConfirm: (values)=>{
+            const enteredPin = values[0];
+            if(!DB.pins || enteredPin !== DB.pins.admin){
+              if(typeof window.toast==='function') window.toast('❌ PIN noto\'g\'ri — tiklash bekor qilindi','red');
+              inputEl.value='';
+              return;
+            }
+            confirm2("Zaxiradan tiklash", `${(payload.exportedAt||'').slice(0,10)} sanadagi zaxira tiklansinmi? Mavjud ma'lumotlar bilan birlashtiriladi (bir xil ID'lar yangilanadi). Bu amalni ortga qaytarib bo'lmaydi.`, ()=>{
+              restoreBackupPayload(payload);
+            });
+            inputEl.value = '';
+          }
+        });
+      };
+
       let payload = raw;
       if(raw && raw.magic===ENC_MAGIC){
-        const pw = window.prompt("Bu zaxira fayli parol bilan himoyalangan. Parolni kiriting:");
-        if(!pw){ inputEl.value=''; return; }
-        try{
-          const decrypted = await decryptJSON(raw, pw);
-          payload = JSON.parse(decrypted);
-        }catch(err){ if(typeof window.toast==='function') window.toast("Parol noto'g'ri yoki fayl buzilgan",'red'); inputEl.value=''; return; }
+        window.prompt2({
+          title: 'Shifrlangan zaxira',
+          message: 'Bu zaxira fayli parol bilan himoyalangan. Parolni kiriting:',
+          fields: [{label:'Parol', type:'password', placeholder:'Parol'}],
+          okLabel: 'Ochish',
+          onConfirm: (values)=>{
+            const pw = values[0];
+            if(!pw){ inputEl.value=''; return false; }
+            decryptJSON(raw, pw).then(decrypted=>{
+              try{ afterDecrypt(JSON.parse(decrypted)); }
+              catch(err){ if(typeof window.toast==='function') window.toast("Parol noto'g'ri yoki fayl buzilgan",'red'); inputEl.value=''; }
+            }).catch(()=>{
+              if(typeof window.toast==='function') window.toast("Parol noto'g'ri yoki fayl buzilgan",'red');
+              inputEl.value='';
+            });
+          }
+        });
+        return;
       }
 
-      if(!payload || !payload.cloud){ if(typeof window.toast==='function') window.toast("Bu fayl zaxira nusxa emas",'red'); inputEl.value=''; return; }
-
-      // Xavfsizlik: tiklashdan oldin admin PIN talab qilinadi (buni faqat
-      // admin bajarishi kerak — noto'g'ri qo'l bilan tiklab yuborish xavfini kamaytiradi)
-      const enteredPin = window.prompt("Xavfsizlik uchun ADMIN PIN kodini kiriting:");
-      if(enteredPin===null){ inputEl.value=''; return; }
-      if(!DB.pins || enteredPin !== DB.pins.admin){
-        if(typeof window.toast==='function') window.toast('❌ PIN noto\'g\'ri — tiklash bekor qilindi','red');
-        inputEl.value=''; return;
-      }
-
-      confirm2("Zaxiradan tiklash", `${(payload.exportedAt||'').slice(0,10)} sanadagi zaxira tiklansinmi? Mavjud ma'lumotlar bilan birlashtiriladi (bir xil ID'lar yangilanadi). Bu amalni ortga qaytarib bo'lmaydi.`, ()=>{
-        restoreBackupPayload(payload);
-      });
-      inputEl.value = '';
+      afterDecrypt(payload);
     };
     reader.readAsText(file);
   };
@@ -18219,13 +18952,14 @@ document.addEventListener('keydown', function(e){
     if(!window.DB) return;
     const p = (DB.products||[]).find(x=>x.id===productId);
     if(!p) return;
-    if(!confirm(`"${p.name}" tovariga ${discPct}% chegirmali aksiya (14 kunga) qo'llansinmi?`)) return;
-    const end = new Date(Date.now()+14*DAY_MS).toISOString().slice(0,10);
-    const promo = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), productId: p.id, productName: p.name, type:'percent', value: discPct, end, createdAt: new Date().toISOString() };
-    if(typeof window.fbSavePromotion === 'function'){
-      window.fbSavePromotion(promo);
-      if(typeof window.toast==='function') window.toast('✓ Aksiya qo\'llandi — 14 kun amal qiladi', 'green');
-    } else if(typeof window.toast==='function') window.toast('Aksiya moduli topilmadi', 'red');
+    confirm2("Aksiya qo'llash", `"${p.name}" tovariga ${discPct}% chegirmali aksiya (14 kunga) qo'llansinmi?`, ()=>{
+      const end = new Date(Date.now()+14*DAY_MS).toISOString().slice(0,10);
+      const promo = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), productId: p.id, productName: p.name, type:'percent', value: discPct, end, createdAt: new Date().toISOString() };
+      if(typeof window.fbSavePromotion === 'function'){
+        window.fbSavePromotion(promo);
+        if(typeof window.toast==='function') window.toast('✓ Aksiya qo\'llandi — 14 kun amal qiladi', 'green');
+      } else if(typeof window.toast==='function') window.toast('Aksiya moduli topilmadi', 'red');
+    });
   };
 
   // ================== 4) KELGUSI OY UCHUN SAVDO BASHORATI ==================

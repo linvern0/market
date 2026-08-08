@@ -263,7 +263,8 @@ const db = getFirestore(app);
 let MY_DEBTS = [];
 let currentDebtor = null;
 let filterMode = 'active';
-let personFilter = 'all'; // all yoki specific person
+let personFilter = 'all'; // 'all' yoki tanlangan shaxsning debtorId (yoki legacy: kalit)
+let personFilterName = 'all'; // ko'rsatish uchun ism (personFilter === debtorId bo'lgani sabab)
 let debtsListener = null;
 let personButtons = [];
 
@@ -447,20 +448,28 @@ function buildPersonFilter(){
   allBtn.className = 'btn sm';
   allBtn.textContent = 'Barchasi';
   allBtn.dataset.person = 'all';
-  allBtn.onclick = () => setPersonFilter('all');
+  allBtn.onclick = () => setPersonFilter('all', 'all');
   container.prepend(allBtn);
 
   // Tashkilotdagi shaxslar ro'yxati — har bir shaxsning ISMI YONIDA o'zining
   // FAOL (to'lanmagan) qarzi ko'rsatiladi, shunda tugmani bosmasdan turib ham
   // "kimning qarzi qancha" darhol ko'rinadi (avval bu umuman ko'rsatilmasdi).
-  const persons = [...new Set(MY_DEBTS.map(d=>d.debtorName).filter(Boolean))];
-  persons.forEach(name => {
-    const personOwed = MY_DEBTS.filter(d=>d.debtorName===name && !d.paid).reduce((a,d)=>a+d.total,0);
+  // TUZATILDI: ilgari shaxslar FAQAT ISM bo'yicha ajratilardi — agar
+  // tashkilotda bir xil ismli ikkita xodim bo'lsa, ularning qarzlari
+  // filtrlashda aralashib ketardi. Endi mavjud bo'lsa debtorId ishlatiladi.
+  const personMap = new Map();
+  MY_DEBTS.forEach(d=>{
+    const key = d.debtorId || ('legacy:'+d.debtorName);
+    if(d.debtorName && !personMap.has(key)) personMap.set(key, d.debtorName);
+  });
+  personMap.forEach((name, key) => {
+    const personOwed = MY_DEBTS.filter(d=>(d.debtorId||('legacy:'+d.debtorName))===key && !d.paid).reduce((a,d)=>a+d.total,0);
     const btn = document.createElement('button');
     btn.className = 'btn sm';
     btn.innerHTML = `${esc(name)}${personOwed>0 ? ` <b style="opacity:.85">· ${fmt(personOwed)} so'm</b>` : ' <span style="opacity:.7">· 0 so\'m</span>'}`;
-    btn.dataset.person = name;
-    btn.onclick = () => setPersonFilter(name);
+    btn.dataset.person = key;
+    btn.dataset.personName = name;
+    btn.onclick = () => setPersonFilter(key, name);
     container.appendChild(btn);
   });
   personButtons = container.querySelectorAll('.btn');
@@ -473,10 +482,11 @@ function buildPersonFilter(){
   });
 }
 
-window.setPersonFilter = function(name){
-  personFilter = name;
+window.setPersonFilter = function(key, name){
+  personFilter = key;
+  personFilterName = key==='all' ? 'all' : name;
   personButtons.forEach(b => {
-    b.classList.toggle('blue', b.dataset.person === name);
+    b.classList.toggle('blue', b.dataset.person === key);
   });
   render();
 }
@@ -492,11 +502,13 @@ window.setFilter = function(f){
   render();
 }
 
+function personKeyOf(d){ return d.debtorId || ('legacy:'+d.debtorName); }
+
 function render(){
   // Filter: person
   let list = MY_DEBTS;
   if(personFilter !== 'all'){
-    list = list.filter(d => d.debtorName === personFilter);
+    list = list.filter(d => personKeyOf(d) === personFilter);
   }
 
   // Filter: active/paid/all
@@ -512,7 +524,7 @@ function render(){
   // tanlanganda esa avvalgidek butun tashkilot bo'yicha ko'rsatiladi.
   const statsSource = personFilter === 'all'
     ? MY_DEBTS
-    : MY_DEBTS.filter(d => d.debtorName === personFilter);
+    : MY_DEBTS.filter(d => personKeyOf(d) === personFilter);
 
   const totalOwedAll = statsSource.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
   const totalPaidAll = statsSource.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
@@ -529,11 +541,11 @@ function render(){
 
   const totalBarLabel = personFilter === 'all'
     ? 'Umumiy qarzingiz'
-    : `👤 ${esc(personFilter)}ning qarzi`;
+    : `👤 ${esc(personFilterName)}ning qarzi`;
 
   document.getElementById('total-bar').innerHTML = totalOwedAll > 0
     ? `<div><div class="label">${totalBarLabel}</div></div><div class="amount">${fmt(totalOwedAll)} so'm</div>`
-    : `<div><div class="label" style="color:#166534">✅ ${personFilter==='all' ? 'Barcha qarzlaringiz' : esc(personFilter)+'ning barcha qarzi'} to'langan!</div></div><div class="amount paid">0 so'm</div>`;
+    : `<div><div class="label" style="color:#166534">✅ ${personFilter==='all' ? 'Barcha qarzlaringiz' : esc(personFilterName)+'ning barcha qarzi'} to'langan!</div></div><div class="amount paid">0 so'm</div>`;
 
   // YANGI: tashkilot hisobi "Barchasi"ni ko'rayotganda, pastdagi aralash
   // ro'yxatdan oldin — HAR BIR XODIM bo'yicha alohida xulosa kartalari
@@ -542,14 +554,16 @@ function render(){
   // qarashda to'liq ko'rinadi. Kartaga bosilsa o'sha shaxsga filtrlanadi.
   const summaryEl = document.getElementById('org-people-summary');
   if(currentDebtor.isOrgAccount && personFilter==='all'){
-    const persons = [...new Set(MY_DEBTS.map(d=>d.debtorName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uz'));
+    const personMap = new Map();
+    MY_DEBTS.forEach(d=>{ if(d.debtorName) personMap.set(personKeyOf(d), d.debtorName); });
+    const persons = [...personMap.entries()].sort((a,b)=>a[1].localeCompare(b[1],'uz'));
     summaryEl.innerHTML = `<p style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:.6rem">👥 Xodimlar kesimida to'liq ma'lumot</p>
-      <div class="people-summary-grid">${persons.map(name=>{
-        const pd = MY_DEBTS.filter(d=>d.debtorName===name);
+      <div class="people-summary-grid">${persons.map(([key,name])=>{
+        const pd = MY_DEBTS.filter(d=>personKeyOf(d)===key);
         const owed = pd.filter(d=>!d.paid).reduce((a,d)=>a+d.total,0);
         const paidSum = pd.filter(d=>d.paid).reduce((a,d)=>a+d.total,0);
         const activeCnt = pd.filter(d=>!d.paid).length;
-        return `<div class="person-card" onclick="setPersonFilter('${name.replace(/'/g,"\\'")}')">
+        return `<div class="person-card" onclick="setPersonFilter('${key.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')">
           <div class="pc-name">👤 ${esc(name)}</div>
           <div class="pc-owed ${owed>0?'':'zero'}">${fmt(owed)} so'm</div>
           <div class="pc-row"><span>⏳ Faol qarz</span><span>${activeCnt} ta</span></div>
@@ -624,6 +638,7 @@ window.doLogout = function(){
   MY_DEBTS = [];
   filterMode = 'active';
   personFilter = 'all';
+  personFilterName = 'all';
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('login-input').value = '';

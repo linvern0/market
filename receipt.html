@@ -296,7 +296,7 @@
     return {
       paper:'#fbfaf6', ink:'#1e1d1a', inkSoft:'#6b6558', line:'#d8d2c2', bg:'#e9e4d8',
       accent:'#a8462f', accentFollowBrand:false,
-      font:'mono', width:380,
+      font:'mono', width:380, fontWeight:400,
       eyebrow:"Xarid tasdig'i", totalLabel:"Jami to'lov", stamp:'✓ Tasdiqlangan', linksTitle:"Bog'lanish va havolalar",
       showLogo:true, showAddress:true, showPhone:true, showHours:true, showSeller:true,
       showUnitPrice:true, showStamp:true, showLinks:true, showReceiptNumber:true, customLines:[]
@@ -315,6 +315,9 @@
     document.body.style.fontFamily = d.font === 'sans'
       ? "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif"
       : "'Courier New', ui-monospace, monospace";
+    // YANGI: matnlar qalinligi — admin panelidagi "Chek sahifasi dizayni"da
+    // tanlangan qalinlik (400/500/700/900) shu yerga ham qo'llaniladi.
+    document.body.style.fontWeight = String(d.fontWeight||400);
     let styleTag = document.getElementById('rd-dynamic-style');
     if(!styleTag){ styleTag = document.createElement('style'); styleTag.id = 'rd-dynamic-style'; document.head.appendChild(styleTag); }
     styleTag.textContent = `.receipt, .state{ max-width:${d.width}px }`;
