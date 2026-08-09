@@ -20,7 +20,7 @@
 
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
-const { getLoyaltyTiers, computeCustomerTier, getCoinSettings } = require('./_loyalty');
+const { getLoyaltyTiers, computeCustomerTier, getCoinSettings, isCoinEnabled } = require('./_loyalty');
 
 function getDb() { return require('./_firebase').getDb(); }
 
@@ -33,6 +33,22 @@ function debtSummary(d) {
     isCashLoan: !!d.isCashLoan, paid: !!d.paid, paidDate: d.paidDate || null,
     payments: Array.isArray(d.payments) ? d.payments : [],
     items: Array.isArray(d.items) ? d.items.map((it) => ({ name: it.productName, qty: it.qty, price: it.price, volume: it.volume || '' })) : [],
+  };
+}
+
+// ============ YANGI: MINI APP BO'LIMLARINI ADMIN PANELDAN YOQISH/O'CHIRISH ============
+// index.html > "🎛 Buyruqlar va Mini App bo'limlarini sozlash" oynasidan
+// admin Mini App'dagi (miniapp.html) ayrim bo'limlarni (tab'larni) yoqib/
+// o'chirib qo'yishi mumkin — masalan xodimga faqat "Sotish" va "Qarzlar"
+// kerak bo'lsa, "Hisobot" va "Sozlama" bo'limlarini yashirishi mumkin.
+// 'main' (Bosh) doim ko'rinadi — bu tab bo'sh bo'lib qolmasligi uchun.
+function getMiniAppSectionsConfig(settings) {
+  const cfg = (settings && settings.miniAppSectionsConfig && typeof settings.miniAppSectionsConfig === 'object') ? settings.miniAppSectionsConfig : {};
+  const adminDefaults = { sell: true, debts: true, stock: true, debtors: true, report: true, customers: true, staff: true, settings: true };
+  const clientDefaults = { catalog: true };
+  return {
+    admin: Object.assign({}, adminDefaults, cfg.admin && typeof cfg.admin === 'object' ? cfg.admin : {}),
+    client: Object.assign({}, clientDefaults, cfg.client && typeof cfg.client === 'object' ? cfg.client : {}),
   };
 }
 
@@ -234,6 +250,11 @@ async function buildAdminPayload(db, settings) {
       // YANGI: umumiy coin qoidasi (necha so'mdan 1 coin, 1 coin necha
       // so'mlik qiymat) — admin mini-ilova orqali ham ko'rishi mumkin.
       coinSettings: getCoinSettings(settings),
+      // YANGI: COIN funksiyasi global yoqilgan/o'chirilganligi — miniapp.html
+      // shu bayroqqa qarab coin bilan bog'liq bo'limlarni ko'rsatadi/yashiradi.
+      coinEnabled: isCoinEnabled(settings),
+      // YANGI: Mini App bo'limlari (tab'lar) qaysilari ko'rinishi kerakligi.
+      miniAppSections: getMiniAppSectionsConfig(settings).admin,
     },
   };
 }
@@ -332,6 +353,8 @@ async function buildDebtorPayload(db, settings, chatId, user) {
       // YANGI: mini-ilova katalogida har bir tovarning "coinda sotib olish"
       // narxini hisoblashi uchun (getProductCoinCostClient — miniapp.html).
       coinSettings: getCoinSettings(settings),
+      coinEnabled: isCoinEnabled(settings),
+      miniAppSections: getMiniAppSectionsConfig(settings).client,
       products,
     };
   }
@@ -400,6 +423,8 @@ async function buildDebtorPayload(db, settings, chatId, user) {
       tier: computeCustomerTier(customerRecord.totalSpent || 0, customerRecord.tierOverride || '', settings).label,
     } : null,
     coinSettings: getCoinSettings(settings),
+    coinEnabled: isCoinEnabled(settings),
+    miniAppSections: getMiniAppSectionsConfig(settings).client,
     products,
   };
 }

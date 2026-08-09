@@ -26,7 +26,7 @@
 // ----------------------------------------------------------------------------
 
 const admin = require('firebase-admin');
-const { computeCustomerTier, getCoinSettings, productCoinCost } = require('./_loyalty');
+const { computeCustomerTier, getCoinSettings, productCoinCost, isCoinEnabled } = require('./_loyalty');
 // YANGI (Xavfsizlik/rollar kengaytmasi): batafsil huquqlar tekshiruvi va
 // amallar jurnali — miniapp-action.js'da ishlatilgan BIR XIL modullar,
 // shunda bot va Mini App bir xil qoidalar bilan ishlaydi.
@@ -50,6 +50,29 @@ function greetingWord() {
   if (h >= 11 && h < 17) return 'Xayrli kun';
   if (h >= 17 && h < 22) return 'Xayrli kech';
   return 'Xayrli tun';
+}
+// ============ YANGI: ISH VAQTI TASHQARISIDA AVTOMATIK OGOHLANTIRISH ============
+// index.html > Sozlamalar > "⏰ Ish vaqti" jadvali allaqachon mavjud edi,
+// lekin bot bundan bexabar edi. Admin "Ish vaqti tashqarisida mijozlarga
+// avtomatik ogohlantirish" tugmasini yoqsa — /start yozgan mijoz/qarzdorga
+// hozir do'kon yopiqligi va qachon ochilishi haqida qo'shimcha qator
+// ko'rsatiladi. Toshkent vaqti (UTC+5) asosida hisoblanadi.
+const WORK_DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const WORK_DAY_LABELS = { sun: 'Yakshanba', mon: 'Dushanba', tue: 'Seshanba', wed: 'Chorshanba', thu: 'Payshanba', fri: 'Juma', sat: 'Shanba' };
+function outsideWorkScheduleNote(settings) {
+  if (!settings || !settings.telegramAutoReplyOutsideHours || !settings.workSchedule) return '';
+  const now = new Date();
+  const tashkent = new Date(now.getTime() + (5 * 60 - now.getTimezoneOffset()) * 60000);
+  const dayKey = WORK_DAY_KEYS[tashkent.getUTCDay()];
+  const s = settings.workSchedule[dayKey];
+  if (!s) return '';
+  const curMin = tashkent.getUTCHours() * 60 + tashkent.getUTCMinutes();
+  if (s.open) {
+    const [fh, fm] = (s.from || '09:00').split(':').map(Number);
+    const [th, tm] = (s.to || '20:00').split(':').map(Number);
+    if (curMin >= (fh * 60 + fm) && curMin <= (th * 60 + tm)) return ''; // hozir ochiq
+  }
+  return `\n\n⏰ <i>Hozir do'kon ish vaqti tashqarisida (${WORK_DAY_LABELS[dayKey]}${s.open ? `, ish vaqti ${s.from}–${s.to}` : ' — dam olish kuni'}). Xabaringiz albatta ko'rib chiqiladi.</i>`;
 }
 
 async function tgCall(token, method, params) {
@@ -269,6 +292,21 @@ const COMMAND_PERMISSIONS = {
   '/admin_huquq': 'manageAdmins',
 };
 
+// ============ YANGI: TELEGRAM BUYRUQLARINI ADMIN PANELDAN YOQISH/O'CHIRISH ============
+// Admin index.html > "🤖 Telegram buyruqlari" oynasidan HAR BIR buyruqni
+// alohida yoqib/o'chirib qo'yishi mumkin (masalan /broadcast yoki
+// /export'ni butunlay o'chirib qo'yish). Sozlama settings.telegramCommandsConfig
+// ({ '/buyruq': false, ... }) sifatida saqlanadi — faqat "aniq false"
+// bo'lgan buyruqlar o'chirilgan hisoblanadi, shu sabab eski do'konlarda bu
+// maydon umuman bo'lmasa ham HAMMA buyruq avvalgidek ishlayveradi.
+// /start, /menu, /menyu, /ilova, /app kabi navigatsiya buyruqlari — botning
+// o'zini "qulflab qo'ymaslik" uchun bu yerda umuman ishtirok etmaydi.
+function isTelegramCommandEnabled(settings, cmd) {
+  const cfg = settings && settings.telegramCommandsConfig;
+  if (!cfg || typeof cfg !== 'object') return true;
+  return cfg[cmd] !== false;
+}
+
 // ============ YANGI: TUGMALI (INLINE) MENYU ============
 // Endi admin va mijoz buyruqlarni qo'lda yozmasdan, to'g'ridan-to'g'ri
 // tugmalar orqali ham bajarishi mumkin — /menu (yoki /menyu) buyrug'i,
@@ -288,12 +326,15 @@ function adminMenuKeyboard(req) {
   if (mini) rows.push(...mini.inline_keyboard);
   return { inline_keyboard: rows };
 }
-function debtorMenuKeyboard(req) {
+function debtorMenuKeyboard(req, settings) {
   const rows = [
     [{ text: '💰 Mening qarzim', callback_data: 'cmd:/qarzim' }],
     [{ text: "🧾 To'lovlar tarixi", callback_data: 'cmd:/tarix' }],
-    [{ text: '🪙 Coinlarim', callback_data: 'cmd:/ballarim' }],
   ];
+  // YANGI: COIN funksiyasi o'chirilgan bo'lsa — "Coinlarim" tugmasi
+  // mijoz menyusida umuman ko'rinmaydi (settings berilmagan hollarda,
+  // orqaga moslik uchun, standart holat — ko'rinadi).
+  if (isCoinEnabled(settings)) rows.push([{ text: '🪙 Coinlarim', callback_data: 'cmd:/ballarim' }]);
   const mini = miniAppKeyboard(req, false);
   if (mini) rows.push(...mini.inline_keyboard);
   return { inline_keyboard: rows };
@@ -869,17 +910,24 @@ async function handleReceiptClaim(db, token, chatId, msg, req) {
   return true;
 }
 async function handleLoyaltyPoints(db, token, chatId, req) {
+  const settingsSnap = await db.collection('dokon').doc('settings').get();
+  const settingsData = settingsSnap.exists ? settingsSnap.data() : null;
+  // YANGI: COIN funksiyasi admin tomonidan o'chirilgan bo'lsa — mijozga
+  // tushunarli xabar qaytariladi, ma'lumot bazasiga umuman murojaat
+  // qilinmaydi.
+  if (!isCoinEnabled(settingsData)) {
+    await sendMessage(token, chatId, "🪙 Coin dasturi hozircha o'chirilgan. Batafsil ma'lumot uchun do'kon administratoriga murojaat qiling.", { reply_markup: debtorMenuKeyboard(req, settingsData) });
+    return;
+  }
   const customersSnap = await db.collection('customers').where('telegramChatId', '==', String(chatId)).limit(1).get();
   if (customersSnap.empty) { await sendMessage(token, chatId, "Siz sodiqlik dasturiga hali ulanmagansiz. Do'kon administratoridan ulashini so'rang, keyin /start yozing."); return; }
   const c = customersSnap.docs[0].data();
-  const settingsSnap = await db.collection('dokon').doc('settings').get();
-  const settingsData = settingsSnap.exists ? settingsSnap.data() : null;
   const { earnPerAmount, redeemValuePerCoin } = getCoinSettings(settingsData);
   const text = `🏆 Daraja: ${await customerTierName(db, c.totalSpent, c.tierOverride, settingsData)}\n` +
     `🪙 Coin: <b>${c.points || 0}</b>\n` +
     `💳 Jami xarid: <b>${fmt(c.totalSpent || 0)} so'm</b> (${c.purchaseCount || 0} marta)\n` +
     (c.points >= 100 ? `\n🎁 ${Math.floor(c.points / 100) * 100} coinni ${fmt(Math.floor(c.points / 100) * redeemValuePerCoin)} so'm chegirmaga almashtirishingiz mumkin — do'konda aytsangiz bo'ldi. Yoki mini-ilova katalogidan biror tovarni to'g'ridan-to'g'ri coinga sotib olishingiz mumkin.` : `\nHar ${fmt(earnPerAmount)} so'm xariddan 1 coin, 100 coin = ${fmt(redeemValuePerCoin * 100)} so'm chegirma.`);
-  await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req) });
+  await sendMessage(token, chatId, text, { reply_markup: debtorMenuKeyboard(req, settingsData) });
 }
 
 // Bitta qarz uchun "nima uchun qarzdorligi" batafsil matnini quradi: tovar
@@ -1023,7 +1071,14 @@ async function handleCustomerPaymentHistory(db, token, chatId, req) {
 }
 
 async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req) {
-  const shopName = (await settingsRef.get()).data()?.shopName || "Do'kon";
+  const settingsSnap0 = await settingsRef.get();
+  const settingsData0 = settingsSnap0.exists ? settingsSnap0.data() : null;
+  const shopName = settingsData0?.shopName || "Do'kon";
+
+  // YANGI: admin panelidan o'chirilgan buyruqlar bu yerda to'xtatiladi.
+  if (!isTelegramCommandEnabled(settingsData0, cmd)) {
+    return sendMessage(token, chatId, "⛔ Bu buyruq administrator tomonidan o'chirilgan.");
+  }
 
   // YANGI: batafsil huquq tekshiruvi (owner har doim ruxsatli, oddiy admin
   // faqat unga aniq berilgan huquqlar doirasida) — avvalgi ikki darajali
@@ -1615,6 +1670,16 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     if (DEBTOR_MENU_COMMANDS.has(cmd)) {
       await answerCallbackQuery(token, cq.id);
       try {
+        // YANGI: /qarzim, /tarix kabi mijoz buyruqlari ham admin panelidan
+        // o'chirilgan bo'lishi mumkin (COIN'dan tashqari — u alohida
+        // isCoinEnabled orqali handleLoyaltyPoints ichida tekshiriladi).
+        if (cmd !== '/ballarim' && cmd !== '/coinlarim') {
+          const s = (await settingsRef.get()).data();
+          if (!isTelegramCommandEnabled(s, cmd)) {
+            await sendMessage(token, chatId, "⛔ Bu bo'lim hozircha o'chirilgan.");
+            return;
+          }
+        }
         if (cmd === '/qarzim') await handleCustomerMyDebts(db, token, chatId, req);
         else if (cmd === '/tarix') await handleCustomerPaymentHistory(db, token, chatId, req);
         else if (cmd === '/ballarim' || cmd === '/coinlarim') await handleLoyaltyPoints(db, token, chatId, req);
@@ -1824,7 +1889,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
         await setCommandsForChat(token, chatId, false).catch(() => {});
         await setMenuButtonFor(token, chatId, req, false).catch(() => {});
         const customLine0 = (welcomeText && String(welcomeText).trim()) ? `${esc(String(welcomeText).trim())}\n\n` : '';
-        await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + customLine0 + helpText(false), { reply_markup: debtorMenuKeyboard(req) || kbDebtor || { remove_keyboard: true } });
+        await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + customLine0 + helpText(false) + outsideWorkScheduleNote(settingsData), { reply_markup: debtorMenuKeyboard(req, settingsData) || kbDebtor || { remove_keyboard: true } });
         return;
       }
       // Hali hech qanday ro'yxatda (qarzdor yoki mijoz) topilmadi — admin
@@ -1837,17 +1902,23 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
     await setCommandsForChat(token, chatId, true).catch(() => {});
     {
       const customLine0 = (welcomeText && String(welcomeText).trim()) ? `${esc(String(welcomeText).trim())}\n\n` : '';
-      await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + customLine0 + helpText(isAdmin), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
+      await sendMessage(token, chatId, `👋 ${greetingWord()}!\n\n` + customLine0 + helpText(isAdmin) + outsideWorkScheduleNote(settingsData), { reply_markup: adminMenuKeyboard(req) || kbAdmin });
     }
     return;
   }
   if (text === '/menu' || text === '/menyu') {
-    if (!isAdmin) { await sendMessage(token, chatId, "🗂 Menyu — kerakli bo'limni tanlang:", { reply_markup: debtorMenuKeyboard(req) }); return; }
+    if (!isAdmin) { await sendMessage(token, chatId, "🗂 Menyu — kerakli bo'limni tanlang:", { reply_markup: debtorMenuKeyboard(req, settingsData) }); return; }
     // isAdmin holatida /menu quyida handleAdminCommand orqali ham ishlaydi,
     // lekin shu yerda ham tezkor javob beramiz.
   }
-  if (text === '/qarzim' && !isAdmin) { await handleCustomerMyDebts(db, token, chatId, req); return; }
-  if (text === '/tarix' && !isAdmin) { await handleCustomerPaymentHistory(db, token, chatId, req); return; }
+  if (text === '/qarzim' && !isAdmin) {
+    if (!isTelegramCommandEnabled(settingsData, '/qarzim')) { await sendMessage(token, chatId, "⛔ Bu bo'lim hozircha o'chirilgan."); return; }
+    await handleCustomerMyDebts(db, token, chatId, req); return;
+  }
+  if (text === '/tarix' && !isAdmin) {
+    if (!isTelegramCommandEnabled(settingsData, '/tarix')) { await sendMessage(token, chatId, "⛔ Bu bo'lim hozircha o'chirilgan."); return; }
+    await handleCustomerPaymentHistory(db, token, chatId, req); return;
+  }
   if ((text === '/ballarim' || text === '/coinlarim') && !isAdmin) { await handleLoyaltyPoints(db, token, chatId, req); return; }
   if (!isAdmin && !isKnownAny && !text.startsWith('/')) {
     // Hali tanilmagan (ro'yxatdan o'tmagan) kishi /start dan boshqa narsa
@@ -1879,7 +1950,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
     }
     return;
   }
-  await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? { reply_markup: adminMenuKeyboard(req) } : { reply_markup: debtorMenuKeyboard(req) });
+  await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? { reply_markup: adminMenuKeyboard(req) } : { reply_markup: debtorMenuKeyboard(req, settingsData) });
 }
 
 module.exports = async (req, res) => {

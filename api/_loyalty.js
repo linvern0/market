@@ -70,4 +70,22 @@ function productCoinCost(product, settings) {
   return Math.max(1, Math.ceil((product && product.price || 0) / redeemValuePerCoin));
 }
 
-module.exports = { defaultLoyaltyTiers, getLoyaltyTiers, computeCustomerTier, defaultCoinSettings, getCoinSettings, productCoinCost };
+// ============ YANGI: COIN FUNKSIYASINI GLOBAL YOQISH/O'CHIRISH ============
+// Admin index.html > "🏆 Darajalarni sozlash" oynasidan bitta tugma bilan
+// COIN dasturini butunlay o'chirib qo'yishi mumkin. O'chirilganda:
+//  - index.html: coin bilan bog'liq maydonlar/panellar yashiriladi
+//  - Telegram bot: /coinlarim, /ballarim buyruqlari va COINGA SOTIB OLISH
+//    oqimi ishlamaydi, foydalanuvchiga tushunarli xabar qaytariladi
+//  - Mini App: coin balans/coinga sotib olish bo'limi ko'rinmaydi va
+//    create_coin_order kabi amallar rad etiladi
+// Standart holat — YOQILGAN (true), orqaga moslik uchun (eski do'konlarda
+// maydon umuman bo'lmaydi, shu sabab "aniq false" bo'lmasa yoqilgan deb
+// hisoblanadi).
+function isCoinEnabled(settings) {
+  return !(settings && settings.coinEnabled === false);
+}
+
+module.exports = {
+  defaultLoyaltyTiers, getLoyaltyTiers, computeCustomerTier,
+  defaultCoinSettings, getCoinSettings, productCoinCost, isCoinEnabled,
+};

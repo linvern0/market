@@ -33,7 +33,7 @@
 
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
-const { productCoinCost, getCoinSettings } = require('./_loyalty');
+const { productCoinCost, getCoinSettings, isCoinEnabled } = require('./_loyalty');
 const { hasPermission } = require('./_permissions');
 const { logAction } = require('./_audit');
 
@@ -156,13 +156,16 @@ module.exports = async (req, res) => {
         lineItems.push({ productId: prod.id, name: prod.name, qty, price: prod.price || 0, points: unitPoints * qty, subtotal });
       }
       const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
-      const totalPoints = lineItems.reduce((a, x) => a + x.points, 0);
+      const totalPoints = isCoinEnabled(settings) ? lineItems.reduce((a, x) => a + x.points, 0) : 0;
 
       // Ball bilan to'lash: 1 ball = redeemValuePerCoin so'm chegirma (admin
       // sozlagan qiymat). Mijozning ballari yetarli bo'lmasa, faqat mavjud
       // qadar ishlatiladi, qolgani naqd bo'ladi.
       let pointsUsed = 0, cashDue = total;
-      if (usePoints) {
+      // YANGI: COIN o'chirilgan bo'lsa — ball/coin bilan to'lash imkoni
+      // yo'q, hammasi naqd hisoblanadi (usePoints bo'lsa ham e'tiborsiz
+      // qoldiriladi).
+      if (usePoints && isCoinEnabled(settings)) {
         const neededPoints = Math.ceil(total / redeemValuePerCoin);
         pointsUsed = Math.min(customerData.points || 0, neededPoints);
         cashDue = Math.max(0, total - pointsUsed * redeemValuePerCoin);
@@ -209,6 +212,9 @@ module.exports = async (req, res) => {
     // qilish tugmasi bilan qaror qabul qiladi (coinOrders to'plami,
     // handleCoinOrderDecision — telegram-webhook.js).
     if (action === 'create_coin_order') {
+      // YANGI: admin COIN funksiyasini o'chirib qo'ygan bo'lsa — yangi
+      // coinga sotib olish so'rovi umuman yaratilmaydi.
+      if (!isCoinEnabled(settings)) { res.status(400).json({ ok: false, error: 'coin_disabled' }); return; }
       if (isAdmin) { res.status(400).json({ ok: false, error: 'admins_cannot_order' }); return; }
       const productId = String(p.productId || '');
       const qty = Math.max(1, parseInt(p.qty, 10) || 1);
@@ -475,9 +481,13 @@ module.exports = async (req, res) => {
         const custRef = db.collection('customers').doc(customerId);
         const custSnap = await custRef.get();
         if (custSnap.exists) {
-          const { earnPerAmount } = getCoinSettings(settings);
-          pointsEarned = Math.floor(total / earnPerAmount);
-          const c = custSnap.data();
+          // YANGI: COIN o'chirilgan bo'lsa — yangi coin hisoblanmaydi
+          // (0 qoladi), lekin jami xarid/daraja statistikasi baribir
+          // yuritiladi (bu COIN emas, sodiqlik darajasi uchun kerak).
+          if (isCoinEnabled(settings)) {
+            const { earnPerAmount } = getCoinSettings(settings);
+            pointsEarned = Math.floor(total / earnPerAmount);
+          }
           await custRef.update({
             totalSpent: admin.firestore.FieldValue.increment(total),
             purchaseCount: admin.firestore.FieldValue.increment(1),
