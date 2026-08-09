@@ -2174,18 +2174,39 @@ body.dark table {
       </ol>
       <p style="font-size:11px;color:var(--text3);margin-top:.5rem">🛠 <b>Adminlar botga buyruq yozib to'liq boshqarishi ham mumkin</b>: /qarzlar, /tolov, /statistika, /ombor, /mahsulot, /qarz_qoshish, /admin_qoshish va h.k. To'liq ro'yxat uchun botga <code>/yordam</code> deb yozing.</p>
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">👤 <b>Mijozlar uchun</b>: har qanday mijoz (qarzdor) botga <code>/start</code> yozib, telefon raqamini yuborsa, tizim uni o'z qarz yozuviga (telefon raqami bo'yicha) avtomatik bog'laydi — shundan keyin unga yangi qarz va to'lov haqida xabarlar shu bot orqali avtomatik boradi.</p>
-      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⚠️ Eslatma: bu sahifa (brauzer) ochiq turganda xabarlar har 30 daqiqada tekshirilib yuboriladi. Ilova umuman ochilmagan kunlarda ham 24/7 xabar kelishini va botga yozilgan buyruqlarga javob berilishini istasangiz, loyihaning GitHub repository'siga qo'shilgan "Telegram Notifier" va "Telegram Bot" ish oqimlaridan (GitHub Actions) foydalaning — ular alohida serversiz, repo ichida cron sifatida ishlaydi.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:.5rem">⚠️ Eslatma: bu sahifa (brauzer) ochiq turganda xabarlar har 30 daqiqada tekshirilib yuboriladi. Ilova umuman ochilmagan kunlarda ham 24/7 xabar kelishini va botga yozilgan buyruqlarga javob berilishini istasangiz, pastdagi <b>"🔌 Ulanish va Webhook holati"</b> bo'limidan "Shu saytga ulash" tugmasini bosing (loyiha Vercel'ga joylashtirilgan bo'lishi kerak).</p>
     </details>
     <div class="field" style="margin-bottom:.6rem">
       <label>Bot token</label>
-      <input type="text" id="tg-bot-token" placeholder="123456789:AAExampleTokenHere" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <input type="text" id="tg-bot-token" placeholder="123456789:AAExampleTokenHere" onblur="window.autoCheckTelegramToken && window.autoCheckTelegramToken()" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu tokenni GitHub Actions orqali 24/7 ishlashi uchun repo'ning "Secrets" bo'limiga ham qo'shishingiz kerak bo'ladi (pastdagi qo'llanmaga qarang).</p>
     </div>
     <div class="field" style="margin-bottom:.6rem">
       <label>Bot username</label>
       <input type="text" id="tg-bot-username" placeholder="masalan: mystore_bot (@ belgisisiz)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">🎁 Shu kiritilsa, chekdagi QR kod avtomatik <b>botga (Telegram)</b> ishora qiladi — mijoz chekni skanerlashi bilan sodiqlik coini avtomatik hisobiga qo'shiladi (agar sotuvda mijoz oldindan tanlanmagan bo'lsa). Bo'sh qoldirsangiz, QR avvalgidek faqat chekni ko'rsatadigan sahifaga ishora qiladi.</p>
+      <p id="tg-getme-status" style="font-size:11px;margin-top:.3rem"></p>
     </div>
+
+    <!-- YANGI: BOT ULANISHI (getMe) VA WEBHOOK'NI TO'LIQ SOZLASH — ilgari
+         webhookni ulash uchun admin brauzerda alohida URL'ga qo'lda kirishi
+         kerak edi. Endi shu tugmalar orqali to'g'ridan-to'g'ri shu oynadan
+         (Telegram Bot API'ga bevosita, brauzerdan) bajariladi. -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
+      <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.4rem">🔌 Ulanish va Webhook holati</label>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:.6rem">Bot 24/7 (ilova yopiq bo'lganda ham) darhol javob berishi uchun Telegram'ga "har bir xabarni shu manzilga yubor" (webhook) deb aytish kerak. Buni endi shu yerdan, qo'lda URL kiritmasdan bajarishingiz mumkin.</p>
+      <div class="field" style="margin-bottom:.5rem">
+        <label style="font-size:12px">Webhook maxfiy kaliti <span style="color:var(--text3);font-weight:400">(Vercel muhitidagi TELEGRAM_WEBHOOK_SECRET bilan bir xil bo'lishi shart)</span></label>
+        <input type="text" id="tg-webhook-secret" placeholder="masalan: 32 ta belgidan iborat tasodifiy matn" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      </div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+        <button class="btn sm" onclick="window.checkTelegramConnection && window.checkTelegramConnection()">🔍 Holatni tekshirish</button>
+        <button class="btn sm blue" onclick="window.connectTelegramWebhook && window.connectTelegramWebhook()">🔗 Shu saytga ulash</button>
+        <button class="btn sm red" onclick="window.disconnectTelegramWebhook && window.disconnectTelegramWebhook()">❌ Uzish</button>
+      </div>
+      <div id="tg-webhook-status" style="font-size:12px;color:var(--text3);line-height:1.6"></div>
+    </div>
+
     <div class="field" style="margin-bottom:.6rem">
       <label>🧾 Xariddan keyingi chekdagi QR kod nima uchun ishlatilsin?</label>
       <select id="tg-receipt-qr-mode" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
@@ -2218,10 +2239,50 @@ body.dark table {
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-lowstock">Kam qolgan/tugagan tovar haqida xabar</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-overdue">Muddati o'tgan qarzlar haqida xabar</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-daily">Kunlik savdo hisobotini yuborish</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-newdebt" checked>🆕 Yangi qarz yozilganda darhol xabar (admin + mijozning o'ziga)</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-payment" checked>💵 To'lov qabul qilinganda darhol xabar (admin + mijozning o'ziga)</label>
     </div>
-    <div style="display:flex;gap:.5rem">
+
+    <!-- YANGI: JIM SOATLAR — kam qolgan tovar / muddati o'tgan qarz / kunlik
+         hisobot kabi DAVRIY (real vaqtli emas) xabarlar shu oraliqda
+         yuborilmaydi (masalan tunda). Yangi qarz/to'lov kabi DARHOL
+         xabarlar bunga bo'ysunmaydi — ular haqiqiy vaqtli hodisa. -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13.5px;font-weight:600;margin-bottom:.5rem;cursor:pointer">
+        <input type="checkbox" id="tg-quiet-hours-enabled">🌙 Jim soatlar (bu oraliqda davriy xabarlar yuborilmasin)
+      </label>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <input type="time" id="tg-quiet-from" value="22:00" style="border:1.5px solid var(--border2);border-radius:8px;padding:.35rem .5rem;font-size:13px">
+        <span style="color:var(--text3);font-size:12px">dan</span>
+        <input type="time" id="tg-quiet-to" value="08:00" style="border:1.5px solid var(--border2);border-radius:8px;padding:.35rem .5rem;font-size:13px">
+        <span style="color:var(--text3);font-size:12px">gacha</span>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:.4rem">Faqat "Kam qolgan tovar", "Muddati o'tgan qarz" va "Kunlik hisobot" kabi davriy xabarlarga ta'sir qiladi. Yangi qarz/to'lov haqidagi darhol xabarlar (yuqorida) bunga bog'liq emas — ular istalgan vaqt kelaveradi.</p>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px;margin-top:.6rem;cursor:pointer">
+        <input type="checkbox" id="tg-outside-hours-note">🚪 Mijoz botga /start yozganda, ish vaqti tashqarisida bo'lsa — qo'shimcha ogohlantirish ko'rsatilsin
+      </label>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Sozlamalar → "⏰ Ish vaqti" jadvalida belgilangan kun/soatlarga qaraydi (pastda, boshqa bo'limda). Jadval to'ldirilmagan bo'lsa, bu funksiya ishlamaydi.</p>
+    </div>
+
+    <!-- YANGI: MIJOZGA YUBORILADIGAN XABAR MATNLARINI TAHRIRLASH — admin
+         standart matn o'rniga o'z do'koniga mos matnni yozishi mumkin.
+         {summa}/{qoldiq}/{dokon} kabi o'zgaruvchilar avtomatik almashtiriladi. -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.85rem;background:var(--surface2)">
+      <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.5rem">✍️ Mijozga yuboriladigan xabar matnlari</label>
+      <div class="field" style="margin-bottom:.6rem">
+        <label style="font-size:12px">🆕 Yangi qarz yozilganda (mijozga)</label>
+        <textarea id="tg-tpl-newdebt" rows="2" maxlength="400" placeholder="Sizga {summa} so'm qarz yozildi.\nIltimos, imkon qadar tez to'lashga harakat qiling." style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+      </div>
+      <div class="field" style="margin-bottom:.4rem">
+        <label style="font-size:12px">💵 To'lov qabul qilinganda (mijozga)</label>
+        <textarea id="tg-tpl-payment" rows="2" maxlength="400" placeholder="{summa} so'm to'lovingiz qabul qilindi.\nQolgan qarz: {qoldiq} so'm" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+      </div>
+      <p style="font-size:11px;color:var(--text3)">O'zgaruvchilar: <code>{dokon}</code> — do'kon nomi, <code>{summa}</code> — shu safargi summa, <code>{qoldiq}</code> — qolgan qarz (to'liq to'langanda avtomatik "0" yoki tabriknoma qo'shiladi). Bo'sh qoldirsangiz — standart matn ishlatiladi.</p>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <button class="btn sm blue" onclick="saveTelegramSettings()">💾 Saqlash</button>
       <button class="btn sm" onclick="sendTelegramTestMessage()">✉ Sinov xabari yuborish (hammasiga)</button>
+      <button class="btn sm" onclick="window.openTelegramCommandsModal && window.openTelegramCommandsModal()">🎛 Buyruqlar va Mini App bo'limlarini sozlash</button>
     </div>
   </div>
 
@@ -2268,11 +2329,13 @@ body.dark table {
          rejimida (Telegram bot ulangan) bo'lganda, chekdagi QR ostida
          admin o'zi xohlagan matnni chiqarish imkoni. Masalan mijozga
          "QR ni skaner qiling — coin oling" kabi aniq ko'rsatma berish uchun. -->
+    <div data-coin-feature>
     <div style="font-size:13px;font-weight:700;margin:.75rem 0 .5rem">🎁 Coin olish haqida targ'ibot matni</div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:.5rem">QR "Coin olish" rejimida ishlayotganda (Sozlamalar → Telegram bot ulangan bo'lsa), chekdagi QR ostida shu matn chiqadi — mijozga chekni skanerlab coin olishini aniq tushuntirish uchun.</p>
     <label style="display:flex;align-items:center;gap:.4rem;font-size:13px;margin-bottom:.5rem"><input type="checkbox" id="srd-show-coin-promo" checked> Yoqilgan</label>
     <div class="field" style="margin-bottom:.85rem">
       <input type="text" id="srd-coin-promo-text" maxlength="140" placeholder="Masalan: 🎁 QR kodni skanerlab, xaridingiz uchun coin oling!" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+    </div>
     </div>
 
     <!-- YANGI: QO'SHIMCHA MATN QATORLARI — shu sotuv cheki uchun mustaqil
@@ -2667,13 +2730,13 @@ body.dark table {
         <input id="p-cost" type="number" min="0" placeholder="Masalan: 3500">
       </div>
     </div>
-    <div class="form-row full">
+    <div class="form-row full" data-coin-feature>
       <div class="field">
         <label>🪙 Har xariddan necha coin beriladi <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni 1 dona sotib olganda necha coin olishini belgilang — bo'sh qoldirsangiz avtomatik hisoblanadi: narx / umumiy sozlamadagi qiymat)</span></label>
         <input id="p-points" type="number" min="0" step="1" placeholder="Masalan: 1">
       </div>
     </div>
-    <div class="form-row full">
+    <div class="form-row full" data-coin-feature>
       <div class="field">
         <label>🪙 Coinda sotib olish narxi <span style="color:var(--text3);font-weight:400">(mijoz shu tovarni NECHTA COINGA (naqd pulsiz) sotib ola olishini belgilang — bo'sh qoldirsangiz avtomatik hisoblanadi: narx / umumiy sozlamadagi qiymat)</span></label>
         <input id="p-coincost" type="number" min="0" step="1" placeholder="Masalan: 500">
@@ -3980,7 +4043,7 @@ body.dark table {
     <!-- YANGI: kutayotgan COINGA SOTIB OLISH so'rovlari — ilgari faqat
          Telegram botdan (✅/❌ tugma) boshqarilardi, endi shu yerdan ham
          ko'rinadi va boshqariladi. Bo'sh bo'lsa hech narsa ko'rsatmaydi. -->
-    <div id="coin-orders-panel" style="margin-bottom:1rem"></div>
+    <div id="coin-orders-panel" style="margin-bottom:1rem" data-coin-feature></div>
     <div id="loyalty-report" style="margin-bottom:1rem"></div>
     <div id="customers-list" style="display:flex;flex-direction:column;gap:.5rem;max-height:42vh;overflow-y:auto"></div>
     <p id="customers-empty" style="color:var(--text3);text-align:center;padding:1.5rem 0;display:none">Hozircha mijoz qo'shilmagan.</p>
@@ -4004,6 +4067,13 @@ body.dark table {
          faqat "products" bo'limida biror tovarga ALOHIDA coin qiymati
          belgilanmagan hollarda ishlatiladi (standart/zaxira qoida). -->
     <div style="border:1px solid var(--border);border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem;background:var(--bg2,rgba(0,0,0,.02))">
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:14px;font-weight:700;margin-bottom:.6rem;cursor:pointer">
+        <input type="checkbox" id="coin-feature-enabled" checked style="width:18px;height:18px">
+        🪙 Coin dasturi yoqilgan
+      </label>
+      <p style="font-size:11px;color:var(--text3);margin:0">O'chirilsa — COIN dasturi <b>hamma joyda</b> yashiriladi/to'xtaydi: shu boshqaruv panelida (mahsulot forma maydonlari, chek QR "Coin olish" rejimi, mijozlar oynasidagi coinga so'rovlar), Telegram botda (<code>/coinlarim</code> buyrug'i va tugmasi) va Mini App'da (coinga sotib olish, ball bilan to'lash). Mijozlarning mavjud coin balanslari o'chirilmaydi — faqat yashiriladi, qayta yoqilsa avvalgidek ko'rinadi.</p>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem;background:var(--bg2,rgba(0,0,0,.02))" data-coin-feature>
       <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">🪙 Umumiy coin qoidasi (standart)</div>
       <div class="form-row">
         <div class="field"><label style="font-size:12px">Necha so'mlik xariddan 1 coin</label><input id="coin-earn-rate" type="number" min="1" placeholder="10000"></div>
@@ -4018,6 +4088,36 @@ body.dark table {
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-loyalty-tiers')">Bekor qilish</button>
       <button class="btn green" onclick="window.saveLoyaltyTiers()">✓ Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- YANGI: TELEGRAM BUYRUQLARI VA MINI APP BO'LIMLARINI SOZLASH — admin
+     bu oynadan har bir bot buyrug'ini va Mini App bo'limini (tab'ini)
+     alohida yoqib/o'chirib qo'yishi mumkin. Masalan: /broadcast'ni faqat
+     favqulodda holatlar uchun o'chirib qo'yish, yoki xodimlarga
+     ko'rinadigan Mini App'da "Hisobot" bo'limini yashirish. -->
+<div class="modal-overlay hidden" id="modal-tg-commands">
+  <div class="modal" style="max-width:620px">
+    <h3 style="margin-bottom:.2rem">🎛 Telegram buyruqlari va Mini App bo'limlari</h3>
+    <p style="font-size:12px;color:var(--text3);margin-top:0;margin-bottom:1rem">O'chirilgan buyruqni kimdir botga yozsa — "⛔ Bu buyruq administrator tomonidan o'chirilgan" javobini oladi. O'chirilgan Mini App bo'limi esa pastki menyudan butunlay yo'qoladi. <code>/start</code>, <code>/menu</code>, <code>/ilova</code> kabi asosiy navigatsiya buyruqlari hamda "Bosh" bo'limi bu yerda yo'q — ular botning ishlashi uchun doim yoqilgan bo'lishi kerak.</p>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">🤖 Admin buyruqlari (Telegram bot)</div>
+    <div id="tgcmd-admin-list" style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem;margin-bottom:1rem"></div>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">👤 Mijoz/qarzdor buyruqlari (Telegram bot)</div>
+    <div id="tgcmd-client-list" style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem;margin-bottom:1rem"></div>
+    <p style="font-size:11px;color:var(--text3);margin-top:-.5rem;margin-bottom:1rem">🪙 Coin bilan bog'liq bo'lim (<code>/coinlarim</code>) bu yerda emas — u "🏆 Darajalarni sozlash" oynasidagi "Coin dasturi yoqilgan" tugmasi orqali boshqariladi.</p>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">🖥 Mini App bo'limlari — boshqaruv paneli (admin/sotuvchi ochganda)</div>
+    <div id="tgcmd-miniapp-admin-list" style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem;margin-bottom:1rem"></div>
+
+    <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">📱 Mini App bo'limlari — mijoz/qarzdor ochganda</div>
+    <div id="tgcmd-miniapp-client-list" style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .75rem;margin-bottom:1rem"></div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-tg-commands')">Bekor qilish</button>
+      <button class="btn green" onclick="window.saveTelegramCommandsConfig()">✓ Saqlash</button>
     </div>
   </div>
 </div>
@@ -4379,7 +4479,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinOrders: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7] };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramAutoReplyOutsideHours: false, animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null };
 // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
 // qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
 // qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
@@ -4402,6 +4502,34 @@ window.getProductCoinCost = function(product){
   if(product && Number(product.coinCost) > 0) return Math.round(Number(product.coinCost));
   const { redeemValuePerCoin } = window.getCoinSettings();
   return Math.max(1, Math.ceil((product && product.price || 0) / redeemValuePerCoin));
+};
+// ============ YANGI: COIN FUNKSIYASINI GLOBAL YOQISH/O'CHIRISH ============
+// Admin "🏆 Darajalarni sozlash" oynasidan bitta tugma bilan butun COIN
+// dasturini o'chirib qo'yishi mumkin. Standart holat — YOQILGAN (orqaga
+// moslik uchun: eski do'konlarda maydon umuman bo'lmasligi mumkin, shu
+// sabab faqat "aniq false" bo'lsa o'chirilgan hisoblanadi).
+window.isCoinEnabled = function(){
+  return !(window.DB && DB.coinEnabled === false);
+};
+// COIN yoqilgan/o'chirilganiga qarab sahifadagi barcha coin-bog'liq
+// elementlarni ko'rsatadi/yashiradi. `data-coin-feature` atributi bilan
+// belgilangan HAR QANDAY element (tugma, panel, form-qatori) shu funksiya
+// chaqirilganda avtomatik ko'rinadi/yashiriladi — yangi coin UI qo'shilsa
+// ham, faqat shu atributni qo'yish yetarli, JS'ni qayta o'zgartirish shart
+// emas.
+window.applyCoinFeatureVisibility = function(){
+  const on = window.isCoinEnabled();
+  document.querySelectorAll('[data-coin-feature]').forEach((el)=>{
+    el.style.display = on ? '' : 'none';
+  });
+  // Chek QR rejimida "Coin olish" tanlovi — o'chirilganda variant sifatida
+  // ko'rsatilmaydi (mavjud tanlangan bo'lsa, avtomatikka qaytariladi).
+  const qrSel = document.getElementById('tg-receipt-qr-mode');
+  if (qrSel) {
+    const coinOpt = qrSel.querySelector('option[value="coin"]');
+    if (coinOpt) coinOpt.disabled = !on;
+    if (!on && qrSel.value === 'coin') qrSel.value = 'auto';
+  }
 };
 // YANGI: SODIQLIK DASTURI DARAJALARI — endi ADMIN o'zi sozlaydi (nomi, emoji,
 // rang va necha so'mdan boshlanishini, hatto yangi daraja qo'shishni ham).
@@ -4688,7 +4816,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -5136,9 +5264,18 @@ function startListeners(){
       DB.telegramChatId=d.telegramChatId||'';
       DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
       DB.telegramWelcomeText=d.telegramWelcomeText||'';
+      DB.telegramWebhookSecret=d.telegramWebhookSecret||'';
       DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
       DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
       DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
+      DB.telegramNotifyNewDebt=(d.telegramNotifyNewDebt===false)?false:true;
+      DB.telegramNotifyPayment=(d.telegramNotifyPayment===false)?false:true;
+      DB.telegramQuietHoursEnabled=!!d.telegramQuietHoursEnabled;
+      DB.telegramQuietFrom=d.telegramQuietFrom||'22:00';
+      DB.telegramQuietTo=d.telegramQuietTo||'08:00';
+      DB.telegramTplNewDebt=d.telegramTplNewDebt||'';
+      DB.telegramTplPayment=d.telegramTplPayment||'';
+      DB.telegramAutoReplyOutsideHours=!!d.telegramAutoReplyOutsideHours;
       DB.animSpeed=(typeof d.animSpeed==='number')?d.animSpeed:1;
       DB.toastSeconds=(typeof d.toastSeconds==='number')?d.toastSeconds:2.6;
       DB.uiSoundEnabled=!!d.uiSoundEnabled;
@@ -5149,8 +5286,12 @@ function startListeners(){
       DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
       DB.loyaltyTiers=(Array.isArray(d.loyaltyTiers)&&d.loyaltyTiers.length)?d.loyaltyTiers:window.getDefaultLoyaltyTiers();
       DB.coinSettings=(d.coinSettings && typeof d.coinSettings==='object')?d.coinSettings:window.getDefaultCoinSettings();
+      DB.coinEnabled=(d.coinEnabled===false)?false:true;
+      DB.telegramCommandsConfig=(d.telegramCommandsConfig && typeof d.telegramCommandsConfig==='object')?d.telegramCommandsConfig:null;
+      DB.miniAppSectionsConfig=(d.miniAppSectionsConfig && typeof d.miniAppSectionsConfig==='object')?d.miniAppSectionsConfig:null;
       DB.defaultCreditLimit=(typeof d.defaultCreditLimit==='number')?d.defaultCreditLimit:0;
       DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
+      if(typeof window.applyCoinFeatureVisibility==='function') window.applyCoinFeatureVisibility();
       if(document.getElementById('page-debts')?.classList.contains('active') && typeof window.renderDebtSettingsFields==='function') window.renderDebtSettingsFields();
       if(document.getElementById('modal-customers') && !document.getElementById('modal-customers').classList.contains('hidden') && typeof window.renderCustomersList==='function') window.renderCustomersList();
       if(currentRole==='admin' && typeof window.applyRestrictedAdminUI==='function') window.applyRestrictedAdminUI();
@@ -5407,9 +5548,18 @@ async function init(){
           DB.telegramChatId=d.telegramChatId||'';
           DB.telegramAdmins=Array.isArray(d.telegramAdmins) ? d.telegramAdmins : (d.telegramChatId ? [{id:'tg_legacy', name:'Admin', chatId:d.telegramChatId}] : []);
       DB.telegramWelcomeText=d.telegramWelcomeText||'';
+          DB.telegramWebhookSecret=d.telegramWebhookSecret||'';
           DB.telegramNotifyLowStock=!!d.telegramNotifyLowStock;
           DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
           DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
+          DB.telegramNotifyNewDebt=(d.telegramNotifyNewDebt===false)?false:true;
+          DB.telegramNotifyPayment=(d.telegramNotifyPayment===false)?false:true;
+          DB.telegramQuietHoursEnabled=!!d.telegramQuietHoursEnabled;
+          DB.telegramQuietFrom=d.telegramQuietFrom||'22:00';
+          DB.telegramQuietTo=d.telegramQuietTo||'08:00';
+          DB.telegramTplNewDebt=d.telegramTplNewDebt||'';
+          DB.telegramTplPayment=d.telegramTplPayment||'';
+          DB.telegramAutoReplyOutsideHours=!!d.telegramAutoReplyOutsideHours;
           DB.animSpeed=(typeof d.animSpeed==='number')?d.animSpeed:1;
           DB.toastSeconds=(typeof d.toastSeconds==='number')?d.toastSeconds:2.6;
           DB.uiSoundEnabled=!!d.uiSoundEnabled;
@@ -9254,6 +9404,7 @@ async function sendTelegramMessageToChatId(chatId, text){
 function notifyNewDebtCreated(debt, debtorObj){
   try{
     if(!DB.telegramBotToken) return;
+    if(DB.telegramNotifyNewDebt===false) return; // YANGI: admin bu xabarni o'chirib qo'yishi mumkin
     const shopName = DB.shopName||"Do'kon";
     if(getTelegramChatIds().length){
       const adminText = `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}\n💰 Summa: ${fmt(debt.total)} so'm`;
@@ -9261,7 +9412,11 @@ function notifyNewDebtCreated(debt, debtorObj){
     }
     const chatId = debtorObj && debtorObj.telegramChatId;
     if(chatId){
-      const custText = `🧾 <b>${esc(shopName)}</b>\n\nSizga ${fmt(debt.total)} so'm qarz yozildi.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
+      // YANGI: admin "✍️ Mijozga yuboriladigan xabar matnlari"da o'z
+      // matnini yozgan bo'lsa — shuni, aks holda standart matnni ishlatadi.
+      const custText = DB.telegramTplNewDebt
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebt, { dokon: shopName, summa: fmt(debt.total) }))
+        : `🧾 <b>${esc(shopName)}</b>\n\nSizga ${fmt(debt.total)} so'm qarz yozildi.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
       sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
     }
   }catch(e){ console.error('notifyNewDebtCreated xatolik:', e); }
@@ -9272,6 +9427,7 @@ function notifyNewDebtCreated(debt, debtorObj){
 function notifyDebtPayment(debt, payment, isFullyPaid, remainingAfter){
   try{
     if(!DB.telegramBotToken) return;
+    if(DB.telegramNotifyPayment===false) return; // YANGI: admin bu xabarni o'chirib qo'yishi mumkin
     const shopName = DB.shopName||"Do'kon";
     const who = `${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}`;
     if(getTelegramChatIds().length){
@@ -9281,7 +9437,10 @@ function notifyDebtPayment(debt, payment, isFullyPaid, remainingAfter){
     const debtorObj = DB.debtors.find(x=>x.id===debt.debtorId);
     const chatId = debtorObj && debtorObj.telegramChatId;
     if(chatId){
-      const custText = `✅ <b>${esc(shopName)}</b>\n\n${fmt(payment.amount)} so'm to'lovingiz qabul qilindi.${isFullyPaid?"\n🎉 Qarzingiz to'liq yopildi, rahmat!":`\nQolgan qarz: ${fmt(remainingAfter)} so'm`}`;
+      // YANGI: shablon mavjud bo'lsa shuni, aks holda standart matn.
+      const custText = DB.telegramTplPayment
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplPayment, { dokon: shopName, summa: fmt(payment.amount), qoldiq: isFullyPaid ? 0 : fmt(remainingAfter) }))
+        : `✅ <b>${esc(shopName)}</b>\n\n${fmt(payment.amount)} so'm to'lovingiz qabul qilindi.${isFullyPaid?"\n🎉 Qarzingiz to'liq yopildi, rahmat!":`\nQolgan qarz: ${fmt(remainingAfter)} so'm`}`;
       sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
     }
   }catch(e){ console.error('notifyDebtPayment xatolik:', e); }
@@ -9434,8 +9593,30 @@ function telegramAlreadySentToday(key){
 function markTelegramSentToday(key){
   localStorage.setItem('dokon_tg_sent_'+key, new Date().toISOString().slice(0,10));
 }
+// YANGI: JIM SOATLAR — DAVRIY xabarlar (kam qolgan tovar, muddati o'tgan
+// qarz, kunlik hisobot) shu oraliqda yuborilmasligi kerakmi, tekshiradi.
+// Toshkent vaqti (UTC+5) asosida hisoblanadi — serverning o'zi qaysi
+// vaqt mintaqasida ishlayotganidan qat'i nazar bir xil natija berish uchun.
+function isInTelegramQuietHours(){
+  if(!DB.telegramQuietHoursEnabled) return false;
+  const from = DB.telegramQuietFrom||'22:00', to = DB.telegramQuietTo||'08:00';
+  const [fh,fm] = from.split(':').map(Number), [th,tm] = to.split(':').map(Number);
+  const now = new Date();
+  const nowMin = ((now.getUTCHours()+5)%24)*60 + now.getUTCMinutes();
+  const fromMin = fh*60+fm, toMin = th*60+tm;
+  if(fromMin === toMin) return false; // 0 daqiqalik oraliq — hech qachon jim emas
+  if(fromMin < toMin) return nowMin >= fromMin && nowMin < toMin; // masalan 01:00 - 06:00
+  return nowMin >= fromMin || nowMin < toMin; // masalan 22:00 - 08:00 (kechadan ertaga o'tadi)
+}
+// Shablon matnidagi {dokon}/{summa}/{qoldiq} kabi o'zgaruvchilarni haqiqiy
+// qiymatlarga almashtiradi — admin "✍️ Mijozga yuboriladigan xabar
+// matnlari" bo'limida o'z matnini yozgan bo'lsa, shu yerda ishlatiladi.
+function fillTelegramTemplate(tpl, vars){
+  return tpl.replace(/\{(\w+)\}/g, (m,k)=> (vars[k]!==undefined ? String(vars[k]) : m));
+}
 window.checkAndSendTelegramAlerts = async function(){
   if(!DB.telegramBotToken || !getTelegramChatIds().length) return;
+  if(isInTelegramQuietHours()) return; // YANGI: jim soatlarda davriy xabar yuborilmaydi
   if(DB.telegramNotifyLowStock && !telegramAlreadySentToday('lowstock')){
     const low = (DB.products||[]).filter(p=>p.stock<=(DB.lowStockThreshold||5) && p.stock>0);
     const empty = (DB.products||[]).filter(p=>p.stock===0);
@@ -9475,6 +9656,15 @@ window.fillTelegramSettingsForm = function(){
   const l=document.getElementById('tg-notify-lowstock'); if(l) l.checked=!!DB.telegramNotifyLowStock;
   const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
+  const nd=document.getElementById('tg-notify-newdebt'); if(nd) nd.checked=DB.telegramNotifyNewDebt!==false;
+  const np=document.getElementById('tg-notify-payment'); if(np) np.checked=DB.telegramNotifyPayment!==false;
+  const qhe=document.getElementById('tg-quiet-hours-enabled'); if(qhe) qhe.checked=!!DB.telegramQuietHoursEnabled;
+  const qf=document.getElementById('tg-quiet-from'); if(qf && document.activeElement!==qf) qf.value=DB.telegramQuietFrom||'22:00';
+  const qt=document.getElementById('tg-quiet-to'); if(qt && document.activeElement!==qt) qt.value=DB.telegramQuietTo||'08:00';
+  const tnd=document.getElementById('tg-tpl-newdebt'); if(tnd && document.activeElement!==tnd) tnd.value=DB.telegramTplNewDebt||'';
+  const tpy=document.getElementById('tg-tpl-payment'); if(tpy && document.activeElement!==tpy) tpy.value=DB.telegramTplPayment||'';
+  const oh=document.getElementById('tg-outside-hours-note'); if(oh) oh.checked=!!DB.telegramAutoReplyOutsideHours;
+  const ws=document.getElementById('tg-webhook-secret'); if(ws && document.activeElement!==ws) ws.value=DB.telegramWebhookSecret||'';
   if(typeof window.renderTelegramAdminsList==='function') window.renderTelegramAdminsList();
 }
 window.saveTelegramSettings = function(silent){
@@ -9488,13 +9678,192 @@ window.saveTelegramSettings = function(silent){
   DB.telegramNotifyLowStock = !!document.getElementById('tg-notify-lowstock').checked;
   DB.telegramNotifyOverdueDebts = !!document.getElementById('tg-notify-overdue').checked;
   DB.telegramNotifyDailyReport = !!document.getElementById('tg-notify-daily').checked;
+  DB.telegramNotifyNewDebt = !!document.getElementById('tg-notify-newdebt')?.checked;
+  DB.telegramNotifyPayment = !!document.getElementById('tg-notify-payment')?.checked;
+  DB.telegramQuietHoursEnabled = !!document.getElementById('tg-quiet-hours-enabled')?.checked;
+  DB.telegramQuietFrom = document.getElementById('tg-quiet-from')?.value || '22:00';
+  DB.telegramQuietTo = document.getElementById('tg-quiet-to')?.value || '08:00';
+  DB.telegramTplNewDebt = (document.getElementById('tg-tpl-newdebt')?.value || '').trim();
+  DB.telegramTplPayment = (document.getElementById('tg-tpl-payment')?.value || '').trim();
+  DB.telegramAutoReplyOutsideHours = !!document.getElementById('tg-outside-hours-note')?.checked;
+  // YANGI: webhook maxfiy kaliti — faqat qulaylik uchun shu yerda saqlanadi
+  // (Vercel'dagi asosiy nusxasi baribir server tomonida, ENV o'zgaruvchida
+  // turadi; bu yerdagisi shunchaki "Shu saytga ulash" tugmasi uchun eslatma).
+  const wsEl = document.getElementById('tg-webhook-secret');
+  DB.telegramWebhookSecret = wsEl ? (wsEl.value||'').trim() : (DB.telegramWebhookSecret||'');
   if(!silent) toast('✓ Telegram sozlamalari saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   checkAndSendTelegramAlerts();
 }
+
+// ============ YANGI: BOT ULANISHI (getMe) AVTOMATIK TEKSHIRISH ============
+// Token maydonidan chiqilganda (blur) avtomatik ravishda Telegram'dan
+// bot ma'lumotini so'raydi — token to'g'ri/noto'g'riligini darhol
+// bildiradi va username bo'sh bo'lsa avtomatik to'ldiradi.
+window.autoCheckTelegramToken = async function(){
+  const tokenEl = document.getElementById('tg-bot-token');
+  const statusEl = document.getElementById('tg-getme-status');
+  const token = tokenEl ? tokenEl.value.trim() : '';
+  if(!statusEl) return;
+  if(!token){ statusEl.textContent=''; return; }
+  statusEl.textContent = '⏳ Tekshirilmoqda...'; statusEl.style.color='var(--text3)';
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const data = await res.json();
+    if(data.ok){
+      statusEl.textContent = `✅ Ulandi: @${data.result.username} (${data.result.first_name})`;
+      statusEl.style.color = 'var(--green,#16a34a)';
+      const uEl = document.getElementById('tg-bot-username');
+      if(uEl && !uEl.value.trim()) uEl.value = data.result.username;
+    } else {
+      statusEl.textContent = '❌ Token noto\'g\'ri: ' + (data.description||'Noma\'lum xatolik');
+      statusEl.style.color = 'var(--red,#dc2626)';
+    }
+  }catch(e){
+    statusEl.textContent = '❌ Tekshirib bo\'lmadi: ' + e.message;
+    statusEl.style.color = 'var(--red,#dc2626)';
+  }
+}
+
+// ============ YANGI: WEBHOOK HOLATINI TEKSHIRISH / ULASH / UZISH ============
+// Ilgari bular FAQAT qo'lda, brauzerda alohida URL'ga kirib bajarilardi
+// (yuqoridagi "📖 Qanday sozlanadi?" qo'llanmasiga qarang). Endi shu uchta
+// tugma orqali to'g'ridan-to'g'ri shu sahifadan, Telegram Bot API'ga
+// bevosita (serverга йuqlanish shart emas) amalga oshiriladi.
+function _tgWebhookStatusEl(){ return document.getElementById('tg-webhook-status'); }
+window.checkTelegramConnection = async function(){
+  const token = (document.getElementById('tg-bot-token')?.value||'').trim();
+  const statusEl = _tgWebhookStatusEl();
+  if(!token || !statusEl) { if(statusEl) statusEl.textContent='⚠️ Avval Bot token kiriting.'; return; }
+  statusEl.textContent = '⏳ Tekshirilmoqda...';
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const data = await res.json();
+    if(!data.ok){ statusEl.innerHTML = `❌ Xatolik: ${esc(data.description||'')}`; return; }
+    const info = data.result;
+    if(!info.url){
+      statusEl.innerHTML = `🔌 Webhook <b>ulanmagan</b>. Botga to'liq (24/7) ishlashini xohlasangiz "🔗 Shu saytga ulash" tugmasini bosing.`;
+    } else {
+      let html = `🔗 Webhook ulangan:<br><code style="word-break:break-all">${esc(info.url)}</code><br>`;
+      html += `📥 Yetkazilmagan xabarlar: ${info.pending_update_count||0}`;
+      if(info.last_error_message){
+        const when = info.last_error_date ? new Date(info.last_error_date*1000).toLocaleString('uz-UZ') : '';
+        html += `<br><span style="color:var(--red,#dc2626)">⚠️ Oxirgi xatolik (${esc(when)}): ${esc(info.last_error_message)}</span>`;
+      }
+      statusEl.innerHTML = html;
+    }
+  }catch(e){ statusEl.textContent = '❌ Tekshirib bo\'lmadi: '+e.message; }
+}
+window.connectTelegramWebhook = async function(){
+  const token = (document.getElementById('tg-bot-token')?.value||'').trim();
+  const secret = (document.getElementById('tg-webhook-secret')?.value||'').trim();
+  const statusEl = _tgWebhookStatusEl();
+  if(!token){ toast('Avval Bot token kiriting','red'); return; }
+  if(!secret){ toast('Avval webhook maxfiy kalitini kiriting (Vercel muhitidagi bilan bir xil)','red'); return; }
+  const url = location.origin + '/api/telegram-webhook';
+  if(statusEl) statusEl.textContent = '⏳ Ulanmoqda...';
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ url, secret_token: secret, drop_pending_updates: false })
+    });
+    const data = await res.json();
+    if(data.ok){
+      toast('✓ Webhook ulandi: '+url,'green');
+      window.saveTelegramSettings(true);
+      window.checkTelegramConnection();
+    } else {
+      if(statusEl) statusEl.innerHTML = `❌ Ulanmadi: ${esc(data.description||'')}`;
+      toast('Webhook ulashda xatolik','red');
+    }
+  }catch(e){ if(statusEl) statusEl.textContent = '❌ Xatolik: '+e.message; }
+}
+window.disconnectTelegramWebhook = async function(){
+  const token = (document.getElementById('tg-bot-token')?.value||'').trim();
+  if(!token){ toast('Avval Bot token kiriting','red'); return; }
+  if(!confirm("Webhook uzilsa, bot faqat brauzer (bu sahifa) ochiq turgandagina va/yoki GitHub Actions ishga tushganda xabarlarga javob beradi. Davom etilsinmi?")) return;
+  const statusEl = _tgWebhookStatusEl();
+  if(statusEl) statusEl.textContent = '⏳ Uzilmoqda...';
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`, { method:'POST' });
+    const data = await res.json();
+    if(data.ok){ toast('✓ Webhook uzildi','green'); window.checkTelegramConnection(); }
+    else { if(statusEl) statusEl.innerHTML = `❌ Xatolik: ${esc(data.description||'')}`; }
+  }catch(e){ if(statusEl) statusEl.textContent = '❌ Xatolik: '+e.message; }
+}
 // Ilova ochiq turgan paytda 30 daqiqada bir tekshirib turadi (server-cron
 // o'rnini to'liq bosolmaydi, lekin ilova ochiq bo'lganda foydali).
 setInterval(()=>{ if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts(); }, 30*60*1000);
+
+// ============ YANGI: TELEGRAM BUYRUQLARI VA MINI APP BO'LIMLARINI SOZLASH ============
+// Har bir bot buyrug'i/Mini App bo'limi shu ro'yxatlarda: { key, label }.
+// /start, /menu, /ilova, /app va Mini App'dagi "Bosh" bo'limi ataylab
+// kiritilmagan — ular botning asosiy navigatsiyasi, o'chirilsa bot
+// ishlamay qolishi mumkin.
+const TG_ADMIN_COMMANDS = [
+  { key:'/qarzlar', label:'📋 /qarzlar — faol qarzlar' },
+  { key:'/muddatlar', label:"⏰ /muddatlar — muddati o'tgan" },
+  { key:'/statistika', label:'📊 /statistika — bugungi savdo' },
+  { key:'/haftalik', label:'📈 /haftalik — haftalik hisobot' },
+  { key:'/oylik', label:'📅 /oylik — oylik hisobot' },
+  { key:'/top', label:'🏆 /top — top qarzdorlar' },
+  { key:'/ombor', label:'📦 /ombor — ombor holati' },
+  { key:'/export', label:'📤 /export — Excel eksport' },
+  { key:'/adminlar', label:'👮 /adminlar — adminlar ro\'yxati' },
+  { key:'/tolov', label:"💵 /tolov — to'lov qabul qilish" },
+  { key:'/qarz_qoshish', label:'➕ /qarz_qoshish — qarz qo\'shish' },
+  { key:'/tovar_narx', label:'💲 /tovar_narx — narx o\'zgartirish' },
+  { key:'/broadcast', label:'📢 /broadcast — hammaga xabar' },
+  { key:'/admin_qoshish', label:'👤➕ /admin_qoshish' },
+  { key:'/admin_ochirish', label:'👤➖ /admin_ochirish' },
+  { key:'/admin_rol', label:'🎚 /admin_rol' },
+  { key:'/admin_huquq', label:'🔑 /admin_huquq' },
+];
+const TG_CLIENT_COMMANDS = [
+  { key:'/qarzim', label:'💰 /qarzim — mening qarzim' },
+  { key:'/tarix', label:"🧾 /tarix — to'lovlar tarixi" },
+];
+const MINIAPP_ADMIN_SECTIONS = [
+  { key:'sell', label:'🛒 Sotish' }, { key:'debts', label:'📋 Qarzlar' },
+  { key:'stock', label:'📦 Tovarlar' }, { key:'debtors', label:'👥 Qarzdorlar' },
+  { key:'report', label:'📈 Hisobot' }, { key:'customers', label:'🪙 Mijozlar' },
+  { key:'staff', label:"🧑\u200d💼 Xodimlar" }, { key:'settings', label:'⚙️ Sozlama' },
+];
+const MINIAPP_CLIENT_SECTIONS = [
+  { key:'catalog', label:'🛍 Tovarlar (katalog)' },
+];
+function _tgcmdRow(key, label, checked){
+  return `<label style="display:flex;align-items:center;gap:.4rem;font-size:13px;cursor:pointer">
+    <input type="checkbox" class="tgcmd-chk" data-key="${key}" ${checked?'checked':''}>${label}
+  </label>`;
+}
+window.openTelegramCommandsModal = function(){
+  const cmdCfg = (DB.telegramCommandsConfig && typeof DB.telegramCommandsConfig==='object') ? DB.telegramCommandsConfig : {};
+  const secCfg = (DB.miniAppSectionsConfig && typeof DB.miniAppSectionsConfig==='object') ? DB.miniAppSectionsConfig : {};
+  const adminSec = (secCfg.admin && typeof secCfg.admin==='object') ? secCfg.admin : {};
+  const clientSec = (secCfg.client && typeof secCfg.client==='object') ? secCfg.client : {};
+  document.getElementById('tgcmd-admin-list').innerHTML = TG_ADMIN_COMMANDS.map(c=>_tgcmdRow(c.key, c.label, cmdCfg[c.key]!==false)).join('');
+  document.getElementById('tgcmd-client-list').innerHTML = TG_CLIENT_COMMANDS.map(c=>_tgcmdRow(c.key, c.label, cmdCfg[c.key]!==false)).join('');
+  document.getElementById('tgcmd-miniapp-admin-list').innerHTML = MINIAPP_ADMIN_SECTIONS.map(c=>_tgcmdRow('adm:'+c.key, c.label, adminSec[c.key]!==false)).join('');
+  document.getElementById('tgcmd-miniapp-client-list').innerHTML = MINIAPP_CLIENT_SECTIONS.map(c=>_tgcmdRow('cli:'+c.key, c.label, clientSec[c.key]!==false)).join('');
+  openModal('modal-tg-commands');
+};
+window.saveTelegramCommandsConfig = function(){
+  const telegramCommandsConfig = {};
+  const miniAdmin = {}, miniClient = {};
+  document.querySelectorAll('#modal-tg-commands .tgcmd-chk').forEach(el=>{
+    const key = el.getAttribute('data-key');
+    const on = !!el.checked;
+    if (key.startsWith('adm:')) miniAdmin[key.slice(4)] = on;
+    else if (key.startsWith('cli:')) miniClient[key.slice(4)] = on;
+    else telegramCommandsConfig[key] = on;
+  });
+  DB.telegramCommandsConfig = telegramCommandsConfig;
+  DB.miniAppSectionsConfig = { admin: miniAdmin, client: miniClient };
+  closeModal('modal-tg-commands');
+  toast('✓ Buyruqlar va bo\'limlar sozlamalari saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+};
 
 // ===== ISH VAQTI JADVALI VA BILDIRISHNOMA SOZLAMALARI =====
 const SCHEDULE_DAYS = [
@@ -17672,6 +18041,7 @@ document.addEventListener('keydown', function(e){
     const cs = window.getCoinSettings();
     document.getElementById('coin-earn-rate').value = cs.earnPerAmount;
     document.getElementById('coin-redeem-rate').value = cs.redeemValuePerCoin;
+    document.getElementById('coin-feature-enabled').checked = window.isCoinEnabled();
     openModal('modal-loyalty-tiers');
   };
   function renderLoyaltyTiersEditor(){
@@ -17722,9 +18092,12 @@ document.addEventListener('keydown', function(e){
       earnPerAmount: earnRaw>0 ? Math.round(earnRaw) : def.earnPerAmount,
       redeemValuePerCoin: redeemRaw>0 ? Math.round(redeemRaw) : def.redeemValuePerCoin,
     };
+    // YANGI: COIN dasturi global yoqilgan/o'chirilgan holati.
+    DB.coinEnabled = !!document.getElementById('coin-feature-enabled').checked;
     if(typeof window.fbSaveSettings==='function') window.fbSaveSettings();
     closeModal('modal-loyalty-tiers');
     toast2('✓ Darajalar va coin sozlamalari saqlandi','green');
+    if(typeof window.applyCoinFeatureVisibility==='function') window.applyCoinFeatureVisibility();
     if(typeof window.renderCustomersList==='function') window.renderCustomersList();
   };
   window.openCustomersModal = function(){ window.renderCustomersList(); openModal('modal-customers'); };

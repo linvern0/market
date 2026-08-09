@@ -197,12 +197,21 @@ function render(){
 }
 
 // ================= MIJOZ / QARZDOR KO'RINISHI =================
-const CLIENT_TABS = [['home','🏠','Mening'], ['catalog','🛍','Tovarlar']];
+const CLIENT_TABS_ALL = [['home','🏠','Mening'], ['catalog','🛍','Tovarlar']];
+// YANGI: admin "🎛 Mini App bo'limlarini sozlash" oynasidan "catalog"
+// (Tovarlar) bo'limini o'chirib qo'yishi mumkin — masalan faqat qarz/coin
+// ko'rsatiladigan, savdo katalogisiz mini-ilova kerak bo'lsa.
+function clientTabsVisible(d){
+  const sec = (d && d.miniAppSections) || {};
+  return CLIENT_TABS_ALL.filter(([key])=> key==='home' || sec[key]!==false);
+}
 
 function renderClient(){
   const tabsEl = document.getElementById('tabs');
-  const active = STATE.clientTab || 'home';
-  tabsEl.innerHTML = CLIENT_TABS.map(([key,ic,label])=>
+  let active = STATE.clientTab || 'home';
+  const visibleTabs = clientTabsVisible(STATE.data);
+  if (!visibleTabs.some(([key])=>key===active)) active = 'home';
+  tabsEl.innerHTML = visibleTabs.map(([key,ic,label])=>
     `<div class="tab ${active===key?'active':''}" onclick="switchClientTab('${key}')"><span class="ic">${ic}</span>${label}</div>`
   ).join('');
   const app = document.getElementById('app');
@@ -245,6 +254,7 @@ function renderCatalogGrid(){
     return;
   }
   const oldEmpty = document.getElementById('catalog-no-match'); if (oldEmpty) oldEmpty.remove();
+  const coinOn = d.coinEnabled !== false; // YANGI: admin coin dasturini o'chirgan bo'lsa, false keladi
   grid.innerHTML = filtered.map(p=>{
     const qty = STATE.clientCart[p.id] || 0;
     const out = p.inStock === false;
@@ -259,20 +269,20 @@ function renderCatalogGrid(){
         ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="pill ${out?'out':'in'}">${out?'Tugagan':'Mavjud'}</span></div>
-        ${out ? '' : `<div class="coin-price-badge">🪙 ${coinCost}</div>`}
+        ${out ? '' : (coinOn ? `<div class="coin-price-badge">🪙 ${coinCost}</div>` : '')}
         ${cartBadge}
       </div>
       <div class="body">
         <div class="prod-name">${esc(p.name)}</div>
         ${p.volume ? `<div class="prod-meta">📦 ${esc(p.volume)}</div>` : ''}
         <div class="prod-price">${fmt(p.price)} ${cs()}</div>
-        ${p.points>0 ? `<div class="prod-points">🪙 +${p.points} coin</div>` : ''}
+        ${(coinOn && p.points>0) ? `<div class="prod-points">🪙 +${p.points} coin</div>` : ''}
         ${out ? '' : `<div class="qty-ctrl" onclick="event.stopPropagation()">
           <button onclick="changeClientCartQty('${p.id}',-1)">−</button>
           <span style="min-width:16px;text-align:center">${qty}</span>
           <button onclick="changeClientCartQty('${p.id}',1)">+</button>
         </div>`}
-        ${out ? '' : `<button class="btn small btn-outline" style="width:100%;margin-top:6px" onclick="event.stopPropagation();buyWithCoin('${p.id}',${coinCost})">🪙 Coinga sotib olish</button>`}
+        ${(out || !coinOn) ? '' : `<button class="btn small btn-outline" style="width:100%;margin-top:6px" onclick="event.stopPropagation();buyWithCoin('${p.id}',${coinCost})">🪙 Coinga sotib olish</button>`}
       </div>
     </div>`;
   }).join('');
@@ -354,7 +364,7 @@ function openClientCheckoutModal(){
   // (d.coinSettings.redeemValuePerCoin) qiymatdan foydalanadi.
   const cSet = d.coinSettings || {};
   const redeemValuePerCoin = Number(cSet.redeemValuePerCoin) > 0 ? Number(cSet.redeemValuePerCoin) : 100;
-  const canUsePoints = myPoints >= 100; // kamida 100 coin to'plangach foydalanish mumkin
+  const canUsePoints = (d.coinEnabled !== false) && myPoints >= 100; // kamida 100 coin to'plangach foydalanish mumkin, coin o'chirilgan bo'lsa hech qachon
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:10px">Buyurtma — ${fmt(total)} ${cs()}</div>
     <div class="card" style="font-size:12.5px;color:var(--hint)">✅ Buyurtma yuborilgach, do'kon administratori tasdiqlaydi — shundan so'ng tovar sizga rasmiylashtiriladi.</div>
@@ -389,7 +399,7 @@ async function submitClientOrder(){
 
 function renderDebtor(app, d){
   let html = '';
-  if (d.loyalty){
+  if (d.loyalty && d.coinEnabled !== false){
     html += `<div class="hero">
       <div class="label">🪙 Coin dasturi${d.loyalty.tier?` · ${esc(d.loyalty.tier)}`:''}</div>
       <div class="amount">${d.loyalty.points||0} coin</div>
@@ -448,15 +458,24 @@ function renderDebtor(app, d){
 function setDebtorView(v){ STATE.debtorView = v; renderClient(); }
 
 // ================= ADMIN KO'RINISHI =================
-const ADMIN_TABS = [
+const ADMIN_TABS_ALL = [
   ['main','📊','Bosh'], ['sell','🛒','Sotish'], ['debts','📋','Qarzlar'],
   ['stock','📦','Tovarlar'], ['debtors','👥','Qarzdorlar'], ['report','📈','Hisobot'],
   ['customers','🪙','Mijozlar'], ['staff','🧑\u200d💼','Xodimlar'], ['settings','⚙️','Sozlama'],
 ];
+// YANGI: admin "🎛 Mini App bo'limlarini sozlash" oynasidan boshqa
+// adminlar/xodimlar uchun ochiladigan Mini App'da qaysi bo'limlar
+// (tab'lar) ko'rinishini belgilaydi. 'main' (Bosh) doim ko'rinadi.
+function adminTabsVisible(d){
+  const sec = (d && d.settings && d.settings.miniAppSections) || {};
+  return ADMIN_TABS_ALL.filter(([key])=> key==='main' || sec[key]!==false);
+}
 
 function renderAdmin(){
   const tabsEl = document.getElementById('tabs');
-  tabsEl.innerHTML = ADMIN_TABS.map(([key,ic,label])=>
+  const visibleTabs = adminTabsVisible(STATE.data);
+  if (!visibleTabs.some(([key])=>key===STATE.tab)) STATE.tab = 'main';
+  tabsEl.innerHTML = visibleTabs.map(([key,ic,label])=>
     `<div class="tab ${STATE.tab===key?'active':''}" onclick="switchTab('${key}')"><span class="ic">${ic}</span>${label}</div>`
   ).join('');
   const app = document.getElementById('app');
@@ -870,13 +889,14 @@ function renderStock(app, d){
 function openProductModal(id){
   const d = STATE.data;
   const p = id ? d.products.find(x=>x.id===id) : null;
+  const coinOnAdmin = !(d.settings && d.settings.coinEnabled===false);
   showModal(`
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">${p?'Tovarni tahrirlash':'Yangi tovar'}</div>
     <label class="f">Nomi *</label><input type="text" id="pf-name" value="${p?esc(p.name):''}">
     <label class="f">Narxi (sotish) *</label><input type="number" id="pf-price" value="${p?p.price:''}">
     <label class="f">Tannarx</label><input type="number" id="pf-cost" value="${p?p.cost:''}">
-    <label class="f">🪙 Har xariddan necha coin beriladi (1 dona uchun, bo'sh — avtomatik narx/umumiy sozlama)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
-    <label class="f">🪙 Coinda sotib olish narxi (bo'sh — avtomatik narx/umumiy sozlama)</label><input type="number" id="pf-coincost" min="0" step="1" value="${p&&(p.coinCost||p.coinCost===0)?p.coinCost:''}">
+    ${coinOnAdmin ? `<label class="f">🪙 Har xariddan necha coin beriladi (1 dona uchun, bo'sh — avtomatik narx/umumiy sozlama)</label><input type="number" id="pf-points" min="0" step="1" value="${p&&(p.points||p.points===0)?p.points:''}">
+    <label class="f">🪙 Coinda sotib olish narxi (bo'sh — avtomatik narx/umumiy sozlama)</label><input type="number" id="pf-coincost" min="0" step="1" value="${p&&(p.coinCost||p.coinCost===0)?p.coinCost:''}">` : ''}
     <label class="f">Qoldiq (soni)</label><input type="number" id="pf-stock" value="${p?p.stock:0}">
     <label class="f">Hajm/o'lcham (ixtiyoriy)</label><input type="text" id="pf-volume" value="${p?esc(p.volume):''}">
     <label class="f">Rasm URL (ixtiyoriy)</label><input type="text" id="pf-img" placeholder="https://...jpg" value="${p&&p.img&&!p.img.startsWith('data:')?esc(p.img):''}" oninput="previewMiniImg()">
@@ -905,8 +925,10 @@ function loadMiniImgFile(input){
   reader.readAsDataURL(file);
 }
 async function submitProduct(id){
-  const pointsRaw = document.getElementById('pf-points').value;
-  const coinCostRaw = document.getElementById('pf-coincost').value;
+  const pointsEl = document.getElementById('pf-points');
+  const coinCostEl = document.getElementById('pf-coincost');
+  const pointsRaw = pointsEl ? pointsEl.value : '';
+  const coinCostRaw = coinCostEl ? coinCostEl.value : '';
   const urlVal = document.getElementById('pf-img').value.trim();
   const patch = {
     name: document.getElementById('pf-name').value.trim(),
