@@ -13,7 +13,7 @@
 // initData bo'lmaydi, shuning uchun index.html odatdagidek PIN so'raydi.
 // ----------------------------------------------------------------------------
 
-const { getDb } = require('./_firebase');
+const { getDb, getSettings, invalidateSettingsCache } = require('./_firebase');
 const { verifyInitData } = require('./_miniapp-auth');
 
 function usernameKey(u) { return String(u || '').replace(/^@/, '').trim().toLowerCase(); }
@@ -24,9 +24,10 @@ module.exports = async (req, res) => {
     const { initData } = req.body || {};
     const db = getDb();
     const settingsRef = db.collection('dokon').doc('settings');
-    const settingsSnap = await settingsRef.get();
-    if (!settingsSnap.exists) { res.status(200).json({ role: 'guest' }); return; }
-    const settings = settingsSnap.data();
+    // TEZLASHTIRISH: qisqa muddatli xotira-keshi (api/_firebase.js) — bu
+    // endpoint index.html Telegram ichida ochilganda HAR SAFAR chaqiriladi.
+    const settings = await getSettings(db);
+    if (!settings) { res.status(200).json({ role: 'guest' }); return; }
     const token = (settings.telegramBotToken || '').trim();
 
     const user = verifyInitData(initData, token);
@@ -47,6 +48,7 @@ module.exports = async (req, res) => {
       if (idx !== -1) {
         sellers[idx] = { ...sellers[idx], telegramChatId: chatId };
         await settingsRef.set({ sellers }, { merge: true }).catch(() => {});
+        invalidateSettingsCache();
         seller = sellers[idx];
       }
     }

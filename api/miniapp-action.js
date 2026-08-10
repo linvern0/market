@@ -38,6 +38,7 @@ const { hasPermission } = require('./_permissions');
 const { logAction } = require('./_audit');
 
 function getDb() { return require('./_firebase').getDb(); }
+const { getSettings, invalidateSettingsCache, invalidateProductsCache, invalidateDebtorsCache } = require('./_firebase');
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
@@ -85,9 +86,11 @@ module.exports = async (req, res) => {
     const { initData, action, payload } = req.body || {};
     const db = getDb();
     const settingsRef = db.collection('dokon').doc('settings');
-    const settingsSnap = await settingsRef.get();
-    if (!settingsSnap.exists) { res.status(400).json({ ok: false, error: 'no_settings' }); return; }
-    const settings = settingsSnap.data();
+    // TEZLASHTIRISH: qisqa muddatli xotira-keshi (batafsil izoh uchun
+    // api/_firebase.js'ga qarang) — bu amal ENDPOINT'i admin panelidan
+    // tez-tez (har bir tugma bosilganda) chaqiriladi.
+    const settings = await getSettings(db);
+    if (!settings) { res.status(400).json({ ok: false, error: 'no_settings' }); return; }
     const token = (settings.telegramBotToken || '').trim();
     const currencySymbol = settings.currencySymbol || "so'm";
     const shopName = settings.shopName || "Do'kon";
@@ -302,6 +305,7 @@ module.exports = async (req, res) => {
       const productsSnap = await db.collection('products').where('name', '==', productName).get();
       if (productsSnap.empty) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       await productsSnap.docs[0].ref.update({ price: newPrice });
+      invalidateProductsCache();
       res.status(200).json({ ok: true });
       return;
     }
@@ -319,6 +323,7 @@ module.exports = async (req, res) => {
         stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: img || '',
       };
       await db.collection('products').doc(id).set(doc);
+      invalidateProductsCache();
       res.status(200).json({ ok: true, product: doc });
       return;
     }
@@ -341,6 +346,7 @@ module.exports = async (req, res) => {
       const snap = await ref.get();
       if (!snap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       await ref.update(clean);
+      invalidateProductsCache();
       res.status(200).json({ ok: true });
       return;
     }
@@ -351,6 +357,7 @@ module.exports = async (req, res) => {
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const pSnap = await db.collection('products').doc(id).get();
       await db.collection('products').doc(id).delete();
+      invalidateProductsCache();
       audit('delete_product', pSnap.exists ? pSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;
@@ -365,6 +372,7 @@ module.exports = async (req, res) => {
       const snap = await ref.get();
       if (!snap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       await ref.update({ stock: admin.firestore.FieldValue.increment(q) });
+      invalidateProductsCache();
       const rId = uid();
       await db.collection('restocks').doc(rId).set({
         id: rId, productId: id, productName: snap.data().name, qty: q, date: new Date().toISOString(), by: 'Mini App orqali',
@@ -406,6 +414,7 @@ module.exports = async (req, res) => {
 
       // Zaxirani kamaytiramiz
       await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(-x.qty) })));
+      invalidateProductsCache();
 
       if (mode === 'debt') {
         // Mavjud qarzdorni topamiz yoki yangi yaratamiz
@@ -426,6 +435,7 @@ module.exports = async (req, res) => {
             debtorData = { id: newId, name: name.trim(), org: org || '', phone: phone || '', login: '', password: '', createdAt: now, viewScope: 'own' };
             debtorRef = db.collection('debtors').doc(newId);
             await debtorRef.set(debtorData);
+            invalidateDebtorsCache();
           }
         }
 
@@ -439,6 +449,7 @@ module.exports = async (req, res) => {
         if (limitCheck.wouldExceed && !forceOverLimit) {
           // Bu holatda zaxira allaqachon kamaytirilgan (yuqorida) — qaytaramiz.
           await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(x.qty) })));
+          invalidateProductsCache();
           res.status(409).json({ ok: false, error: 'credit_limit_exceeded', limit: limitCheck.limit, currentRemaining: limitCheck.currentRemaining, newAmount: total });
           return;
         }
@@ -528,6 +539,7 @@ module.exports = async (req, res) => {
             .catch(() => {});
         }
       }));
+      invalidateProductsCache();
       res.status(200).json({ ok: true });
       return;
     }
@@ -560,6 +572,7 @@ module.exports = async (req, res) => {
           debtorData = { id: newId, name: name.trim(), org: org || '', phone: phone || '', login: '', password: '', createdAt: now0, viewScope: 'own' };
           debtorRef = db.collection('debtors').doc(newId);
           await debtorRef.set(debtorData);
+          invalidateDebtorsCache();
         }
       }
 
@@ -630,6 +643,7 @@ module.exports = async (req, res) => {
           patch.telegramChatId = admin.firestore.FieldValue.delete();
         }
         await ref.update(patch);
+        invalidateDebtorsCache();
         res.status(200).json({ ok: true, id });
         return;
       }
@@ -640,6 +654,7 @@ module.exports = async (req, res) => {
         creditLimit: cleanCreditLimit || 0,
       };
       await db.collection('debtors').doc(newId).set(doc);
+      invalidateDebtorsCache();
       res.status(200).json({ ok: true, id: newId });
       return;
     }
@@ -650,6 +665,7 @@ module.exports = async (req, res) => {
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const dSnap = await db.collection('debtors').doc(id).get();
       await db.collection('debtors').doc(id).delete();
+      invalidateDebtorsCache();
       audit('delete_debtor', dSnap.exists ? dSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;
@@ -694,6 +710,7 @@ module.exports = async (req, res) => {
       });
       if (!Object.keys(clean).length) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       await settingsRef.set(clean, { merge: true });
+      invalidateSettingsCache();
       audit('update_settings', Object.keys(clean).join(', '));
       res.status(200).json({ ok: true });
       return;
@@ -716,6 +733,7 @@ module.exports = async (req, res) => {
       if (cleanPerms) entry.permissions = cleanPerms;
       list.push(entry);
       await settingsRef.set({ telegramAdmins: list }, { merge: true });
+      invalidateSettingsCache();
       audit('upsert_admin', `${entry.name} — ${cleanRole}`);
       res.status(200).json({ ok: true });
       return;
@@ -734,6 +752,7 @@ module.exports = async (req, res) => {
       if (filtered.length === list.length) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
       if (String(chatId) === String(targetChatId)) { res.status(400).json({ ok: false, error: 'cannot_remove_self' }); return; }
       await settingsRef.set({ telegramAdmins: filtered }, { merge: true });
+      invalidateSettingsCache();
       audit('remove_admin', removed ? removed.name : '');
       res.status(200).json({ ok: true });
       return;
@@ -752,6 +771,7 @@ module.exports = async (req, res) => {
       if (role === 'owner' || role === 'admin') list[idx].role = role;
       if (permissions && typeof permissions === 'object') list[idx].permissions = permissions;
       await settingsRef.set({ telegramAdmins: list }, { merge: true });
+      invalidateSettingsCache();
       audit('update_admin_permissions', `${list[idx].name || targetChatId}`);
       res.status(200).json({ ok: true });
       return;
@@ -870,6 +890,7 @@ module.exports = async (req, res) => {
         list.push({ id: uid(), name: String(name).trim(), pin: String(pin || ''), telegramUsername: cleanUsername, telegramChatId: '' });
       }
       await settingsRef.set({ sellers: list }, { merge: true });
+      invalidateSettingsCache();
       audit('upsert_seller', String(name).trim());
       res.status(200).json({ ok: true });
       return;
@@ -882,6 +903,7 @@ module.exports = async (req, res) => {
       const removed = (Array.isArray(settings.sellers) ? settings.sellers : []).find((s) => s.id === id);
       const list = (Array.isArray(settings.sellers) ? settings.sellers : []).filter((s) => s.id !== id);
       await settingsRef.set({ sellers: list }, { merge: true });
+      invalidateSettingsCache();
       audit('remove_seller', removed ? removed.name : id);
       res.status(200).json({ ok: true });
       return;

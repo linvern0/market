@@ -95,11 +95,13 @@ async function runNotify() {
 
   // ---------- 2) Muddati o'tgan qarzlar ----------
   if (s.telegramNotifyOverdueDebts && !alreadySent('overdue')) {
-    const debtsSnap = await db.collection('debts').get();
+    // TUZATILDI (Firestore "usage"): to'langan qarzlar bizga bu yerda
+    // kerak emas — faqat to'lanmaganlarini so'raymiz.
+    const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
     const debts = debtsSnap.docs.map((d) => d.data());
     const overdueDays = s.overdueDaysGlobal || 14;
     const overdue = debts.filter(
-      (d) => !d.paid && Date.now() - new Date(d.date).getTime() >= overdueDays * 86400000
+      (d) => Date.now() - new Date(d.date).getTime() >= overdueDays * 86400000
     );
     if (overdue.length) {
       const remaining = (d) => (d.total || 0) - (d.paidAmount || 0);
@@ -164,7 +166,14 @@ async function runNotify() {
 
   // ---------- 3) Kunlik hisobot ----------
   if (s.telegramNotifyDailyReport && !alreadySent('dailyreport')) {
-    const salesSnap = await db.collection('sales').get();
+    // TUZATILDI (Firestore "usage"): ilgari BUTUN `sales` kolleksiyasi
+    // (do'kon tarixi qancha katta bo'lsa ham) har kuni bir marta to'liq
+    // o'qilardi, faqat BUGUNGI kunni hisoblash uchun. Endi faqat bugungi
+    // sana oralig'idagi hujjatlar so'raladi.
+    const salesSnap = await db.collection('sales')
+      .where('date', '>=', `${todayStr}T00:00:00.000Z`)
+      .where('date', '<=', `${todayStr}T23:59:59.999Z`)
+      .get();
     const sales = salesSnap.docs.map((d) => d.data());
     const todaySales = sales.filter((sale) => !sale.reverted && (sale.date || '').slice(0, 10) === todayStr);
     const revenue = todaySales.reduce((a, sale) => a + (sale.total || 0), 0);
@@ -174,11 +183,14 @@ async function runNotify() {
     // qo'shildi.
     let newCustomersLine = '';
     try {
-      const customersSnap = await db.collection('customers').get();
+      // TUZATILDI (Firestore "usage"): butun `customers` kolleksiyasini
+      // o'qish o'rniga, faqat so'nggi 7 kun ichida yaratilganlar so'raladi
+      // — bizga faqat shu davr statistikasi kerak.
+      const weekAgoISO = new Date(Date.now() - 7 * 86400000).toISOString();
+      const customersSnap = await db.collection('customers').where('createdAt', '>=', weekAgoISO).get();
       const customers = customersSnap.docs.map((d) => d.data());
-      const now = Date.now();
       const newToday = customers.filter((c) => (c.createdAt || '').slice(0, 10) === todayStr).length;
-      const newWeek = customers.filter((c) => c.createdAt && now - new Date(c.createdAt).getTime() <= 7 * 86400000).length;
+      const newWeek = customers.length;
       newCustomersLine = `\n👥 Yangi mijozlar: bugun ${newToday} ta, so'nggi 7 kunda ${newWeek} ta`;
     } catch (e) { /* mijozlar bo'limi bo'lmasa ham hisobot to'xtab qolmasin */ }
     const text = `📊 <b>Kunlik hisobot</b> — ${esc(shopName)}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} ${esc(currencySymbol)}\n📈 Foyda: ${fmt(profit)} ${esc(currencySymbol)}${newCustomersLine}`;

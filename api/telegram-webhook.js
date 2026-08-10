@@ -35,6 +35,7 @@ const { logAction } = require('./_audit');
 
 let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
+const { getSettings, invalidateSettingsCache, getProductsSnapshot, invalidateProductsCache, getDebtorsSnapshot, invalidateDebtorsCache } = require('./_firebase');
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
@@ -177,11 +178,12 @@ const CONTACT_KEYBOARD = {
 // Qarzdorlar uchun esa hamon yengil, faqat o'z qarzini ko'rsatadigan
 // "miniapp.html" ochiladi (ular uchun to'liq admin panelini ko'rsatish
 // xavfsizlik nuqtai nazaridan noto'g'ri bo'lardi).
-function miniAppKeyboard(req, isAdmin) {
+function miniAppKeyboard(req, isAdmin, settings) {
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
   if (!host) return undefined;
+  const lbl = (settings && settings.telegramButtonLabels && typeof settings.telegramButtonLabels === 'object') ? settings.telegramButtonLabels : {};
   if (!isAdmin) {
-    return { inline_keyboard: [[{ text: '📱 Mini-ilovani ochish', web_app: { url: `https://${host}/miniapp.html` } }]] };
+    return { inline_keyboard: [[{ text: lbl.miniapp || '📱 Mini-ilovani ochish', web_app: { url: `https://${host}/miniapp.html` } }]] };
   }
   // YANGI: mini-ilova (miniapp.html) endi TO'LIQ boshqaruv imkoniyatiga
   // ega bo'lgani uchun (sotish, qarzlar, tovarlar, hisobot, mijozlar,
@@ -239,6 +241,7 @@ function findPendingSellerIndex(sellers, username) {
 async function linkPendingSeller(settingsRef, sellers, idx, chatId) {
   sellers[idx] = { ...sellers[idx], telegramChatId: String(chatId) };
   await settingsRef.set({ sellers }, { merge: true });
+  invalidateSettingsCache();
 }
 function sellerAppKeyboard(req) {
   const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString();
@@ -327,15 +330,19 @@ function adminMenuKeyboard(req) {
   return { inline_keyboard: rows };
 }
 function debtorMenuKeyboard(req, settings) {
+  // YANGI: admin index.html > Telegram sozlamalarida menyu tugmalari
+  // matnini o'zgartirgan bo'lsa — shu matnlar ishlatiladi (masalan
+  // boshqa tilga yoki qisqaroq nomga moslash uchun).
+  const lbl = (settings && settings.telegramButtonLabels && typeof settings.telegramButtonLabels === 'object') ? settings.telegramButtonLabels : {};
   const rows = [
-    [{ text: '💰 Mening qarzim', callback_data: 'cmd:/qarzim' }],
-    [{ text: "🧾 To'lovlar tarixi", callback_data: 'cmd:/tarix' }],
+    [{ text: lbl.debt || '💰 Mening qarzim', callback_data: 'cmd:/qarzim' }],
+    [{ text: lbl.history || "🧾 To'lovlar tarixi", callback_data: 'cmd:/tarix' }],
   ];
   // YANGI: COIN funksiyasi o'chirilgan bo'lsa — "Coinlarim" tugmasi
   // mijoz menyusida umuman ko'rinmaydi (settings berilmagan hollarda,
   // orqaga moslik uchun, standart holat — ko'rinadi).
-  if (isCoinEnabled(settings)) rows.push([{ text: '🪙 Coinlarim', callback_data: 'cmd:/ballarim' }]);
-  const mini = miniAppKeyboard(req, false);
+  if (isCoinEnabled(settings)) rows.push([{ text: lbl.coin || '🪙 Coinlarim', callback_data: 'cmd:/ballarim' }]);
+  const mini = miniAppKeyboard(req, false, settings);
   if (mini) rows.push(...mini.inline_keyboard);
   return { inline_keyboard: rows };
 }
@@ -352,6 +359,7 @@ function findPendingAdminIndex(admins, { phone, username }) {
 async function linkPendingAdmin(settingsRef, admins, idx, chatId) {
   admins[idx] = { ...admins[idx], chatId: String(chatId) };
   await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+  invalidateSettingsCache();
 }
 function helpText(isAdmin) {
   let t = `🤖 <b>Do'kon boti</b>\n\n`;
@@ -456,7 +464,7 @@ async function handleCustomerContact(db, token, msg, kb, req) {
   const phone = msg.contact && msg.contact.phone_number;
   const key = phoneKey(phone);
   if (!key) { await sendMessage(token, chatId, "Telefon raqami o'qilmadi, qaytadan urinib ko'ring."); return true; }
-  const debtorsSnap = await db.collection('debtors').get();
+  const debtorsSnap = await getDebtorsSnapshot(db);
   const matches = debtorsSnap.docs.filter((d) => phoneKey(d.data().phone) === key);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
@@ -467,7 +475,7 @@ async function tryLinkCustomerByUsername(db, token, msg, kb, req, debtorsSnap) {
   const chatId = msg.chat.id;
   const uKey = usernameKey(msg.from && msg.from.username);
   if (!uKey) return false;
-  const snap = debtorsSnap || (await db.collection('debtors').get());
+  const snap = debtorsSnap || (await getDebtorsSnapshot(db));
   const matches = snap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
@@ -483,7 +491,7 @@ async function tryLinkCustomerByTelegramId(db, token, msg, kb, req, debtorsSnap)
   const chatId = msg.chat.id;
   const idKey = String((msg.from && msg.from.id) || '').trim();
   if (!idKey) return false;
-  const snap = debtorsSnap || (await db.collection('debtors').get());
+  const snap = debtorsSnap || (await getDebtorsSnapshot(db));
   const matches = snap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
@@ -539,7 +547,7 @@ async function autoRegisterCustomer(db, token, msg, kb, welcomeText) {
 // hammasi BIR XIL manbadan (Firebase'dagi dokon/settings > loyaltyTiers,
 // api/_loyalty.js orqali) hisoblanadi.
 async function customerTierName(db, totalSpent, override, presetSettings) {
-  const settingsData = presetSettings || (await db.collection('dokon').doc('settings').get()).data() || null;
+  const settingsData = presetSettings || await getSettings(db);
   return computeCustomerTier(totalSpent, override, settingsData).label;
 }
 async function sendLoyaltyLinkedWelcome(db, token, chatId, matches, kb) {
@@ -673,7 +681,7 @@ async function computeReceiptPoints(db, items, settingsData) {
   if (!list.length) return { earned: 0, breakdown: [] };
   let productsByName = {};
   try {
-    const snap = await db.collection('products').get();
+    const snap = await getProductsSnapshot(db);
     snap.docs.forEach((d) => {
       const p = d.data();
       const key = String(p.name || '').trim().toLowerCase();
@@ -715,8 +723,7 @@ async function finalizeReceiptAward(db, token, chatId, msg, req, receiptId, r, c
   const kb = miniAppKeyboard(req, false);
   const receiptRef = db.collection('receipts').doc(receiptId);
   const total = r.total || 0;
-  const settingsSnap = await db.collection('dokon').doc('settings').get();
-  const settingsData = settingsSnap.exists ? settingsSnap.data() : null;
+  const settingsData = await getSettings(db);
   const { earned, breakdown } = await computeReceiptPoints(db, r.items, settingsData);
   const { redeemValuePerCoin } = getCoinSettings(settingsData);
 
@@ -910,8 +917,7 @@ async function handleReceiptClaim(db, token, chatId, msg, req) {
   return true;
 }
 async function handleLoyaltyPoints(db, token, chatId, req) {
-  const settingsSnap = await db.collection('dokon').doc('settings').get();
-  const settingsData = settingsSnap.exists ? settingsSnap.data() : null;
+  const settingsData = await getSettings(db);
   // YANGI: COIN funksiyasi admin tomonidan o'chirilgan bo'lsa — mijozga
   // tushunarli xabar qaytariladi, ma'lumot bazasiga umuman murojaat
   // qilinmaydi.
@@ -1071,8 +1077,7 @@ async function handleCustomerPaymentHistory(db, token, chatId, req) {
 }
 
 async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req) {
-  const settingsSnap0 = await settingsRef.get();
-  const settingsData0 = settingsSnap0.exists ? settingsSnap0.data() : null;
+  const settingsData0 = await getSettings(db);
   const shopName = settingsData0?.shopName || "Do'kon";
 
   // YANGI: admin panelidan o'chirilgan buyruqlar bu yerda to'xtatiladi.
@@ -1177,10 +1182,10 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const amount = parseFloat(amountStr);
     if (!name || isNaN(amount) || amount <= 0) return sendMessage(token, chatId, "Foydalanish: /qarz_qoshish Ism; Telefon; Summa; Izoh\nMasalan: /qarz_qoshish Aziz Karimov; +998901234567; 50000; noutbuk narxi");
     const now = new Date().toISOString();
-    const debtorsSnap = await db.collection('debtors').get();
+    const debtorsSnap = await getDebtorsSnapshot(db);
     const debtor = debtorsSnap.docs.find((d) => d.data().name === name && !d.data().org);
     const debtorId = debtor ? debtor.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    if (!debtor) await db.collection('debtors').doc(debtorId).set({ id: debtorId, name, org: '', phone: phone || '', login: '', password: '', createdAt: now });
+    if (!debtor) { await db.collection('debtors').doc(debtorId).set({ id: debtorId, name, org: '', phone: phone || '', login: '', password: '', createdAt: now }); invalidateDebtorsCache(); }
     const debtId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const debt = { id: debtId, debtorId, debtorName: name, org: '', phone: phone || '', items: [], total: amount, paid: false, paidDate: null, date: now, note: note || 'Telegram bot orqali qo\'shildi', seller: 'Telegram admin', type: 'person' };
     await db.collection('debts').doc(debtId).set(debt);
@@ -1274,7 +1279,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/eslatma') {
     const q = argStr.trim().toLowerCase();
     if (!q) return sendMessage(token, chatId, "Foydalanish: /eslatma Aziz (ism yoki telefon)");
-    const debtorsSnap = await db.collection('debtors').get();
+    const debtorsSnap = await getDebtorsSnapshot(db);
     const matches = debtorsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q) || phoneKey(d.data().phone) === phoneKey(q));
     if (!matches.length) return sendMessage(token, chatId, "Bunday mijoz topilmadi.");
     if (matches.length > 1) return sendMessage(token, chatId, `Bir nechta mos keldi, aniqroq yozing:\n${matches.slice(0, 10).map((d) => '• ' + esc(d.data().name)).join('\n')}`);
@@ -1292,7 +1297,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/broadcast') {
     const text = argStr.trim();
     if (!text) return sendMessage(token, chatId, "Foydalanish: /broadcast Xabar matni\nMasalan: /broadcast Ertaga do'kon dam olish kuni, ishlamaymiz.");
-    const debtorsSnap = await db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => db.collection('debtors').get());
+    const debtorsSnap = await db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => getDebtorsSnapshot(db));
     const targets = [...new Set(debtorsSnap.docs.map((d) => d.data().telegramChatId).filter(Boolean))];
     if (!targets.length) return sendMessage(token, chatId, "Botga ulangan mijoz topilmadi.");
     await sendMessage(token, chatId, `⏳ ${targets.length} ta mijozga yuborilmoqda...`);
@@ -1319,9 +1324,9 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   }
 
   if (cmd === '/ombor') {
-    const productsSnap = await db.collection('products').get();
+    const productsSnap = await getProductsSnapshot(db);
     const products = productsSnap.docs.map((d) => d.data());
-    const threshold = (await settingsRef.get()).data()?.lowStockThreshold || 5;
+    const threshold = (await getSettings(db))?.lowStockThreshold || 5;
     const low = products.filter((p) => p.stock <= threshold && p.stock > 0);
     const empty = products.filter((p) => p.stock === 0);
     if (!low.length && !empty.length) return sendMessage(token, chatId, "✅ Barcha tovarlar yetarli.");
@@ -1334,7 +1339,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/mahsulot') {
     const q = argStr.trim().toLowerCase();
     if (!q) return sendMessage(token, chatId, "Foydalanish: /mahsulot nomi");
-    const productsSnap = await db.collection('products').get();
+    const productsSnap = await getProductsSnapshot(db);
     const found = productsSnap.docs.map((d) => d.data()).filter((p) => (p.name || '').toLowerCase().includes(q));
     if (!found.length) return sendMessage(token, chatId, "Topilmadi.");
     let text = `🔎 "${esc(argStr.trim())}" bo'yicha (${found.length} ta):\n\n`;
@@ -1347,12 +1352,13 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!m) return sendMessage(token, chatId, "Foydalanish: /tovar_narx nomi yangi_narx\nMasalan: /tovar_narx Coca-Cola 12000");
     const q = m[1].trim().toLowerCase();
     const newPrice = parseFloat(m[2]);
-    const productsSnap = await db.collection('products').get();
+    const productsSnap = await getProductsSnapshot(db);
     const found = productsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q));
     if (!found.length) return sendMessage(token, chatId, "Tovar topilmadi.");
     if (found.length > 1) return sendMessage(token, chatId, `Bir nechta tovar topildi, aniqroq nom kiriting:\n${found.slice(0, 10).map((d) => '• ' + esc(d.data().name)).join('\n')}`);
     const oldPrice = found[0].data().price;
     await found[0].ref.update({ price: newPrice });
+    invalidateProductsCache();
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'product_price_update', detail: `${found[0].data().name}: ${oldPrice} → ${newPrice} so'm (/tovar_narx)` });
     return sendMessage(token, chatId, `✅ "${esc(found[0].data().name)}" narxi ${fmt(newPrice)} so'mga yangilandi.`);
   }
@@ -1398,6 +1404,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     admins.push(newAdmin);
     await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    invalidateSettingsCache();
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_add', detail: `${name} — ${role} (/admin_qoshish)` });
     const roleLabel = role === 'owner' ? '👑 owner (bosh admin)' : '🧑‍💼 admin (cheklangan)';
     if (newAdmin.chatId) {
@@ -1426,6 +1433,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     const remaining = admins.filter((a) => a !== targetAdmin);
     await settingsRef.set({ telegramAdmins: remaining }, { merge: true });
+    invalidateSettingsCache();
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_remove', detail: `${targetAdmin.name || target} (/admin_ochirish)` });
     return sendMessage(token, chatId, `✅ Admin o'chirildi (${esc(targetAdmin.name || target)}).`);
   }
@@ -1451,6 +1459,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     perms[permKey] = val === 'yes';
     targetAdmin.permissions = perms;
     await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    invalidateSettingsCache();
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_permission_update', detail: `${targetAdmin.name || target}: ${permKey} → ${val} (/admin_huquq)` });
     await sendMessage(token, chatId, `✅ ${esc(targetAdmin.name || target)} uchun "${permKey}" huquqi ${val === 'yes' ? 'YOQILDI' : "O'CHIRILDI"}.`);
     if (targetAdmin.chatId) await sendMessage(token, targetAdmin.chatId, `ℹ️ Sizning "${permKey}" huquqingiz ${val === 'yes' ? 'yoqildi' : "o'chirildi"}.`).catch(() => {});
@@ -1472,6 +1481,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     }
     targetAdmin.role = newRole;
     await settingsRef.set({ telegramAdmins: admins }, { merge: true });
+    invalidateSettingsCache();
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'admin_role_update', detail: `${targetAdmin.name || target} → ${newRole} (/admin_rol)` });
     await sendMessage(token, chatId, `✅ ${esc(targetAdmin.name || target)} roli — ${newRole === 'owner' ? '👑 owner' : '🧑‍💼 admin'} qilib o'zgartirildi.`);
     if (targetAdmin.chatId) await sendMessage(token, targetAdmin.chatId, `ℹ️ Sizning admin rolingiz ${newRole === 'owner' ? '👑 owner (bosh admin)' : '🧑‍💼 admin (cheklangan)'} ga o'zgartirildi.`).catch(() => {});
@@ -1507,9 +1517,9 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
     await answerCallbackQuery(token, cq.id, order.status === 'confirmed' ? "Bu buyurtma allaqachon tasdiqlangan." : "Bu buyurtma allaqachon bekor qilingan.", true);
     return;
   }
-  const settingsSnap = await settingsRef.get();
-  const shopName = settingsSnap.data()?.shopName || "Do'kon";
-  const currencySymbol = settingsSnap.data()?.currencySymbol || "so'm";
+  const settingsDataOD = await getSettings(db);
+  const shopName = settingsDataOD?.shopName || "Do'kon";
+  const currencySymbol = settingsDataOD?.currencySymbol || "so'm";
   const items = Array.isArray(order.items) ? order.items : [];
 
   if (!isConfirm) {
@@ -1538,6 +1548,7 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
 
   const now = new Date().toISOString();
   await Promise.all(productSnaps.map((snap, i) => snap.ref.update({ stock: admin.firestore.FieldValue.increment(-items[i].qty) })));
+  invalidateProductsCache();
   await Promise.all(productSnaps.map((snap, i) => db.collection('sales').doc(uid()).set({
     id: uid(), productId: snap.id, productName: items[i].name, volume: snap.data().volume || '', qty: items[i].qty,
     price: items[i].price, cost: snap.data().cost || 0, total: items[i].subtotal, seller: `Mijoz buyurtmasi (${order.customerName || ''})`,
@@ -1592,8 +1603,8 @@ async function handleCoinOrderDecision(db, token, settingsRef, cq, coinOrderId, 
     await answerCallbackQuery(token, cq.id, order.status === 'confirmed' ? "Bu so'rov allaqachon tasdiqlangan." : "Bu so'rov allaqachon bekor qilingan.", true);
     return;
   }
-  const settingsSnap = await settingsRef.get();
-  const shopName = settingsSnap.data()?.shopName || "Do'kon";
+  const settingsDataCOD = await getSettings(db);
+  const shopName = settingsDataCOD?.shopName || "Do'kon";
 
   if (!isConfirm) {
     await orderRef.update({ status: 'cancelled', decidedAt: new Date().toISOString(), decidedBy: String(adminChatId) });
@@ -1627,6 +1638,7 @@ async function handleCoinOrderDecision(db, token, settingsRef, cq, coinOrderId, 
 
   const now = new Date().toISOString();
   await productRef.update({ stock: admin.firestore.FieldValue.increment(-order.qty) });
+  invalidateProductsCache();
   if (order.customerId) {
     await db.collection('customers').doc(order.customerId).set({
       points: admin.firestore.FieldValue.increment(-order.totalCoinCost),
@@ -1674,7 +1686,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
         // o'chirilgan bo'lishi mumkin (COIN'dan tashqari — u alohida
         // isCoinEnabled orqali handleLoyaltyPoints ichida tekshiriladi).
         if (cmd !== '/ballarim' && cmd !== '/coinlarim') {
-          const s = (await settingsRef.get()).data();
+          const s = await getSettings(db);
           if (!isTelegramCommandEnabled(s, cmd)) {
             await sendMessage(token, chatId, "⛔ Bu bo'lim hozircha o'chirilgan.");
             return;
@@ -1726,7 +1738,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   const d = debtSnap.data();
   const remaining = debtRemaining(d);
   if (remaining <= 0) { await answerCallbackQuery(token, cq.id, "Bu qarz allaqachon to'liq to'langan."); return; }
-  const shopName = (await settingsRef.get()).data()?.shopName || "Do'kon";
+  const shopName = (await getSettings(db))?.shopName || "Do'kon";
   const payment = { amount: remaining, date: new Date().toISOString(), note: "Telegram bot orqali (tez tugma)", by: 'Telegram admin' };
   await debtRef.update({
     paidAmount: admin.firestore.FieldValue.increment(remaining),
@@ -1859,7 +1871,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
     // kerakli kolleksiyalar FAQAT BIR MARTA, PARALLEL o'qiladi va
     // natija ikkala (username + telegram ID) tekshiruvga qayta ishlatiladi.
     const [debtorsSnap, customersSnap] = await Promise.all([
-      !isKnownDebtor ? db.collection('debtors').get() : Promise.resolve(null),
+      !isKnownDebtor ? getDebtorsSnapshot(db) : Promise.resolve(null),
       !isKnownLoyalty ? db.collection('customers').get() : Promise.resolve(null),
     ]);
     if (!isKnownDebtor) {
@@ -1966,9 +1978,12 @@ module.exports = async (req, res) => {
   try {
     const db = getDb();
     const settingsRef = db.collection('dokon').doc('settings');
-    const settingsSnap = await settingsRef.get();
-    if (!settingsSnap.exists) { res.status(200).json({ ok: true }); return; }
-    const s = settingsSnap.data();
+    // TEZLASHTIRISH: to'g'ridan-to'g'ri settingsRef.get() o'rniga qisqa
+    // muddatli (15 soniyalik) xotira-keshidan foydalaniladi — bot tez-tez
+    // xabar qabul qilganda (bir nechta admin/mijoz ketma-ket yozganda)
+    // Firestore'dan bir xil hujjatni qayta-qayta o'qimaslik uchun.
+    const s = await getSettings(db);
+    if (!s) { res.status(200).json({ ok: true }); return; }
     const token = (s.telegramBotToken || '').trim();
     if (!token) { res.status(200).json({ ok: true }); return; }
     const admins = Array.isArray(s.telegramAdmins) ? s.telegramAdmins : [];
