@@ -330,7 +330,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
@@ -366,48 +366,6 @@ let DEBTORS = [];
 let reportDebtFilter = 'active';
 let reportDebtDateFilter = 'all';
 
-// YANGI (Firestore "usage"ni kamaytirish, index.html'dagi bilan bir xil
-// naqsh): 'sales' kolleksiyasi vaqt o'tishi bilan cheksiz o'sadi — har
-// safar bu sahifa ochilganda BUTUN tarixni qayta o'qish shart emas.
-// Real-vaqt tinglovchi endi faqat so'nggi RECENT_HISTORY_DAYS kunni
-// kuzatadi (Bugun/Kecha/Bu hafta/Bu oy filtrlari shu bilan ishlaydi).
-// "Hammasi" yoki oynadan tashqaridagi sana tanlansa, bir martalik
-// getDocs() bilan to'liq tarix yuklanib, xotiradagi ro'yxatga qo'shiladi.
-const RECENT_HISTORY_DAYS = 120;
-function recentHistoryCutoffISO(){
-  const d = new Date();
-  d.setDate(d.getDate() - RECENT_HISTORY_DAYS);
-  return d.toISOString();
-}
-let salesFullyLoaded = false, salesFullLoadPromise = null;
-function ensureFullSalesLoaded(){
-  if(salesFullyLoaded) return Promise.resolve();
-  if(salesFullLoadPromise) return salesFullLoadPromise;
-  salesFullLoadPromise = getDocs(collection(db,'sales')).then(snap=>{
-    const map = new Map(SALES.map(s=>[s.id,s]));
-    snap.docs.forEach(d=> map.set(d.id, { ...d.data(), id: d.id }));
-    SALES = [...map.values()];
-    salesFullyLoaded = true;
-  }).catch(e=>{
-    console.error("To'liq savdo tarixini yuklashda xatolik:", e);
-    salesFullLoadPromise = null;
-    throw e;
-  });
-  return salesFullLoadPromise;
-}
-// Foydalanuvchi tanlagan davr so'nggi RECENT_HISTORY_DAYS oynasidan
-// tashqariga chiqsa (masalan "Hammasi" yoki eski sana), to'liq tarixni
-// yuklaymiz.
-function periodNeedsFullHistory(p){
-  if(p==='all') return true;
-  if(p==='custom'){
-    const fromV = document.getElementById('custom-from').value;
-    if(!fromV) return true; // "gacha" filtri — pastki chegara yo'q, hammasi kerak
-    return new Date(fromV+'T00:00:00') < new Date(recentHistoryCutoffISO());
-  }
-  return false;
-}
-
 // Admin "Do'kon Boshqaruvi" ilovasi Sozlamalar > Ko'rinish bo'limida
 // belgilagan brend rangi va ilova nomini shu hisobot sahifasida ham
 // qo'llaydi — barcha sahifalarda bir xil brendlash ta'minlanadi.
@@ -439,29 +397,18 @@ async function init(){
       }
     });
 
-    // Real-vaqt savdo tinglovchi — endi faqat so'nggi RECENT_HISTORY_DAYS
-    // kun (eski tarix "Hammasi"/eski sana tanlanganda alohida yuklanadi,
-    // pastga qarang: ensureFullSalesLoaded).
-    onSnapshot(query(collection(db,'sales'), where('date','>=', recentHistoryCutoffISO())), snap=>{
-      const recentSales = snap.docs.map(d=>d.data());
+    // Real-vaqt savdo tinglovchi
+    onSnapshot(collection(db,'sales'), snap=>{
+      const newSales = snap.docs.map(d=>d.data());
       if(knownSaleIds !== null){
-        recentSales.forEach(s=>{
+        newSales.forEach(s=>{
           if(!knownSaleIds.has(s.id) && !s.reverted){
             notify(`🛒 Yangi savdo: ${s.productName} — ${fmt(s.total)} so'm`);
           }
         });
       }
-      knownSaleIds = new Set(recentSales.map(s=>s.id));
-      if(salesFullyLoaded){
-        // To'liq tarix allaqachon yuklangan bo'lsa, oynadan tashqaridagi
-        // eski yozuvlarni yo'qotmaslik uchun ularni saqlab, faqat oyna
-        // ichidagi qismni yangilaymiz.
-        const cutoffT = new Date(recentHistoryCutoffISO()).getTime();
-        const older = SALES.filter(s=> new Date(s.date).getTime() < cutoffT);
-        SALES = older.concat(recentSales);
-      } else {
-        SALES = recentSales;
-      }
+      knownSaleIds = new Set(newSales.map(s=>s.id));
+      SALES = newSales;
       clearTimeout(renderDebounce);
       renderDebounce = setTimeout(()=>{ if(loggedIn) render(); }, 20);
       pulseSyncDot();
@@ -547,10 +494,7 @@ function notify(msg){
   _toastTimer = setTimeout(()=>el.classList.remove('show'), 2600);
 }
 
-window.exportCSV = async function(){
-  if(periodNeedsFullHistory(period) && !salesFullyLoaded){
-    try{ await ensureFullSalesLoaded(); }catch(e){ notify("⚠️ Tarixni yuklab bo'lmadi, internetni tekshiring"); return; }
-  }
+window.exportCSV = function(){
   const {start,end} = getRange();
   let filtered = SALES.filter(s=>!s.reverted);
   if(start) filtered = filtered.filter(s=>new Date(s.date)>=start);
@@ -581,12 +525,7 @@ window.setPeriod = function(p){
   document.querySelectorAll('.filter-bar .btn').forEach(b=>b.classList.remove('blue'));
   const btn = document.getElementById('btn-'+p);
   if(btn) btn.classList.add('blue');
-  if(periodNeedsFullHistory(p) && !salesFullyLoaded){
-    render(); // avval oyna ichidagi ma'lumot bilan bir zumlik ko'rsatib turamiz
-    ensureFullSalesLoaded().then(render).catch(()=>{});
-  } else {
-    render();
-  }
+  render();
 }
 
 window.setSort = function(key){

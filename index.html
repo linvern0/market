@@ -4548,7 +4548,7 @@ window.debouncedRenderCmdkResults = debounce(()=>window.renderCmdkResults(), 120
 
 // FIREBASE INIT
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath, query, orderBy, limit, arrayUnion, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs, increment, deleteField, FieldPath, query, orderBy, limit, where, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBF0XCiActvIhr0xJPJs7I23TuGPiI1uRo",
@@ -4726,79 +4726,6 @@ window.cart = {};
 window.cartSerialCodes = {}; // { productId: [code, code, ...] }
 
 let knownSaleIds = null;
-// YANGI (Firestore "usage"ni kamaytirish): ilgari sales/restocks/expenses
-// kolleksiyalari HAR DOIM to'liq, cheklanmagan onSnapshot bilan
-// tinglanardi — do'kon tarixi qancha katta bo'lsa, ilova HAR SAFAR
-// ochilganda (yoki ulanish tiklanganda) shuncha ko'p hujjat qayta
-// o'qilardi. Endi bu 3 ta kolleksiya uchun real-vaqtli tinglovchi FAQAT
-// so'nggi RECENT_HISTORY_DAYS kunni kuzatadi (kundalik ish — sotish,
-// dashboard, "Mening savdolarim" va h.k. shu bilan cheklanadi).
-//
-// Eski (oynadan tashqaridagi) ma'lumotlar YO'QOLMAYDI — ular Tarix /
-// Kirim-chiqim tarixi / Foyda ("Barcha vaqt") sahifalari ochilganda yoki
-// CSV/Excel eksport qilinganda bir martalik getDocs() so'rovi bilan
-// yuklanib, xotiradagi ro'yxatga QO'SHILADI (pastga qarang:
-// ensureFullSalesLoaded/ensureFullRestocksLoaded/ensureFullExpensesLoaded).
-// Shu tufayli DB.sales/DB.restocks/DB.expenses'dan foydalanadigan 100 dan
-// ortiq joyning birortasiga ham tegilmadi — ular avvalgidek ishlayveradi,
-// faqat ba'zan (tarix sahifasini birinchi marta ochganda) bir zumlik
-// qo'shimcha yuklanish bo'lishi mumkin.
-const RECENT_HISTORY_DAYS = 120;
-function recentHistoryCutoffISO(){
-  const d = new Date();
-  d.setDate(d.getDate() - RECENT_HISTORY_DAYS);
-  return d.toISOString();
-}
-let salesFullyLoaded = false, restocksFullyLoaded = false, expensesFullyLoaded = false;
-let salesFullLoadPromise = null, restocksFullLoadPromise = null, expensesFullLoadPromise = null;
-function ensureFullSalesLoaded(){
-  if(salesFullyLoaded) return Promise.resolve();
-  if(salesFullLoadPromise) return salesFullLoadPromise;
-  salesFullLoadPromise = getDocs(collection(db,'sales')).then(snap=>{
-    const map = new Map((DB.sales||[]).map(s=>[s.id,s]));
-    snap.docs.forEach(d=> map.set(d.id, { ...d.data(), id: d.id }));
-    DB.sales = [...map.values()];
-    DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
-    salesFullyLoaded = true;
-  }).catch(e=>{
-    console.error("To'liq savdo tarixini yuklashda xatolik:", e);
-    salesFullLoadPromise = null;
-    throw e;
-  });
-  return salesFullLoadPromise;
-}
-function ensureFullRestocksLoaded(){
-  if(restocksFullyLoaded) return Promise.resolve();
-  if(restocksFullLoadPromise) return restocksFullLoadPromise;
-  restocksFullLoadPromise = getDocs(collection(db,'restocks')).then(snap=>{
-    const map = new Map((DB.restocks||[]).map(r=>[r.id,r]));
-    snap.docs.forEach(d=> map.set(d.id, { ...d.data(), id: d.id }));
-    DB.restocks = [...map.values()];
-    DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
-    restocksFullyLoaded = true;
-  }).catch(e=>{
-    console.error("To'liq kirim-chiqim tarixini yuklashda xatolik:", e);
-    restocksFullLoadPromise = null;
-    throw e;
-  });
-  return restocksFullLoadPromise;
-}
-function ensureFullExpensesLoaded(){
-  if(expensesFullyLoaded) return Promise.resolve();
-  if(expensesFullLoadPromise) return expensesFullLoadPromise;
-  expensesFullLoadPromise = getDocs(collection(db,'expenses')).then(snap=>{
-    const map = new Map((DB.expenses||[]).map(e=>[e.id,e]));
-    snap.docs.forEach(d=> map.set(d.id, { ...d.data(), id: d.id }));
-    DB.expenses = [...map.values()];
-    DB.expenses.sort((a,b)=>new Date(b.date)-new Date(a.date));
-    expensesFullyLoaded = true;
-  }).catch(e=>{
-    console.error("To'liq xarajatlar tarixini yuklashda xatolik:", e);
-    expensesFullLoadPromise = null;
-    throw e;
-  });
-  return expensesFullLoadPromise;
-}
 let debtFilter = 'active';
 let editingDebtorId = null;
 let editingCustomerLinkId = null;
@@ -4882,7 +4809,9 @@ function localUpsertSale(s){
 }
 function localPatchSale(id, patch){
   const s = DB.sales.find(x=>x.id===id);
-  if(s) Object.assign(s, patch);
+  if(s){ Object.assign(s, patch); return; }
+  const cached = _extraHistoryState.sales.items.find(x=>x.id===id);
+  if(cached) Object.assign(cached, patch);
 }
 function refreshProductViews(){
   renderProducts();
@@ -5250,15 +5179,39 @@ async function fbApplyDebtPayment(id, amount, note){
   const isFullyPaid = (d.total - newPaidAmount) <= 0.5;
   logAudit('debt_payment', `💵 ${fmt(applied)} so'm to'lov qabul qilindi: ${d.debtorName||d.org||''}${isFullyPaid?' (to\'liq yopildi)':''}`);
   // Optimistik (mahalliy, internetni kutmasdan) yangilash — foydalanuvchi
-  // natijani DARHOL ko'radi, Firestore fon rejimida sinxronlanadi.
+  // natijani DARHOL ko'radi, ekranda shu qiymatlar bilan chiqadi. Haqiqiy
+  // yakuniy qiymat (server tranzaksiyasidan keyin) pastdagi onSnapshot
+  // orqali baribir keladi va agar farq bo'lsa avtomatik to'g'rilanadi.
   d.paidAmount = newPaidAmount;
   d.payments = Array.isArray(d.payments) ? d.payments.concat([payment]) : [payment];
   if(isFullyPaid){ d.paid = true; d.paidDate = payment.date; }
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
   setSyncing(true);
-  const patch = { paidAmount: increment(applied), payments: arrayUnion(payment) };
-  if(isFullyPaid){ patch.paid = true; patch.paidDate = payment.date; }
-  withRetry(()=>updateDoc(doc(db,'debts',id), patch))
+  // TUZATILDI (poyga holati / race condition): ilgari bu yerda mahalliy
+  // (ekrandagi, eskirishi mumkin) qiymat asosida "to'liq yopildimi" degan
+  // qaror qilinib, keyin increment()/arrayUnion() bilan alohida yozilardi.
+  // Agar shu payt boshqa qurilma (yoki Telegram bot) HAM aynan shu qarzga
+  // to'lov yozayotgan bo'lsa, ikkalasi ham bir xil eski holatni ko'rib,
+  // qarz haqiqiy summasidan ortiq to'langan deb belgilanishi yoki
+  // paid:true belgisi umuman qo'yilmay qolishi mumkin edi. Endi butun
+  // o'qish+yozish runTransaction() ichida, Firestore serverining ENG YANGI
+  // holati asosida, atomik bajariladi.
+  const applyOnServer = () => runTransaction(db, async (tx) => {
+    const ref = doc(db, 'debts', id);
+    const snap = await tx.get(ref);
+    if(!snap.exists()) return; // qarz o'chirilgan bo'lishi mumkin — indamay chiqamiz
+    const sd = snap.data();
+    const sRemaining = debtRemaining(sd);
+    if(sRemaining<=0) return; // boshqa tomondan allaqachon to'liq yopilgan
+    const sApplied = Math.min(applied, Math.round(sRemaining));
+    const sPayment = { ...payment, amount: sApplied };
+    const sNewPaidAmount = (sd.paidAmount||0) + sApplied;
+    const sIsFullyPaid = (sd.total - sNewPaidAmount) <= 0.5;
+    const patch = { paidAmount: sNewPaidAmount, payments: Array.isArray(sd.payments) ? sd.payments.concat([sPayment]) : [sPayment] };
+    if(sIsFullyPaid){ patch.paid = true; patch.paidDate = sPayment.date; }
+    tx.update(ref, patch);
+  });
+  withRetry(applyOnServer)
     .catch(e=>{ setSyncError(); console.error(e); toast("To'lovni saqlashda xatolik",'red'); })
     .finally(()=>setSyncing(false));
   notifyDebtPayment(d, payment, isFullyPaid, remaining-applied);
@@ -5268,10 +5221,9 @@ async function fbApplyDebtPayment(id, amount, note){
 // "To'landi" belgisidan farqli o'laroq, bu yozuvni butunlay yo'q qiladi —
 // shuning uchun har doim tasdiqlash (confirm2) orqali chaqiriladi.
 async function fbDeleteDebt(id){
-  const d = DB.debts.find(x=>x.id===id);
+  const d = findDebtAnywhere(id);
   logAudit('debt_delete', `🗑 Qarz yozuvi o'chirildi: ${d?d.debtorName+(d.org?' ('+d.org+')':'')+' — '+fmt(d.total||0)+" so'm":id}`);
-  const i=DB.debts.findIndex(x=>x.id===id);
-  if(i>=0) DB.debts.splice(i,1);
+  removeDebtAnywhere(id);
   if(document.getElementById('page-debts')?.classList.contains('active')) renderDebts();
   setSyncing(true);
   withRetry(()=>deleteDoc(doc(db,'debts',id)))
@@ -5280,7 +5232,7 @@ async function fbDeleteDebt(id){
 }
 window.deleteDebtEntry = function(id){
   if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
-  const d = DB.debts.find(x=>x.id===id);
+  const d = findDebtAnywhere(id);
   confirm2("Qarz yozuvini o'chirish", `${d?.debtorName||''}${d?.org?' ('+d.org+')':''} — ${fmt(d?.total||0)} so'm qarz yozuvi butunlay o'chirilsinmi? Bu amalni ortga qaytarib bo'lmaydi.`, ()=>{
     toast("Qarz yozuvi o'chirildi",'green');
     fbDeleteDebt(id);
@@ -5425,6 +5377,146 @@ function migrateLegacyProductCodes(){
   });
 }
 
+// =====================================================================
+// ===== YANGI (Firestore "usage"ni kamaytirish): TARIXIY TO'PLAMLAR
+// ===== UCHUN "OYNALI" REAL-VAQT + TALAB BO'YICHA (ON-DEMAND) YUKLASH =====
+// =====================================================================
+// Muammo: `sales`, `restocks`, `expenses` — vaqt o'tishi bilan CHEKSIZ
+// o'sadigan tarixiy to'plamlar edi, lekin ular oldin onSnapshot orqali
+// TO'LIQ (boshidan oxirigacha) real-vaqtda o'qilardi. Do'kon tarixi
+// ko'paygan sayin, har bir ochilishda o'qiladigan hujjatlar soni ham
+// ortib borardi — Firestore "usage" o'sishining asosiy sababi shu edi.
+//
+// Yechim: real-vaqtli (`onSnapshot`) tinglovchi endi FAQAT so'nggi
+// HISTORY_WINDOW_DAYS kunlik oynani o'qiydi (kundalik ish — savdo,
+// dashboard, tahlillar — deyarli har doim shu oyna ichida bo'ladi).
+// Oynadan TASHQARIDAGI (eski) ma'lumot esa faqat HAQIQATDA kerak
+// bo'lganda (Tarix sahifasida eski sana/yil tanlanganda, "Barcha"
+// filtri, yoki to'liq zaxira nusxa olishda) BIR MARTA `getDocs` bilan
+// yuklab olinadi va keshda saqlanadi — shunda funksionallikda HECH
+// QANDAY cheklov yo'q, faqat kundalik ishlatishda o'qiladigan
+// hujjatlar soni keskin kamayadi.
+const HISTORY_WINDOW_DAYS = 120;
+function historyWindowCutoffISO(){
+  const d = new Date();
+  d.setDate(d.getDate() - HISTORY_WINDOW_DAYS);
+  d.setHours(0,0,0,0);
+  return d.toISOString();
+}
+
+// Har bir tarixiy to'plam uchun: on-demand yuklangan ("oynadan eski")
+// yozuvlar keshi + qaysi oralig'i allaqachon yuklanganini kuzatish.
+const _extraHistoryState = {
+  sales:    { items: [], loadedFromISO: null, fullyLoaded: false, loading: null },
+  restocks: { items: [], loadedFromISO: null, fullyLoaded: false, loading: null },
+  expenses: { items: [], loadedFromISO: null, fullyLoaded: false, loading: null },
+  // YANGI (OPTIMALLASHTIRISH): 'debts' — sales/restocks/expenses'dan farqli
+  // o'laroq, sana bo'yicha emas, "to'langan/to'lanmagan" holati bo'yicha
+  // bo'linadi (pastdagi ensureDebtsHistoryLoaded()ga qarang), chunki eski
+  // bo'lsa ham TO'LANMAGAN qarz doim real-vaqtli ko'rinishi SHART.
+  debts:    { items: [], loadedFromISO: null, fullyLoaded: false, loading: null },
+};
+
+// UI/eksport/hisobotlar uchun: real-vaqtli oyna (DB.sales va h.k.) +
+// on-demand yuklangan eski yozuvlarni birlashtirib beradi. Kundalik
+// (oyna ichidagi) foydalanish uchun bu chaqiruv shart emas — to'g'ridan
+// to'g'ri DB.sales/DB.restocks/DB.expenses ishlatilaveradi (ular allaqachon
+// so'nggi 120 kunni to'liq qamrab oladi).
+function mergedHistory(name){
+  const state = _extraHistoryState[name];
+  const live = DB[name] || [];
+  if(!state || !state.items.length) return live;
+  const liveIds = new Set(live.map(x=>x.id));
+  return state.items.filter(x=>!liveIds.has(x.id)).concat(live);
+}
+
+// `fromISO` berilsa — faqat shu sanadan (oyna boshigacha) oralig'ini
+// yuklaydi. `fromISO` berilmasa (null) — BUTUN (boshidan oynagacha)
+// tarixni yuklaydi va shu to'plamni "to'liq yuklandi" deb belgilaydi
+// (masalan to'liq zaxira nusxa olishda ishlatiladi).
+async function ensureHistoryLoaded(name, fromISO){
+  const state = _extraHistoryState[name];
+  if(!state || !db) return;
+  if(state.fullyLoaded) return;
+  if(fromISO && state.loadedFromISO && fromISO >= state.loadedFromISO) return;
+  if(state.loading) return state.loading;
+  const cutoff = historyWindowCutoffISO();
+  const qRef = fromISO
+    ? query(collection(db, name), where('date','>=', fromISO), where('date','<', cutoff), orderBy('date'))
+    : query(collection(db, name), where('date','<', cutoff), orderBy('date'));
+  state.loading = getDocs(qRef).then(snap=>{
+    const existingIds = new Set(state.items.map(x=>x.id));
+    snap.docs.forEach(d=>{
+      if(!existingIds.has(d.id)){ state.items.push({ ...d.data(), id: d.id }); existingIds.add(d.id); }
+    });
+    if(!fromISO) state.fullyLoaded = true;
+    else if(!state.loadedFromISO || fromISO < state.loadedFromISO) state.loadedFromISO = fromISO;
+    state.loading = null;
+  }).catch(e=>{
+    console.error(`Tarixiy "${name}" ma'lumotini yuklashda xatolik:`, e);
+    state.loading = null;
+  });
+  return state.loading;
+}
+
+// YANGI (OPTIMALLASHTIRISH): qarzlar uchun maxsus tarix yuklovchi.
+// sales/restocks/expenses'dagi sana-oynali usuldan farqli — bu yerda FAQAT
+// "to'langan" (paid==true) qarzlar bir martalik so'rov bilan yuklanadi
+// (composite indeks talab qilmaydigan, faqat bitta maydon bo'yicha
+// tenglik so'rovi). "To'lanmagan" qarzlar har doim jonli tinglagichda
+// (DB.debts) mavjud bo'lgani uchun ularni qayta yuklashning hojati yo'q.
+async function ensureDebtsHistoryLoaded(){
+  const state = _extraHistoryState.debts;
+  if(!state || !db) return;
+  if(state.fullyLoaded) return;
+  if(state.loading) return state.loading;
+  state.loading = getDocs(query(collection(db,'debts'), where('paid','==', true))).then(snap=>{
+    const existingIds = new Set(state.items.map(x=>x.id));
+    snap.docs.forEach(d=>{
+      if(!existingIds.has(d.id)){ state.items.push({ ...d.data(), id: d.id }); existingIds.add(d.id); }
+    });
+    state.fullyLoaded = true;
+    state.loading = null;
+  }).catch(e=>{
+    console.error("To'langan qarzlar tarixini yuklashda xatolik:", e);
+    state.loading = null;
+  });
+  return state.loading;
+}
+
+// YANGI: qarz yozuvini ID bo'yicha topish — avval jonli (faol) ro'yxatdan,
+// topilmasa keshlangan (to'langan) tarixdan qidiradi. Bu DB.debts endi
+// FAQAT faol qarzlarni saqlashi sababli kerak bo'ldi — aks holda to'langan
+// qarzning chekini qayta chop etish yoki uni o'chirish ishlamay qolar edi.
+function findDebtAnywhere(id){
+  return DB.debts.find(x=>x.id===id) || _extraHistoryState.debts.items.find(x=>x.id===id);
+}
+// Qarz yozuvini (qayerda saqlangan bo'lishidan qat'iy nazar) mahalliy
+// keshdan olib tashlash — o'chirishda ishlatiladi.
+function removeDebtAnywhere(id){
+  let i = DB.debts.findIndex(x=>x.id===id);
+  if(i>=0){ DB.debts.splice(i,1); return; }
+  i = _extraHistoryState.debts.items.findIndex(x=>x.id===id);
+  if(i>=0) _extraHistoryState.debts.items.splice(i,1);
+}
+
+// Faqat SO'NGGI YIL raqamini emas, DO'KONDAGI ENG BIRINCHI savdo yilini
+// aniqlash uchun — Tarix sahifasidagi "Yil" filtrida eski yillar ham
+// ko'rinishi kerak, lekin buning uchun BUTUN tarixni yuklashning hojati
+// yo'q: bitta `orderBy('date') limit(1)` so'rovi yetarli.
+let _earliestSaleYear = null;
+async function ensureEarliestSaleYear(){
+  if(_earliestSaleYear !== null || !db) return _earliestSaleYear;
+  try{
+    const snap = await getDocs(query(collection(db,'sales'), orderBy('date'), limit(1)));
+    _earliestSaleYear = snap.empty ? new Date().getFullYear() : new Date(snap.docs[0].data().date).getFullYear();
+  }catch(e){
+    console.error("Eng birinchi savdo yilini aniqlashda xatolik:", e);
+    _earliestSaleYear = new Date().getFullYear();
+  }
+  return _earliestSaleYear;
+}
+
 function startListeners(){
   onSnapshot(settingsRef, snap=>{
     if(snap.exists()){
@@ -5533,12 +5625,12 @@ function startListeners(){
     },120);
   });
   let salesDebounce=null;
-  // TUZATILDI (Firestore "usage"): endi faqat so'nggi RECENT_HISTORY_DAYS
-  // kunlik sotuvlar real-vaqtda tinglanadi (barcha kunlik ish shu bilan
-  // ishlaydi). Eski (oynadan tashqaridagi) sotuvlar bu yerda O'CHIRILMAYDI
-  // — ular avvalroq ensureFullSalesLoaded() orqali yuklangan bo'lishi
-  // mumkin, shuning uchun natija har doim REPLACE emas, MERGE qilinadi.
-  onSnapshot(query(collection(db,'sales'), where('date','>=', recentHistoryCutoffISO())), snap=>{
+  // TUZATILDI (Firestore "usage"): ilgari BUTUN `sales` to'plami (do'kon
+  // ochilganidan beri) real-vaqtda o'qilardi. Endi faqat so'nggi
+  // HISTORY_WINDOW_DAYS kunlik oyna tinglanadi; undan eski yozuvlar
+  // kerak bo'lganda (Tarix sahifasi, eksport, zaxira nusxa) alohida
+  // on-demand yuklanadi — quyida ensureHistoryLoaded('sales', ...) ga qarang.
+  onSnapshot(query(collection(db,'sales'), where('date','>=', historyWindowCutoffISO())), snap=>{
     const incoming = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     if(knownSaleIds !== null && currentRole==='admin'){
       incoming.forEach(s=>{
@@ -5548,9 +5640,7 @@ function startListeners(){
       });
     }
     knownSaleIds = new Set(incoming.map(s=>s.id));
-    const salesMap = new Map((DB.sales||[]).map(s=>[s.id,s]));
-    incoming.forEach(s=> salesMap.set(s.id, s));
-    DB.sales = [...salesMap.values()];
+    DB.sales = incoming;
     DB.sales.sort((a,b)=>new Date(a.date)-new Date(b.date));
     clearTimeout(salesDebounce);
     salesDebounce=setTimeout(()=>{
@@ -5560,15 +5650,10 @@ function startListeners(){
     },120);
   });
   let shDebounce=null;
-  // TUZATILDI (Firestore "usage"): sales'dagi kabi — faqat so'nggi
-  // RECENT_HISTORY_DAYS kunlik kirim-chiqim real-vaqtda tinglanadi, eskisi
-  // ensureFullRestocksLoaded() orqali on-demand yuklanadi va bu yerda
-  // merge qilinadi (o'chirilmaydi).
-  onSnapshot(query(collection(db,'restocks'), where('date','>=', recentHistoryCutoffISO())), snap=>{
-    const incoming = snap.docs.map(d=>({ ...d.data(), id: d.id }));
-    const restocksMap = new Map((DB.restocks||[]).map(r=>[r.id,r]));
-    incoming.forEach(r=> restocksMap.set(r.id, r));
-    DB.restocks = [...restocksMap.values()];
+  // TUZATILDI (Firestore "usage"): sales'dagi bilan bir xil mantiq —
+  // faqat so'nggi HISTORY_WINDOW_DAYS kun real-vaqtda tinglanadi.
+  onSnapshot(query(collection(db,'restocks'), where('date','>=', historyWindowCutoffISO())), snap=>{
+    DB.restocks = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.restocks.sort((a,b)=>new Date(a.date)-new Date(b.date));
     clearTimeout(shDebounce);
     shDebounce=setTimeout(()=>{
@@ -5576,7 +5661,18 @@ function startListeners(){
     },120);
   });
   let debtDebounce=null;
-  onSnapshot(collection(db,'debts'), snap=>{
+  // OPTIMALLASHTIRISH (Firebase xarajati): ilgari BUTUN 'debts' to'plami
+  // (shu jumladan yillar davomida to'langan barcha eski qarzlar) doimiy
+  // jonli tinglanardi — bu eng katta va cheksiz o'sadigan xarajat manbai
+  // edi. Endi faqat TO'LANMAGAN (paid==false) qarzlar jonli tinglanadi —
+  // ular doim dolzarb bo'lgani uchun (eski bo'lsa ham) real-vaqtli
+  // ko'rinishi SHART. To'langan qarzlar esa faqat kerak bo'lganda (masalan
+  // "To'langan" filtri ochilganda yoki zaxira nusxa olinganda)
+  // ensureDebtsHistoryLoaded() orqali BIR MARTA yuklanadi va
+  // mergedHistory('debts') orqali birlashtiriladi — funksionallikda hech
+  // qanday cheklov yo'q, faqat kundalik ishlatishda o'qiladigan
+  // hujjatlar soni keskin kamayadi.
+  onSnapshot(query(collection(db,'debts'), where('paid','==', false)), snap=>{
     DB.debts = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.debts.sort((a,b)=>new Date(b.date)-new Date(a.date));
     clearTimeout(debtDebounce);
@@ -5592,15 +5688,10 @@ function startListeners(){
   });
   // YANGI: Xarajatlar (10.1-bo'lim) — real-vaqtda sinxronlash
   let expDebounce=null;
-  // TUZATILDI (Firestore "usage"): sales'dagi kabi — faqat so'nggi
-  // RECENT_HISTORY_DAYS kunlik xarajatlar real-vaqtda tinglanadi, eskisi
-  // ensureFullExpensesLoaded() orqali on-demand yuklanadi va bu yerda
-  // merge qilinadi (o'chirilmaydi).
-  onSnapshot(query(collection(db,'expenses'), where('date','>=', recentHistoryCutoffISO())), snap=>{
-    const incoming = snap.docs.map(d=>({ ...d.data(), id: d.id }));
-    const expMap = new Map((DB.expenses||[]).map(e=>[e.id,e]));
-    incoming.forEach(e=> expMap.set(e.id, e));
-    DB.expenses = [...expMap.values()];
+  // TUZATILDI (Firestore "usage"): sales'dagi bilan bir xil mantiq —
+  // faqat so'nggi HISTORY_WINDOW_DAYS kun real-vaqtda tinglanadi.
+  onSnapshot(query(collection(db,'expenses'), where('date','>=', historyWindowCutoffISO())), snap=>{
+    DB.expenses = snap.docs.map(d=>({ ...d.data(), id: d.id }));
     DB.expenses.sort((a,b)=>new Date(b.date)-new Date(a.date));
     clearTimeout(expDebounce);
     expDebounce=setTimeout(()=>{
@@ -5727,16 +5818,21 @@ async function init(){
       Promise.allSettled([
         getDoc(settingsRef),
         getDocs(collection(db,'products')),
-        // TUZATILDI (Firestore "usage"): ilgari HAR BIR ilova ochilishida
-        // (login) BUTUN sotuvlar/kirim-chiqim tarixi to'liq o'qilardi —
-        // do'kon tarixi kattalashgan sayin bu son ham cheksiz o'sib
-        // borardi. Endi faqat so'nggi RECENT_HISTORY_DAYS kun yuklanadi;
-        // eskisi kerak bo'lganda (Tarix/Kirim-chiqim/Foyda "Barcha vaqt"
-        // sahifalari yoki eksport) alohida on-demand so'rov bilan
-        // qo'shiladi — pastga qarang: ensureFullSalesLoaded va h.k.
-        getDocs(query(collection(db,'sales'), where('date','>=', recentHistoryCutoffISO()))),
-        getDocs(query(collection(db,'restocks'), where('date','>=', recentHistoryCutoffISO()))),
-        getDocs(collection(db,'debts')),
+        // TUZATILDI (Firestore "usage"): bu dastlabki tezkor yuklash ilgari
+        // HAR SAFAR ilova ochilganda `sales`/`restocks`'ning BUTUN tarixini
+        // o'qirdi — keyin pastdagi onSnapshot ham xuddi shuni yana o'qirdi
+        // (ba'zi hollarda bitta ochilishda amalda IKKI MARTA). Endi bu ham
+        // faqat so'nggi HISTORY_WINDOW_DAYS kunni o'qiydi, real-vaqtli
+        // tinglovchi bilan mos (undan tashqarisi kerak bo'lsa on-demand
+        // yuklanadi).
+        getDocs(query(collection(db,'sales'), where('date','>=', historyWindowCutoffISO()))),
+        getDocs(query(collection(db,'restocks'), where('date','>=', historyWindowCutoffISO()))),
+        // TUZATILDI (Firestore "usage"): xuddi sales/restocks kabi — bu ham
+        // ilgari BUTUN 'debts' to'plamini (to'langanlarini ham) o'qirdi,
+        // pastdagi onSnapshot esa endi faqat to'lanmaganlarini o'qiydi —
+        // mos kelishi uchun bu yerda ham faqat to'lanmagan qarzlar
+        // so'raladi.
+        getDocs(query(collection(db,'debts'), where('paid','==', false))),
         getDocs(collection(db,'debtors'))
       ]).then(r=>({timedOut:false, results:r})),
       new Promise(resolve=>setTimeout(()=>resolve({timedOut:true}), 6000))
@@ -6079,32 +6175,8 @@ window.showPage = function(page, role){
     const morePages = ['profit','analytics','stock-history','expenses','ai-assistant','settings'];
     moreBtn.classList.toggle('active', morePages.includes(page));
   }
-  if(page==='history'){
-    initHistory(); renderHistory();
-    // YANGI: Tarix sahifasi so'nggi RECENT_HISTORY_DAYS kundan eski
-    // sotuvlarni ham ko'rsatishi (yil filtri, eski sana oralig'i, CSV/Excel
-    // eksport to'liq bo'lishi) uchun — sahifa ochilganda BIR MARTA to'liq
-    // tarix on-demand yuklanadi va tayyor bo'lgach ro'yxat/filtrlar
-    // yangilanadi. Kundalik ishga (bugungi savdo va h.k.) bu ta'sir
-    // qilmaydi — ular allaqachon real-vaqtli oynada mavjud.
-    if(!salesFullyLoaded){
-      ensureFullSalesLoaded().then(()=>{
-        if(document.getElementById('page-history')?.classList.contains('active')){
-          initHistory(); renderHistory();
-        }
-      }).catch(()=>{ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); });
-    }
-  }
-  if(page==='profit'){
-    renderProfit();
-    // YANGI: "Foyda" sahifasidagi "Barcha vaqt" davri to'g'ri hisoblanishi
-    // uchun sotuvlar va xarajatlar tarixi to'liq yuklanadi.
-    if(!salesFullyLoaded || !expensesFullyLoaded){
-      Promise.all([ensureFullSalesLoaded(), ensureFullExpensesLoaded()]).then(()=>{
-        if(document.getElementById('page-profit')?.classList.contains('active')) renderProfit();
-      }).catch(()=>{ toast("To'liq ma'lumotni yuklab bo'lmadi, internetni tekshiring",'red'); });
-    }
-  }
+  if(page==='history'){ initHistory(); renderHistory(); }
+  if(page==='profit'){ renderProfit(); }
   if(page==='my-sales'){ setMySalesFilter('today'); }
   if(page==='sell') renderSellGrid();
   if(page==='settings'){
@@ -6131,36 +6203,22 @@ window.showPage = function(page, role){
     if(typeof window.renderBackupStatus==='function') window.renderBackupStatus();
   }
   if(page==='dashboard'){ renderDashboard(); if(typeof window.renderBackupStatus==='function') window.renderBackupStatus(); }
-  if(page==='stock-history'){
-    setStockHistFilter('today');
-    // YANGI: Kirim-chiqim tarixi sahifasi (filtr, CSV/Excel eksport)
-    // to'liq bo'lishi uchun to'liq tarix on-demand yuklanadi.
-    if(!restocksFullyLoaded){
-      ensureFullRestocksLoaded().then(()=>{
-        if(document.getElementById('page-stock-history')?.classList.contains('active')) renderStockHistory();
-      }).catch(()=>{ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); });
-    }
-  }
+  if(page==='stock-history'){ setStockHistFilter('today'); }
   if(page==='debts'){ setDebtFilter('active'); }
-  if(page==='expenses'){
-    setExpenseFilter('month');
-    // YANGI: Xarajatlar sahifasidagi "Barcha vaqt" filtri to'g'ri
-    // ishlashi uchun to'liq xarajatlar tarixi on-demand yuklanadi.
-    if(!expensesFullyLoaded){
-      ensureFullExpensesLoaded().then(()=>{
-        if(document.getElementById('page-expenses')?.classList.contains('active')) renderExpenses();
-      }).catch(()=>{ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); });
-    }
-  }
+  if(page==='expenses'){ setExpenseFilter('month'); }
   if(page==='ai-assistant'){ window.renderAiAssistant && window.renderAiAssistant(); }
   updateScanFab(page);
 }
 
 // ===== DASHBOARD =====
-window.renderDashboard = function(){
+window.renderDashboard = async function(){
   const period = document.getElementById('stat-period')?.value||'today';
+  // MUHIM: "Hammasi" tanlansa, real-vaqtli 120 kunlik oyna yetarli emas —
+  // butun savdo tarixi on-demand yuklanadi (bir marta keshlanadi).
+  if(period==='all') await ensureHistoryLoaded('sales', null);
   const now = new Date();
-  const filtered = DB.sales.filter(s=>{
+  const source = period==='all' ? mergedHistory('sales') : DB.sales;
+  const filtered = source.filter(s=>{
     if(s.reverted) return false;
     const d=new Date(s.date);
     if(period==='today') return isSameDay(d,now);
@@ -6209,7 +6267,7 @@ window.renderDashboard = function(){
   document.getElementById('recent-sales').innerHTML = recent.length ? `
     <div class="tbl-wrap"><table>
       <thead><tr><th>Vaqt</th><th>Tovar</th><th>Miqdor</th><th>Jami</th><th>Sotuvchi</th></tr></thead>
-      <tbody>${recent.map(s=>`<tr><td style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td><strong>${s.productName}</strong></td><td>${s.qty} ta</td><td style="color:var(--green);font-weight:700">${fmt(s.total)} so'm</td><td>${s.seller}</td></tr>`).join('')}</tbody>
+      <tbody>${recent.map(s=>`<tr><td style="font-size:13px;color:var(--text3)">${timeStr(s.date)}</td><td><strong>${esc(s.productName)}</strong></td><td>${s.qty} ta</td><td style="color:var(--green);font-weight:700">${fmt(s.total)} so'm</td><td>${esc(s.seller)}</td></tr>`).join('')}</tbody>
     </table></div>` : '<p style="color:var(--text3);text-align:center;padding:2rem">Bugun savdo bo\'lmagan.</p>';
 
   const prodMap = {};
@@ -6252,7 +6310,7 @@ window.renderDashboard = function(){
   const low = DB.products.filter(p=>p.stock<=DB.lowStockThreshold).sort((a,b)=>a.stock-b.stock).slice(0,8);
   document.getElementById('low-stock-list').innerHTML = low.length ? low.map(p=>`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
+      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}${p.volume?' · '+p.volume+'L':''}</span>
       <span class="badge ${p.stock===0?'red':'amber'}">${p.stock} ta</span>
     </div>`).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi yetarli ✓</p>';
 
@@ -6315,7 +6373,7 @@ function renderStaleProducts(){
     const last = lastSaleMap[p.id];
     const info = last ? `${Math.floor((Date.now()-last)/(24*60*60*1000))} kun oldin sotilgan` : "Hech qachon sotilmagan";
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
+      <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}${p.volume?' · '+p.volume+'L':''}</span>
       <span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${info}</span>
     </div>`;
   }).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Hammasi faol sotilmoqda ✓</p>';
@@ -6385,11 +6443,13 @@ function renderSalesTrendChart(){
 // umumiy holatni — savdo hajmi, top tovarlar, top sotuvchilar, kam qolgan
 // tovarlar — bitta PDF hisobotga jamlab yuklab beradi. Do'kon egasi buni
 // har kuni chop etib, hisobot sifatida saqlashi mumkin.
-window.exportDashboardPDF=function(){
+window.exportDashboardPDF=async function(){
   const period = document.getElementById('stat-period')?.value||'today';
   const periodLabel = {today:'Bugun', week:'Bu hafta', month:'Bu oy', all:'Barcha vaqt'}[period] || period;
+  if(period==='all') await ensureHistoryLoaded('sales', null);
   const now = new Date();
-  const filtered = DB.sales.filter(s=>{
+  const source = period==='all' ? mergedHistory('sales') : DB.sales;
+  const filtered = source.filter(s=>{
     if(s.reverted) return false;
     const d=new Date(s.date);
     if(period==='today') return isSameDay(d,now);
@@ -6630,6 +6690,13 @@ window.saveProduct=async function(){
   const barcode=normalizeScanCode(document.getElementById('p-barcode').value.trim());
   const qrCode=(document.getElementById('p-qrcode').value||'').trim();
   if(!name||isNaN(price)){ toast("Majburiy maydonlarni to'ldiring",'red'); return; }
+  // TUZATILDI: narx/tannarx maydonlarida HTML "min=0" atributi bor, lekin
+  // "Saqlash" tugmasi oddiy onclick (native <form> submit emas) bo'lgani
+  // uchun brauzer buni amalda TEKSHIRMAYDI — foydalanuvchi tasodifan minus
+  // belgisi bilan manfiy narx kiritsa ham hech qanday ogohlantirishsiz
+  // saqlanib qolar edi (bu esa keyinchalik barcha hisob-kitoblarni —
+  // savdo summasi, hisobotlar — buzib yuborar edi).
+  if(price<0 || cost<0){ toast("Narx va tannarx manfiy bo'lishi mumkin emas",'red'); return; }
   // YANGI: bitta barcode/QR kodini ikkita turli tovarga bog'lab qo'yish
   // ilgari umuman tekshirilmasdi — natijada skanerlashda tizim doim
   // ro'yxatdagi BIRINCHI tovarni topib, ikkinchisini hech qachon aniqlab
@@ -6746,8 +6813,19 @@ window.doRestock=async function(){
   // UI ni darhol yangilash, Firebase'ga fonda yozish (kutmasdan)
   closeModal('modal-restock');
   toast(`✓ ${p.name}: +${n} ta qo'shildi (${stockBefore} → ${stockAfter})`, 'green');
+  // TUZATILDI (MUHIM — poyga holati/race condition): ilgari bu yerda
+  // fbSaveProduct({...p, stock:stockAfter}) chaqirilardi — bu BUTUN
+  // mahsulot hujjatini qayta yozadi (setDoc). Agar shu payt boshqa
+  // qurilmada aynan shu mahsulot SOTILAYOTGAN bo'lsa (fbUpdateProductFields
+  // orqali, increment() bilan ATOMIK yozadigan), bu yerdagi to'liq qayta
+  // yozish o'sha sotuvning natijasini USTIDAN BOSIB YUBORISHI (yo'qotib
+  // qo'yishi) mumkin edi — yuqoridagi fbUpdateProductFields izohida aynan
+  // shu haqida ogohlantirilgan edi. Endi kirim ham fbUpdateProductFields +
+  // increment() orqali, ATOMIK qilib yoziladi.
+  p.stock = stockAfter;
+  refreshProductViews();
   Promise.all([
-    fbSaveProduct({...p, stock:stockAfter}),
+    fbUpdateProductFields(p.id, {stock: increment(n)}),
     fbSaveRestock(restock)
   ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
@@ -6788,8 +6866,13 @@ window.doReturnStock=async function(){
   // UI ni darhol yangilash, Firebase'ga fonda yozish (kutmasdan)
   closeModal('modal-return-stock');
   toast(`↩ ${p.name}: −${n} ta chiqim (${stockBefore} → ${stockAfter})`, 'amber');
+  // TUZATILDI (MUHIM — poyga holati/race condition): doRestock bilan bir
+  // xil sabab — butun mahsulot hujjatini qayta yozish o'rniga, faqat
+  // "stock" maydoni ATOMIK increment() bilan yangilanadi.
+  p.stock = stockAfter;
+  refreshProductViews();
   Promise.all([
-    fbSaveProduct({...p, stock:stockAfter}),
+    fbUpdateProductFields(p.id, {stock: increment(-n)}),
     fbSaveRestock(restock)
   ]).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
@@ -7521,13 +7604,21 @@ window.clearDebtDateFilter=function(){
   renderDebts();
 }
 
-window.renderDebts = function(){
+window.renderDebts = async function(){
   const q = (document.getElementById('debt-search')?.value||'').toLowerCase();
   const from = document.getElementById('debt-from')?.value;
   const to = document.getElementById('debt-to')?.value;
 
+  // OPTIMALLASHTIRISH: "Faol qarzlar" filtridan boshqa har qanday holatda
+  // (Barchasi/To'langan/Tashkilot/Shaxs) to'langan qarzlar tarixi ham
+  // kerak bo'ladi — DB.debts endi FAQAT faol (to'lanmagan) qarzlarni
+  // saqlaydi, shuning uchun bunday hollarda to'langan tarix bir martalik
+  // so'rov bilan (keshlanib) yuklab olinadi.
+  if(debtFilter!=='active') await ensureDebtsHistoryLoaded();
+  const sourceDebts = debtFilter==='active' ? DB.debts : mergedHistory('debts');
+
   // 1-bosqich: sana va qidiruv filtri — bularga STATISTIKA ham, ro'yxat ham bo'ysunadi.
-  let dateFiltered = [...DB.debts];
+  let dateFiltered = [...sourceDebts];
   if(from) dateFiltered = dateFiltered.filter(d=>new Date(d.date)>=new Date(from));
   if(to)   dateFiltered = dateFiltered.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(q) dateFiltered = dateFiltered.filter(d=>
@@ -8053,7 +8144,11 @@ window.doCartSell=async function(){
         const p=DB.products.find(x=>x.id===id);
         if(!p) throw new Error('Tovar topilmadi: '+id);
         const sale={id:uid(),receiptId:saleGroupId,productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
-        receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty});
+        // TUZATILDI: productId ham saqlanadi — pastda applyCustomerPurchase()
+        // har bir tovarning ALOHIDA belgilangan coin/ball miqdorini (agar
+        // mahsulot tahrirlashda "p-points" maydoniga qiymat kiritilgan
+        // bo'lsa) to'g'ri hisoblay olishi uchun.
+        receiptItems.push({name:p.name, volume:p.volume||'', qty, price:p.price, total:p.price*qty, productId:p.id, points:(p.points||p.points===0)?p.points:null});
         writes.push(fbSaveSale(sale));
         window._lastSaleFlashId = sale.id; // YANGI: oxirgi qo'shilgan savdoni "Mening sotuvlarim"da yoritish uchun
         // Lokal holatni darhol yangilaymiz (tezkor UI), lekin serverga FAQAT
@@ -8160,13 +8255,13 @@ window.renderSellGrid=function(){
     const volLabel=p.volume?`<span class="badge blue" style="font-size:11px">${p.volume} L</span> `:'';
     const cartBadge=inCart>0?`<div class="cart-badge-overlay">${inCart}</div>`:'';
     const newHTML = `<div class="img-wrap" style="${out?'opacity:.5':''}">
-        ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
+        ${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=DB.lowStockThreshold?'amber':'green'}">${p.stock}</span></div>
         ${cartBadge}
       </div>
       <div class="body">
-        <div class="prod-name">${p.name}</div>
+        <div class="prod-name">${esc(p.name)}</div>
         <div style="margin:.2rem 0">${volLabel}<span class="prod-price">${fmt(p.price)} so'm</span></div>
         <div class="prod-stock" style="font-size:12px;color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+p.stock+' ta'}</div>
       </div>`;
@@ -8240,7 +8335,7 @@ function groupItemsLabel(g){
   return g.items.map(it=>`${it.qty}x ${esc(it.productName)}`).join(', ');
 }
 window.printGroupReceipt=function(receiptId){
-  const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId);
+  const items = mergedHistory('sales').filter(x=>(x.receiptId||x.id)===receiptId);
   if(!items.length) return;
   const total = items.reduce((a,s)=>a+s.total,0);
   const rd=buildReceiptFromItems(items.map(s=>({name:s.productName, volume:s.volume, qty:s.qty, price:s.price, total:s.total})), items[0].seller, total, receiptId);
@@ -8248,7 +8343,7 @@ window.printGroupReceipt=function(receiptId){
   openReceiptModal(rd);
 }
 window.revertSaleGroup=function(receiptId){
-  const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
+  const items = mergedHistory('sales').filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
   if(!items.length) return;
   toast('Savdo qaytarildi','amber');
   const writes=[];
@@ -8261,7 +8356,7 @@ window.revertSaleGroup=function(receiptId){
 }
 window.adminRevertGroup=function(receiptId){
   if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
-  const items = DB.sales.filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
+  const items = mergedHistory('sales').filter(x=>(x.receiptId||x.id)===receiptId && !x.reverted);
   if(!items.length) return;
   const label = items.length===1 ? `"${items[0].productName}" ni ${items[0].qty} ta` : `${items.length} xil tovarni`;
   confirm2('Savdoni qaytarish', `${label} qaytarilsinmi?`, ()=>{
@@ -8380,19 +8475,45 @@ window.initHistory=function(){
   const cur=sel.value;
   const namesSet = new Set();
   DB.products.forEach(p=>namesSet.add(p.name));
-  DB.sales.forEach(s=>namesSet.add(s.productName));
+  mergedHistory('sales').forEach(s=>namesSet.add(s.productName));
   const names = [...namesSet].sort((a,b)=>a.localeCompare(b,'uz'));
   sel.innerHTML='<option value="">Barcha tovarlar</option>';
   names.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
   if(cur && names.includes(cur)) sel.value=cur; else sel.value='';
   const yrSel=document.getElementById('f-year'); const curYr=yrSel.value;
-  const years=[...new Set(DB.sales.map(s=>new Date(s.date).getFullYear()))].sort((a,b)=>b-a);
-  yrSel.innerHTML='<option value="">Barcha yillar</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
-  if(curYr) yrSel.value=curYr;
+  const fillYearSelect=(fromYear)=>{
+    const curYear=new Date().getFullYear();
+    const years=[]; for(let y=curYear; y>=fromYear; y--) years.push(y);
+    yrSel.innerHTML='<option value="">Barcha yillar</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
+    if(curYr) yrSel.value=curYr;
+  };
+  // Dastlab hozircha xotirada bor (oyna ichidagi) yillar bilan to'ldiramiz —
+  // interfeys darhol ko'rinadi. Fon rejimida esa do'konning ENG BIRINCHI
+  // savdo yilini so'raymiz (butun tarixni yuklamasdan, bitta yengil so'rov
+  // bilan) va ro'yxatni shu yilgacha kengaytiramiz — shunda eski yillar ham
+  // tanlash uchun mavjud bo'ladi.
+  const windowYears=[...new Set(mergedHistory('sales').map(s=>new Date(s.date).getFullYear()))];
+  fillYearSelect(windowYears.length ? Math.min(...windowYears) : new Date().getFullYear());
+  ensureEarliestSaleYear().then(earliestYear=>{
+    if(earliestYear!=null) fillYearSelect(earliestYear);
+  });
   const sellerSel=document.getElementById('f-seller'); const curSeller=sellerSel.value;
-  const sellerNames=[...new Set(DB.sales.map(s=>s.seller).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uz'));
+  const sellerNames=[...new Set(mergedHistory('sales').map(s=>s.seller).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uz'));
   sellerSel.innerHTML='<option value="">Barcha sotuvchilar</option>'+sellerNames.map(n=>`<option value="${n}">${n}</option>`).join('');
   if(curSeller && sellerNames.includes(curSeller)) sellerSel.value=curSeller; else sellerSel.value='';
+}
+// YANGI: joriy Tarix filtrlariga ('f-from' yoki 'f-year') qarab, agar
+// so'ralgan oraliq real-vaqtli 120 kunlik oynadan tashqariga chiqsa,
+// kerakli eski yozuvlarni on-demand yuklaydi (bir marta keshlanadi).
+async function ensureSalesFilterLoaded(){
+  const fromVal=document.getElementById('f-from')?.value;
+  const yearVal=document.getElementById('f-year')?.value;
+  let neededFromISO=null;
+  if(fromVal) neededFromISO=new Date(fromVal+'T00:00:00').toISOString();
+  else if(yearVal) neededFromISO=new Date(parseInt(yearVal,10),0,1).toISOString();
+  if(neededFromISO && neededFromISO < historyWindowCutoffISO()){
+    await ensureHistoryLoaded('sales', neededFromISO);
+  }
 }
 // YANGI: filtr logikasi alohida funksiyaga chiqarildi — endi buni
 // renderHistory ham, exportCSV ham (eksport ekranda ko'rinayotgan
@@ -8401,7 +8522,7 @@ function getFilteredHistorySales(){
   const from=document.getElementById('f-from').value, to=document.getElementById('f-to').value;
   const seller=document.getElementById('f-seller').value, product=document.getElementById('f-product').value;
   const month=document.getElementById('f-month').value, year=document.getElementById('f-year').value;
-  let sales=DB.sales.slice().reverse();
+  let sales=mergedHistory('sales').slice().reverse();
   if(from) sales=sales.filter(s=>new Date(s.date)>=new Date(from));
   if(to) sales=sales.filter(s=>new Date(s.date)<=new Date(to+'T23:59:59'));
   if(month!=='') sales=sales.filter(s=>new Date(s.date).getMonth()===parseInt(month));
@@ -8410,7 +8531,8 @@ function getFilteredHistorySales(){
   if(product) sales=sales.filter(s=>s.productName===product);
   return sales;
 }
-window.renderHistory=function(){
+window.renderHistory=async function(){
+  await ensureSalesFilterLoaded();
   const sales = getFilteredHistorySales();
   const tbody=document.getElementById('history-body'), none=document.getElementById('no-history'), sumEl=document.getElementById('history-summary');
   if(!sales.length){ tbody.innerHTML=''; none.style.display='block'; sumEl.innerHTML=''; return; }
@@ -8456,12 +8578,7 @@ window.exportCSV=async function(){
   // foydalanuvchini chalg'itardi (ekranda 10 ta savdo ko'rinsa-yu, fayldan
   // 500 tasi chiqsa). Endi ekranda ko'rinayotgan xuddi shu filtrlangan
   // ro'yxat eksport qilinadi.
-  // YANGI: eksport HAR DOIM to'liq tarixga asoslanishi uchun (real-vaqtli
-  // oyna endi cheklangani sababli) eksportdan oldin to'liq tarix
-  // yuklanganiga kafolat beriladi.
-  if(!salesFullyLoaded){
-    try{ await ensureFullSalesLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
+  await ensureSalesFilterLoaded();
   const sales = getFilteredHistorySales();
   if(!sales.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   let csv='Sana,Tovar,Miqdor,Narx,Jami,Sotuvchi,Holat\n';
@@ -8476,9 +8593,7 @@ window.exportCSV=async function(){
 // YANGI: savdo tarixini (ekranda ko'rinayotgan filtrlangan ro'yxatni)
 // haqiqiy Excel (.xlsx) faylga yuklab olish.
 window.exportHistoryExcel=async function(){
-  if(!salesFullyLoaded){
-    try{ await ensureFullSalesLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
+  await ensureSalesFilterLoaded();
   const sales = getFilteredHistorySales();
   if(!sales.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   const headers=['Sana','Tovar','Miqdor','Narx','Jami','Sotuvchi','Holat'];
@@ -8491,9 +8606,7 @@ window.exportHistoryExcel=async function(){
 // sifatida yuklab olish — bosib chiqarish yoki elektron pochta orqali
 // yuborish uchun qulay.
 window.exportHistoryPDF=async function(){
-  if(!salesFullyLoaded){
-    try{ await ensureFullSalesLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
+  await ensureSalesFilterLoaded();
   const sales = getFilteredHistorySales();
   if(!sales.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   const totalRev = sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
@@ -8512,9 +8625,7 @@ window.exportHistoryPDF=async function(){
 // YANGI: savdo tarixini (ekranda ko'rinayotgan, hozirgi filtrlar bo'yicha)
 // to'g'ridan-to'g'ri chop etish (printer orqali qog'ozga chiqarish).
 window.printHistoryList=async function(){
-  if(!salesFullyLoaded){
-    try{ await ensureFullSalesLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
+  await ensureSalesFilterLoaded();
   const sales = getFilteredHistorySales();
   if(!sales.length){ toast("Chop etish uchun ma'lumot yo'q",'red'); return; }
   const totalRev = sales.filter(s=>!s.reverted).reduce((a,s)=>a+s.total,0);
@@ -8574,37 +8685,45 @@ window.exportProductsExcel=function(){
 
 // YANGI: qarzlar ro'yxatini (kim, tashkilot, summa, sana, holat) CSV
 // formatida yuklab olish — qarzdorlar bilan hisob-kitob qilishda foydali.
-window.exportDebtsCSV=function(){
-  if(!DB.debts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
+window.exportDebtsCSV=async function(){
+  // OPTIMALLASHTIRISH: to'liq (to'langanlarini ham) eksport qilish uchun
+  // to'langan tarix on-demand yuklab olinadi — aks holda eksportda faqat
+  // faol qarzlar chiqib, ma'lumot yo'qolgandek bo'lib qolardi.
+  await ensureDebtsHistoryLoaded();
+  const allDebts = mergedHistory('debts');
+  if(!allDebts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
   let csv="Sana,Ism/Tashkilot,Turi,Telefon,Summa,Holat,Izoh\n";
-  DB.debts.slice().reverse().forEach(d=>{
+  allDebts.slice().reverse().forEach(d=>{
     csv+=`"${timeStr(d.date)}","${d.debtorName}${d.org?' ('+d.org+')':''}",${d.type==='organization'?'Tashkilot':'Shaxs'},"${d.phone||''}",${debtDisplayAmount(d)},"${debtStatusLabel(d)}","${(d.note||'').replace(/"/g,'""')}"\n`;
   });
   download(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
-  toast(`✓ ${DB.debts.length} ta qarz yozuvi CSV formatda yuklandi`,'green');
+  toast(`✓ ${allDebts.length} ta qarz yozuvi CSV formatda yuklandi`,'green');
 }
 
 // YANGI: qarzlar ro'yxatini Excel (.xlsx) formatida yuklab olish.
-window.exportDebtsExcel=function(){
-  if(!DB.debts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
+window.exportDebtsExcel=async function(){
+  await ensureDebtsHistoryLoaded();
+  const allDebts = mergedHistory('debts');
+  if(!allDebts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
   const headers=["Sana","Ism/Tashkilot","Turi","Telefon","Summa","Holat","Izoh"];
-  const rows=DB.debts.slice().reverse().map(d=>[
+  const rows=allDebts.slice().reverse().map(d=>[
     timeStr(d.date), d.debtorName+(d.org?' ('+d.org+')':''),
     d.type==='organization'?'Tashkilot':'Shaxs', d.phone||'', debtDisplayAmount(d),
     debtStatusLabel(d), d.note||''
   ]);
   if(exportToExcel(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.xlsx`,'Qarzlar',headers,rows)){
-    toast(`✓ ${DB.debts.length} ta qarz yozuvi Excel formatda yuklandi`,'green');
+    toast(`✓ ${allDebts.length} ta qarz yozuvi Excel formatda yuklandi`,'green');
   }
 }
 
 // YANGI: qarzlar ro'yxatini (ekranda ko'rinayotgan, hozirgi filtrlar bo'yicha)
 // to'g'ridan-to'g'ri chop etish (printer orqali qog'ozga chiqarish).
-window.printDebtsList=function(){
+window.printDebtsList=async function(){
   const q = (document.getElementById('debt-search')?.value||'').toLowerCase();
   const from = document.getElementById('debt-from')?.value;
   const to = document.getElementById('debt-to')?.value;
-  let list = [...DB.debts];
+  if(debtFilter!=='active') await ensureDebtsHistoryLoaded();
+  let list = [...(debtFilter==='active' ? DB.debts : mergedHistory('debts'))];
   if(from) list = list.filter(d=>new Date(d.date)>=new Date(from));
   if(to)   list = list.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(q) list = list.filter(d=>
@@ -8643,7 +8762,7 @@ window.printDebtsList=function(){
 // — shu sababli bir xil ismli, lekin boshqa tashkilotdagi odam aralashib
 // ketmaydi. Chekda: shaxsning barcha qarz yozuvlari (sana, tovarlar, summa,
 // holat, izoh), faol/to'langan jami summalar va telefon raqami ko'rsatiladi.
-window.printPersonDebt=function(org, debtorName, debtorId){
+window.printPersonDebt=async function(org, debtorName, debtorId){
   // TUZATILDI: sahifada qaysi filtr tanlangan bo'lsa (masalan "Faol qarzlar"),
   // shaxsiy chek ham FAQAT o'sha filtrga mos yozuvlarni chiqarishi kerak.
   // Ilgari BARCHA yozuvlar (to'langanlari ham) chekka tushib ketardi — bu
@@ -8651,9 +8770,11 @@ window.printPersonDebt=function(org, debtorName, debtorId){
   // TUZATILDI (MUHIM): agar debtorId berilgan bo'lsa, ANIQ shu odamning
   // yozuvlari olinadi — aks holda bir xil ismli (lekin boshqa) qarzdorning
   // qarzlari ham noto'g'ri shu chekka qo'shilib ketishi mumkin edi.
+  if(debtFilter!=='active') await ensureDebtsHistoryLoaded();
+  const sourceDebts = debtFilter==='active' ? DB.debts : mergedHistory('debts');
   let list = debtorId
-    ? DB.debts.filter(d=> d.debtorId===debtorId)
-    : DB.debts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''));
+    ? sourceDebts.filter(d=> d.debtorId===debtorId)
+    : sourceDebts.filter(d=> d.debtorName===debtorName && (d.org||'')===(org||''));
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -8686,7 +8807,7 @@ window.printPersonDebt=function(org, debtorName, debtorId){
 // o'z-alohida cheki bilan chiqariladi — mijozga faqat o'sha bir xariddagi
 // qarzni ko'rsatish kerak bo'lganda ishlatiladi.
 window.printSingleDebt=function(id){
-  const d = DB.debts.find(x=>x.id===id);
+  const d = findDebtAnywhere(id);
   if(!d){ toast("Qarz yozuvi topilmadi",'red'); return; }
   const headers = ['Tovar','Miqdor','Narx','Summa'];
   const rows = (d.items||[]).map(i=>{
@@ -8714,12 +8835,13 @@ window.printSingleDebt=function(id){
 
 // YANGI: bitta tashkilotning barcha qarzdor xodimlari bo'yicha umumiy
 // hisobotni chop etish (kim qancha qarzdor — jamlangan ro'yxat).
-window.printOrgDebt=function(org){
+window.printOrgDebt=async function(org){
   if(!org){ toast("Tashkilot nomi topilmadi",'red'); return; }
   // TUZATILDI: printPersonDebt bilan bir xil mantiq — joriy tanlangan filtrga
   // (Faol/To'langan) mos yozuvlarnigina chop etish, aks holda to'langan
   // qarzlar ham "Faol qarzlar" bo'limida chiqib ketaverardi.
-  let list = DB.debts.filter(d=>d.org===org);
+  if(debtFilter!=='active') await ensureDebtsHistoryLoaded();
+  let list = (debtFilter==='active' ? DB.debts : mergedHistory('debts')).filter(d=>d.org===org);
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   list = list.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -8745,10 +8867,15 @@ window.printOrgDebt=function(org){
 // HISOBGA OLINMAYDI. Qarzga sotilgan (isDebt) savdolar ham, boshqa
 // hisobotlarda bo'lgani kabi, sotuv paytidayoq daromad/foyda deb
 // hisoblanadi (ilovadagi umumiy konventsiyaga mos).
-window.renderProfit = function(){
+window.renderProfit = async function(){
   const period = document.getElementById('profit-period')?.value || 'today';
+  // MUHIM: "Hammasi" (butun vaqt) tanlansa, bu ENDI moliyaviy hisobot —
+  // real-vaqtli oyna (so'nggi 120 kun) yetarli emas, shuning uchun avval
+  // butun savdo tarixi on-demand yuklanadi (agar hali yuklanmagan bo'lsa).
+  if(period==='all') await ensureHistoryLoaded('sales', null);
   const now = new Date();
-  const filtered = DB.sales.filter(s=>{
+  const source = period==='all' ? mergedHistory('sales') : DB.sales;
+  const filtered = source.filter(s=>{
     if(s.reverted) return false;
     const d = new Date(s.date);
     if(period==='today') return isSameDay(d, now);
@@ -8794,7 +8921,9 @@ window.renderProfit = function(){
   // ko'rsatilmaydi (eski hisobotga hech narsa qo'shilmaydi).
   const netBox = document.getElementById('profit-net-after-expenses');
   if(netBox){
-    const periodExpenses = (DB.expenses||[]).filter(e=>{
+    if(period==='all') await ensureHistoryLoaded('expenses', null);
+    const expSource = period==='all' ? mergedHistory('expenses') : (DB.expenses||[]);
+    const periodExpenses = expSource.filter(e=>{
       const d=new Date(e.date);
       if(period==='today') return isSameDay(d, now);
       if(period==='week') return isThisWeek(d, now);
@@ -8888,11 +9017,13 @@ function renderProfitTrendChart(){
 
 // YANGI: joriy filtr (kunlik/haftalik/oylik/hammasi) bo'yicha ko'rinib
 // turgan foyda hisobotini formatlangan PDF faylga yuklab olish.
-window.exportProfitPDF=function(){
+window.exportProfitPDF=async function(){
   const period = document.getElementById('profit-period')?.value || 'today';
   const periodLabel = {today:'Bugun', week:'Bu hafta', month:'Bu oy', all:'Barcha vaqt'}[period] || period;
+  if(period==='all') await ensureHistoryLoaded('sales', null);
   const now = new Date();
-  const filtered = DB.sales.filter(s=>{
+  const source = period==='all' ? mergedHistory('sales') : DB.sales;
+  const filtered = source.filter(s=>{
     if(s.reverted) return false;
     const d = new Date(s.date);
     if(period==='today') return isSameDay(d, now);
@@ -8943,7 +9074,20 @@ window.setStockHistFilter=function(type){
   });
   renderStockHistory();
 }
-window.renderStockHistory=function(){
+// YANGI: 'sh-from' (erkin sana) yoki 'all' (barcha) filtri 120 kunlik
+// real-vaqtli oynadan tashqariga chiqsa, kerakli eski kirim/chiqim
+// yozuvlarini on-demand yuklaydi.
+async function ensureRestocksFilterLoaded(){
+  const customFrom=document.getElementById('sh-from')?.value;
+  if(customFrom){
+    const fromISO=new Date(customFrom+'T00:00:00').toISOString();
+    if(fromISO < historyWindowCutoffISO()) await ensureHistoryLoaded('restocks', fromISO);
+  } else if(shFilter==='all'){
+    await ensureHistoryLoaded('restocks', null);
+  }
+}
+window.renderStockHistory=async function(){
+  await ensureRestocksFilterLoaded();
   const typeF=document.getElementById('sh-type')?.value||'';
   const customFrom=document.getElementById('sh-from')?.value;
   const customTo=document.getElementById('sh-to')?.value;
@@ -8958,7 +9102,7 @@ window.renderStockHistory=function(){
   else if(shFilter==='today'){ start=new Date(now); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
   else if(shFilter==='yesterday'){ const y=new Date(now); y.setDate(now.getDate()-1); start=new Date(y); start.setHours(0,0,0,0); end=new Date(y); end.setHours(23,59,59,999); }
   else if(shFilter==='week'){ start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
-  let rows=[...DB.restocks].reverse();
+  let rows=[...mergedHistory('restocks')].reverse();
   if(start) rows=rows.filter(r=>new Date(r.date)>=start);
   if(end) rows=rows.filter(r=>new Date(r.date)<=end);
   if(typeF) rows=rows.filter(r=>r.type===typeF);
@@ -8985,31 +9129,32 @@ window.renderStockHistory=function(){
   }).join('');
 }
 window.exportStockCSV=async function(){
-  if(!restocksFullyLoaded){
-    try{ await ensureFullRestocksLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
-  if(!DB.restocks.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
+  // TUZATILDI: bu eksport har doim BUTUN kirim/chiqim tarixini chiqargan
+  // (joriy filtrga qaramay) — endi ham shunday, shuning uchun avval
+  // (agar hali yuklanmagan bo'lsa) to'liq tarix on-demand yuklanadi.
+  await ensureHistoryLoaded('restocks', null);
+  const all = mergedHistory('restocks');
+  if(!all.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   let csv='Sana,Tovar,Hajm,Turi,Miqdor,Sabab,Oldingi,Keyin\n';
-  DB.restocks.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(r=>{
+  all.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(r=>{
     csv+=`"${timeStr(r.date)}","${r.productName}","${r.volume||''}","${r.type==='in'?'Kirim':'Chiqim'}",${r.qty},"${r.reason||''}",${r.stockBefore??''},${r.stockAfter??''}\n`;
   });
   // TUZATILDI: bu funksiyada boshqa CSV eksportlaridan farqli o'laroq
   // "\uFEFF" (BOM) belgisi yo'q edi — natijada Excel'da o'zbekcha
   // belgilar (o', g') buzilib ko'rinardi. Endi boshqalarga mos qilindi.
   download(`kirim_chiqim_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
-  toast(`✓ ${DB.restocks.length} ta yozuv CSV formatda yuklandi`,'green');
+  toast(`✓ ${all.length} ta yozuv CSV formatda yuklandi`,'green');
 }
 // YANGI: kirim/chiqim tarixini Excel (.xlsx) formatida yuklab olish.
 window.exportStockExcel=async function(){
-  if(!restocksFullyLoaded){
-    try{ await ensureFullRestocksLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
-  if(!DB.restocks.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
+  await ensureHistoryLoaded('restocks', null);
+  const all = mergedHistory('restocks');
+  if(!all.length){ toast("Eksport qilish uchun ma'lumot yo'q",'red'); return; }
   const headers=["Sana","Tovar","Hajm","Turi","Miqdor","Sabab","Oldingi","Keyin"];
-  const rows=DB.restocks.slice().sort((a,b)=>new Date(a.date)-new Date(b.date))
+  const rows=all.slice().sort((a,b)=>new Date(a.date)-new Date(b.date))
     .map(r=>[timeStr(r.date), r.productName, r.volume||'', r.type==='in'?'Kirim':'Chiqim', r.qty, r.reason||'', r.stockBefore??'', r.stockAfter??'']);
   if(exportToExcel(`kirim_chiqim_${new Date().toISOString().slice(0,10)}.xlsx`,'Kirim-Chiqim',headers,rows)){
-    toast(`✓ ${DB.restocks.length} ta yozuv Excel formatda yuklandi`,'green');
+    toast(`✓ ${all.length} ta yozuv Excel formatda yuklandi`,'green');
   }
 }
 
@@ -10218,17 +10363,17 @@ window.filterSettingsCards = function(query){
 document.addEventListener('DOMContentLoaded', ()=>{ if(typeof window.renderSettingsGroupChips==='function') window.renderSettingsGroupChips(); });
 if(document.readyState!=='loading' && typeof window.renderSettingsGroupChips==='function') window.renderSettingsGroupChips();
 
-// MUHIM TUZATISH (ushbu faylning O'ZIDA, mendan oldingi tahrirlash paytida
-// kelib chiqqan, hech qanday aloqasi yo'q eski xato): pastdagi diagnostika
-// funksiyasining "window.runTelegramDiagnostics = async function(){"
-// ochilish qatori negadir yo'qolib qolgan edi — natijada bu kod BUTUN
-// <script type="module"> ICHIDAGI hamma narsani (dashboard, sotish,
-// sozlamalar — deyarli hamma funksiya) ISHLAMAY QOLDIRARDI, chunki
-// funksiyadan tashqarida "return" ishlatish JavaScript sintaksis xatosi
-// hisoblanadi va BUTUN modul birdaniga to'xtab qoladi. Bu — sizning
-// index.html faylingizda oldindan mavjud bo'lgan, Firestore optimizatsiyasiga
-// hech qanday aloqasi yo'q ALOHIDA xato edi; men buni payqab, shu yerda
-// tuzatdim (faqat quyidagi bitta qatorni qo'shdim).
+// TUZATILDI (JIDDIY XATO): bu funksiyaning e'lon qilish qatori
+// (`window.runTelegramDiagnostics = async function(){`) yo'qolib qolgan
+// edi — faqat tanasi qolgan, shu sabab "const resEl..." va undagi
+// "return" asosiy <script type="module"> blokining ENG TEPA darajasida
+// (hech qanday funksiya ichida emas) qolib ketgan edi. Bu ES modul uchun
+// haqiqiy SINTAKSIS XATOSI ("Illegal return statement") bo'lib, uni
+// brauzer aniqlasa BUTUN shu katta <script type="module"> bloki
+// (deyarli ilovaning hamma JS mantig'i) ishga tushmay qolishi mumkin edi.
+// Sozlamalar sahifasidagi "🩺 Diagnostikani boshlash" tugmasi ham aynan
+// shu funksiyani (`window.runTelegramDiagnostics`) chaqiradi — u ilgari
+// umuman mavjud bo'lmagan.
 window.runTelegramDiagnostics = async function(){
   const resEl = document.getElementById('tg-diag-results');
   if(!resEl) return;
@@ -10312,7 +10457,9 @@ window.runTelegramDiagnostics = async function(){
   resEl.insertAdjacentHTML('afterbegin', `<div style="font-size:13px;font-weight:700;padding-top:.5rem;color:${failCount?'var(--red,#dc2626)':warnCount?'var(--amber,#d97706)':'var(--green,#16a34a)'}">${summary}</div>`);
 }
 
-// o'rnini to'liq bosolmaydi, lekin ilova ochiq bo'lganda foydali).
+// Eslatma: bu faqat ilova brauzerda OCHIQ turgan vaqtda ishlaydi (Telegram
+// webhook 24/7 xabarnomalarning o'rnini to'liq bosolmaydi, lekin ilova
+// ochiq bo'lganda foydali).
 setInterval(()=>{ if(currentRole==='admin' && typeof window.checkAndSendTelegramAlerts==='function') window.checkAndSendTelegramAlerts(); }, 30*60*1000);
 
 // ============ YANGI: TELEGRAM BUYRUQLARI VA MINI APP BO'LIMLARINI SOZLASH ============
@@ -10941,7 +11088,7 @@ window.renderCmdkResults = function(){
   if(prodMatches.length){
     sections.push('<div class="cmdk-group-label">📦 Tovarlar</div>' + prodMatches.map(p=>`
       <div class="cmdk-item" onclick="cmdkGoProduct('${p.id}')">
-        <span class="cmdk-item-name">${p.name}${p.volume?' · '+p.volume+'L':''}</span>
+        <span class="cmdk-item-name">${esc(p.name)}${p.volume?' · '+p.volume+'L':''}</span>
         <span class="badge ${p.stock===0?'red':p.stock<=DB.lowStockThreshold?'amber':'green'}">${p.stock} ta</span>
       </div>`).join(''));
   }
@@ -10957,8 +11104,8 @@ window.renderCmdkResults = function(){
   const debtorMatches = [...debtorMap.values()].slice(0,6);
   if(debtorMatches.length){
     sections.push('<div class="cmdk-group-label">💳 Qarzdorlar</div>' + debtorMatches.map(d=>`
-      <div class="cmdk-item" onclick="cmdkGoDebt('${d.name.replace(/'/g,"\\'")}')">
-        <span class="cmdk-item-name">${d.org?'🏢 '+d.org+' ('+d.name+')':'👤 '+d.name}</span>
+      <div class="cmdk-item" onclick="cmdkGoDebt('${esc(d.name).replace(/'/g,"\\'")}')">
+        <span class="cmdk-item-name">${d.org?'🏢 '+esc(d.org)+' ('+esc(d.name)+')':'👤 '+esc(d.name)}</span>
         <span style="font-size:12px;font-weight:600;color:${d.active>0?'var(--red)':'var(--text3)'}">${d.active>0?fmt(d.active)+" so'm qarz":"qarzi yo'q"}</span>
       </div>`).join(''));
   }
@@ -12740,7 +12887,11 @@ function processBatchCodes(rawCodes){
         date: new Date().toISOString()
       };
 
-      writes.push(fbSaveProduct({...prod, stock: stockAfter}));
+      // TUZATILDI (MUHIM — poyga holati/race condition): xuddi doRestock
+      // bilan bir xil sabab — butun mahsulot hujjatini qayta yozish
+      // o'rniga faqat "stock" maydoni ATOMIK increment() bilan yangilanadi.
+      prod.stock = stockAfter;
+      writes.push(fbUpdateProductFields(prod.id, {stock: increment(qty)}));
       writes.push(fbSaveRestock(restock));
       logScanSession(prod, qty);
     });
@@ -14651,11 +14802,18 @@ window.setExpenseFilter = function(f){
   renderExpenses();
 }
 
+// YANGI: "Barcha" (all) filtri tanlanganda, 120 kunlik real-vaqtli oynadan
+// tashqaridagi eski xarajatlarni ham on-demand yuklaydi.
+async function ensureExpensesFilterLoaded(){
+  if(expenseFilter==='all') await ensureHistoryLoaded('expenses', null);
+}
+
 function getFilteredExpenses(){
   const now = new Date();
   const cat = document.getElementById('exp-category')?.value || '';
   const q = (document.getElementById('exp-search')?.value||'').toLowerCase().trim();
-  return (DB.expenses||[]).filter(e=>{
+  const source = expenseFilter==='all' ? mergedHistory('expenses') : (DB.expenses||[]);
+  return source.filter(e=>{
     const d = new Date(e.date);
     if(expenseFilter==='today' && !isSameDay(d, now)) return false;
     if(expenseFilter==='week' && !isThisWeek(d, now)) return false;
@@ -14666,7 +14824,8 @@ function getFilteredExpenses(){
   }).sort((a,b)=>new Date(b.date)-new Date(a.date));
 }
 
-window.renderExpenses = function(){
+window.renderExpenses = async function(){
+  await ensureExpensesFilterLoaded();
   const rows = getFilteredExpenses();
   const tbody = document.getElementById('exp-body');
   const none = document.getElementById('no-expenses');
@@ -14723,7 +14882,7 @@ window.openAddExpense = function(){
   openModal('modal-expense');
 }
 window.openEditExpense = function(id){
-  const e = (DB.expenses||[]).find(x=>x.id===id);
+  const e = mergedHistory('expenses').find(x=>x.id===id);
   if(!e) return;
   editingExpenseId = id;
   document.getElementById('expense-modal-title').textContent = '✎ Xarajatni tahrirlash';
@@ -14745,8 +14904,12 @@ window.saveExpense = function(){
   DB.expenses = DB.expenses||[];
   if(editingExpenseId){
     const idx = DB.expenses.findIndex(x=>x.id===editingExpenseId);
-    const updated = {...(DB.expenses[idx]||{id:editingExpenseId, createdAt:new Date().toISOString()}), name, amount, category, date, note};
-    if(idx>-1) DB.expenses[idx]=updated; else DB.expenses.unshift(updated);
+    const cacheIdx = _extraHistoryState.expenses.items.findIndex(x=>x.id===editingExpenseId);
+    const existing = (idx>-1 ? DB.expenses[idx] : (cacheIdx>-1 ? _extraHistoryState.expenses.items[cacheIdx] : null)) || {id:editingExpenseId, createdAt:new Date().toISOString()};
+    const updated = {...existing, name, amount, category, date, note};
+    if(idx>-1) DB.expenses[idx]=updated;
+    else if(cacheIdx>-1) _extraHistoryState.expenses.items[cacheIdx]=updated;
+    else DB.expenses.unshift(updated);
     fbSaveExpense(updated);
     toast('✓ Xarajat yangilandi','green');
   } else {
@@ -14761,10 +14924,11 @@ window.saveExpense = function(){
 }
 window.deleteExpense = function(id){
   if(window.restrictedAdminBlocked && window.restrictedAdminBlocked()) return;
-  const e = (DB.expenses||[]).find(x=>x.id===id);
+  const e = mergedHistory('expenses').find(x=>x.id===id);
   if(!e) return;
   confirm2("Xarajatni o'chirish", `"${e.name}" — ${fmt(e.amount)} so'm xarajat yozuvi butunlay o'chirilsinmi?`, ()=>{
     DB.expenses = (DB.expenses||[]).filter(x=>x.id!==id);
+    _extraHistoryState.expenses.items = _extraHistoryState.expenses.items.filter(x=>x.id!==id);
     fbDeleteExpense(id);
     renderExpenses();
     toast("O'chirildi",'green');
@@ -14785,20 +14949,14 @@ async function fbDeleteExpense(id){
 }
 window.fbSaveExpense = fbSaveExpense;
 window.fbDeleteExpense = fbDeleteExpense;
-window.exportExpensesExcel = async function(){
-  if(!expensesFullyLoaded){
-    try{ await ensureFullExpensesLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
+window.exportExpensesExcel = function(){
   const rows = getFilteredExpenses();
   if(!rows.length){ toast("Eksport uchun ma'lumot yo'q",'red'); return; }
   exportToExcel(`xarajatlar-${new Date().toISOString().slice(0,10)}.xlsx`, 'Xarajatlar',
     ['Sana','Nomi','Toifa','Summa','Izoh'],
     rows.map(e=>[new Date(e.date).toLocaleDateString('uz-UZ'), e.name, e.category||'', e.amount, e.note||'']));
 }
-window.exportExpensesPDF = async function(){
-  if(!expensesFullyLoaded){
-    try{ await ensureFullExpensesLoaded(); }catch(e){ toast("To'liq tarixni yuklab bo'lmadi, internetni tekshiring",'red'); return; }
-  }
+window.exportExpensesPDF = function(){
   const rows = getFilteredExpenses();
   if(!rows.length){ toast("Eksport uchun ma'lumot yo'q",'red'); return; }
   const total = rows.reduce((a,e)=>a+e.amount,0);
@@ -16693,7 +16851,7 @@ function populateWhatIfProducts(){
   if(!sel) return;
   const cur = sel.value;
   sel.innerHTML = (DB.products||[]).slice().sort((a,b)=>a.name.localeCompare(b.name))
-    .map(p=>`<option value="${p.id}">${p.name}${p.volume?' · '+p.volume:''}</option>`).join('');
+    .map(p=>`<option value="${p.id}">${esc(p.name)}${p.volume?' · '+p.volume:''}</option>`).join('');
   if(cur && (DB.products||[]).some(p=>p.id===cur)) sel.value = cur;
 }
 
@@ -18718,15 +18876,22 @@ document.addEventListener('keydown', function(e){
   // taqsimlaydi (bot orqali claim qilingandagi bilan bir xil mantiq) —
   // shunda admin "qaysi mahsulotdan qancha ball to'plandi" degan
   // savolga aniq javob ola oladi.
-  function splitPointsByItemsLocal(items, total, earned){
+  // TUZATILDI (MUHIM): ilgari bu yerda FAQAT umumiy summadan
+  // (amount/earnPerAmount) hisoblanardi — agar biror mahsulotga admin
+  // ALOHIDA coin miqdori belgilagan bo'lsa (mahsulot tahrirlashda "necha
+  // coin beradi" maydoni), bu qoida shu yerda (kassadagi/sotuvchi
+  // savatidagi sotuvda) butunlay E'TIBORGA OLINMAS edi — faqat Mini App
+  // orqali mijozning o'zi buyurtma berganda (create_order) to'g'ri
+  // ishlardi. Endi bu yerda ham xuddi shu — har bir tovar bo'yicha, agar
+  // alohida coin belgilangan bo'lsa o'shani, aks holda standart
+  // (narx/earnPerAmount) qoidani qo'llab — ikkala sotuv yo'li (kassa va
+  // Mini App) bir xil natija berishi ta'minlandi.
+  function splitPointsByItemsLocal(items){
+    const { earnPerAmount } = window.getCoinSettings();
     const list = Array.isArray(items) ? items.filter(i=>i && (i.total||0)>0) : [];
-    if(!list.length || !total || earned<=0) return [];
-    let assigned = 0;
-    return list.map((it,idx)=>{
-      let pts;
-      if(idx===list.length-1){ pts = earned - assigned; }
-      else { pts = Math.round((it.total/total)*earned); assigned += pts; }
-      return { name: it.name || "Noma'lum tovar", amount: it.total||0, points: Math.max(0,pts) };
+    return list.map(it=>{
+      const unitPoints = (it.points || it.points===0) ? Math.max(0, parseInt(it.points,10)||0) : Math.floor((it.price||0)/earnPerAmount);
+      return { name: it.name || "Noma'lum tovar", amount: it.total||0, points: unitPoints * (it.qty||1) };
     });
   }
   // YANGI: mijozning sodiqlik darajasi (Bronza/Kumush/Oltin/...) o'zgarganda
@@ -18751,11 +18916,24 @@ document.addEventListener('keydown', function(e){
     const c = DB.customers.find(x=>x.id===customerId);
     if(!c || !amount || amount<=0) return;
     const beforeTier = customerTier(c.totalSpent||0, c.tierOverride);
-    // TUZATILDI: "narx/10000" nisbati endi qattiq yozilmagan — admin buni
-    // "🏆 Darajalarni sozlash" oynasidagi "🪙 Umumiy coin qoidasi"dan
-    // o'zgartira oladi.
-    const earned = Math.floor(amount/window.getCoinSettings().earnPerAmount);
-    const breakdown = splitPointsByItemsLocal(items, amount, earned);
+    // TUZATILDI: har bir mahsulotning o'ziga xos coin qoidasini hisobga
+    // oladi (yuqoridagi splitPointsByItemsLocal()ga qarang) — shu bilan
+    // birga umumiy "earned" ham ENDI shu batafsil hisobdan yig'iladi
+    // (ilgari alohida, oddiy amount/earnPerAmount bilan hisoblanardi va
+    // mahsulotga xos qoidani butunlay e'tiborsiz qoldirardi).
+    // Agar tovarlar ro'yxati berilgan bo'lsa (kassadagi savat orqali sotuv)
+    // — har birining o'z coin qoidasi hisobga olinadi. Agar berilmagan
+    // bo'lsa (masalan "Qo'lda xarid qo'shish" — faqat summa kiritilganda),
+    // avvalgidek umumiy summadan standart qoida bilan hisoblanadi.
+    let breakdown = [], earned = 0;
+    if(window.isCoinEnabled()){
+      if(Array.isArray(items) && items.length){
+        breakdown = splitPointsByItemsLocal(items);
+        earned = breakdown.reduce((a,b)=>a+(b.points||0), 0);
+      } else {
+        earned = Math.floor(amount/window.getCoinSettings().earnPerAmount);
+      }
+    }
     c.totalSpent = (c.totalSpent||0) + amount;
     c.purchaseCount = (c.purchaseCount||0) + 1;
     c.points = (c.points||0) + earned;
@@ -19570,16 +19748,22 @@ document.addEventListener('keydown', function(e){
 
   window.exportFullBackup = async function(){
     try{
-      // MUHIM: zaxira nusxa (backup) DOIM to'liq tarixni o'z ichiga olishi
-      // kerak — real-vaqtli oyna endi so'nggi RECENT_HISTORY_DAYS kun bilan
-      // cheklangani sababli, backup olishdan oldin eski ma'lumotlar ham
-      // on-demand yuklab olinadi.
-      if(!salesFullyLoaded || !restocksFullyLoaded || !expensesFullyLoaded){
-        await Promise.all([ensureFullSalesLoaded(), ensureFullRestocksLoaded(), ensureFullExpensesLoaded()]);
-      }
+      // MUHIM: real-vaqtli tinglovchilar endi faqat so'nggi
+      // HISTORY_WINDOW_DAYS kunni o'z ichiga oladi (Firestore "usage"ni
+      // kamaytirish uchun), lekin ZAXIRA NUSXA baribir BUTUN tarixni
+      // o'z ichiga olishi SHART. Shuning uchun backup olishdan oldin
+      // sales/restocks/expenses'ning oynadan eski qismini on-demand
+      // to'liq yuklab olamiz (agar hali yuklanmagan bo'lsa).
+      if(typeof window.toast==='function') window.toast("Zaxira uchun to'liq tarix tayyorlanmoqda...", 'blue');
+      await Promise.all([
+        ensureHistoryLoaded('sales', null),
+        ensureHistoryLoaded('restocks', null),
+        ensureHistoryLoaded('expenses', null),
+        ensureDebtsHistoryLoaded()
+      ]);
       const cloudData = {
-        products: DB.products||[], sales: DB.sales||[], restocks: DB.restocks||[],
-        debts: DB.debts||[], debtors: DB.debtors||[], expenses: DB.expenses||[],
+        products: DB.products||[], sales: mergedHistory('sales'), restocks: mergedHistory('restocks'),
+        debts: mergedHistory('debts'), debtors: DB.debtors||[], expenses: mergedHistory('expenses'),
         suppliers: DB.suppliers||[], customers: DB.customers||[], promotions: DB.promotions||[],
         settings: { pins:DB.pins, sellers:DB.sellers, revertMinutes:DB.revertMinutes, lowStockThreshold:DB.lowStockThreshold, sellerName:DB.sellerName, shopName:DB.shopName, shopLogo:DB.shopLogo }
       };
