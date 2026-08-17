@@ -38,7 +38,7 @@ const { hasPermission } = require('./_permissions');
 const { logAction } = require('./_audit');
 
 function getDb() { return require('./_firebase').getDb(); }
-const { getSettings, invalidateSettingsCache, invalidateProductsCache, invalidateDebtorsCache } = require('./_firebase');
+const { getSettings, invalidateSettingsCache } = require('./_firebase');
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
@@ -271,18 +271,40 @@ module.exports = async (req, res) => {
       const amt = parseFloat(amount);
       if (!debtId || isNaN(amt) || amt <= 0) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const debtRef = db.collection('debts').doc(debtId);
-      const debtSnap = await debtRef.get();
-      if (!debtSnap.exists) { res.status(404).json({ ok: false, error: 'debt_not_found' }); return; }
-      const d = debtSnap.data();
-      const remaining = debtRemaining(d);
-      if (remaining <= 0) { res.status(400).json({ ok: false, error: 'already_paid' }); return; }
-      const applied = Math.min(Math.round(amt), Math.round(remaining));
-      const paymentRec = { amount: applied, date: new Date().toISOString(), note: 'Mini App orqali', by: 'Telegram admin' };
-      const newPaidAmount = (d.paidAmount || 0) + applied;
-      const isFullyPaid = d.total - newPaidAmount <= 0.5;
-      const patch = { paidAmount: admin.firestore.FieldValue.increment(applied), payments: admin.firestore.FieldValue.arrayUnion(paymentRec) };
-      if (isFullyPaid) { patch.paid = true; patch.paidDate = paymentRec.date; }
-      await debtRef.update(patch);
+      // TUZATILDI (poyga holati / race condition): ilgari bu yerda avval
+      // debtRef.get() bilan o'qib, "qancha to'landi"/"to'liq yopildimi"
+      // degan qarorni O'SHA (eskirishi mumkin bo'lgan) qiymat asosida qabul
+      // qilib, keyin alohida update() bilan yozar edi. Agar shu paytda bot
+      // yoki index.html tomonidan HAM shu qarzga to'lov yozilsa (masalan
+      // tugma tasodifan ikki marta bosilsa), ikkalasi ham bir xil eski
+      // qiymatni ko'rar, natijada qarz limitidan oshib to'lov yozilishi
+      // yoki paid:true belgisi umuman qo'yilmay qolishi mumkin edi — garchi
+      // paidAmount FieldValue.increment() tufayli yig'indi to'g'ri chiqsa
+      // ham. Endi butun o'qish+yozish db.runTransaction() ichida, ATOMIK
+      // bajariladi — Firestore boshqa parallel yozuv bo'lsa, tranzaksiyani
+      // avtomatik qayta urinadi va har doim ENG YANGI ma'lumot asosida
+      // hisoblaydi.
+      let d, applied, paymentRec, isFullyPaid, remaining;
+      try {
+        await db.runTransaction(async (tx) => {
+          const debtSnap = await tx.get(debtRef);
+          if (!debtSnap.exists) { const e = new Error('debt_not_found'); e.code = 404; throw e; }
+          d = debtSnap.data();
+          remaining = debtRemaining(d);
+          if (remaining <= 0) { const e = new Error('already_paid'); e.code = 400; throw e; }
+          applied = Math.min(Math.round(amt), Math.round(remaining));
+          paymentRec = { amount: applied, date: new Date().toISOString(), note: 'Mini App orqali', by: 'Telegram admin' };
+          const newPaidAmount = (d.paidAmount || 0) + applied;
+          isFullyPaid = d.total - newPaidAmount <= 0.5;
+          const patch = { paidAmount: newPaidAmount, payments: Array.isArray(d.payments) ? d.payments.concat([paymentRec]) : [paymentRec] };
+          if (isFullyPaid) { patch.paid = true; patch.paidDate = paymentRec.date; }
+          tx.update(debtRef, patch);
+        });
+      } catch (e) {
+        if (e.code === 404) { res.status(404).json({ ok: false, error: 'debt_not_found' }); return; }
+        if (e.code === 400) { res.status(400).json({ ok: false, error: 'already_paid' }); return; }
+        throw e;
+      }
       audit('pay_debt', `${d.debtorName || ''} — ${fmt(applied)} ${currencySymbol}${isFullyPaid ? ' (to\'liq yopildi)' : ''}`);
 
       if (d.debtorId) {
@@ -305,7 +327,6 @@ module.exports = async (req, res) => {
       const productsSnap = await db.collection('products').where('name', '==', productName).get();
       if (productsSnap.empty) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       await productsSnap.docs[0].ref.update({ price: newPrice });
-      invalidateProductsCache();
       res.status(200).json({ ok: true });
       return;
     }
@@ -315,6 +336,15 @@ module.exports = async (req, res) => {
       if (forbid('manageProducts')) return;
       const { name, price, cost, points, coinCost, stock, volume, note, img } = p;
       if (!name || isNaN(parseFloat(price))) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      // TUZATILDI: narx/tannarx/miqdor manfiy bo'lishi mumkin emas — ilgari
+      // bu yerda tekshirilmagani uchun (server — haqiqiy xavfsizlik
+      // chegarasi, index.html'dagi tekshiruv esa faqat qulaylik uchun va
+      // devtools orqali chetlab o'tilishi mumkin edi) manfiy narxli
+      // mahsulot yaratilishi mumkin edi, bu esa keyinchalik barcha
+      // hisob-kitoblarni (savdo summasi, hisobotlar) buzardi.
+      if (parseFloat(price) < 0 || (cost != null && parseFloat(cost) < 0) || (stock != null && parseInt(stock, 10) < 0)) {
+        res.status(400).json({ ok: false, error: 'negative_values_not_allowed' }); return;
+      }
       const id = uid();
       const doc = {
         id, name: String(name).trim(), price: parseFloat(price) || 0, cost: parseFloat(cost) || 0,
@@ -323,7 +353,6 @@ module.exports = async (req, res) => {
         stock: parseInt(stock, 10) || 0, volume: volume || '', note: note || '', img: img || '',
       };
       await db.collection('products').doc(id).set(doc);
-      invalidateProductsCache();
       res.status(200).json({ ok: true, product: doc });
       return;
     }
@@ -332,6 +361,11 @@ module.exports = async (req, res) => {
       if (forbid('manageProducts')) return;
       const { id, patch } = p;
       if (!id || !patch) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      // TUZATILDI: create_product bilan bir xil sabab — narx/tannarx/
+      // miqdor manfiy bo'lishi mumkin emas.
+      if (patch.price !== undefined && parseFloat(patch.price) < 0) { res.status(400).json({ ok: false, error: 'negative_values_not_allowed' }); return; }
+      if (patch.cost !== undefined && parseFloat(patch.cost) < 0) { res.status(400).json({ ok: false, error: 'negative_values_not_allowed' }); return; }
+      if (patch.stock !== undefined && parseInt(patch.stock, 10) < 0) { res.status(400).json({ ok: false, error: 'negative_values_not_allowed' }); return; }
       const allowed = ['name', 'price', 'cost', 'points', 'coinCost', 'stock', 'volume', 'note', 'img'];
       const clean = {};
       allowed.forEach((k) => {
@@ -346,7 +380,6 @@ module.exports = async (req, res) => {
       const snap = await ref.get();
       if (!snap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       await ref.update(clean);
-      invalidateProductsCache();
       res.status(200).json({ ok: true });
       return;
     }
@@ -357,7 +390,6 @@ module.exports = async (req, res) => {
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const pSnap = await db.collection('products').doc(id).get();
       await db.collection('products').doc(id).delete();
-      invalidateProductsCache();
       audit('delete_product', pSnap.exists ? pSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;
@@ -372,7 +404,6 @@ module.exports = async (req, res) => {
       const snap = await ref.get();
       if (!snap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
       await ref.update({ stock: admin.firestore.FieldValue.increment(q) });
-      invalidateProductsCache();
       const rId = uid();
       await db.collection('restocks').doc(rId).set({
         id: rId, productId: id, productName: snap.data().name, qty: q, date: new Date().toISOString(), by: 'Mini App orqali',
@@ -414,7 +445,6 @@ module.exports = async (req, res) => {
 
       // Zaxirani kamaytiramiz
       await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(-x.qty) })));
-      invalidateProductsCache();
 
       if (mode === 'debt') {
         // Mavjud qarzdorni topamiz yoki yangi yaratamiz
@@ -435,7 +465,6 @@ module.exports = async (req, res) => {
             debtorData = { id: newId, name: name.trim(), org: org || '', phone: phone || '', login: '', password: '', createdAt: now, viewScope: 'own' };
             debtorRef = db.collection('debtors').doc(newId);
             await debtorRef.set(debtorData);
-            invalidateDebtorsCache();
           }
         }
 
@@ -449,7 +478,6 @@ module.exports = async (req, res) => {
         if (limitCheck.wouldExceed && !forceOverLimit) {
           // Bu holatda zaxira allaqachon kamaytirilgan (yuqorida) — qaytaramiz.
           await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(x.qty) })));
-          invalidateProductsCache();
           res.status(409).json({ ok: false, error: 'credit_limit_exceeded', limit: limitCheck.limit, currentRemaining: limitCheck.currentRemaining, newAmount: total });
           return;
         }
@@ -495,9 +523,22 @@ module.exports = async (req, res) => {
           // YANGI: COIN o'chirilgan bo'lsa — yangi coin hisoblanmaydi
           // (0 qoladi), lekin jami xarid/daraja statistikasi baribir
           // yuritiladi (bu COIN emas, sodiqlik darajasi uchun kerak).
+          // TUZATILDI (MUHIM): ilgari bu yerda FAQAT umumiy summadan
+          // (total/earnPerAmount) hisoblanardi — agar biror mahsulotga
+          // admin ALOHIDA coin miqdori belgilagan bo'lsa (masalan aksiya
+          // uchun), bu qoida shu yerda (kassadagi sotuvda) butunlay
+          // e'tiborga olinmas edi — faqat Mini App orqali mijozning o'zi
+          // buyurtma berganda (create_order, yuqorida) to'g'ri ishlardi.
+          // Endi bu yerda ham har bir tovar bo'yicha, agar alohida coin
+          // belgilangan bo'lsa o'shani, aks holda standart
+          // (narx/earnPerAmount) qoidani qo'llaydi.
           if (isCoinEnabled(settings)) {
             const { earnPerAmount } = getCoinSettings(settings);
-            pointsEarned = Math.floor(total / earnPerAmount);
+            pointsEarned = lineItems.reduce((a, x) => {
+              const prod = x.product;
+              const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / earnPerAmount);
+              return a + unitPoints * x.qty;
+            }, 0);
           }
           await custRef.update({
             totalSpent: admin.firestore.FieldValue.increment(total),
@@ -539,7 +580,6 @@ module.exports = async (req, res) => {
             .catch(() => {});
         }
       }));
-      invalidateProductsCache();
       res.status(200).json({ ok: true });
       return;
     }
@@ -572,7 +612,6 @@ module.exports = async (req, res) => {
           debtorData = { id: newId, name: name.trim(), org: org || '', phone: phone || '', login: '', password: '', createdAt: now0, viewScope: 'own' };
           debtorRef = db.collection('debtors').doc(newId);
           await debtorRef.set(debtorData);
-          invalidateDebtorsCache();
         }
       }
 
@@ -643,7 +682,6 @@ module.exports = async (req, res) => {
           patch.telegramChatId = admin.firestore.FieldValue.delete();
         }
         await ref.update(patch);
-        invalidateDebtorsCache();
         res.status(200).json({ ok: true, id });
         return;
       }
@@ -654,7 +692,6 @@ module.exports = async (req, res) => {
         creditLimit: cleanCreditLimit || 0,
       };
       await db.collection('debtors').doc(newId).set(doc);
-      invalidateDebtorsCache();
       res.status(200).json({ ok: true, id: newId });
       return;
     }
@@ -665,7 +702,6 @@ module.exports = async (req, res) => {
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const dSnap = await db.collection('debtors').doc(id).get();
       await db.collection('debtors').doc(id).delete();
-      invalidateDebtorsCache();
       audit('delete_debtor', dSnap.exists ? dSnap.data().name : id);
       res.status(200).json({ ok: true });
       return;

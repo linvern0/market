@@ -35,7 +35,7 @@ const { logAction } = require('./_audit');
 
 let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
-const { getSettings, invalidateSettingsCache, getProductsSnapshot, invalidateProductsCache, getDebtorsSnapshot, invalidateDebtorsCache } = require('./_firebase');
+const { getSettings, invalidateSettingsCache } = require('./_firebase');
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
@@ -464,7 +464,7 @@ async function handleCustomerContact(db, token, msg, kb, req) {
   const phone = msg.contact && msg.contact.phone_number;
   const key = phoneKey(phone);
   if (!key) { await sendMessage(token, chatId, "Telefon raqami o'qilmadi, qaytadan urinib ko'ring."); return true; }
-  const debtorsSnap = await getDebtorsSnapshot(db);
+  const debtorsSnap = await db.collection('debtors').get();
   const matches = debtorsSnap.docs.filter((d) => phoneKey(d.data().phone) === key);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
@@ -475,7 +475,7 @@ async function tryLinkCustomerByUsername(db, token, msg, kb, req, debtorsSnap) {
   const chatId = msg.chat.id;
   const uKey = usernameKey(msg.from && msg.from.username);
   if (!uKey) return false;
-  const snap = debtorsSnap || (await getDebtorsSnapshot(db));
+  const snap = debtorsSnap || (await db.collection('debtors').get());
   const matches = snap.docs.filter((d) => usernameKey(d.data().telegramUsername) === uKey);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
@@ -491,7 +491,7 @@ async function tryLinkCustomerByTelegramId(db, token, msg, kb, req, debtorsSnap)
   const chatId = msg.chat.id;
   const idKey = String((msg.from && msg.from.id) || '').trim();
   if (!idKey) return false;
-  const snap = debtorsSnap || (await getDebtorsSnapshot(db));
+  const snap = debtorsSnap || (await db.collection('debtors').get());
   const matches = snap.docs.filter((d) => String(d.data().telegramUserId || '').trim() === idKey);
   if (!matches.length) return false;
   await sendDebtorLinkedWelcome(db, token, chatId, matches, kb, req);
@@ -681,7 +681,7 @@ async function computeReceiptPoints(db, items, settingsData) {
   if (!list.length) return { earned: 0, breakdown: [] };
   let productsByName = {};
   try {
-    const snap = await getProductsSnapshot(db);
+    const snap = await db.collection('products').get();
     snap.docs.forEach((d) => {
       const p = d.data();
       const key = String(p.name || '').trim().toLowerCase();
@@ -1151,21 +1151,60 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const idPart = parts[0];
     const amount = parseFloat(parts[1]);
     if (!idPart || isNaN(amount) || amount <= 0) return sendMessage(token, chatId, "Foydalanish: /tolov ID summa\nMasalan: /tolov ab12cd 50000");
-    const debtsSnap = await db.collection('debts').get();
-    const matches = debtsSnap.docs.filter((d) => d.id === idPart || d.id.startsWith(idPart));
+    // OPTIMALLASHTIRISH (Firebase xarajati): ilgari bu yerda HAR safar
+    // BUTUN 'debts' to'plami o'qilardi — qarzlar soni ko'paygan sari
+    // (masalan bir necha ming) har bir /tolov chaqiruvi shunchalik
+    // hujjatni o'qishga arzir edi. Endi: avval to'liq ID bo'yicha
+    // to'g'ridan-to'g'ri BITTA hujjat o'qiladi (agar admin botning o'zi
+    // yuborgan to'liq ID'ni nusxalab qo'ygan bo'lsa — eng ko'p uchraydigan
+    // holat); topilmasa, faqat ID PREFIKSI bo'yicha cheklangan range-so'rov
+    // orqali (documentId() >= idPart va < idPart+'\uf8ff', limit 5) qidiriladi
+    // — bu butun to'plamni emas, faqat mos kelishi mumkin bo'lgan bir necha
+    // hujjatnigina o'qiydi.
+    let matches;
+    const directSnap = await db.collection('debts').doc(idPart).get();
+    if (directSnap.exists) {
+      matches = [directSnap];
+    } else {
+      const rangeSnap = await db.collection('debts')
+        .where(admin.firestore.FieldPath.documentId(), '>=', idPart)
+        .where(admin.firestore.FieldPath.documentId(), '<', idPart + '\uf8ff')
+        .limit(5)
+        .get();
+      matches = rangeSnap.docs;
+    }
     if (!matches.length) return sendMessage(token, chatId, "Bunday ID'li qarz topilmadi. /qarzlar orqali ID'ni tekshiring.");
     if (matches.length > 1) return sendMessage(token, chatId, "Bir nechta qarz shu ID bilan boshlanadi — to'liq ID kiriting.");
-    const debtDoc = matches[0];
-    const d = debtDoc.data();
-    const remaining = debtRemaining(d);
-    if (remaining <= 0) return sendMessage(token, chatId, "Bu qarz allaqachon to'liq to'langan.");
-    const applied = Math.min(Math.round(amount), Math.round(remaining));
-    const payment = { amount: applied, date: new Date().toISOString(), note: 'Telegram bot orqali', by: 'Telegram admin' };
-    const newPaidAmount = (d.paidAmount || 0) + applied;
-    const isFullyPaid = d.total - newPaidAmount <= 0.5;
-    const patch = { paidAmount: admin.firestore.FieldValue.increment(applied), payments: admin.firestore.FieldValue.arrayUnion(payment) };
-    if (isFullyPaid) { patch.paid = true; patch.paidDate = payment.date; }
-    await debtDoc.ref.update(patch);
+    const debtRef = matches[0].ref;
+    // TUZATILDI (poyga holati / race condition): avval bitta get() bilan
+    // o'qib, o'sha (eskirishi mumkin) qiymat asosida "qancha to'landi"/
+    // "to'liq yopildimi" hisoblanardi. Endi butun o'qish+yozish
+    // db.runTransaction() ichida — agar shu payt index.html yoki Mini App
+    // orqali HAM shu qarzga to'lov yozilayotgan bo'lsa, Firestore
+    // tranzaksiyani avtomatik qayta urinadi va har doim ENG YANGI
+    // ma'lumot asosida hisoblaydi (qo'sh hisoblanish/qarz limitidan
+    // oshib to'lov qabul qilinishi oldini oladi).
+    let d, applied, remaining, isFullyPaid;
+    try {
+      await db.runTransaction(async (tx) => {
+        const debtSnap = await tx.get(debtRef);
+        if (!debtSnap.exists) { const e = new Error('not_found'); e.code = 404; throw e; }
+        d = debtSnap.data();
+        remaining = debtRemaining(d);
+        if (remaining <= 0) { const e = new Error('already_paid'); e.code = 400; throw e; }
+        applied = Math.min(Math.round(amount), Math.round(remaining));
+        const payment = { amount: applied, date: new Date().toISOString(), note: 'Telegram bot orqali', by: 'Telegram admin' };
+        const newPaidAmount = (d.paidAmount || 0) + applied;
+        isFullyPaid = d.total - newPaidAmount <= 0.5;
+        const patch = { paidAmount: newPaidAmount, payments: Array.isArray(d.payments) ? d.payments.concat([payment]) : [payment] };
+        if (isFullyPaid) { patch.paid = true; patch.paidDate = payment.date; }
+        tx.update(debtRef, patch);
+      });
+    } catch (e) {
+      if (e.code === 404) return sendMessage(token, chatId, "Bu qarz topilmadi (o'chirilgan bo'lishi mumkin).");
+      if (e.code === 400) return sendMessage(token, chatId, "Bu qarz allaqachon to'liq to'langan.");
+      throw e;
+    }
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_payment', detail: `${d.debtorName || d.org || '?'} — ${applied} so'm (/tolov)` });
     await sendMessage(token, chatId, `✅ ${fmt(applied)} so'm to'lov qabul qilindi: ${esc(d.debtorName || d.org || '')}${isFullyPaid ? '\n🎉 Qarz to\'liq yopildi!' : `\nQoldiq: ${fmt(remaining - applied)} so'm`}`);
     if (d.debtorId) {
@@ -1182,10 +1221,10 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const amount = parseFloat(amountStr);
     if (!name || isNaN(amount) || amount <= 0) return sendMessage(token, chatId, "Foydalanish: /qarz_qoshish Ism; Telefon; Summa; Izoh\nMasalan: /qarz_qoshish Aziz Karimov; +998901234567; 50000; noutbuk narxi");
     const now = new Date().toISOString();
-    const debtorsSnap = await getDebtorsSnapshot(db);
+    const debtorsSnap = await db.collection('debtors').get();
     const debtor = debtorsSnap.docs.find((d) => d.data().name === name && !d.data().org);
     const debtorId = debtor ? debtor.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    if (!debtor) { await db.collection('debtors').doc(debtorId).set({ id: debtorId, name, org: '', phone: phone || '', login: '', password: '', createdAt: now }); invalidateDebtorsCache(); }
+    if (!debtor) await db.collection('debtors').doc(debtorId).set({ id: debtorId, name, org: '', phone: phone || '', login: '', password: '', createdAt: now });
     const debtId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const debt = { id: debtId, debtorId, debtorName: name, org: '', phone: phone || '', items: [], total: amount, paid: false, paidDate: null, date: now, note: note || 'Telegram bot orqali qo\'shildi', seller: 'Telegram admin', type: 'person' };
     await db.collection('debts').doc(debtId).set(debt);
@@ -1279,7 +1318,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/eslatma') {
     const q = argStr.trim().toLowerCase();
     if (!q) return sendMessage(token, chatId, "Foydalanish: /eslatma Aziz (ism yoki telefon)");
-    const debtorsSnap = await getDebtorsSnapshot(db);
+    const debtorsSnap = await db.collection('debtors').get();
     const matches = debtorsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q) || phoneKey(d.data().phone) === phoneKey(q));
     if (!matches.length) return sendMessage(token, chatId, "Bunday mijoz topilmadi.");
     if (matches.length > 1) return sendMessage(token, chatId, `Bir nechta mos keldi, aniqroq yozing:\n${matches.slice(0, 10).map((d) => '• ' + esc(d.data().name)).join('\n')}`);
@@ -1297,7 +1336,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/broadcast') {
     const text = argStr.trim();
     if (!text) return sendMessage(token, chatId, "Foydalanish: /broadcast Xabar matni\nMasalan: /broadcast Ertaga do'kon dam olish kuni, ishlamaymiz.");
-    const debtorsSnap = await db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => getDebtorsSnapshot(db));
+    const debtorsSnap = await db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => db.collection('debtors').get());
     const targets = [...new Set(debtorsSnap.docs.map((d) => d.data().telegramChatId).filter(Boolean))];
     if (!targets.length) return sendMessage(token, chatId, "Botga ulangan mijoz topilmadi.");
     await sendMessage(token, chatId, `⏳ ${targets.length} ta mijozga yuborilmoqda...`);
@@ -1324,7 +1363,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   }
 
   if (cmd === '/ombor') {
-    const productsSnap = await getProductsSnapshot(db);
+    const productsSnap = await db.collection('products').get();
     const products = productsSnap.docs.map((d) => d.data());
     const threshold = (await getSettings(db))?.lowStockThreshold || 5;
     const low = products.filter((p) => p.stock <= threshold && p.stock > 0);
@@ -1339,7 +1378,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   if (cmd === '/mahsulot') {
     const q = argStr.trim().toLowerCase();
     if (!q) return sendMessage(token, chatId, "Foydalanish: /mahsulot nomi");
-    const productsSnap = await getProductsSnapshot(db);
+    const productsSnap = await db.collection('products').get();
     const found = productsSnap.docs.map((d) => d.data()).filter((p) => (p.name || '').toLowerCase().includes(q));
     if (!found.length) return sendMessage(token, chatId, "Topilmadi.");
     let text = `🔎 "${esc(argStr.trim())}" bo'yicha (${found.length} ta):\n\n`;
@@ -1352,13 +1391,12 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!m) return sendMessage(token, chatId, "Foydalanish: /tovar_narx nomi yangi_narx\nMasalan: /tovar_narx Coca-Cola 12000");
     const q = m[1].trim().toLowerCase();
     const newPrice = parseFloat(m[2]);
-    const productsSnap = await getProductsSnapshot(db);
+    const productsSnap = await db.collection('products').get();
     const found = productsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q));
     if (!found.length) return sendMessage(token, chatId, "Tovar topilmadi.");
     if (found.length > 1) return sendMessage(token, chatId, `Bir nechta tovar topildi, aniqroq nom kiriting:\n${found.slice(0, 10).map((d) => '• ' + esc(d.data().name)).join('\n')}`);
     const oldPrice = found[0].data().price;
     await found[0].ref.update({ price: newPrice });
-    invalidateProductsCache();
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'product_price_update', detail: `${found[0].data().name}: ${oldPrice} → ${newPrice} so'm (/tovar_narx)` });
     return sendMessage(token, chatId, `✅ "${esc(found[0].data().name)}" narxi ${fmt(newPrice)} so'mga yangilandi.`);
   }
@@ -1548,7 +1586,6 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
 
   const now = new Date().toISOString();
   await Promise.all(productSnaps.map((snap, i) => snap.ref.update({ stock: admin.firestore.FieldValue.increment(-items[i].qty) })));
-  invalidateProductsCache();
   await Promise.all(productSnaps.map((snap, i) => db.collection('sales').doc(uid()).set({
     id: uid(), productId: snap.id, productName: items[i].name, volume: snap.data().volume || '', qty: items[i].qty,
     price: items[i].price, cost: snap.data().cost || 0, total: items[i].subtotal, seller: `Mijoz buyurtmasi (${order.customerName || ''})`,
@@ -1638,7 +1675,6 @@ async function handleCoinOrderDecision(db, token, settingsRef, cq, coinOrderId, 
 
   const now = new Date().toISOString();
   await productRef.update({ stock: admin.firestore.FieldValue.increment(-order.qty) });
-  invalidateProductsCache();
   if (order.customerId) {
     await db.collection('customers').doc(order.customerId).set({
       points: admin.firestore.FieldValue.increment(-order.totalCoinCost),
@@ -1733,19 +1769,35 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   if (!hasPermission(cqAdminEntry, 'manageDebts')) { await answerCallbackQuery(token, cq.id, "⛔ Sizda qarzlarni boshqarish huquqi yo'q.", true); return; }
   const debtId = data.slice('pay_full:'.length);
   const debtRef = db.collection('debts').doc(debtId);
-  const debtSnap = await debtRef.get();
-  if (!debtSnap.exists) { await answerCallbackQuery(token, cq.id, "Bu qarz topilmadi (o'chirilgan bo'lishi mumkin).", true); return; }
-  const d = debtSnap.data();
-  const remaining = debtRemaining(d);
-  if (remaining <= 0) { await answerCallbackQuery(token, cq.id, "Bu qarz allaqachon to'liq to'langan."); return; }
-  const shopName = (await getSettings(db))?.shopName || "Do'kon";
-  const payment = { amount: remaining, date: new Date().toISOString(), note: "Telegram bot orqali (tez tugma)", by: 'Telegram admin' };
-  await debtRef.update({
-    paidAmount: admin.firestore.FieldValue.increment(remaining),
-    payments: admin.firestore.FieldValue.arrayUnion(payment),
-    paid: true,
-    paidDate: payment.date,
-  });
+  // TUZATILDI (poyga holati / race condition): ilgari bu yerda avval bitta
+  // get() bilan o'qib, o'sha (eskirishi mumkin) "remaining" qiymatini
+  // SO'ZSIZ paid:true bilan yozib yuborardi. Agar shu payt (masalan tugma
+  // tasodifan ikki marta bosilsa, yoki index.html/Mini App orqali ham
+  // aynan shu qarzga to'lov yozilayotgan bo'lsa) — ikkalasi ham eski
+  // "remaining" qiymatini qo'shib yuborib, qarzni haqiqiy summasidan ortiq
+  // to'langan deb belgilab qo'yishi mumkin edi. Endi butun o'qish+yozish
+  // db.runTransaction() ichida, ENG YANGI ma'lumot asosida bajariladi.
+  let d, remaining;
+  try {
+    await db.runTransaction(async (tx) => {
+      const debtSnap = await tx.get(debtRef);
+      if (!debtSnap.exists) { const e = new Error('not_found'); e.code = 404; throw e; }
+      d = debtSnap.data();
+      remaining = debtRemaining(d);
+      if (remaining <= 0) { const e = new Error('already_paid'); e.code = 400; throw e; }
+      const payment = { amount: remaining, date: new Date().toISOString(), note: "Telegram bot orqali (tez tugma)", by: 'Telegram admin' };
+      tx.update(debtRef, {
+        paidAmount: (d.paidAmount || 0) + remaining,
+        payments: Array.isArray(d.payments) ? d.payments.concat([payment]) : [payment],
+        paid: true,
+        paidDate: payment.date,
+      });
+    });
+  } catch (e) {
+    if (e.code === 404) { await answerCallbackQuery(token, cq.id, "Bu qarz topilmadi (o'chirilgan bo'lishi mumkin).", true); return; }
+    if (e.code === 400) { await answerCallbackQuery(token, cq.id, "Bu qarz allaqachon to'liq to'langan."); return; }
+    throw e;
+  }
   await logAction(db, { source: 'bot', actorName: cqAdminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_payment', detail: `${d.debtorName || d.org || '?'} — ${remaining} so'm (tez tugma to'liq to'lov)` });
   await answerCallbackQuery(token, cq.id, `✅ ${fmt(remaining)} so'm — to'liq yopildi!`);
   if (cq.message && cq.message.text) {
@@ -1753,6 +1805,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     await editMessageText(token, chatId, cq.message.message_id, newText).catch(() => {});
   }
   if (d.debtorId) {
+    const shopName = (await getSettings(db))?.shopName || "Do'kon";
     const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
     const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
     if (cid) await sendMessage(token, cid, `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(remaining)} so'm to'lovingiz qabul qilindi.\n🎉 Qarzingiz to'liq yopildi!`).catch(() => {});
@@ -1871,7 +1924,7 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
     // kerakli kolleksiyalar FAQAT BIR MARTA, PARALLEL o'qiladi va
     // natija ikkala (username + telegram ID) tekshiruvga qayta ishlatiladi.
     const [debtorsSnap, customersSnap] = await Promise.all([
-      !isKnownDebtor ? getDebtorsSnapshot(db) : Promise.resolve(null),
+      !isKnownDebtor ? db.collection('debtors').get() : Promise.resolve(null),
       !isKnownLoyalty ? db.collection('customers').get() : Promise.resolve(null),
     ]);
     if (!isKnownDebtor) {

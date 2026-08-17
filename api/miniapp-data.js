@@ -21,7 +21,7 @@
 const admin = require('firebase-admin');
 const { verifyInitData } = require('./_miniapp-auth');
 const { getLoyaltyTiers, computeCustomerTier, getCoinSettings, isCoinEnabled } = require('./_loyalty');
-const { getSettings, getProductsSnapshot, getDebtorsSnapshot } = require('./_firebase');
+const { getSettings } = require('./_firebase');
 
 function getDb() { return require('./_firebase').getDb(); }
 
@@ -68,18 +68,12 @@ async function buildAdminPayload(db, settings) {
   //    xavfsiz zахира qoldirilgan).
   const statsFromDate = (() => { const d0 = new Date(); d0.setDate(d0.getDate() - 70); return d0.toISOString().slice(0, 10); })();
 
-  // YANGI (Firestore usage'ni kamaytirish): 'products' va 'debtors' Mini App
-  // ochilganda HAR SAFAR to'liq o'qilardi, garchi bu ma'lumot odatda faqat
-  // admin tovar/mijoz qo'shganda yoki tahrirlaganda o'zgarsa ham. Endi
-  // _firebase.js'dagi qisqa muddatli (15 soniyalik) xotira-keshi orqali
-  // o'qiladi — yozishlarda kesh darhol eskirgan deb belgilanadi (bkl.
-  // miniapp-action.js va telegram-webhook.js'dagi invalidate*Cache() chaqiruvlari).
   const [unpaidDebtsSnap, recentDebtsSnap, productsSnap, recentSalesSnap, debtorsSnap, customersSnap] = await Promise.all([
     db.collection('debts').where('paid', '==', false).get(),
     db.collection('debts').where('date', '>=', statsFromDate).get(),
-    getProductsSnapshot(db),
+    db.collection('products').get(),
     db.collection('sales').where('date', '>=', statsFromDate).get(),
-    getDebtorsSnapshot(db),
+    db.collection('debtors').get(),
     db.collection('customers').get(),
   ]);
 
@@ -291,7 +285,7 @@ function productUnitPoints(p) {
 }
 
 async function buildClientProducts(db) {
-  const productsSnap = await getProductsSnapshot(db);
+  const productsSnap = await db.collection('products').get();
   return productsSnap.docs
     .map((d) => d.data())
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))

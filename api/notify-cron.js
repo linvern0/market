@@ -95,8 +95,12 @@ async function runNotify() {
 
   // ---------- 2) Muddati o'tgan qarzlar ----------
   if (s.telegramNotifyOverdueDebts && !alreadySent('overdue')) {
-    // TUZATILDI (Firestore "usage"): to'langan qarzlar bizga bu yerda
-    // kerak emas — faqat to'lanmaganlarini so'raymiz.
+    // OPTIMALLASHTIRISH (Firebase xarajati): ilgari BUTUN 'debts'
+    // to'plami (to'langanlari ham) har kuni o'qilardi — vaqt o'tishi
+    // bilan bu son cheksiz o'sib boradi. Endi faqat hali TO'LANMAGAN
+    // qarzlar o'qiladi (`paid == false`), chunki faqat ular muddati
+    // o'tganligi bo'yicha tekshiriladi — to'langan qarzlarni o'qishning
+    // hojati yo'q.
     const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
     const debts = debtsSnap.docs.map((d) => d.data());
     const overdueDays = s.overdueDaysGlobal || 14;
@@ -166,16 +170,18 @@ async function runNotify() {
 
   // ---------- 3) Kunlik hisobot ----------
   if (s.telegramNotifyDailyReport && !alreadySent('dailyreport')) {
-    // TUZATILDI (Firestore "usage"): ilgari BUTUN `sales` kolleksiyasi
-    // (do'kon tarixi qancha katta bo'lsa ham) har kuni bir marta to'liq
-    // o'qilardi, faqat BUGUNGI kunni hisoblash uchun. Endi faqat bugungi
-    // sana oralig'idagi hujjatlar so'raladi.
+    // OPTIMALLASHTIRISH (Firebase xarajati): ilgari BUTUN 'sales'
+    // to'plami (loyiha boshlanganidan beri bo'lgan HAMMA savdolar) har
+    // kuni o'qilardi, faqat bugungisini ajratib olish uchun — vaqt
+    // o'tishi bilan bu son cheksiz o'sib, kunlik cron ishga tushganda
+    // xarajat ham shunga yarasha ortib boradi. 'date' maydoni ISO
+    // formatda (masalan "2026-08-16T...") saqlangani uchun matn bo'yicha
+    // range-so'rov orqali faqat BUGUNGI savdolar o'qiladi.
     const salesSnap = await db.collection('sales')
-      .where('date', '>=', `${todayStr}T00:00:00.000Z`)
-      .where('date', '<=', `${todayStr}T23:59:59.999Z`)
+      .where('date', '>=', todayStr)
+      .where('date', '<', todayStr + '\uf8ff')
       .get();
-    const sales = salesSnap.docs.map((d) => d.data());
-    const todaySales = sales.filter((sale) => !sale.reverted && (sale.date || '').slice(0, 10) === todayStr);
+    const todaySales = salesSnap.docs.map((d) => d.data()).filter((sale) => !sale.reverted);
     const revenue = todaySales.reduce((a, sale) => a + (sale.total || 0), 0);
     const profit = todaySales.reduce((a, sale) => a + (sale.price - (sale.cost || 0)) * sale.qty, 0);
     // YANGI: yangi mijozlar statistikasi (bugun va so'nggi 7 kunda
@@ -183,14 +189,11 @@ async function runNotify() {
     // qo'shildi.
     let newCustomersLine = '';
     try {
-      // TUZATILDI (Firestore "usage"): butun `customers` kolleksiyasini
-      // o'qish o'rniga, faqat so'nggi 7 kun ichida yaratilganlar so'raladi
-      // — bizga faqat shu davr statistikasi kerak.
-      const weekAgoISO = new Date(Date.now() - 7 * 86400000).toISOString();
-      const customersSnap = await db.collection('customers').where('createdAt', '>=', weekAgoISO).get();
+      const customersSnap = await db.collection('customers').get();
       const customers = customersSnap.docs.map((d) => d.data());
+      const now = Date.now();
       const newToday = customers.filter((c) => (c.createdAt || '').slice(0, 10) === todayStr).length;
-      const newWeek = customers.length;
+      const newWeek = customers.filter((c) => c.createdAt && now - new Date(c.createdAt).getTime() <= 7 * 86400000).length;
       newCustomersLine = `\n👥 Yangi mijozlar: bugun ${newToday} ta, so'nggi 7 kunda ${newWeek} ta`;
     } catch (e) { /* mijozlar bo'limi bo'lmasa ham hisobot to'xtab qolmasin */ }
     const text = `📊 <b>Kunlik hisobot</b> — ${esc(shopName)}\n${new Date().toLocaleDateString('uz-UZ')}\n\n🧾 Savdolar: ${todaySales.length} ta\n💰 Tushum: ${fmt(revenue)} ${esc(currencySymbol)}\n📈 Foyda: ${fmt(profit)} ${esc(currencySymbol)}${newCustomersLine}`;
