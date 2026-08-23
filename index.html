@@ -2317,6 +2317,7 @@ body.dark table {
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-overdue">Muddati o'tgan qarzlar haqida xabar</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-daily">Kunlik savdo hisobotini yuborish</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-newdebt" checked>🆕 Yangi qarz yozilganda darhol xabar (admin + mijozning o'ziga)</label>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:13px;padding-left:1.5rem"><input type="checkbox" id="tg-debt-include-items" checked>📦 Xabarda qaysi mahsulot va qachon sotib olinganini ham ko'rsatish</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-payment" checked>💵 To'lov qabul qilinganda darhol xabar (admin + mijozning o'ziga)</label>
     </div>
 
@@ -4603,7 +4604,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramTplLowstock: '', telegramTplOverdue: '', telegramTplDaily: '', telegramTplNewDebtAdmin: '', telegramTplPaymentAdmin: '', telegramAutoReplyOutsideHours: false, telegramButtonLabels: null, scheduledBroadcasts: [], animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], scheduledBroadcasts: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramDebtIncludeItems: true, telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramTplLowstock: '', telegramTplOverdue: '', telegramTplDaily: '', telegramTplNewDebtAdmin: '', telegramTplPaymentAdmin: '', telegramAutoReplyOutsideHours: false, telegramButtonLabels: null, scheduledBroadcasts: [], animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], scheduledBroadcasts: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null };
 // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
 // qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
 // qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
@@ -4927,6 +4928,21 @@ async function fbSaveSettings(){
   setSyncing(true);
   const deviceId = getDeviceId();
   const localV = DB._settingsV||0;
+  // TUZATILDI (MUHIM — poyga holati/race condition): ilgari bu yerda
+  // pastdagi setDoc() ichidagi "DB.xxx" qiymatlar FAQAT setDoc chaqirilgan
+  // PAYTDA o'qilardi — ya'ni yuqoridagi "await getDoc(settingsRef)" (tarmoq
+  // orqali, biroz vaqt oladigan) tugagandan KEYIN. Agar aynan shu kutish
+  // paytida sozlamalarning REAL-VAQTLI tinglagichi (onSnapshot, pastda)
+  // biror sababdan qayta ishga tushsa, u DB.saleReceiptDesign (va boshqa
+  // barcha DB.* sozlama maydonlarini) SERVERDAGI (hali yangi qiymat
+  // yozilmagan, ESKI) holatga qaytarib qo'yishi mumkin edi — natijada
+  // foydalanuvchi "Saqlash"ni bossa ham, saqlangan narsa aslida ESKI
+  // qiymat bo'lib chiqardi ("sozlama o'zgarmayapti" muammosining aynan
+  // shu ehtimoliy sababi). Endi barcha yuboriladigan qiymatlar SHU YERDA,
+  // kutishdan OLDIN, bitta "payload" obyektiga "suratga olinadi" — shu
+  // sabab keyingi tinglagich yangilanishlari saqlanayotgan qiymatga
+  // TA'SIR QILA OLMAYDI.
+  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7]};
   (async ()=>{
     let versionForSave = localV+1;
     try{
@@ -4942,7 +4958,7 @@ async function fbSaveSettings(){
       }
     }catch(e){ /* offline yoki xatolik — tekshirmasdan davom etamiz */ }
     DB._settingsV = versionForSave;
-    withRetry(()=>setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
+    withRetry(()=>setDoc(settingsRef,{...payload,_v:versionForSave,_updatedBy:deviceId,_updatedAt:new Date().toISOString()}))
       .then(()=>markSyncedNow())
       .catch(e=>{ setSyncError(); console.error(e); })
       .finally(()=>setSyncing(false));
@@ -5558,6 +5574,7 @@ function startListeners(){
       DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
       DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
       DB.telegramNotifyNewDebt=(d.telegramNotifyNewDebt===false)?false:true;
+      DB.telegramDebtIncludeItems=(d.telegramDebtIncludeItems===false)?false:true;
       DB.telegramNotifyPayment=(d.telegramNotifyPayment===false)?false:true;
       DB.telegramQuietHoursEnabled=!!d.telegramQuietHoursEnabled;
       DB.telegramQuietFrom=d.telegramQuietFrom||'22:00';
@@ -5881,6 +5898,7 @@ async function init(){
           DB.telegramNotifyOverdueDebts=!!d.telegramNotifyOverdueDebts;
           DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
           DB.telegramNotifyNewDebt=(d.telegramNotifyNewDebt===false)?false:true;
+          DB.telegramDebtIncludeItems=(d.telegramDebtIncludeItems===false)?false:true;
           DB.telegramNotifyPayment=(d.telegramNotifyPayment===false)?false:true;
           DB.telegramQuietHoursEnabled=!!d.telegramQuietHoursEnabled;
           DB.telegramQuietFrom=d.telegramQuietFrom||'22:00';
@@ -6053,6 +6071,25 @@ window.completeLogin = function(role, sellerName, sellerId, isRestrictedAdmin){
   currentSellerId = sellerId || null;
   currentRole = role;
   window.isRestrictedAdmin = (role==='admin' && !!isRestrictedAdmin);
+  // YANGI (EHTIYOT CHORASI): sozlamalar (jumladan "Sotuv cheki
+  // sozlamalari") odatda onSnapshot orqali doim jonli yangilanib turadi.
+  // Lekin agar sahifa uzoq vaqt (masalan bir necha soat/kun) fon rejimida
+  // ochiq turib, brauzer Firestore ulanishini "uxlatib qo'ygan" bo'lsa —
+  // kirish (login) paytida bir martalik to'g'ridan-to'g'ri so'rov bilan
+  // sozlamalarni majburan yangilab olamiz. Bu — sotuvchi kirganda chek
+  // sozlamalari eskirgan bo'lib qolishining oldini oladigan qo'shimcha
+  // xavfsizlik choralari.
+  getDoc(settingsRef).then(snap=>{
+    if(!snap.exists()) return;
+    const d = snap.data();
+    DB.saleReceiptDesign = d.saleReceiptDesign||null;
+    DB.shopName = d.shopName||DB.shopName;
+    DB.shopLogo = d.shopLogo||DB.shopLogo;
+    DB.shopAddress = d.shopAddress||'';
+    DB.shopPhone = d.shopPhone||'';
+    DB.workHours = d.workHours||'';
+    DB.receiptFooter = d.receiptFooter||'';
+  }).catch(()=>{ /* offline — jonli tinglagichdagi holat bilan davom etamiz */ });
   saveSession(role, currentSellerName, currentSellerId, window.isRestrictedAdmin);
   document.body.classList.toggle('restricted-admin', window.isRestrictedAdmin);
   // Cheklangan admin sifatida kirilganda — bosh admin "Sotuvchi bo'lib
@@ -7635,6 +7672,17 @@ window.renderDebts = async function(){
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
   else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
   else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
+  // TUZATILDI (MUHIM): mergedHistory('debts') to'langan (keshdan, tartibsiz
+  // — Firestore natija tartibida) va faol (sana bo'yicha tartiblangan)
+  // qarzlarni SHUNCHAKI ketma-ket ulaydi, umumiy sana tartibini SAQLAMAYDI.
+  // Aynan shu sabab: bitta qarzdorning 4ta qarzidan 3tasi to'langanda, o'sha
+  // 3tasi "faol" massivdan "tarix" massiviga (boshqa, tartibsiz manbaga)
+  // ko'chib o'tadi — natijada pastdagi guruhlashda (Object.values(grouped),
+  // birinchi uchragan tartibda) qarzdorning KARTOCHKASI ro'yxatda kutilmagan
+  // joyga "sakrab" ketardi. Shu yerda ANIQ sana bo'yicha (eng yangisi
+  // birinchi) qayta tartiblab, guruhlash har doim BARQAROR (predictable)
+  // tartibda bo'lishi ta'minlandi.
+  list.sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   // Statistika — TANLANGAN filtr + sana oralig'i bo'yicha (report.html bilan
   // bir xil mantiq: `list` allaqachon debtFilter'ga qarab filtrlangan).
@@ -8690,10 +8738,12 @@ window.exportDebtsCSV=async function(){
   // to'langan tarix on-demand yuklab olinadi — aks holda eksportda faqat
   // faol qarzlar chiqib, ma'lumot yo'qolgandek bo'lib qolardi.
   await ensureDebtsHistoryLoaded();
-  const allDebts = mergedHistory('debts');
+  // TUZATILDI: .reverse() mergedHistory()ning tasodifiy birlashtirish
+  // tartibini teskari aylantirar edi — endi aniq sana bo'yicha tartiblanadi.
+  const allDebts = mergedHistory('debts').slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
   if(!allDebts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
   let csv="Sana,Ism/Tashkilot,Turi,Telefon,Summa,Holat,Izoh\n";
-  allDebts.slice().reverse().forEach(d=>{
+  allDebts.forEach(d=>{
     csv+=`"${timeStr(d.date)}","${d.debtorName}${d.org?' ('+d.org+')':''}",${d.type==='organization'?'Tashkilot':'Shaxs'},"${d.phone||''}",${debtDisplayAmount(d)},"${debtStatusLabel(d)}","${(d.note||'').replace(/"/g,'""')}"\n`;
   });
   download(`qarzlar_royxati_${new Date().toISOString().slice(0,10)}.csv`,'text/csv','\uFEFF'+csv);
@@ -8703,10 +8753,12 @@ window.exportDebtsCSV=async function(){
 // YANGI: qarzlar ro'yxatini Excel (.xlsx) formatida yuklab olish.
 window.exportDebtsExcel=async function(){
   await ensureDebtsHistoryLoaded();
-  const allDebts = mergedHistory('debts');
+  // TUZATILDI: .reverse() o'rniga aniq sana bo'yicha tartiblash (yuqoridagi
+  // exportDebtsCSV bilan bir xil sabab).
+  const allDebts = mergedHistory('debts').slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
   if(!allDebts.length){ toast("Eksport qilish uchun qarz yozuvi yo'q",'red'); return; }
   const headers=["Sana","Ism/Tashkilot","Turi","Telefon","Summa","Holat","Izoh"];
-  const rows=allDebts.slice().reverse().map(d=>[
+  const rows=allDebts.map(d=>[
     timeStr(d.date), d.debtorName+(d.org?' ('+d.org+')':''),
     d.type==='organization'?'Tashkilot':'Shaxs', d.phone||'', debtDisplayAmount(d),
     debtStatusLabel(d), d.note||''
@@ -8735,7 +8787,12 @@ window.printDebtsList=async function(){
   else if(debtFilter==='org') list = list.filter(d=>d.org && d.org!=='');
   else if(debtFilter==='person') list = list.filter(d=>!d.org || d.org==='');
   if(!list.length){ toast("Chop etish uchun qarz yozuvi yo'q",'red'); return; }
-  list = list.slice().reverse();
+  // TUZATILDI: ilgari shunchaki .reverse() ishlatilardi — bu faqat
+  // mergedHistory('debts')ning TASODIFIY birlashtirish tartibini teskari
+  // aylantirar edi (haqiqiy sana tartibi bilan bog'liq emas edi). Endi
+  // aniq sana bo'yicha (eng eskisi birinchi — chop etilgan hisobotda
+  // xronologik tartib bo'lishi uchun) tartiblanadi.
+  list = list.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   const totalActive = list.filter(d=>!d.paid).reduce((a,d)=>a+debtRemaining(d),0);
   const activeCount = list.filter(d=>!d.paid).length;
@@ -9848,15 +9905,31 @@ async function sendTelegramMessageToChatId(chatId, text){
 // mijoz Telegram botga ulangan bo'lsa) o'sha mijozning o'ziga ham DARHOL
 // (kunlik/haftalik yig'indini kutmasdan) xabar boradi. Xatolik chiqsa ham
 // asosiy savdo jarayoniga ta'sir qilmasligi uchun try/catch bilan o'raladi.
+// YANGI: qarz yozuvidagi mahsulotlar ro'yxatini ("Nomi — narxi") oddiy,
+// ko'p qatorli matn ko'rinishida tayyorlaydi — Telegram xabarlarida
+// (adminga va mijozning o'ziga) ishlatiladi. Faqat nom va summa
+// ko'rsatiladi (miqdor allaqachon summaga kiritilgan bo'lgani uchun
+// alohida ko'rsatilmaydi — sodda va o'qish oson bo'lishi uchun).
+function debtItemsLinesForNotify(debt){
+  if(!Array.isArray(debt.items) || !debt.items.length) return '';
+  return debt.items.map(i=>`• ${i.productName}${i.volume?' ('+i.volume+'L)':''} × ${i.qty} — ${fmt(i.subtotal||i.price*i.qty||0)} so'm`).join('\n');
+}
 function notifyNewDebtCreated(debt, debtorObj){
   try{
     if(!DB.telegramBotToken) return;
     if(DB.telegramNotifyNewDebt===false) return; // YANGI: admin bu xabarni o'chirib qo'yishi mumkin
     const shopName = DB.shopName||"Do'kon";
+    // YANGI: admin sozlamalardan yoqib/o'chirib qo'yishi mumkin bo'lgan
+    // "xabarga mahsulotlar ro'yxati va vaqtni qo'shish" imkoniyati.
+    // Standart holatda YOQILGAN — chunki adminlar va mijozlar "qaysi
+    // mahsulot uchun qarz yozilgani"ni bilishni xohlaydi.
+    const includeItems = DB.telegramDebtIncludeItems!==false;
+    const itemsBlock = includeItems ? debtItemsLinesForNotify(debt) : '';
+    const timeLine = includeItems ? `\n🕒 Vaqti: ${timeStr(debt.date)}` : '';
     if(getTelegramChatIds().length){
       const adminText = DB.telegramTplNewDebtAdmin
         ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebtAdmin, { dokon: shopName, mijoz: (debt.debtorName||debt.org||'')+(debt.org?' ('+debt.org+')':''), summa: fmt(debt.total) }))
-        : `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}\n💰 Summa: ${fmt(debt.total)} so'm`;
+        : `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n💰 Summa: ${fmt(debt.total)} so'm${timeLine}`;
       sendTelegramMessage(adminText).catch(()=>{});
     }
     const chatId = debtorObj && debtorObj.telegramChatId;
@@ -9864,8 +9937,8 @@ function notifyNewDebtCreated(debt, debtorObj){
       // YANGI: admin "✍️ Mijozga yuboriladigan xabar matnlari"da o'z
       // matnini yozgan bo'lsa — shuni, aks holda standart matnni ishlatadi.
       const custText = DB.telegramTplNewDebt
-        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebt, { dokon: shopName, summa: fmt(debt.total) }))
-        : `🧾 <b>${esc(shopName)}</b>\n\nSizga ${fmt(debt.total)} so'm qarz yozildi.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebt, { dokon: shopName, summa: fmt(debt.total) })) + (itemsBlock?`\n\n${esc(itemsBlock)}`:'')
+        : `🧾 <b>${esc(shopName)}</b>\n\nSizga qarz yozildi:${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n💰 Jami: <b>${fmt(debt.total)} so'm</b>${timeLine}\n\nBatafsil ma'lumot va to'lov tarixini "Mening qarzlarim" bo'limidan ko'rishingiz mumkin.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
       sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
     }
   }catch(e){ console.error('notifyNewDebtCreated xatolik:', e); }
@@ -10120,6 +10193,7 @@ window.fillTelegramSettingsForm = function(){
   const o=document.getElementById('tg-notify-overdue'); if(o) o.checked=!!DB.telegramNotifyOverdueDebts;
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
   const nd=document.getElementById('tg-notify-newdebt'); if(nd) nd.checked=DB.telegramNotifyNewDebt!==false;
+  const ndi=document.getElementById('tg-debt-include-items'); if(ndi) ndi.checked=DB.telegramDebtIncludeItems!==false;
   const np=document.getElementById('tg-notify-payment'); if(np) np.checked=DB.telegramNotifyPayment!==false;
   const qhe=document.getElementById('tg-quiet-hours-enabled'); if(qhe) qhe.checked=!!DB.telegramQuietHoursEnabled;
   const qf=document.getElementById('tg-quiet-from'); if(qf && document.activeElement!==qf) qf.value=DB.telegramQuietFrom||'22:00';
@@ -10152,6 +10226,7 @@ window.saveTelegramSettings = function(silent){
   DB.telegramNotifyOverdueDebts = !!document.getElementById('tg-notify-overdue').checked;
   DB.telegramNotifyDailyReport = !!document.getElementById('tg-notify-daily').checked;
   DB.telegramNotifyNewDebt = !!document.getElementById('tg-notify-newdebt')?.checked;
+  DB.telegramDebtIncludeItems = !!document.getElementById('tg-debt-include-items')?.checked;
   DB.telegramNotifyPayment = !!document.getElementById('tg-notify-payment')?.checked;
   DB.telegramQuietHoursEnabled = !!document.getElementById('tg-quiet-hours-enabled')?.checked;
   DB.telegramQuietFrom = document.getElementById('tg-quiet-from')?.value || '22:00';
@@ -11169,22 +11244,26 @@ window.prompt2=function(opts){
   document.getElementById('prompt2-msg').innerHTML = opts.message||'';
   const fields = opts.fields||[];
   const fieldsWrap = document.getElementById('prompt2-fields');
+  // TUZATILDI (XAVFSIZLIK): f.label/o.label ilgari escape qilinmasdan
+  // to'g'ridan-to'g'ri innerHTML'ga qo'yilardi. Bu funksiyaning ba'zi
+  // chaqiruvlarida label matni foydalanuvchi kiritgan ma'lumotdan (masalan
+  // mijoz nomi) tuzilishi mumkin, shu sabab bu yerda ham esc() qo'llandi.
   fieldsWrap.innerHTML = fields.map((f,i)=>{
     if(f.type==='select'){
       return `<div class="field" style="margin-bottom:.7rem">
-        <label>${f.label||''}</label>
-        <select id="prompt2-field-${i}">${(f.options||[]).map(o=>`<option value="${String(o.value).replace(/"/g,'&quot;')}" ${String(o.value)===String(f.value)?'selected':''}>${o.label}</option>`).join('')}</select>
+        <label>${esc(f.label||'')}</label>
+        <select id="prompt2-field-${i}">${(f.options||[]).map(o=>`<option value="${String(o.value).replace(/"/g,'&quot;')}" ${String(o.value)===String(f.value)?'selected':''}>${esc(o.label)}</option>`).join('')}</select>
       </div>`;
     }
     if(f.type==='textarea'){
       return `<div class="field" style="margin-bottom:.7rem">
-        <label>${f.label||''}</label>
+        <label>${esc(f.label||'')}</label>
         <textarea id="prompt2-field-${i}" rows="${f.rows||4}" placeholder="${(f.placeholder||'').replace(/"/g,'&quot;')}" style="width:100%;resize:vertical">${(f.value==null?'':String(f.value))}</textarea>
       </div>`;
     }
     const inputType = ['number','password','datetime-local','date','time','email'].includes(f.type) ? f.type : 'text';
     return `<div class="field" style="margin-bottom:.7rem">
-      <label>${f.label||''}</label>
+      <label>${esc(f.label||'')}</label>
       <input type="${inputType}" id="prompt2-field-${i}" ${f.type==='number'?'inputmode="decimal"':''} placeholder="${(f.placeholder||'').replace(/"/g,'&quot;')}" value="${(f.value==null?'':String(f.value)).replace(/"/g,'&quot;')}">
     </div>`;
   }).join('');
@@ -13848,7 +13927,7 @@ window.openAssignBarcode = async function(productId){
     const total = p.stock||0;
     const remaining = unregisteredUnitCount(p);
     document.getElementById('assign-product-info').innerHTML =
-      `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+      `📦 ${esc(p.name)}${p.volume?' · '+p.volume+'L':''}<br>
        <span style="font-size:13px;color:var(--text3);font-weight:400">Har bir donani birma-bir skanerlang</span>`;
     unitProgEl.style.display = 'block';
     unitProgEl.textContent = `${registered}/${total} dona ro'yxatga olingan · ${remaining} tasi qoldi`;
@@ -13856,9 +13935,9 @@ window.openAssignBarcode = async function(productId){
     titleEl.textContent = '📷 Kod biriktirish';
     unitProgEl.style.display = 'none';
     document.getElementById('assign-product-info').innerHTML =
-      `📦 ${p.name}${p.volume?' · '+p.volume+'L':''}<br>
+      `📦 ${esc(p.name)}${p.volume?' · '+p.volume+'L':''}<br>
        <span style="font-size:13px;color:var(--text3);font-weight:400">
-         Barcode: ${p.barcode || '—'} · QR/DataMatrix: ${p.qrCode || '—'}
+         Barcode: ${esc(p.barcode || '—')} · QR/DataMatrix: ${esc(p.qrCode || '—')}
        </span>`;
   }
   _pendingAssignCode = null;
@@ -16059,7 +16138,7 @@ function renderNotifPanel(){
     items.slice(0,40).forEach(n=>{
       const row = document.createElement('div');
       row.className = 'cmdk-item';
-      row.innerHTML = `<span style="font-size:16px">${n.icon}</span><span class="cmdk-item-name" style="flex:1;white-space:normal;font-weight:500">${n.text}</span>`;
+      row.innerHTML = `<span style="font-size:16px">${n.icon}</span><span class="cmdk-item-name" style="flex:1;white-space:normal;font-weight:500">${esc(n.text)}</span>`;
       row.onclick = ()=>{ try{ n.action(); }catch(e){} toggleNotifPanel(); };
       panel.appendChild(row);
     });
@@ -16625,7 +16704,7 @@ function renderAiInsights(){
   feed.innerHTML = insights.map(i=>`
     <div class="insight-card ${i.type}">
       <div class="ic-icon">${i.icon}</div>
-      <div><div class="ic-title">${i.title}</div><div class="ic-text">${i.text}</div></div>
+      <div><div class="ic-title">${esc(i.title)}</div><div class="ic-text">${esc(i.text)}</div></div>
     </div>`).join('');
 }
 

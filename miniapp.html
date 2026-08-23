@@ -19,6 +19,14 @@
     --warn: #f59e0b;
   }
   *{box-sizing:border-box}
+  /* TUZATILDI (MUHIM): index.html'da bu qoida bor edi, lekin bu yerda
+     (miniapp.html) YO'Q edi. Natijada ba'zi mobil brauzerlar/WebView'lar
+     (xususan Telegram ilovasining ichki brauzeri) sahifani tor ekranda
+     "o'qish qulay bo'lsin" deb matnni (va shu bilan birga butun
+     joylashuvni) AVTOMATIK kattalashtirib yuborardi — foydalanuvchi buni
+     "hamma narsa juda katta ko'rinyapti" deb ta'riflagan muammo aynan shu
+     edi. Bu qoida shu avtomatik kattalashtirishni o'chiradi. */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   html{scrollbar-width:thin}
   body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:84px;-webkit-tap-highlight-color:transparent;letter-spacing:.1px}
   body,.card,.stat-box,.btn,.tab,.pill,.toggle,.chip,input,select,textarea{transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease,transform .12s ease,color .2s ease,opacity .2s ease}
@@ -738,17 +746,42 @@ async function submitSell(){
     toast('Xatolik: ' + (r.error||'') + (r.productName?(' — '+r.productName):''));
   }
 }
-// YANGI: web-paneldagi chekka o'xshash — sotuv yakunlangach qisqacha
-// chek ko'rsatiladi (tovarlar, miqdor, jami summa, kerak bo'lsa coin).
+// TUZATILDI (MUHIM): ilgari bu yerda chek doim qattiq yozilgan (hardcoded)
+// ko'rinishda, admin "Sotuv cheki sozlamalari"da belgilagan HECH BIR
+// narsani (logotip, manzil, telefon, ish vaqti, footer matni, shrift
+// qalinligi, chek raqami) hisobga olmasdan chiqardi — shuning uchun admin
+// panelida sozlashning amalda hech qanday ta'siri yo'q edi. Endi
+// index.html'dagi openReceiptModal() bilan BIR XIL mantiqda,
+// STATE.data.saleReceiptDesign (va shu bilan birga do'kon rekvizitlari)
+// to'liq hisobga olinadi.
 function showReceipt(items, total, mode, pointsEarned){
   const d = STATE.data;
-  const rows = items.map(it=>`<div class="row" style="font-size:13px"><span>${esc(it.name)} × ${it.qty}</span><span>${fmt(it.price*it.qty)} ${cs()}</span></div>`).join('');
+  const srd = Object.assign({
+    eyebrow:'', showLogo:true, showAddress:true, showPhone:true, showHours:true,
+    showSeller:true, showDate:true, showUnitPrice:false, showReceiptNumber:false,
+    showFooterText:true, fontWeight:400, customLines:[]
+  }, d.saleReceiptDesign||{});
+
+  const metaParts = [srd.showAddress && d.shopAddress, srd.showPhone && d.shopPhone, srd.showHours && d.workHours].filter(Boolean);
+  const rows = items.map(it=>`<div class="row" style="font-size:13px"><span>${esc(it.name)} × ${it.qty}${srd.showUnitPrice && it.qty>1 ? ` <span style="opacity:.6">(${fmt(it.price)} ${cs()}/dona)</span>`:''}</span><span>${fmt(it.price*it.qty)} ${cs()}</span></div>`).join('');
+  const customLines = Array.isArray(srd.customLines) ? srd.customLines.filter(l=>l && l.text) : [];
+
   showModal(`
-    <div style="font-weight:700;font-size:16px;margin-bottom:6px">✅ Chek</div>
-    <div class="meta" style="margin-bottom:8px">${new Date().toLocaleString('uz-UZ')} · ${mode==='debt'?'Nasiya':'Naqd'}</div>
-    ${rows}
-    <div class="row" style="margin-top:8px;font-weight:700;border-top:1px dashed var(--border);padding-top:8px"><span>Jami:</span><span class="amount-green">${fmt(total)} ${cs()}</span></div>
-    ${pointsEarned>0 ? `<div class="meta" style="margin-top:4px">🪙 Mijozga +${pointsEarned} coin qo'shildi</div>` : ''}
+    <div style="font-weight:${srd.fontWeight||400}">
+      ${d.shopLogo && srd.showLogo ? `<img src="${d.shopLogo}" alt="" style="width:44px;height:44px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:8px">` : ''}
+      <div style="font-weight:700;font-size:16px;text-align:center;margin-bottom:2px">${esc(d.shopName||"Do'kon")}</div>
+      ${srd.eyebrow ? `<div style="text-align:center;font-size:12px;opacity:.7;margin-bottom:4px">${esc(srd.eyebrow)}</div>` : ''}
+      ${metaParts.length ? `<div style="text-align:center;font-size:12px;opacity:.7;margin-bottom:8px">${metaParts.map(esc).join(' · ')}</div>` : ''}
+      <div style="font-weight:700;font-size:16px;margin-bottom:6px">✅ Chek</div>
+      <div class="meta" style="margin-bottom:8px">
+        ${srd.showDate ? new Date().toLocaleString('uz-UZ') : ''}${srd.showDate ? ' · ' : ''}${mode==='debt'?'Nasiya':'Naqd'}
+      </div>
+      ${rows}
+      <div class="row" style="margin-top:8px;font-weight:700;border-top:1px dashed var(--border);padding-top:8px"><span>Jami:</span><span class="amount-green">${fmt(total)} ${cs()}</span></div>
+      ${pointsEarned>0 ? `<div class="meta" style="margin-top:4px">🪙 Mijozga +${pointsEarned} coin qo'shildi</div>` : ''}
+      ${customLines.length ? `<div style="margin-top:8px;font-size:12px;opacity:.75">${customLines.map(l=>`<div>${esc(l.text)}</div>`).join('')}</div>` : ''}
+      ${srd.showFooterText ? `<div style="text-align:center;font-size:12px;opacity:.7;margin-top:10px">${esc(d.receiptFooter || "Xaridingiz uchun rahmat!")}</div>` : ''}
+    </div>
     <button class="btn wide" style="margin-top:12px" onclick="closeModal()">Yopish</button>
   `);
 }
@@ -1031,7 +1064,9 @@ async function submitDebtor(id){
 function deleteDebtor(id, name){
   confirm2("Qarzdorni o'chirish", `"${name}" ro'yxatdan o'chirilsinmi? (Qarz yozuvlari o'chmaydi)`, async ()=>{
     const r = await callAction('delete_debtor', { id });
-    if (r.ok){ await loadData(); STATE.tab='debtors'; renderAdmin(); } else toast('Xatolik: ' + (r.error||''));
+    if (r.ok){ await loadData(); STATE.tab='debtors'; renderAdmin(); }
+    else if (r.error==='has_unpaid_debt') toast("Bu qarzdorda hali to'lanmagan qarz bor — avval qarzini yoping, keyin o'chiring.");
+    else toast('Xatolik: ' + (r.error||''));
   });
 }
 
