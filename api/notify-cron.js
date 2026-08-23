@@ -15,6 +15,7 @@
 const admin = require('firebase-admin');
 
 function getDb() { return require('./_firebase').getDb(); }
+const { invalidateSettingsCache } = require('./_firebase');
 
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
@@ -45,7 +46,8 @@ async function sendToAllAdmins(token, chatIds, text) {
 async function runNotify() {
   const db = getDb();
 
-  const settingsSnap = await db.collection('dokon').doc('settings').get();
+  const settingsRef = db.collection('dokon').doc('settings');
+  const settingsSnap = await settingsRef.get();
   if (!settingsSnap.exists) {
     console.log("Sozlamalar hujjati (dokon/settings) topilmadi — chiqilmoqda.");
     return { ok: true, info: 'no settings' };
@@ -157,14 +159,20 @@ async function runNotify() {
       else if (stage === 0) situationText = "Bugun qarzingizni to'lash muddati keldi.";
       else situationText = `Qarzingizni to'lash muddati ${stage} kun oldin o'tib ketgan.`;
       const text = `⏰ <b>${esc(shopName)}</b>\n\n${situationText}\n💰 Qoldiq: <b>${fmt(remaining)} ${esc(currencySymbol)}</b>${d.note ? `\n📝 ${esc(d.note)}` : ''}`;
-      if (cid) await sendTelegramMessage(token, cid, text);
-      // Bosqichlar ORTIB borgan holda saqlanadi — bugun bir nechta
-      // bosqich "yetib kelgan" bo'lsa (masalan cron bir necha kun
-      // ishlamagan), hammasi bir vaqtda "yuborilgan" deb belgilanadi
-      // (mijozga faqat bitta, eng dolzarb xabar yuboriladi, lekin
-      // o'tkazib yuborilgan bosqichlar qayta-qayta yuborilib
-      // yubormaydi).
-      await docSnap.ref.update({ remindersSent: admin.firestore.FieldValue.arrayUnion(...dueOffsets), lastAutoReminderDate: todayStr });
+      // TUZATILDI (MUHIM): ilgari qarzdor hali Telegram'ga ulanmagan bo'lsa
+      // ham (cid yo'q — xabar HAQIQATDA yuborilmagan bo'lsa ham), pastdagi
+      // "remindersSent" baribir yangilanardi — ya'ni bosqich "yuborilgan"
+      // deb "yolg'on" belgilanib qolardi. Natijada qarzdor KEYINROQ botga
+      // ulansa ham (masalan ertasi kuni /start bossa), o'sha o'tkazib
+      // yuborilgan eslatma bosqichi UNGA HECH QACHON yetib bormas edi —
+      // chunki tizim uni allaqachon "yuborilgan" deb hisoblab qo'ygan edi.
+      // Endi faqat XABAR HAQIQATDA yuborilganda (cid mavjud bo'lganda)
+      // "yuborilgan" deb belgilanadi — aks holda keyingi cron ishga
+      // tushganda (agar shu orada ulangan bo'lsa) qayta urinib ko'riladi.
+      if (cid) {
+        await sendTelegramMessage(token, cid, text);
+        await docSnap.ref.update({ remindersSent: admin.firestore.FieldValue.arrayUnion(...dueOffsets), lastAutoReminderDate: todayStr });
+      }
     }
   }
 
@@ -200,6 +208,49 @@ async function runNotify() {
     const ok = await sendToAllAdmins(token, chatIds, text);
     if (ok) patch.dailyreport = todayStr;
   }
+
+  // TUZATILDI (MUHIM): "📢 Mijozlarga rejalashtirilgan xabar yuborish"
+  // sozlamasi ilgari FAQAT admin panelining o'zi (brauzerda) ochiq turgan
+  // paytda, 30 daqiqada bir marta ishlaydigan tekshiruv orqali amalga
+  // oshirilardi. Agar hech kim admin panelini o'sha payt ochib
+  // qo'ymagan bo'lsa (masalan tunda yoki dam olish kunida
+  // rejalashtirilgan bo'lsa) — xabar HECH QACHON yuborilmasdi, hech qanday
+  // xato ham ko'rsatilmasdi ("sozlama bor, lekin ishlamaydi"). Endi bu
+  // yerda, kunlik serverga asoslangan tekshiruv orqali ham (browser ochiq
+  // yoki yopiqligidan qat'i nazar) muddati o'tgan rejalashtirilgan
+  // xabarlar zaxira sifatida yuboriladi — bu aniq daqiqada emas, lekin
+  // shu kun ichida albatta yetkazilishini kafolatlaydi.
+  try {
+    const broadcasts = Array.isArray(s.scheduledBroadcasts) ? s.scheduledBroadcasts : [];
+    const due = broadcasts.filter((b) => !b.sent && new Date(b.sendAt).getTime() <= Date.now());
+    if (due.length) {
+      const customersSnap = await db.collection('customers').get();
+      const allCustomers = customersSnap.docs.map((d) => d.data());
+      const segmentTargets = (segment) => {
+        const now = Date.now();
+        return allCustomers.filter((c) => {
+          if (!c.telegramChatId) return false;
+          if (segment === 'coin') return (c.points || 0) > 0;
+          if (segment === 'active30') { const t = c.lastPurchaseAt ? new Date(c.lastPurchaseAt).getTime() : 0; return t && now - t <= 30 * 86400000; }
+          if (segment === 'inactive30') { const t = c.lastPurchaseAt ? new Date(c.lastPurchaseAt).getTime() : 0; return !t || now - t > 30 * 86400000; }
+          return true;
+        });
+      };
+      for (const b of due) {
+        const targets = b.targetType === 'customers' ? segmentTargets(b.segment) : [];
+        const full = `📢 <b>${esc(shopName)}</b>\n\n${esc(b.text)}`;
+        for (const c of targets) {
+          try { await sendToAllAdmins(token, [c.telegramChatId], full); } catch (e) { /* bittasi xato bo'lsa ham davom etamiz */ }
+        }
+        b.sent = true;
+        b.sentAt = new Date().toISOString();
+        b.sentCount = targets.length;
+      }
+      const cleaned = broadcasts.filter((b) => !b.sent || Date.now() - new Date(b.sentAt || b.sendAt).getTime() < 30 * 86400000);
+      await settingsRef.set({ scheduledBroadcasts: cleaned }, { merge: true });
+      invalidateSettingsCache();
+    }
+  } catch (e) { console.error('Rejalashtirilgan xabarlarni yuborishda xatolik:', e); }
 
   if (Object.keys(patch).length) {
     await sentLogRef.set(patch, { merge: true });

@@ -40,6 +40,17 @@ const { getSettings, invalidateSettingsCache } = require('./_firebase');
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+// YANGI (MUHIM): index.html'dagi fillTelegramTemplate() bilan bir xil —
+// admin "✍️ Mijozga/adminlarga yuboriladigan xabar matnlari" bo'limida
+// o'zi yozgan shablonlarni ({dokon}, {summa}, {mijoz}, {qoldiq} kabi
+// o'rin bosuvchilar bilan) qo'llash uchun. Ilgari bu shablonlar FAQAT
+// index.html (brauzer) orqali amalga oshirilgan sotuv/to'lovlarda
+// ishlatilardi — botning o'zi orqali (/tolov, tezkor tugmalar) qilingan
+// amallarda esa umuman e'tiborga olinmasdi ("sozlama bor, lekin
+// ishlamaydi" muammosining sababi shu edi).
+function fillTelegramTemplate(tpl, vars) {
+  return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
+}
 function phoneKey(phone) { return String(phone || '').replace(/\D/g, '').slice(-9); }
 function usernameKey(u) { return String(u || '').replace(/^@/, '').trim().toLowerCase(); }
 function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); return rem > 0.5 ? rem : 0; }
@@ -1210,7 +1221,12 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (d.debtorId) {
       const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
       const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
-      if (cid) await sendMessage(token, cid, `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(applied)} so'm to'lovingiz qabul qilindi.${isFullyPaid ? "\n🎉 Qarzingiz to'liq yopildi!" : `\nQolgan qarz: ${fmt(remaining - applied)} so'm`}`);
+      if (cid) {
+        const custText = settingsData0?.telegramTplPayment
+          ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsData0.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(applied), qoldiq: isFullyPaid ? 0 : fmt(remaining - applied) }))
+          : `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(applied)} so'm to'lovingiz qabul qilindi.${isFullyPaid ? "\n🎉 Qarzingiz to'liq yopildi!" : `\nQolgan qarz: ${fmt(remaining - applied)} so'm`}`;
+        await sendMessage(token, cid, custText);
+      }
     }
     return;
   }
@@ -1230,6 +1246,27 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     await db.collection('debts').doc(debtId).set(debt);
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_create', detail: `${name} — ${amount} so'm (/qarz_qoshish)` });
     await sendMessage(token, chatId, `✅ Yangi qarz yozildi: ${esc(name)} — ${fmt(amount)} so'm`);
+    // TUZATILDI: ilgari bu buyruq orqali qarz yozilganda, agar o'sha
+    // qarzdor Telegram botga allaqachon ulangan bo'lsa ham, UNGA HECH
+    // QANDAY xabar ketmasdi (index.html orqali yozilgan qarzda esa
+    // ketardi — masalan Mini App'dagi "cash_loan"da ham ketadi). Endi bu
+    // yerda ham, boshqa hamma joy kabi, admin yoqib qo'ygan bo'lsa
+    // (telegramNotifyNewDebt) va qarzdor ulangan bo'lsa — xabar ketadi,
+    // va admin sozlagan maxsus shablon (agar bo'lsa) qo'llaniladi.
+    if ((debtor?.data()?.telegramChatId) && settingsData0?.telegramNotifyNewDebt !== false) {
+      const includeItems = settingsData0?.telegramDebtIncludeItems !== false;
+      // TUZATILDI: bu buyruqda mahsulot tanlanmaydi (faqat summa+izoh
+      // qo'lda kiritiladi), shuning uchun "mahsulot" o'rniga izoh (agar
+      // bo'lsa) va vaqtni ko'rsatamiz — boshqa joylardagi mahsulot
+      // ro'yxati bilan bir xil maqsadga xizmat qiladi ("nima uchun qarz
+      // yozilgani" aniq bo'lsin).
+      const noteLine = includeItems && debt.note ? `\n📝 ${esc(debt.note)}` : '';
+      const timeLine = includeItems ? `\n🕒 Vaqti: ${new Date(now).toLocaleString('uz-UZ')}` : '';
+      const custText = settingsData0?.telegramTplNewDebt
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsData0.telegramTplNewDebt, { dokon: shopName, summa: fmt(amount) })) + noteLine
+        : `🧾 <b>${esc(shopName)}</b>\n\nSizga ${fmt(amount)} so'm qarz yozildi.${noteLine}${timeLine}\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
+      await sendMessage(token, debtor.data().telegramChatId, custText).catch(() => {});
+    }
     return;
   }
 
@@ -1572,39 +1609,56 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
     return;
   }
 
-  // Tasdiqlashdan oldin zaxirani qayta tekshiramiz (buyurtma berilgandan
-  // beri boshqa savdo bo'lgan bo'lishi mumkin).
-  const productRefs = items.map((it) => db.collection('products').doc(it.productId));
-  const productSnaps = await Promise.all(productRefs.map((r) => r.get()));
-  for (let i = 0; i < items.length; i++) {
-    const snap = productSnaps[i];
-    if (!snap.exists || (snap.data().stock || 0) < items[i].qty) {
-      await answerCallbackQuery(token, cq.id, `⚠️ "${items[i].name}" omborda yetarli emas. Buyurtmani bekor qiling yoki avval omborni to'ldiring.`, true);
-      return;
-    }
-  }
-
+  // TUZATILDI (MUHIM — poyga holati/race condition): xuddi coin
+  // buyurtmalaridagi kabi — bu xabar ham BARCHA adminlarga birdaniga
+  // yuboriladi. Ikki admin deyarli bir vaqtda "✅ Tasdiqlash"ni bossa,
+  // ilgari ikkalasi ham eskirgan "pending" holatni ko'rib, OMBORNI IKKI
+  // MARTA kamaytirib, SAVDO YOZUVLARINI IKKI MARTA yaratib, mijoz
+  // ballarini IKKI MARTA qo'shib/ayirib yuborishi mumkin edi — bu eng
+  // katta zararli holat edi (bir nechta hujjat, moliyaviy hisobot
+  // buzilishi bilan). Endi butun tekshirish+yozish bitta Firestore
+  // tranzaksiyasi ichida bajariladi.
+  const saleIds = items.map(() => uid());
   const now = new Date().toISOString();
-  await Promise.all(productSnaps.map((snap, i) => snap.ref.update({ stock: admin.firestore.FieldValue.increment(-items[i].qty) })));
-  await Promise.all(productSnaps.map((snap, i) => db.collection('sales').doc(uid()).set({
-    id: uid(), productId: snap.id, productName: items[i].name, volume: snap.data().volume || '', qty: items[i].qty,
-    price: items[i].price, cost: snap.data().cost || 0, total: items[i].subtotal, seller: `Mijoz buyurtmasi (${order.customerName || ''})`,
-    date: now, reverted: false, isDebt: false,
-  })));
-
-  // Mijozga: sarflangan ballarni ayirish va yangi to'plangan ballarni qo'shish.
-  if (order.customerId) {
-    const customerRef = db.collection('customers').doc(order.customerId);
-    const patch = {
-      points: admin.firestore.FieldValue.increment((order.totalPoints || 0) - (order.pointsUsed || 0)),
-      totalSpent: admin.firestore.FieldValue.increment(order.total || 0),
-      purchaseCount: admin.firestore.FieldValue.increment(1),
-      lastPurchaseAt: now,
-    };
-    await customerRef.set(patch, { merge: true }).catch(() => {});
+  try {
+    await db.runTransaction(async (tx) => {
+      const freshOrderSnap = await tx.get(orderRef);
+      if (!freshOrderSnap.exists || freshOrderSnap.data().status !== 'pending') {
+        const e = new Error('already_decided'); e.code = 'already_decided'; throw e;
+      }
+      const productRefs = items.map((it) => db.collection('products').doc(it.productId));
+      const productSnaps = await Promise.all(productRefs.map((r) => tx.get(r)));
+      for (let i = 0; i < items.length; i++) {
+        const snap = productSnaps[i];
+        if (!snap.exists || (snap.data().stock || 0) < items[i].qty) {
+          const e = new Error('not_enough_stock'); e.code = 'not_enough_stock'; e.itemName = items[i].name; throw e;
+        }
+      }
+      let customerRef = null;
+      if (order.customerId) customerRef = db.collection('customers').doc(order.customerId);
+      productSnaps.forEach((snap, i) => {
+        tx.update(snap.ref, { stock: admin.firestore.FieldValue.increment(-items[i].qty) });
+        tx.set(db.collection('sales').doc(saleIds[i]), {
+          id: saleIds[i], productId: snap.id, productName: items[i].name, volume: snap.data().volume || '', qty: items[i].qty,
+          price: items[i].price, cost: snap.data().cost || 0, total: items[i].subtotal, seller: `Mijoz buyurtmasi (${order.customerName || ''})`,
+          date: now, reverted: false, isDebt: false,
+        });
+      });
+      if (customerRef) {
+        tx.set(customerRef, {
+          points: admin.firestore.FieldValue.increment((order.totalPoints || 0) - (order.pointsUsed || 0)),
+          totalSpent: admin.firestore.FieldValue.increment(order.total || 0),
+          purchaseCount: admin.firestore.FieldValue.increment(1),
+          lastPurchaseAt: now,
+        }, { merge: true });
+      }
+      tx.update(orderRef, { status: 'confirmed', decidedAt: now, decidedBy: String(adminChatId) });
+    });
+  } catch (e) {
+    if (e.code === 'already_decided') { await answerCallbackQuery(token, cq.id, "Bu buyurtma allaqachon boshqa admin tomonidan hal qilingan.", true); return; }
+    if (e.code === 'not_enough_stock') { await answerCallbackQuery(token, cq.id, `⚠️ "${e.itemName}" omborda yetarli emas. Buyurtmani bekor qiling yoki avval omborni to'ldiring.`, true); return; }
+    throw e;
   }
-
-  await orderRef.update({ status: 'confirmed', decidedAt: now, decidedBy: String(adminChatId) });
   await answerCallbackQuery(token, cq.id, "✅ Buyurtma tasdiqlandi, tovar sotildi!");
   if (cq.message && cq.message.text) {
     await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n✅ <b>Tasdiqlandi — sotildi.</b>`).catch(() => {});
@@ -1663,29 +1717,52 @@ async function handleCoinOrderDecision(db, token, settingsRef, cq, coinOrderId, 
     await answerCallbackQuery(token, cq.id, `⚠️ "${order.productName}" omborda yetarli emas.`, true);
     return;
   }
-  let customerData = null;
-  if (order.customerId) {
-    const customerSnap = await db.collection('customers').doc(order.customerId).get();
-    customerData = customerSnap.exists ? customerSnap.data() : null;
-  }
-  if (!customerData || (customerData.points || 0) < order.totalCoinCost) {
-    await answerCallbackQuery(token, cq.id, `⚠️ Mijozning coini endi yetarli emas.`, true);
-    return;
-  }
-
+  // TUZATILDI (MUHIM — poyga holati/race condition): coin buyurtmasi
+  // haqidagi xabar BARCHA adminlarga birdaniga yuboriladi (yuqorida
+  // ko'rdik). Agar ikki admin deyarli bir vaqtda "✅ Tasdiqlash"ni bossa,
+  // ilgari ikkalasi ham "status==='pending'" tekshiruvidan (hali biri ham
+  // yozib ulgurmagani uchun) muvaffaqiyatli o'tib, OMBORDAN IKKI MARTA
+  // kamaytirib, mijozning COINIDAN IKKI MARTA yechib yuborishi mumkin edi.
+  // Endi butun tekshirish+yozish bitta Firestore tranzaksiyasi ichida —
+  // ikkinchi (kechroq kelgan) urinish "status" allaqachon 'confirmed'
+  // ekanini ko'rib, hech narsa qilmasdan xavfsiz to'xtaydi.
   const now = new Date().toISOString();
-  await productRef.update({ stock: admin.firestore.FieldValue.increment(-order.qty) });
-  if (order.customerId) {
-    await db.collection('customers').doc(order.customerId).set({
-      points: admin.firestore.FieldValue.increment(-order.totalCoinCost),
-      redemptions: admin.firestore.FieldValue.arrayUnion({
-        date: now, pointsUsed: order.totalCoinCost, discount: 0,
-        productName: order.productName, qty: order.qty,
-      }),
-    }, { merge: true }).catch(() => {});
+  try {
+    await db.runTransaction(async (tx) => {
+      const freshOrderSnap = await tx.get(orderRef);
+      if (!freshOrderSnap.exists || freshOrderSnap.data().status !== 'pending') {
+        const e = new Error('already_decided'); e.code = 'already_decided'; throw e;
+      }
+      const productSnap = await tx.get(productRef);
+      if (!productSnap.exists || (productSnap.data().stock || 0) < order.qty) {
+        const e = new Error('not_enough_stock'); e.code = 'not_enough_stock'; throw e;
+      }
+      let custRef = null;
+      if (order.customerId) {
+        custRef = db.collection('customers').doc(order.customerId);
+        const customerSnap2 = await tx.get(custRef);
+        if (!customerSnap2.exists || (customerSnap2.data().points || 0) < order.totalCoinCost) {
+          const e = new Error('not_enough_coins'); e.code = 'not_enough_coins'; throw e;
+        }
+      }
+      tx.update(productRef, { stock: admin.firestore.FieldValue.increment(-order.qty) });
+      if (custRef) {
+        tx.set(custRef, {
+          points: admin.firestore.FieldValue.increment(-order.totalCoinCost),
+          redemptions: admin.firestore.FieldValue.arrayUnion({
+            date: now, pointsUsed: order.totalCoinCost, discount: 0,
+            productName: order.productName, qty: order.qty,
+          }),
+        }, { merge: true });
+      }
+      tx.update(orderRef, { status: 'confirmed', decidedAt: now, decidedBy: String(adminChatId) });
+    });
+  } catch (e) {
+    if (e.code === 'already_decided') { await answerCallbackQuery(token, cq.id, "Bu so'rov allaqachon boshqa admin tomonidan hal qilingan.", true); return; }
+    if (e.code === 'not_enough_stock') { await answerCallbackQuery(token, cq.id, `⚠️ "${order.productName}" omborda yetarli emas.`, true); return; }
+    if (e.code === 'not_enough_coins') { await answerCallbackQuery(token, cq.id, `⚠️ Mijozning coini endi yetarli emas.`, true); return; }
+    throw e;
   }
-
-  await orderRef.update({ status: 'confirmed', decidedAt: now, decidedBy: String(adminChatId) });
   await answerCallbackQuery(token, cq.id, "✅ Tasdiqlandi — tovar coinga berildi!");
   if (cq.message && cq.message.text) {
     await editMessageText(token, adminChatId, cq.message.message_id, cq.message.text + `\n\n✅ <b>Tasdiqlandi — berildi.</b>`).catch(() => {});
@@ -1805,10 +1882,16 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     await editMessageText(token, chatId, cq.message.message_id, newText).catch(() => {});
   }
   if (d.debtorId) {
-    const shopName = (await getSettings(db))?.shopName || "Do'kon";
+    const settingsPF = await getSettings(db);
+    const shopName = settingsPF?.shopName || "Do'kon";
     const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
     const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
-    if (cid) await sendMessage(token, cid, `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(remaining)} so'm to'lovingiz qabul qilindi.\n🎉 Qarzingiz to'liq yopildi!`).catch(() => {});
+    if (cid) {
+      const custText = settingsPF?.telegramTplPayment
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsPF.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(remaining), qoldiq: 0 }))
+        : `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(remaining)} so'm to'lovingiz qabul qilindi.\n🎉 Qarzingiz to'liq yopildi!`;
+      await sendMessage(token, cid, custText).catch(() => {});
+    }
   }
 }
 

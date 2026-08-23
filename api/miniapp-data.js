@@ -213,6 +213,20 @@ async function buildAdminPayload(db, settings) {
     role: 'admin',
     shopName: settings.shopName || "Do'kon",
     currencySymbol: settings.currencySymbol || "so'm",
+    // TUZATILDI (MUHIM): admin "Sotuv cheki sozlamalari"da (logotip,
+    // manzil, telefon, footer matni, QR, shrift qalinligi va h.k.)
+    // qanchalik ko'p narsani sozlamasin, bu ma'lumotlar bu yergacha
+    // MUTLAQO YETIB KELMAS edi — shuning uchun Mini App orqali (bot ichida)
+    // sotuv qilinganda chek doim qattiq yozilgan (hardcoded), sozlamalarga
+    // mutlaqo bog'liq bo'lmagan ko'rinishda chiqardi. "Sozlama bor, lekin
+    // ishlamaydi" muammosining sababi shu edi. Endi kerakli barcha
+    // rekvizit va dizayn sozlamalari shu yerda yuboriladi.
+    shopAddress: settings.shopAddress || '',
+    shopPhone: settings.shopPhone || '',
+    shopLogo: settings.shopLogo || '',
+    workHours: settings.workHours || '',
+    receiptFooter: settings.receiptFooter || '',
+    saleReceiptDesign: settings.saleReceiptDesign || null,
     stats: { revenue, profit, salesCount: todaySales.length },
     last7Days,
     report: { ...reportStats, topProducts, recentSales },

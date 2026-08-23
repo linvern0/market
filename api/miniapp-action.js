@@ -43,6 +43,13 @@ const { getSettings, invalidateSettingsCache } = require('./_firebase');
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+// YANGI (MUHIM): index.html/telegram-webhook.js bilan bir xil — admin
+// o'zi yozgan xabar shablonlarini ({dokon},{summa},{mijoz},{qoldiq} kabi
+// o'rin bosuvchilar bilan) shu yerda (Mini App orqali sotuv/to'lov/
+// coinga sotib olish amallarida) ham qo'llash uchun.
+function fillTelegramTemplate(tpl, vars) {
+  return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
+}
 function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); return rem > 0.5 ? rem : 0; }
 
 const { computeCustomerTier } = require('./_loyalty');
@@ -310,8 +317,13 @@ module.exports = async (req, res) => {
       if (d.debtorId) {
         const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
         const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
-        if (cid) {
-          await tgSendMessage(token, cid, `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(applied)} ${esc(currencySymbol)} to'lovingiz qabul qilindi.${isFullyPaid ? "\n🎉 Qarzingiz to'liq yopildi!" : `\nQolgan qarz: ${fmt(remaining - applied)} ${esc(currencySymbol)}`}`);
+        if (cid && settings.telegramNotifyPayment !== false) {
+          // TUZATILDI: ilgari admin sozlagan xabar shabloni
+          // (telegramTplPayment) bu yerda umuman e'tiborga olinmasdi.
+          const custText = settings.telegramTplPayment
+            ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(applied), qoldiq: isFullyPaid ? 0 : fmt(remaining - applied) }))
+            : `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(applied)} ${esc(currencySymbol)} to'lovingiz qabul qilindi.${isFullyPaid ? "\n🎉 Qarzingiz to'liq yopildi!" : `\nQolgan qarz: ${fmt(remaining - applied)} ${esc(currencySymbol)}`}`;
+          await tgSendMessage(token, cid, custText);
         }
       }
       res.status(200).json({ ok: true, applied, remaining: remaining - applied, fullyPaid: isFullyPaid });
@@ -495,8 +507,33 @@ module.exports = async (req, res) => {
           cost: x.product.cost || 0, total: x.subtotal, seller, date: now, reverted: false, isDebt: true, debtorName: debtorData.name, org: debtorData.org || '',
         })));
 
-        if (debtorData.telegramChatId) {
-          const text = `🧾 <b>${esc(shopName)}</b>\n\nSizga yangi qarz yozildi:\n\n${debtDetailText(debtDoc, currencySymbol)}\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>`;
+        // TUZATILDI (MUHIM): ilgari Mini App orqali (masalan bot ichida)
+        // nasiyaga sotilganda ADMINGA HECH QANDAY xabar ketmasdi — faqat
+        // mijozning o'ziga (agar ulangan bo'lsa) ketardi. Endi index.html
+        // (brauzer) orqali qilingan sotuv bilan bir xil — adminlarga ham
+        // xabar ketadi, va admin "📦 mahsulot va vaqtni ko'rsatish"
+        // sozlamasini yoqib/o'chirib qo'yishi mumkin.
+        if (settings.telegramNotifyNewDebt !== false) {
+          const includeItems = settings.telegramDebtIncludeItems !== false;
+          const itemsBlock = includeItems ? debtDoc.items.map((i) => `• ${i.productName}${i.volume ? ' (' + i.volume + 'L)' : ''} × ${i.qty} — ${fmt(i.subtotal)} ${currencySymbol}`).join('\n') : '';
+          const timeLine = includeItems ? `\n🕒 Vaqti: ${new Date(now).toLocaleString('uz-UZ')}` : '';
+          const adminTargets = admins.filter((a) => a.chatId).map((a) => a.chatId);
+          if (adminTargets.length) {
+            const adminText = settings.telegramTplNewDebtAdmin
+              ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplNewDebtAdmin, { dokon: shopName, mijoz: debtorData.name + (debtorData.org ? ' (' + debtorData.org + ')' : ''), summa: fmt(total) }))
+              : `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debtorData.name)}${debtorData.org ? ' (' + esc(debtorData.org) + ')' : ''}${itemsBlock ? `\n\n${esc(itemsBlock)}` : ''}\n💰 Summa: ${fmt(total)} ${esc(currencySymbol)}${timeLine}`;
+            await Promise.allSettled(adminTargets.map((cid) => tgSendMessage(token, cid, adminText)));
+          }
+        }
+        if (debtorData.telegramChatId && settings.telegramNotifyNewDebt !== false) {
+          // TUZATILDI: ilgari bu yerda admin "✍️ Mijozga yuboriladigan
+          // xabar matni"da yozgan shabloni UMUMAN e'tiborga olinmasdi —
+          // faqat index.html orqali yozilgan qarzda ishlardi. Endi bu
+          // yerda ham xuddi shunday qo'llaniladi (shablon bo'lmasa, oldingi
+          // batafsil — tovarlar ro'yxati bilan — standart xabar qoladi).
+          const text = settings.telegramTplNewDebt
+            ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplNewDebt, { dokon: shopName, summa: fmt(total) }))
+            : `🧾 <b>${esc(shopName)}</b>\n\nSizga yangi qarz yozildi:\n\n${debtDetailText(debtDoc, currencySymbol)}\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>`;
           await tgSendMessage(token, debtorData.telegramChatId, text);
         }
         audit('sell_debt', `${debtorData.name || ''} — ${fmt(total)} ${currencySymbol}`);
@@ -700,6 +737,17 @@ module.exports = async (req, res) => {
       if (forbid('manageDebts') || forbid('deleteRecords')) return;
       const { id } = p;
       if (!id) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      // TUZATILDI (MUHIM): ilgari bu yerda qarzdorning TO'LANMAGAN qarzi
+      // bor-yo'qligi umuman tekshirilmasdi. Agar hali qarzi bor odamni
+      // o'chirib yuborilsa, uning qarz yozuvlari (debtorId orqali) "egasiz"
+      // qolib ketardi — bu esa keyinchalik o'sha qarz uchun avtomatik
+      // Telegram eslatmasi (debtor hujjatidan telegramChatId olinadi) va
+      // qarz limiti tekshiruvi (debtor hujjatidan creditLimit olinadi)
+      // ISHLAMAY qolishiga olib kelardi, hech qanday ogohlantirishsiz. Endi
+      // to'lanmagan qarzi bor odamni o'chirishga yo'l qo'yilmaydi — avval
+      // qarzlari yopilishi yoki boshqa qarzdorga ko'chirilishi kerak.
+      const unpaidSnap = await db.collection('debts').where('debtorId', '==', id).where('paid', '==', false).limit(1).get();
+      if (!unpaidSnap.empty) { res.status(400).json({ ok: false, error: 'has_unpaid_debt' }); return; }
       const dSnap = await db.collection('debtors').doc(id).get();
       await db.collection('debtors').doc(id).delete();
       audit('delete_debtor', dSnap.exists ? dSnap.data().name : id);
