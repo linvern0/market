@@ -64,9 +64,56 @@ async function runNotify() {
     ),
   ];
 
-  if (!token || !chatIds.length) {
-    console.log("Bot token yoki admin (Chat ID) sozlanmagan — ilova ichidagi 'Sozlamalar > Telegram' bo'limida to'ldiring.");
-    return { ok: true, info: 'no token/admins' };
+  if (!token) {
+    console.log("Bot token sozlanmagan — ilova ichidagi 'Sozlamalar > Telegram' bo'limida to'ldiring.");
+    return { ok: true, info: 'no token' };
+  }
+
+  // TUZATILDI (MUHIM): "📢 Mijozlarga rejalashtirilgan xabar yuborish"
+  // ilgari pastdagi "admin Chat ID sozlanmagan bo'lsa BUTUNLAY chiqib
+  // ketish" tekshiruvidan KEYIN joylashgan edi — ya'ni agar do'kon admin
+  // xabarnomalarini (past zaxira/qarz/hisobot) sozlamagan bo'lsa, MIJOZLARGA
+  // rejalashtirilgan xabar ham hech qachon yuborilmasdi, garchi bu ikkisi
+  // bir-biriga aloqasi yo'q funksiyalar bo'lsa ham (biri admin uchun,
+  // ikkinchisi mijozlar uchun). Endi bu tekshiruv faqat "token" borligini
+  // talab qiladi (admin Chat ID shart emas) va ADMIN xabarnomalari
+  // gate'idan OLDIN ishlaydi.
+  try {
+    const broadcasts = Array.isArray(s.scheduledBroadcasts) ? s.scheduledBroadcasts : [];
+    const due = broadcasts.filter((b) => !b.sent && new Date(b.sendAt).getTime() <= Date.now());
+    if (due.length) {
+      const customersSnap = await db.collection('customers').get();
+      const allCustomers = customersSnap.docs.map((d) => d.data());
+      const segmentTargets = (segment) => {
+        const now = Date.now();
+        return allCustomers.filter((c) => {
+          if (!c.telegramChatId) return false;
+          if (segment === 'coin') return (c.points || 0) > 0;
+          if (segment === 'active30') { const t = c.lastPurchaseAt ? new Date(c.lastPurchaseAt).getTime() : 0; return t && now - t <= 30 * 86400000; }
+          if (segment === 'inactive30') { const t = c.lastPurchaseAt ? new Date(c.lastPurchaseAt).getTime() : 0; return !t || now - t > 30 * 86400000; }
+          return true;
+        });
+      };
+      const shopNameBC = s.shopName || "Do'kon";
+      for (const b of due) {
+        const targets = b.targetType === 'customers' ? segmentTargets(b.segment) : [];
+        const full = `📢 <b>${esc(shopNameBC)}</b>\n\n${esc(b.text)}`;
+        for (const c of targets) {
+          try { await sendToAllAdmins(token, [c.telegramChatId], full); } catch (e) { /* bittasi xato bo'lsa ham davom etamiz */ }
+        }
+        b.sent = true;
+        b.sentAt = new Date().toISOString();
+        b.sentCount = targets.length;
+      }
+      const cleaned = broadcasts.filter((b) => !b.sent || Date.now() - new Date(b.sentAt || b.sendAt).getTime() < 30 * 86400000);
+      await settingsRef.set({ scheduledBroadcasts: cleaned }, { merge: true });
+      invalidateSettingsCache();
+    }
+  } catch (e) { console.error('Rejalashtirilgan xabarlarni yuborishda xatolik:', e); }
+
+  if (!chatIds.length) {
+    console.log("Admin (Chat ID) sozlanmagan — admin xabarnomalari (past zaxira/qarz/hisobot) o'tkazib yuborildi.");
+    return { ok: true, info: 'no admins' };
   }
 
   const shopName = s.shopName || "Do'kon";
@@ -208,49 +255,6 @@ async function runNotify() {
     const ok = await sendToAllAdmins(token, chatIds, text);
     if (ok) patch.dailyreport = todayStr;
   }
-
-  // TUZATILDI (MUHIM): "📢 Mijozlarga rejalashtirilgan xabar yuborish"
-  // sozlamasi ilgari FAQAT admin panelining o'zi (brauzerda) ochiq turgan
-  // paytda, 30 daqiqada bir marta ishlaydigan tekshiruv orqali amalga
-  // oshirilardi. Agar hech kim admin panelini o'sha payt ochib
-  // qo'ymagan bo'lsa (masalan tunda yoki dam olish kunida
-  // rejalashtirilgan bo'lsa) — xabar HECH QACHON yuborilmasdi, hech qanday
-  // xato ham ko'rsatilmasdi ("sozlama bor, lekin ishlamaydi"). Endi bu
-  // yerda, kunlik serverga asoslangan tekshiruv orqali ham (browser ochiq
-  // yoki yopiqligidan qat'i nazar) muddati o'tgan rejalashtirilgan
-  // xabarlar zaxira sifatida yuboriladi — bu aniq daqiqada emas, lekin
-  // shu kun ichida albatta yetkazilishini kafolatlaydi.
-  try {
-    const broadcasts = Array.isArray(s.scheduledBroadcasts) ? s.scheduledBroadcasts : [];
-    const due = broadcasts.filter((b) => !b.sent && new Date(b.sendAt).getTime() <= Date.now());
-    if (due.length) {
-      const customersSnap = await db.collection('customers').get();
-      const allCustomers = customersSnap.docs.map((d) => d.data());
-      const segmentTargets = (segment) => {
-        const now = Date.now();
-        return allCustomers.filter((c) => {
-          if (!c.telegramChatId) return false;
-          if (segment === 'coin') return (c.points || 0) > 0;
-          if (segment === 'active30') { const t = c.lastPurchaseAt ? new Date(c.lastPurchaseAt).getTime() : 0; return t && now - t <= 30 * 86400000; }
-          if (segment === 'inactive30') { const t = c.lastPurchaseAt ? new Date(c.lastPurchaseAt).getTime() : 0; return !t || now - t > 30 * 86400000; }
-          return true;
-        });
-      };
-      for (const b of due) {
-        const targets = b.targetType === 'customers' ? segmentTargets(b.segment) : [];
-        const full = `📢 <b>${esc(shopName)}</b>\n\n${esc(b.text)}`;
-        for (const c of targets) {
-          try { await sendToAllAdmins(token, [c.telegramChatId], full); } catch (e) { /* bittasi xato bo'lsa ham davom etamiz */ }
-        }
-        b.sent = true;
-        b.sentAt = new Date().toISOString();
-        b.sentCount = targets.length;
-      }
-      const cleaned = broadcasts.filter((b) => !b.sent || Date.now() - new Date(b.sentAt || b.sendAt).getTime() < 30 * 86400000);
-      await settingsRef.set({ scheduledBroadcasts: cleaned }, { merge: true });
-      invalidateSettingsCache();
-    }
-  } catch (e) { console.error('Rejalashtirilgan xabarlarni yuborishda xatolik:', e); }
 
   if (Object.keys(patch).length) {
     await sentLogRef.set(patch, { merge: true });

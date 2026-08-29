@@ -74,6 +74,31 @@ function debtDetailText(d, currencySymbol) {
   if (d.note) text += `   📝 Izoh: ${esc(d.note)}\n`;
   return text;
 }
+// YANGI: qarzning BARCHA (qisman) to'lovlari tarixini — sanasi va summasi
+// bilan — ko'p qatorli matn ko'rinishida tayyorlaydi. Ilgari qisman
+// to'lovlarda mijoz/admin faqat "shu safargi summa"ni ko'rar, oldingi
+// to'lovlar tarixini ko'rmas edi.
+function debtPaymentHistoryText(d, currencySymbol) {
+  if (!Array.isArray(d.payments) || !d.payments.length) return '';
+  return d.payments.map((p, i) => `   ${i + 1}) ${new Date(p.date).toLocaleString('uz-UZ')} — ${fmt(p.amount)} ${esc(currencySymbol)}`).join('\n');
+}
+// YANGI: admin qarzdorning Telegram xabarlarida qanday ko'rsatilishini
+// tanlashi mumkin (index.html'dagi debtorDisplayNameForNotify() bilan
+// bir xil sozlamalarni o'qiydi).
+function debtorDisplayNameForNotify(d, settings) {
+  const style = settings.telegramDebtorNameStyle || 'full';
+  if (style === 'generic') return settings.telegramDebtorGenericWord || 'Hurmatli mijoz';
+  if (style === 'nameonly') return d.debtorName || d.org || '';
+  return `${d.debtorName || d.org || ''}${d.org ? ' (' + d.org + ')' : ''}`;
+}
+// YANGI: to'lov xabarida ko'rsatiladigan TO'LIQ tafsilot bloki — umumiy
+// qarz, hozirgacha jami to'langan, qoldiq, va (agar bor bo'lsa) barcha
+// qisman to'lovlar tarixi. Ilgari faqat "shu safargi summa + qoldiq"
+// ko'rsatilardi.
+function debtPaymentDetailBlock(d, isFullyPaid, remainingAfter, currencySymbol) {
+  const history = debtPaymentHistoryText(d, currencySymbol);
+  return `\n\n📊 <b>Qarz holati:</b>\n📅 Qarz olingan sana: ${new Date(d.date).toLocaleString('uz-UZ')}\n💳 Umumiy qarz: ${fmt(d.total)} ${esc(currencySymbol)}\n✅ Jami to'langan: ${fmt(d.paidAmount || 0)} ${esc(currencySymbol)}\n${isFullyPaid ? "🎉 <b>To'liq to'landi!</b>" : `⏳ Qolgan qarz: <b>${fmt(remainingAfter)} ${esc(currencySymbol)}</b>`}${history ? `\n\n💰 <b>To'lovlar tarixi:</b>\n${history}` : ''}`;
+}
 
 // YANGI: "Qarz limiti". Har bir qarzdorda ixtiyoriy `creditLimit` maydoni
 // bo'lishi mumkin (0/bo'sh — cheklovsiz). Agar bo'lmasa, umumiy sozlamadagi
@@ -314,15 +339,39 @@ module.exports = async (req, res) => {
       }
       audit('pay_debt', `${d.debtorName || ''} — ${fmt(applied)} ${currencySymbol}${isFullyPaid ? ' (to\'liq yopildi)' : ''}`);
 
+      // YANGI (MUHIM — TO'LIQ BATAFSIL): "d" hali TRANZAKSIYADAN OLDINGI
+      // (eski paidAmount/payments) holatni saqlaydi — xabarda esa YANGI
+      // (shu to'lovdan keyingi) holat kerak: umumiy qarz, jami to'langan,
+      // qoldiq, va barcha to'lovlar tarixi (ayniqsa qisman to'lovlarda).
+      const dAfter = { ...d, paidAmount: (d.paidAmount || 0) + applied, payments: Array.isArray(d.payments) ? d.payments.concat([paymentRec]) : [paymentRec] };
+      const includeItems = settings.telegramDebtIncludeItems !== false;
+      const detailBlock = includeItems ? debtPaymentDetailBlock(dAfter, isFullyPaid, remaining - applied, currencySymbol) : '';
+      const payVars = { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(applied), qoldiq: isFullyPaid ? 0 : fmt(remaining - applied), qarz_sanasi: new Date(d.date).toLocaleString('uz-UZ'), tolov_sanasi: new Date(paymentRec.date).toLocaleString('uz-UZ'), umumiy: fmt(d.total), jami_tolangan: fmt(dAfter.paidAmount) };
+
+      // TUZATILDI (MUHIM): ilgari bu yerda ADMINGA hech qanday xabar
+      // ketmasdi (faqat mijozning o'ziga ketardi) — Mini App orqali
+      // to'lov qabul qilinganda admin buni faqat panelni ochib
+      // ko'rgandagina bilardi.
+      if (settings.telegramNotifyPayment !== false) {
+        const adminTargets = admins.filter((a) => a.chatId).map((a) => a.chatId);
+        if (adminTargets.length) {
+          const adminText = settings.telegramTplPaymentAdmin
+            ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplPaymentAdmin, payVars))
+            : `💵 <b>To'lov qabul qilindi</b> — ${esc(shopName)}\n\n👤 ${esc(d.debtorName || d.org || '')}\n➕ Shu safar: ${fmt(applied)} ${esc(currencySymbol)}${detailBlock}`;
+          await Promise.allSettled(adminTargets.map((cid) => tgSendMessage(token, cid, adminText)));
+        }
+      }
+
       if (d.debtorId) {
         const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
         const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
         if (cid && settings.telegramNotifyPayment !== false) {
           // TUZATILDI: ilgari admin sozlagan xabar shabloni
           // (telegramTplPayment) bu yerda umuman e'tiborga olinmasdi.
+          const custDisplayName = debtorDisplayNameForNotify(d, settings);
           const custText = settings.telegramTplPayment
-            ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(applied), qoldiq: isFullyPaid ? 0 : fmt(remaining - applied) }))
-            : `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(applied)} ${esc(currencySymbol)} to'lovingiz qabul qilindi.${isFullyPaid ? "\n🎉 Qarzingiz to'liq yopildi!" : `\nQolgan qarz: ${fmt(remaining - applied)} ${esc(currencySymbol)}`}`;
+            ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplPayment, payVars))
+            : `💵 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayName)}, ${fmt(applied)} ${esc(currencySymbol)} to'lovingiz qabul qilindi.${detailBlock}`;
           await tgSendMessage(token, cid, custText);
         }
       }
@@ -517,24 +566,27 @@ module.exports = async (req, res) => {
           const includeItems = settings.telegramDebtIncludeItems !== false;
           const itemsBlock = includeItems ? debtDoc.items.map((i) => `• ${i.productName}${i.volume ? ' (' + i.volume + 'L)' : ''} × ${i.qty} — ${fmt(i.subtotal)} ${currencySymbol}`).join('\n') : '';
           const timeLine = includeItems ? `\n🕒 Vaqti: ${new Date(now).toLocaleString('uz-UZ')}` : '';
+          const debtVars = { dokon: shopName, mijoz: debtorData.name + (debtorData.org ? ' (' + debtorData.org + ')' : ''), summa: fmt(total), tovarlar: itemsBlock, sana: new Date(now).toLocaleString('uz-UZ') };
           const adminTargets = admins.filter((a) => a.chatId).map((a) => a.chatId);
           if (adminTargets.length) {
             const adminText = settings.telegramTplNewDebtAdmin
-              ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplNewDebtAdmin, { dokon: shopName, mijoz: debtorData.name + (debtorData.org ? ' (' + debtorData.org + ')' : ''), summa: fmt(total) }))
+              ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplNewDebtAdmin, debtVars))
               : `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debtorData.name)}${debtorData.org ? ' (' + esc(debtorData.org) + ')' : ''}${itemsBlock ? `\n\n${esc(itemsBlock)}` : ''}\n💰 Summa: ${fmt(total)} ${esc(currencySymbol)}${timeLine}`;
             await Promise.allSettled(adminTargets.map((cid) => tgSendMessage(token, cid, adminText)));
           }
-        }
-        if (debtorData.telegramChatId && settings.telegramNotifyNewDebt !== false) {
-          // TUZATILDI: ilgari bu yerda admin "✍️ Mijozga yuboriladigan
-          // xabar matni"da yozgan shabloni UMUMAN e'tiborga olinmasdi —
-          // faqat index.html orqali yozilgan qarzda ishlardi. Endi bu
-          // yerda ham xuddi shunday qo'llaniladi (shablon bo'lmasa, oldingi
-          // batafsil — tovarlar ro'yxati bilan — standart xabar qoladi).
-          const text = settings.telegramTplNewDebt
-            ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplNewDebt, { dokon: shopName, summa: fmt(total) }))
-            : `🧾 <b>${esc(shopName)}</b>\n\nSizga yangi qarz yozildi:\n\n${debtDetailText(debtDoc, currencySymbol)}\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>`;
-          await tgSendMessage(token, debtorData.telegramChatId, text);
+          if (debtorData.telegramChatId) {
+            // TUZATILDI: ilgari bu yerda admin "✍️ Mijozga yuboriladigan
+            // xabar matni"da yozgan shabloni UMUMAN e'tiborga olinmasdi —
+            // faqat index.html orqali yozilgan qarzda ishlardi. Endi bu
+            // yerda ham xuddi shunday qo'llaniladi (shablon bo'lmasa,
+            // oldingi batafsil — tovarlar ro'yxati bilan — standart xabar
+            // qoladi).
+            const custDisplayNameSell = debtorDisplayNameForNotify(debtDoc, settings);
+            const text = settings.telegramTplNewDebt
+              ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settings.telegramTplNewDebt, debtVars))
+              : `🧾 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayNameSell)}, sizga yangi qarz yozildi:\n\n${debtDetailText(debtDoc, currencySymbol)}\n💰 Jami: <b>${fmt(total)} ${esc(currencySymbol)}</b>`;
+            await tgSendMessage(token, debtorData.telegramChatId, text);
+          }
         }
         audit('sell_debt', `${debtorData.name || ''} — ${fmt(total)} ${currencySymbol}`);
 
@@ -675,8 +727,20 @@ module.exports = async (req, res) => {
         amount: amt, date: now, note: note || '', by: 'Mini App orqali',
       });
 
-      if (debtorData.telegramChatId) {
-        const text = `💵 <b>${esc(shopName)}</b>\n\nKassadan sizga <b>${fmt(amt)} ${esc(currencySymbol)}</b> naqd pul berildi va bu summa qarz sifatida yozildi.${note ? `\n📝 Izoh: ${esc(note)}` : ''}`;
+      // TUZATILDI (izchillik + MUHIM): boshqa qarz turlari (sotuv/qarz,
+      // /qarz_qoshish) bilan bir xil — endi bu yerda ham (1) adminga xabar
+      // ketadi (ilgari umuman ketmasdi), (2) mijozga xabarda uning nomi
+      // admin tanlagan uslubda ko'rsatiladi, (3) vaqt ko'rsatiladi.
+      if (settings.telegramNotifyNewDebt !== false) {
+        const adminTargets = admins.filter((a) => a.chatId).map((a) => a.chatId);
+        if (adminTargets.length) {
+          const adminText = `💵 <b>Kassadan naqd pul berildi</b> — ${esc(shopName)}\n\n👤 ${esc(debtorData.name)}${debtorData.org ? ' (' + esc(debtorData.org) + ')' : ''}\n💰 Summa: ${fmt(amt)} ${esc(currencySymbol)}${note ? `\n📝 Izoh: ${esc(note)}` : ''}\n🕒 Vaqti: ${new Date(now).toLocaleString('uz-UZ')}`;
+          await Promise.allSettled(adminTargets.map((cid) => tgSendMessage(token, cid, adminText)));
+        }
+      }
+      if (debtorData.telegramChatId && settings.telegramNotifyNewDebt !== false) {
+        const custDisplayNameCL = debtorDisplayNameForNotify(debtDoc, settings);
+        const text = `💵 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayNameCL)}, kassadan sizga <b>${fmt(amt)} ${esc(currencySymbol)}</b> naqd pul berildi va bu summa qarz sifatida yozildi.${note ? `\n📝 Izoh: ${esc(note)}` : ''}\n🕒 Vaqti: ${new Date(now).toLocaleString('uz-UZ')}`;
         await tgSendMessage(token, debtorData.telegramChatId, text);
       }
 

@@ -54,6 +54,23 @@ function fillTelegramTemplate(tpl, vars) {
 function phoneKey(phone) { return String(phone || '').replace(/\D/g, '').slice(-9); }
 function usernameKey(u) { return String(u || '').replace(/^@/, '').trim().toLowerCase(); }
 function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); return rem > 0.5 ? rem : 0; }
+// YANGI: miniapp-action.js/index.html bilan bir xil — to'lov xabarida
+// ko'rsatiladigan TO'LIQ tafsilot bloki (umumiy qarz, jami to'langan,
+// qoldiq, barcha qisman to'lovlar tarixi).
+function debtPaymentDetailBlock(d, isFullyPaid, remainingAfter) {
+  const history = Array.isArray(d.payments) && d.payments.length
+    ? d.payments.map((p, i) => `   ${i + 1}) ${new Date(p.date).toLocaleString('uz-UZ')} — ${fmt(p.amount)} so'm`).join('\n')
+    : '';
+  return `\n\n📊 <b>Qarz holati:</b>\n📅 Qarz olingan sana: ${new Date(d.date).toLocaleString('uz-UZ')}\n💳 Umumiy qarz: ${fmt(d.total)} so'm\n✅ Jami to'langan: ${fmt(d.paidAmount || 0)} so'm\n${isFullyPaid ? "🎉 <b>To'liq to'landi!</b>" : `⏳ Qolgan qarz: <b>${fmt(remainingAfter)} so'm</b>`}${history ? `\n\n💰 <b>To'lovlar tarixi:</b>\n${history}` : ''}`;
+}
+// YANGI: admin qarzdorning Telegram xabarlarida qanday ko'rsatilishini
+// tanlashi mumkin (index.html/miniapp-action.js bilan bir xil sozlama).
+function debtorDisplayNameForNotify(d, settings) {
+  const style = settings.telegramDebtorNameStyle || 'full';
+  if (style === 'generic') return settings.telegramDebtorGenericWord || 'Hurmatli mijoz';
+  if (style === 'nameonly') return d.debtorName || d.org || '';
+  return `${d.debtorName || d.org || ''}${d.org ? ' (' + d.org + ')' : ''}`;
+}
 // Kun vaqtiga qarab iliqroq salomlashish (Toshkent vaqti, UTC+5) — /start
 // xabarini shunchaki quruq buyruqlar ro'yxati emas, biroz "jonli" qiladi.
 function greetingWord() {
@@ -1195,7 +1212,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     // tranzaksiyani avtomatik qayta urinadi va har doim ENG YANGI
     // ma'lumot asosida hisoblaydi (qo'sh hisoblanish/qarz limitidan
     // oshib to'lov qabul qilinishi oldini oladi).
-    let d, applied, remaining, isFullyPaid;
+    let d, applied, remaining, isFullyPaid, paymentDate;
     try {
       await db.runTransaction(async (tx) => {
         const debtSnap = await tx.get(debtRef);
@@ -1205,6 +1222,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
         if (remaining <= 0) { const e = new Error('already_paid'); e.code = 400; throw e; }
         applied = Math.min(Math.round(amount), Math.round(remaining));
         const payment = { amount: applied, date: new Date().toISOString(), note: 'Telegram bot orqali', by: 'Telegram admin' };
+        paymentDate = payment.date;
         const newPaidAmount = (d.paidAmount || 0) + applied;
         isFullyPaid = d.total - newPaidAmount <= 0.5;
         const patch = { paidAmount: newPaidAmount, payments: Array.isArray(d.payments) ? d.payments.concat([payment]) : [payment] };
@@ -1217,14 +1235,23 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
       throw e;
     }
     await logAction(db, { source: 'bot', actorName: adminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_payment', detail: `${d.debtorName || d.org || '?'} — ${applied} so'm (/tolov)` });
-    await sendMessage(token, chatId, `✅ ${fmt(applied)} so'm to'lov qabul qilindi: ${esc(d.debtorName || d.org || '')}${isFullyPaid ? '\n🎉 Qarz to\'liq yopildi!' : `\nQoldiq: ${fmt(remaining - applied)} so'm`}`);
+    // YANGI (TO'LIQ BATAFSIL): "d" tranzaksiyadan OLDINGI holatni saqlaydi —
+    // xabar uchun YANGI (shu to'lovdan keyingi) holatni quramiz: umumiy
+    // qarz, jami to'langan, qoldiq, va (qisman to'lovlar bo'lsa) ularning
+    // to'liq tarixi.
+    const dAfter0 = { ...d, paidAmount: (d.paidAmount || 0) + applied, payments: Array.isArray(d.payments) ? d.payments.concat([{ amount: applied, date: paymentDate }]) : [{ amount: applied, date: paymentDate }] };
+    const includeItems0 = settingsData0?.telegramDebtIncludeItems !== false;
+    const detailBlock0 = includeItems0 ? debtPaymentDetailBlock(dAfter0, isFullyPaid, remaining - applied) : '';
+    await sendMessage(token, chatId, `✅ ${fmt(applied)} so'm to'lov qabul qilindi: ${esc(d.debtorName || d.org || '')}${detailBlock0}`);
     if (d.debtorId) {
       const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
       const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
       if (cid) {
+        const payVars = { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(applied), qoldiq: isFullyPaid ? 0 : fmt(remaining - applied), qarz_sanasi: new Date(d.date).toLocaleString('uz-UZ'), tolov_sanasi: new Date(paymentDate).toLocaleString('uz-UZ'), umumiy: fmt(d.total), jami_tolangan: fmt(dAfter0.paidAmount) };
+        const custDisplayName0 = debtorDisplayNameForNotify(d, settingsData0 || {});
         const custText = settingsData0?.telegramTplPayment
-          ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsData0.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(applied), qoldiq: isFullyPaid ? 0 : fmt(remaining - applied) }))
-          : `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(applied)} so'm to'lovingiz qabul qilindi.${isFullyPaid ? "\n🎉 Qarzingiz to'liq yopildi!" : `\nQolgan qarz: ${fmt(remaining - applied)} so'm`}`;
+          ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsData0.telegramTplPayment, payVars))
+          : `💵 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayName0)}, ${fmt(applied)} so'm to'lovingiz qabul qilindi.${detailBlock0}`;
         await sendMessage(token, cid, custText);
       }
     }
@@ -1262,9 +1289,10 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
       // yozilgani" aniq bo'lsin).
       const noteLine = includeItems && debt.note ? `\n📝 ${esc(debt.note)}` : '';
       const timeLine = includeItems ? `\n🕒 Vaqti: ${new Date(now).toLocaleString('uz-UZ')}` : '';
+      const custDisplayNameQ = debtorDisplayNameForNotify(debt, settingsData0 || {});
       const custText = settingsData0?.telegramTplNewDebt
         ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsData0.telegramTplNewDebt, { dokon: shopName, summa: fmt(amount) })) + noteLine
-        : `🧾 <b>${esc(shopName)}</b>\n\nSizga ${fmt(amount)} so'm qarz yozildi.${noteLine}${timeLine}\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
+        : `🧾 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayNameQ)}, sizga ${fmt(amount)} so'm qarz yozildi.${noteLine}${timeLine}\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
       await sendMessage(token, debtor.data().telegramChatId, custText).catch(() => {});
     }
     return;
@@ -1854,7 +1882,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   // "remaining" qiymatini qo'shib yuborib, qarzni haqiqiy summasidan ortiq
   // to'langan deb belgilab qo'yishi mumkin edi. Endi butun o'qish+yozish
   // db.runTransaction() ichida, ENG YANGI ma'lumot asosida bajariladi.
-  let d, remaining;
+  let d, remaining, paymentDate;
   try {
     await db.runTransaction(async (tx) => {
       const debtSnap = await tx.get(debtRef);
@@ -1863,6 +1891,7 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
       remaining = debtRemaining(d);
       if (remaining <= 0) { const e = new Error('already_paid'); e.code = 400; throw e; }
       const payment = { amount: remaining, date: new Date().toISOString(), note: "Telegram bot orqali (tez tugma)", by: 'Telegram admin' };
+      paymentDate = payment.date;
       tx.update(debtRef, {
         paidAmount: (d.paidAmount || 0) + remaining,
         payments: Array.isArray(d.payments) ? d.payments.concat([payment]) : [payment],
@@ -1878,7 +1907,8 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
   await logAction(db, { source: 'bot', actorName: cqAdminEntry?.name || 'Telegram admin', actorChatId: chatId, action: 'debt_payment', detail: `${d.debtorName || d.org || '?'} — ${remaining} so'm (tez tugma to'liq to'lov)` });
   await answerCallbackQuery(token, cq.id, `✅ ${fmt(remaining)} so'm — to'liq yopildi!`);
   if (cq.message && cq.message.text) {
-    const newText = cq.message.text + `\n\n✅ <b>${esc(d.debtorName || d.org || '?')}</b> qarzi (${fmt(remaining)} so'm) hozir to'liq yopildi.`;
+    // TUZATILDI: qarz olingan va to'langan sana ikkalasi ham ko'rsatiladi.
+    const newText = cq.message.text + `\n\n✅ <b>${esc(d.debtorName || d.org || '?')}</b> qarzi (${fmt(remaining)} so'm) hozir to'liq yopildi.\n📅 Qarz olingan: ${new Date(d.date).toLocaleString('uz-UZ')}\n✅ To'langan: ${new Date(paymentDate).toLocaleString('uz-UZ')}`;
     await editMessageText(token, chatId, cq.message.message_id, newText).catch(() => {});
   }
   if (d.debtorId) {
@@ -1886,10 +1916,13 @@ async function handleCallbackQuery(db, token, settingsRef, admins, cq, req) {
     const shopName = settingsPF?.shopName || "Do'kon";
     const debtorSnap = await db.collection('debtors').doc(d.debtorId).get();
     const cid = debtorSnap.exists ? debtorSnap.data().telegramChatId : null;
+    const dAfterPF = { ...d, paidAmount: (d.paidAmount || 0) + remaining, payments: Array.isArray(d.payments) ? d.payments.concat([{ amount: remaining, date: paymentDate }]) : [{ amount: remaining, date: paymentDate }] };
+    const detailBlockPF = settingsPF?.telegramDebtIncludeItems !== false ? debtPaymentDetailBlock(dAfterPF, true, 0) : '';
     if (cid) {
+      const custDisplayNamePF = debtorDisplayNameForNotify(d, settingsPF || {});
       const custText = settingsPF?.telegramTplPayment
-        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsPF.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(remaining), qoldiq: 0 }))
-        : `💵 <b>${esc(shopName)}</b>\n\nSizning ${fmt(remaining)} so'm to'lovingiz qabul qilindi.\n🎉 Qarzingiz to'liq yopildi!`;
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(settingsPF.telegramTplPayment, { dokon: shopName, mijoz: d.debtorName || d.org || '', summa: fmt(remaining), qoldiq: 0, qarz_sanasi: new Date(d.date).toLocaleString('uz-UZ'), tolov_sanasi: new Date(paymentDate).toLocaleString('uz-UZ'), umumiy: fmt(d.total), jami_tolangan: fmt(dAfterPF.paidAmount) }))
+        : `💵 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayNamePF)}, ${fmt(remaining)} so'm to'lovingiz qabul qilindi.${detailBlockPF}`;
       await sendMessage(token, cid, custText).catch(() => {});
     }
   }
