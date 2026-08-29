@@ -2319,6 +2319,16 @@ body.dark table {
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-newdebt" checked>🆕 Yangi qarz yozilganda darhol xabar (admin + mijozning o'ziga)</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px;padding-left:1.5rem"><input type="checkbox" id="tg-debt-include-items" checked>📦 Xabarda qaysi mahsulot va qachon sotib olinganini ham ko'rsatish</label>
       <label style="display:flex;align-items:center;gap:.4rem;font-size:13px"><input type="checkbox" id="tg-notify-payment" checked>💵 To'lov qabul qilinganda darhol xabar (admin + mijozning o'ziga)</label>
+      <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border2)">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:.35rem">👤 Mijozga yuboriladigan xabarda uni qanday nomlash</label>
+        <select id="tg-debtor-name-style" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;margin-bottom:.4rem">
+          <option value="full">To'liq (Ism + Tashkilot) — masalan "Abduqodir (Moyka)"</option>
+          <option value="nameonly">Faqat ism — masalan "Abduqodir"</option>
+          <option value="generic">Umumiy so'z (pastda kiriting)</option>
+        </select>
+        <input type="text" id="tg-debtor-generic-word" placeholder="Masalan: Hurmatli mijoz" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none">
+        <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu — mijozning O'ZIGA yuboriladigan xabarda "Hurmatli ..." so'zidan keyin ko'rsatiladi. Adminga yuboriladigan xabarda esa aniqlik uchun har doim to'liq ism+tashkilot ko'rsatiladi.</p>
+      </div>
     </div>
 
     <!-- YANGI: JIM SOATLAR — kam qolgan tovar / muddati o'tgan qarz / kunlik
@@ -2368,13 +2378,13 @@ body.dark table {
       <label style="font-weight:600;font-size:13.5px;display:block;margin-bottom:.5rem">✍️ Mijozga yuboriladigan xabar matnlari</label>
       <div class="field" style="margin-bottom:.6rem">
         <label style="font-size:12px">🆕 Yangi qarz yozilganda (mijozga)</label>
-        <textarea id="tg-tpl-newdebt" rows="2" maxlength="400" placeholder="Sizga {summa} so'm qarz yozildi.\nIltimos, imkon qadar tez to'lashga harakat qiling." style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+        <textarea id="tg-tpl-newdebt" rows="2" maxlength="400" placeholder="Sizga {summa} so'm qarz yozildi ({sana}).\n{tovarlar}\nIltimos, imkon qadar tez to'lashga harakat qiling." style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
       </div>
       <div class="field" style="margin-bottom:.4rem">
         <label style="font-size:12px">💵 To'lov qabul qilinganda (mijozga)</label>
-        <textarea id="tg-tpl-payment" rows="2" maxlength="400" placeholder="{summa} so'm to'lovingiz qabul qilindi.\nQolgan qarz: {qoldiq} so'm" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+        <textarea id="tg-tpl-payment" rows="2" maxlength="400" placeholder="{summa} so'm to'lovingiz qabul qilindi ({tolov_sanasi}).\nQolgan qarz: {qoldiq} so'm" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
       </div>
-      <p style="font-size:11px;color:var(--text3)">O'zgaruvchilar: <code>{dokon}</code> — do'kon nomi, <code>{summa}</code> — shu safargi summa, <code>{qoldiq}</code> — qolgan qarz (to'liq to'langanda avtomatik "0" yoki tabriknoma qo'shiladi). Bo'sh qoldirsangiz — standart matn ishlatiladi.</p>
+      <p style="font-size:11px;color:var(--text3)">O'zgaruvchilar: <code>{dokon}</code> — do'kon nomi, <code>{summa}</code> — shu safargi summa, <code>{qoldiq}</code> — qolgan qarz (to'liq to'langanda avtomatik "0" yoki tabriknoma qo'shiladi), <code>{tovarlar}</code> — sotib olingan mahsulotlar ro'yxati, <code>{sana}</code> — qarz yozilgan sana/vaqt (yangi qarz xabarida), <code>{qarz_sanasi}</code>/<code>{tolov_sanasi}</code> — qarz olingan/to'langan sana (to'lov xabarida). Bo'sh qoldirsangiz — standart matn ishlatiladi (u avtomatik ravishda mahsulotlar va sanalarni ham qo'shadi).</p>
     </div>
 
     <!-- YANGI: ADMINLARGA YUBORILADIGAN XABAR MATNLARINI TAHRIRLASH — davriy
@@ -2568,6 +2578,12 @@ body.dark table {
       <button class="btn green" onclick="window.exportFullBackup && window.exportFullBackup()">⬇ Zaxira nusxa yuklab olish</button>
       <button class="btn amber" onclick="document.getElementById('backup-restore-input').click()">⬆ Fayldan tiklash</button>
       <input type="file" id="backup-restore-input" accept="application/json" style="display:none" onchange="window.importFullBackup && window.importFullBackup(this)">
+    </div>
+    <div class="field" style="margin-top:.85rem;border-top:1px dashed var(--border2);padding-top:.75rem">
+      <label style="font-weight:600">🗜️ Mahsulot rasmlarini siqish (tezlikni oshirish)</label>
+      <p style="font-size:12px;color:var(--text3);margin:.3rem 0 .6rem">Agar mahsulotlarga telefon kamerasidan to'g'ridan-to'g'ri, siqilmagan (katta hajmli) rasm qo'yilgan bo'lsa — bu Mini App'ning sekin ishlashiga sabab bo'ladi. Bu tugma BARCHA mahsulot rasmlarini bir martalik tekshirib, 300 KB dan katta bo'lganlarini avtomatik kichraytirib, qayta saqlaydi. Xavfsiz — faqat rasm sifatini biroz kamaytiradi, boshqa hech narsani o'zgartirmaydi.</p>
+      <button class="btn sm" onclick="window.compressAllProductImages && window.compressAllProductImages()">🗜️ Barcha rasmlarni siqish</button>
+      <div id="compress-images-progress" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
     </div>
     <div class="field" style="margin-top:.85rem;border-top:1px dashed var(--border2);padding-top:.75rem">
       <label>⏰ Eslatma: zaxira olinmasa necha kunda ogohlantirilsin</label>
@@ -4604,7 +4620,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramDebtIncludeItems: true, telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramTplLowstock: '', telegramTplOverdue: '', telegramTplDaily: '', telegramTplNewDebtAdmin: '', telegramTplPaymentAdmin: '', telegramAutoReplyOutsideHours: false, telegramButtonLabels: null, scheduledBroadcasts: [], animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], scheduledBroadcasts: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramDebtIncludeItems: true, telegramDebtorNameStyle: 'full', telegramDebtorGenericWord: '', telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramTplLowstock: '', telegramTplOverdue: '', telegramTplDaily: '', telegramTplNewDebtAdmin: '', telegramTplPaymentAdmin: '', telegramAutoReplyOutsideHours: false, telegramButtonLabels: null, scheduledBroadcasts: [], animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null };
 // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
 // qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
 // qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
@@ -4942,7 +4958,7 @@ async function fbSaveSettings(){
   // kutishdan OLDIN, bitta "payload" obyektiga "suratga olinadi" — shu
   // sabab keyingi tinglagich yangilanishlari saqlanayotgan qiymatga
   // TA'SIR QILA OLMAYDI.
-  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7]};
+  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7]};
   (async ()=>{
     let versionForSave = localV+1;
     try{
@@ -5575,6 +5591,8 @@ function startListeners(){
       DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
       DB.telegramNotifyNewDebt=(d.telegramNotifyNewDebt===false)?false:true;
       DB.telegramDebtIncludeItems=(d.telegramDebtIncludeItems===false)?false:true;
+      DB.telegramDebtorNameStyle=d.telegramDebtorNameStyle||'full';
+      DB.telegramDebtorGenericWord=d.telegramDebtorGenericWord||'';
       DB.telegramNotifyPayment=(d.telegramNotifyPayment===false)?false:true;
       DB.telegramQuietHoursEnabled=!!d.telegramQuietHoursEnabled;
       DB.telegramQuietFrom=d.telegramQuietFrom||'22:00';
@@ -5899,6 +5917,8 @@ async function init(){
           DB.telegramNotifyDailyReport=!!d.telegramNotifyDailyReport;
           DB.telegramNotifyNewDebt=(d.telegramNotifyNewDebt===false)?false:true;
           DB.telegramDebtIncludeItems=(d.telegramDebtIncludeItems===false)?false:true;
+          DB.telegramDebtorNameStyle=d.telegramDebtorNameStyle||'full';
+          DB.telegramDebtorGenericWord=d.telegramDebtorGenericWord||'';
           DB.telegramNotifyPayment=(d.telegramNotifyPayment===false)?false:true;
           DB.telegramQuietHoursEnabled=!!d.telegramQuietHoursEnabled;
           DB.telegramQuietFrom=d.telegramQuietFrom||'22:00';
@@ -5918,6 +5938,17 @@ async function init(){
           DB.uiSoundEnabled=!!d.uiSoundEnabled;
           DB.uiVibrationEnabled=!!d.uiVibrationEnabled;
           DB.uiSoundVolume=(typeof d.uiSoundVolume==='number')?d.uiSoundVolume:0.16;
+          // TUZATILDI: bu 4 maydon ilgari faqat asosiy (onSnapshot) real-
+          // vaqtli tinglagichda o'qilardi, shu tezkor dastlabki yuklashda
+          // esa YO'Q edi — natijada sahifa ochilgan zahoti (real
+          // tinglagich hali ulgurmagan bir lahzada) coin/mini-app
+          // sozlamalari standart holatda "yaltirab" ko'rinib, keyin to'satdan
+          // to'g'ri holatga almashardi (kichik, lekin sezilarli g'alati
+          // ko'rinish).
+          DB.coinSettings=(d.coinSettings && typeof d.coinSettings==='object')?d.coinSettings:window.getDefaultCoinSettings();
+          DB.coinEnabled=(d.coinEnabled===false)?false:true;
+          DB.telegramCommandsConfig=(d.telegramCommandsConfig && typeof d.telegramCommandsConfig==='object')?d.telegramCommandsConfig:null;
+          DB.miniAppSectionsConfig=(d.miniAppSectionsConfig && typeof d.miniAppSectionsConfig==='object')?d.miniAppSectionsConfig:null;
           DB.toastPosition=d.toastPosition||'bottom-right';
           DB.restrictedAdminPin=d.restrictedAdminPin||'';
           DB.restrictedAdminPermissions=d.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false};
@@ -6685,15 +6716,94 @@ window.previewImg=function(){
   const wrap=document.getElementById('img-preview-wrap'); const prev=document.getElementById('img-preview');
   if(url){ prev.src=url; wrap.style.display='block'; } else wrap.style.display='none';
 }
+// TUZATILDI (MUHIM — TEZLIK): ilgari bu yerda telefon kamerasining TO'LIQ
+// hajmdagi (ko'pincha 2-8+ MB) rasmi hech qanday siqishsiz to'g'ridan-
+// to'g'ri Firestore'ga saqlanardi. Do'konda 50+ mahsulot bo'lsa va
+// ularning ko'pchiligiga shunday katta rasm qo'yilgan bo'lsa, mahsulotlar
+// to'plamining umumiy hajmi o'nlab megabaytga yetishi mumkin edi — bu esa
+// Telegram Mini App HAR BIR amaldan keyin (loadData()) shu BARCHA
+// rasmlarni qayta yuklashi kerak bo'lgani uchun, ilovaning "juda sekin"
+// ishlashining asosiy sababi edi. Endi rasm avval kichik <canvas>'ga
+// chizilib, KICHIKROQ o'lchamda (maksimal 700px) va siqilgan (JPEG, 70%)
+// holda saqlanadi — odatda bir necha MB o'rniga 30-100 KB atrofida
+// bo'ladi, deyarli ko'zga ko'rinmas sifat yo'qotish bilan.
 window.loadImgFile=function(input){
   const file=input.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=e=>{
-    document.getElementById('p-img').value=e.target.result;
-    document.getElementById('img-preview').src=e.target.result;
-    document.getElementById('img-preview-wrap').style.display='block';
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=700;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){ h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; } }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      let dataUrl;
+      try{ dataUrl=canvas.toDataURL('image/jpeg',0.7); }catch(err){ dataUrl=e.target.result; } // siqib bo'lmasa — asl holicha
+      document.getElementById('p-img').value=dataUrl;
+      document.getElementById('img-preview').src=dataUrl;
+      document.getElementById('img-preview-wrap').style.display='block';
+    };
+    img.onerror=()=>{
+      // Rasm sifatida o'qib bo'lmasa (kamdan-kam) — asl faylni saqlaymiz.
+      document.getElementById('p-img').value=e.target.result;
+      document.getElementById('img-preview').src=e.target.result;
+      document.getElementById('img-preview-wrap').style.display='block';
+    };
+    img.src=e.target.result;
   };
   reader.readAsDataURL(file);
+}
+// YANGI: bir martalik "texnik xizmat" vositasi — allaqachon Firestore'da
+// saqlangan, siqilmagan (katta hajmli) mahsulot rasmlarini topib, ularni
+// kichraytirib qayta saqlaydi. loadImgFile() endi YANGI yuklanadigan
+// rasmlarni avtomatik siqadi, lekin BUNDAN OLDIN yuklangan rasmlar
+// (masalan telefon kamerasidan to'g'ridan-to'g'ri) hali ham katta bo'lib
+// qolishi mumkin — bu vosita ularni ham "tozalaydi".
+window.compressAllProductImages = async function(){
+  const progEl = document.getElementById('compress-images-progress');
+  const setProg = (msg)=>{ if(progEl) progEl.textContent = msg; };
+  // Base64 data-URL uzunligidan taxminiy bayt hajmini hisoblaymiz
+  // (haqiqiy fayl I/O qilmasdan tezkor tekshirish uchun).
+  const approxBytes = (dataUrl)=> Math.round((dataUrl.length - (dataUrl.indexOf(',')+1)) * 3/4);
+  const targets = (DB.products||[]).filter(p=>p.img && p.img.startsWith('data:') && approxBytes(p.img) > 300*1024);
+  if(!targets.length){ setProg("✓ Siqish kerak bo'lgan katta rasm topilmadi — hammasi allaqachon yaxshi holatda."); return; }
+  if(!confirm(`${targets.length} ta mahsulotda katta hajmli rasm topildi. Ularni siqib, qayta saqlaymi? Bu bir necha daqiqa vaqt olishi mumkin.`)) return;
+  let done=0, failed=0, savedBytes=0;
+  for(const p of targets){
+    setProg(`Siqilmoqda: ${done+failed+1}/${targets.length} — ${p.name||''}`);
+    try{
+      const compressed = await new Promise((resolve,reject)=>{
+        const img = new Image();
+        img.onload=()=>{
+          const MAX=700;
+          let w=img.width, h=img.height;
+          if(w>MAX||h>MAX){ if(w>h){ h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; } }
+          const canvas=document.createElement('canvas');
+          canvas.width=w; canvas.height=h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          try{ resolve(canvas.toDataURL('image/jpeg',0.7)); }catch(e){ reject(e); }
+        };
+        img.onerror=reject;
+        img.src=p.img;
+      });
+      const before = approxBytes(p.img), after = approxBytes(compressed);
+      if(after < before){
+        // TUZATILDI (izchillik): oldingi kirim/chiqim tuzatishlaridagi
+        // bilan bir xil sabab — butun mahsulotni qayta yozish o'rniga,
+        // faqat "img" maydonini ATOMIK yangilaymiz.
+        await fbUpdateProductFields(p.id, {img: compressed});
+        p.img = compressed;
+        savedBytes += (before-after);
+      }
+      done++;
+    }catch(e){ failed++; console.error('Rasm siqishda xatolik:', p.name, e); }
+    await new Promise(r=>setTimeout(r,120)); // Firestore'ni haddan tashqari yuklamaslik uchun kichik tanaffus
+  }
+  refreshProductViews();
+  setProg(`✓ Tugadi: ${done} ta rasm siqildi (${Math.round(savedBytes/1024/1024*10)/10} MB tejaldi)${failed?`, ${failed} tasi o'tkazib yuborildi (xato)`:''}.`);
+  toast(`✓ ${done} ta rasm siqildi`,'green');
 }
 // Tovar tahrirlashni yakunlaydi: saqlaydi va narx o'zgargan bo'lsa audit
 // jurnaliga yozadi (narx tarixi shaffofligi uchun).
@@ -9914,6 +10024,25 @@ function debtItemsLinesForNotify(debt){
   if(!Array.isArray(debt.items) || !debt.items.length) return '';
   return debt.items.map(i=>`• ${i.productName}${i.volume?' ('+i.volume+'L)':''} × ${i.qty} — ${fmt(i.subtotal||i.price*i.qty||0)} so'm`).join('\n');
 }
+// YANGI: admin qarzdorning Telegram xabarlarida qanday ko'rsatilishini
+// tanlashi mumkin — "To'liq (Ism + Tashkilot)" [standart], "Faqat ism",
+// yoki "Hurmatli mijoz" kabi umumiy so'z. Sozlama: DB.telegramDebtorNameStyle
+// ('full' | 'nameonly' | 'generic'), generic bo'lsa DB.telegramDebtorGenericWord
+// matnidan foydalaniladi.
+function debtorDisplayNameForNotify(debt){
+  const style = DB.telegramDebtorNameStyle || 'full';
+  if(style==='generic') return DB.telegramDebtorGenericWord || 'Hurmatli mijoz';
+  if(style==='nameonly') return debt.debtorName||debt.org||'';
+  return `${debt.debtorName||debt.org||''}${debt.org?' ('+debt.org+')':''}`;
+}
+// YANGI: qarzning BARCHA (qisman) to'lovlari tarixini — har birining
+// sanasi va summasi bilan — ko'p qatorli matn ko'rinishida tayyorlaydi.
+// Qisman to'lovlarda mijoz/admin "qachon, qancha to'laganini" to'liq
+// ko'rishi uchun ishlatiladi.
+function debtPaymentHistoryLines(debt){
+  if(!Array.isArray(debt.payments) || !debt.payments.length) return '';
+  return debt.payments.map((p,i)=>`   ${i+1}) ${timeStr(p.date)} — ${fmt(p.amount)} so'm`).join('\n');
+}
 function notifyNewDebtCreated(debt, debtorObj){
   try{
     if(!DB.telegramBotToken) return;
@@ -9925,20 +10054,28 @@ function notifyNewDebtCreated(debt, debtorObj){
     // mahsulot uchun qarz yozilgani"ni bilishni xohlaydi.
     const includeItems = DB.telegramDebtIncludeItems!==false;
     const itemsBlock = includeItems ? debtItemsLinesForNotify(debt) : '';
-    const timeLine = includeItems ? `\n🕒 Vaqti: ${timeStr(debt.date)}` : '';
+    // YANGI: {tovarlar} va {sana} endi HAQIQIY shablon o'zgaruvchilari —
+    // admin o'z matnida ularni istagan joyga qo'yishi mumkin. Agar admin
+    // O'Z shablonini yozgan bo'lsa, tayyor matnga avtomatik qo'shib
+    // QO'YMAYMIZ (aks holda ikki marta chiqib qolardi) — faqat standart
+    // (tayyor) xabarda avtomatik qo'shiladi.
+    const vars = { dokon: shopName, mijoz: (debt.debtorName||debt.org||'')+(debt.org?' ('+debt.org+')':''), summa: fmt(debt.total), tovarlar: itemsBlock, sana: timeStr(debt.date) };
     if(getTelegramChatIds().length){
       const adminText = DB.telegramTplNewDebtAdmin
-        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebtAdmin, { dokon: shopName, mijoz: (debt.debtorName||debt.org||'')+(debt.org?' ('+debt.org+')':''), summa: fmt(debt.total) }))
-        : `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n💰 Summa: ${fmt(debt.total)} so'm${timeLine}`;
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebtAdmin, vars))
+        : `🆕 <b>Yangi qarz</b> — ${esc(shopName)}\n\n👤 ${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n💰 Summa: ${fmt(debt.total)} so'm${includeItems?`\n🕒 Vaqti: ${timeStr(debt.date)}`:''}`;
       sendTelegramMessage(adminText).catch(()=>{});
     }
     const chatId = debtorObj && debtorObj.telegramChatId;
     if(chatId){
       // YANGI: admin "✍️ Mijozga yuboriladigan xabar matnlari"da o'z
       // matnini yozgan bo'lsa — shuni, aks holda standart matnni ishlatadi.
+      // Sarlavhada qarzdor qanday nomlanishi ("To'liq ism (Tashkilot)" /
+      // "Faqat ism" / umumiy so'z) — sozlamalarda tanlanadi.
+      const custDisplayName = debtorDisplayNameForNotify(debt);
       const custText = DB.telegramTplNewDebt
-        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebt, { dokon: shopName, summa: fmt(debt.total) })) + (itemsBlock?`\n\n${esc(itemsBlock)}`:'')
-        : `🧾 <b>${esc(shopName)}</b>\n\nSizga qarz yozildi:${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n💰 Jami: <b>${fmt(debt.total)} so'm</b>${timeLine}\n\nBatafsil ma'lumot va to'lov tarixini "Mening qarzlarim" bo'limidan ko'rishingiz mumkin.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplNewDebt, vars))
+        : `🧾 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayName)}, sizga qarz yozildi:${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n💰 Jami: <b>${fmt(debt.total)} so'm</b>${includeItems?`\n🕒 Vaqti: ${timeStr(debt.date)}`:''}\n\nBatafsil ma'lumot va to'lov tarixini "Mening qarzlarim" bo'limidan ko'rishingiz mumkin.\nIltimos, imkon qadar tez to'lashga harakat qiling.`;
       sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
     }
   }catch(e){ console.error('notifyNewDebtCreated xatolik:', e); }
@@ -9952,19 +10089,38 @@ function notifyDebtPayment(debt, payment, isFullyPaid, remainingAfter){
     if(DB.telegramNotifyPayment===false) return; // YANGI: admin bu xabarni o'chirib qo'yishi mumkin
     const shopName = DB.shopName||"Do'kon";
     const who = `${esc(debt.debtorName||debt.org||'')}${debt.org?' ('+esc(debt.org)+')':''}`;
+    // YANGI (MUHIM — TO'LIQ BATAFSIL): ilgari bu yerda faqat "shu safargi
+    // to'lov summasi + qoldiq" ko'rsatilardi. Endi — ayniqsa QISMAN
+    // to'lovlarda — TO'LIQ rasm beriladi: umumiy qarz summasi, hozirgacha
+    // JAMI to'langan miqdor, qolgan qarz, qarz OLINGAN sana, va agar
+    // bir nechta qisman to'lov qilingan bo'lsa — ULARNING HAR BIRINING
+    // sanasi va summasi bilan to'liq TARIXI.
+    const includeItems = DB.telegramDebtIncludeItems!==false;
+    const itemsBlock = includeItems ? debtItemsLinesForNotify(debt) : '';
+    const paymentHistory = includeItems ? debtPaymentHistoryLines(debt) : '';
+    const vars = { dokon: shopName, mijoz: debt.debtorName||debt.org||'', summa: fmt(payment.amount), qoldiq: isFullyPaid ? 0 : fmt(remainingAfter), tovarlar: itemsBlock, qarz_sanasi: timeStr(debt.date), tolov_sanasi: timeStr(payment.date), umumiy: fmt(debt.total), jami_tolangan: fmt(debt.paidAmount||0) };
+    // Standart (tayyor) xabarlarda avtomatik qo'shiladigan qatorlar —
+    // ADMIN O'Z SHABLONINI yozgan bo'lsa, bularni qo'shmaymiz (chunki u
+    // holda admin {qarz_sanasi}/{tolov_sanasi}/{umumiy}/{jami_tolangan}ni
+    // o'zi joylashtiradi).
+    const detailLines = includeItems
+      ? `\n\n📊 <b>Qarz holati:</b>\n📅 Qarz olingan sana: ${timeStr(debt.date)}\n💳 Umumiy qarz: ${fmt(debt.total)} so'm\n✅ Jami to'langan: ${fmt(debt.paidAmount||0)} so'm\n${isFullyPaid?"🎉 <b>To'liq to'landi!</b>":`⏳ Qolgan qarz: <b>${fmt(remainingAfter)} so'm</b>`}${paymentHistory?`\n\n💰 <b>To'lovlar tarixi:</b>\n${esc(paymentHistory)}`:''}`
+      : '';
     if(getTelegramChatIds().length){
       const adminText = DB.telegramTplPaymentAdmin
-        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplPaymentAdmin, { dokon: shopName, mijoz: debt.debtorName||debt.org||'', summa: fmt(payment.amount), qoldiq: isFullyPaid ? 0 : fmt(remainingAfter) }))
-        : `💵 <b>To'lov qabul qilindi</b> — ${esc(shopName)}\n\n👤 ${who}\n➕ ${fmt(payment.amount)} so'm${isFullyPaid?"\n🎉 Qarz to'liq yopildi!":`\nQoldiq: ${fmt(remainingAfter)} so'm`}`;
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplPaymentAdmin, vars))
+        : `💵 <b>To'lov qabul qilindi</b> — ${esc(shopName)}\n\n👤 ${who}${itemsBlock?`\n\n${esc(itemsBlock)}`:''}\n➕ Shu safar: ${fmt(payment.amount)} so'm${detailLines}`;
       sendTelegramMessage(adminText).catch(()=>{});
     }
     const debtorObj = DB.debtors.find(x=>x.id===debt.debtorId);
     const chatId = debtorObj && debtorObj.telegramChatId;
     if(chatId){
       // YANGI: shablon mavjud bo'lsa shuni, aks holda standart matn.
+      // Sarlavhada qarzdor qanday nomlanishi — sozlamalarda tanlanadi.
+      const custDisplayName = debtorDisplayNameForNotify(debt);
       const custText = DB.telegramTplPayment
-        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplPayment, { dokon: shopName, summa: fmt(payment.amount), qoldiq: isFullyPaid ? 0 : fmt(remainingAfter) }))
-        : `✅ <b>${esc(shopName)}</b>\n\n${fmt(payment.amount)} so'm to'lovingiz qabul qilindi.${isFullyPaid?"\n🎉 Qarzingiz to'liq yopildi, rahmat!":`\nQolgan qarz: ${fmt(remainingAfter)} so'm`}`;
+        ? `<b>${esc(shopName)}</b>\n\n` + esc(fillTelegramTemplate(DB.telegramTplPayment, vars))
+        : `✅ <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayName)}, ${fmt(payment.amount)} so'm to'lovingiz qabul qilindi.${itemsBlock?`\n\n${esc(itemsBlock)}`:''}${detailLines}\n\nBatafsil ma'lumot uchun "Mening qarzlarim" bo'limiga qarang.`;
       sendTelegramMessageToChatId(chatId, custText).catch(()=>{});
     }
   }catch(e){ console.error('notifyDebtPayment xatolik:', e); }
@@ -10194,6 +10350,8 @@ window.fillTelegramSettingsForm = function(){
   const r=document.getElementById('tg-notify-daily'); if(r) r.checked=!!DB.telegramNotifyDailyReport;
   const nd=document.getElementById('tg-notify-newdebt'); if(nd) nd.checked=DB.telegramNotifyNewDebt!==false;
   const ndi=document.getElementById('tg-debt-include-items'); if(ndi) ndi.checked=DB.telegramDebtIncludeItems!==false;
+  const dns=document.getElementById('tg-debtor-name-style'); if(dns) dns.value=DB.telegramDebtorNameStyle||'full';
+  const dgw=document.getElementById('tg-debtor-generic-word'); if(dgw) dgw.value=DB.telegramDebtorGenericWord||'';
   const np=document.getElementById('tg-notify-payment'); if(np) np.checked=DB.telegramNotifyPayment!==false;
   const qhe=document.getElementById('tg-quiet-hours-enabled'); if(qhe) qhe.checked=!!DB.telegramQuietHoursEnabled;
   const qf=document.getElementById('tg-quiet-from'); if(qf && document.activeElement!==qf) qf.value=DB.telegramQuietFrom||'22:00';
@@ -10227,6 +10385,8 @@ window.saveTelegramSettings = function(silent){
   DB.telegramNotifyDailyReport = !!document.getElementById('tg-notify-daily').checked;
   DB.telegramNotifyNewDebt = !!document.getElementById('tg-notify-newdebt')?.checked;
   DB.telegramDebtIncludeItems = !!document.getElementById('tg-debt-include-items')?.checked;
+  DB.telegramDebtorNameStyle = document.getElementById('tg-debtor-name-style')?.value || 'full';
+  DB.telegramDebtorGenericWord = (document.getElementById('tg-debtor-generic-word')?.value || '').trim();
   DB.telegramNotifyPayment = !!document.getElementById('tg-notify-payment')?.checked;
   DB.telegramQuietHoursEnabled = !!document.getElementById('tg-quiet-hours-enabled')?.checked;
   DB.telegramQuietFrom = document.getElementById('tg-quiet-from')?.value || '22:00';

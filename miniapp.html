@@ -110,9 +110,20 @@
   .prod-card{background:var(--sec-bg);border:1px solid rgba(255,255,255,.07);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.15);cursor:pointer}
   .prod-card:active{transform:scale(.96)}
   .prod-card.out{opacity:.55;cursor:default}
-  .prod-card .img-wrap{height:96px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-  .prod-card .img-wrap img{width:100%;height:100%;object-fit:cover}
-  .prod-card .img-wrap .no-img{font-size:34px;color:rgba(255,255,255,.22)}
+  /* TUZATILDI (MUHIM): bu qoida ilgari FAQAT ".prod-card .img-wrap"ga
+     tegishli edi — lekin "Tovarlar (Ombor)" ro'yxati (renderStock)
+     ".img-wrap"ni ".prod-card" ota-elementisiz ishlatadi. Natijada o'sha
+     ro'yxatda rasmning o'zi (48x48 konteyner ichida) HECH QANDAY o'lcham
+     cheklovisiz, o'zining haqiqiy (katta) o'lchamida chiqib, matn va
+     boshqa qatorlarni bosib ketardi — "juda g'alati ko'rinish"ning aynan
+     sababi shu edi. Endi qoida umumiy (".prod-card" talab qilmaydi), shu
+     sabab qayerda ishlatilishidan qat'iy nazar rasm konteyner ichiga
+     to'g'ri sig'adi. */
+  .img-wrap{overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04)}
+  .img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+  .img-wrap .no-img{font-size:18px;color:rgba(255,255,255,.22)}
+  .prod-card .img-wrap{height:96px}
+  .prod-card .img-wrap .no-img{font-size:34px}
   .prod-card .stock-badge{position:absolute;top:6px;right:6px}
   .prod-card .coin-price-badge{position:absolute;top:32px;right:6px;background:#7c3aed;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;gap:2px}
   .prod-card .cart-badge-overlay{position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.3)}
