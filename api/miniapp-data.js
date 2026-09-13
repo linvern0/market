@@ -227,6 +227,9 @@ async function buildAdminPayload(db, settings) {
     workHours: settings.workHours || '',
     receiptFooter: settings.receiptFooter || '',
     saleReceiptDesign: settings.saleReceiptDesign || null,
+    // YANGI: Mini App'da sotuvda ovozli e'lon sozlamalari.
+    voiceAnnounceEnabled: !!settings.voiceAnnounceEnabled,
+    voiceAnnounceTemplate: settings.voiceAnnounceTemplate || '',
     stats: { revenue, profit, salesCount: todaySales.length },
     last7Days,
     report: { ...reportStats, topProducts, recentSales },

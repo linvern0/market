@@ -1130,11 +1130,19 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 
   if (cmd === '/qarzlar') {
     const debtsSnap = await db.collection('debts').where('paid', '==', false).get();
-    const active = debtsSnap.docs.map((d) => d.data()).sort((a, b) => debtRemaining(b) - debtRemaining(a)).slice(0, 15);
-    if (!active.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q.");
-    let text = `📋 <b>Faol qarzlar</b> (eng kattadan)\n\n`;
+    // TUZATILDI (izchillik): ilgari bu yerda jami qarzlar soni va
+    // "qolgan X ta ko'rsatilmadi" ogohlantirishi YO'Q edi — agar 15 tadan
+    // ortiq faol qarz bo'lsa, admin buni bilmasdan faqat eng kattalarini
+    // ko'rar, qolganlari haqida hech qanday ma'lumot olmasdi. Endi
+    // /muddatlar bilan bir xil, izchil ko'rinishda.
+    const allActive = debtsSnap.docs.map((d) => d.data()).sort((a, b) => debtRemaining(b) - debtRemaining(a));
+    if (!allActive.length) return sendMessage(token, chatId, "✅ Faol qarz yo'q.");
+    const active = allActive.slice(0, 15);
+    const totalSum = allActive.reduce((a, d) => a + debtRemaining(d), 0);
+    let text = `📋 <b>Faol qarzlar</b> (${allActive.length} ta, jami: ${fmt(totalSum)} so'm) — eng kattadan\n\n`;
     active.forEach((d) => { text += `• ${esc(d.debtorName || d.org || '?')} — ${fmt(debtRemaining(d))} so'm\n  ID: <code>${esc(d.id)}</code>\n`; });
-    text += `\nQisman to'lov: <code>/tolov ID summa</code>\nYoki pastdagi tugma orqali bir zumda to'liq yoping:`;
+    if (allActive.length > active.length) text += `\n… va yana ${allActive.length - active.length} ta. To'liq ro'yxat uchun boshqaruv panelidagi "Qarzlar" bo'limidan foydalaning.`;
+    text += `\n\nQisman to'lov: <code>/tolov ID summa</code>\nYoki pastdagi tugma orqali bir zumda to'liq yoping:`;
     const keyboard = { inline_keyboard: active.map((d) => [{ text: `✅ ${(d.debtorName || d.org || '?').slice(0, 20)} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
     return sendMessage(token, chatId, text, { reply_markup: keyboard });
   }
@@ -1167,10 +1175,18 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const found = debtsSnap.docs.map((d) => d.data()).filter((d) => (d.debtorName || '').toLowerCase().includes(q) || (d.org || '').toLowerCase().includes(q) || (d.phone || '').includes(q));
     if (!found.length) return sendMessage(token, chatId, "Hech narsa topilmadi.");
     const total = found.reduce((a, d) => a + debtRemaining(d), 0);
-    let text = `🔎 "${esc(argStr.trim())}" bo'yicha: <b>${fmt(total)} so'm</b>\n\n`;
+    // TUZATILDI (MUHIM): ilgari har bir natija qatorida FAQAT sana+summa
+    // ko'rsatilardi — QIDIRILGAN ISMNING O'ZI ko'rinmasdi! Agar bir nechta
+    // TURLI odam mos kelsa (masalan "Aziz" bo'yicha "Aziz Karimov" va
+    // "Azizbek Yusupov"), admin ro'yxatdan qaysi qator kimga tegishli
+    // ekanini AJRATA OLMAS edi. Endi har bir qatorda ism/tashkilot ham
+    // ko'rsatiladi, shu bilan birga topilganlar soni ham (agar 15 tadan
+    // ortiq bo'lsa, qolganlari haqida ogohlantirish bilan).
+    let text = `🔎 "${esc(argStr.trim())}" bo'yicha (${found.length} ta topildi): <b>${fmt(total)} so'm</b>\n\n`;
     const shown = found.slice(0, 15);
-    shown.forEach((d) => { text += `• ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm (ID: <code>${esc(d.id)}</code>)\n`; });
-    const keyboard = { inline_keyboard: shown.map((d) => [{ text: `✅ ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
+    shown.forEach((d) => { text += `• <b>${esc(d.debtorName || d.org || '?')}</b>${d.org ? ' (' + esc(d.org) + ')' : ''} — ${new Date(d.date).toLocaleDateString('uz-UZ')} — ${fmt(debtRemaining(d))} so'm\n  ID: <code>${esc(d.id)}</code>\n`; });
+    if (found.length > shown.length) text += `\n… va yana ${found.length - shown.length} ta.`;
+    const keyboard = { inline_keyboard: shown.map((d) => [{ text: `✅ ${(d.debtorName || d.org || '?').slice(0, 20)} — ${fmt(debtRemaining(d))} so'm to'landi`, callback_data: `pay_full:${d.id}` }]) };
     return sendMessage(token, chatId, text, { reply_markup: keyboard });
   }
 
@@ -1394,15 +1410,34 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const myDebts = debtsSnap.docs.map((d) => d.data());
     const total = myDebts.reduce((a, d) => a + debtRemaining(d), 0);
     if (total <= 0) return sendMessage(token, chatId, "Bu mijozning faol qarzi yo'q.");
-    await sendMessage(token, cid, `🔔 <b>${esc(shopName)}</b>\n\nEslatma: sizning joriy qarzingiz — <b>${fmt(total)} so'm</b>.\nTo'lov uchun do'konga murojaat qiling. Batafsil: /qarzim`);
+    // TUZATILDI (izchillik): admin sozlamalarda tanlagan "qarzdorni qanday
+    // nomlash" (to'liq ism / faqat ism / umumiy so'z) — bu boshqa barcha
+    // qarz xabarlarida qo'llanadi, lekin bu buyruq shu paytgacha buni
+    // e'tiborga olmasdi, doim ismisiz "Eslatma: ..." deb boshlardi.
+    const custDisplayNameE = debtorDisplayNameForNotify({ debtorName: debtor.name, org: debtor.org }, settingsData0 || {});
+    await sendMessage(token, cid, `🔔 <b>${esc(shopName)}</b>\n\nHurmatli ${esc(custDisplayNameE)}, eslatma: sizning joriy qarzingiz — <b>${fmt(total)} so'm</b>.\nTo'lov uchun do'konga murojaat qiling. Batafsil: /qarzim`);
     return sendMessage(token, chatId, `✅ ${esc(debtor.name)}ga eslatma yuborildi (${fmt(total)} so'm).`);
   }
 
   if (cmd === '/broadcast') {
     const text = argStr.trim();
     if (!text) return sendMessage(token, chatId, "Foydalanish: /broadcast Xabar matni\nMasalan: /broadcast Ertaga do'kon dam olish kuni, ishlamaymiz.");
-    const debtorsSnap = await db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => db.collection('debtors').get());
-    const targets = [...new Set(debtorsSnap.docs.map((d) => d.data().telegramChatId).filter(Boolean))];
+    // TUZATILDI (MUHIM): ilgari bu buyruq FAQAT "debtors" (qarzdorlar)
+    // to'plamidagi Telegram'ga ulangan odamlarga yuborardi — "customers"
+    // (sodiqlik dasturi mijozlari, lekin qarzi yo'q) to'plami butunlay
+    // e'tiborga olinmasdi. Do'konda ko'proq sodiqlik mijozlari bo'lib,
+    // qarzdorlar kam bo'lsa, admin "Botga ulangan mijoz topilmadi" xabarini
+    // olishi mumkin edi — garchi aslida ko'plab mijoz ulangan bo'lsa ham.
+    // Endi ikkala to'plamdagi barcha ulangan odamlarga yuboriladi
+    // (takrorlanganlar bir marta hisoblanadi).
+    const [debtorsSnap, customersSnap] = await Promise.all([
+      db.collection('debtors').where('telegramChatId', '!=', '').get().catch(() => db.collection('debtors').get()),
+      db.collection('customers').where('telegramChatId', '!=', '').get().catch(() => db.collection('customers').get()),
+    ]);
+    const targets = [...new Set([
+      ...debtorsSnap.docs.map((d) => d.data().telegramChatId),
+      ...customersSnap.docs.map((d) => d.data().telegramChatId),
+    ].filter(Boolean))];
     if (!targets.length) return sendMessage(token, chatId, "Botga ulangan mijoz topilmadi.");
     await sendMessage(token, chatId, `⏳ ${targets.length} ta mijozga yuborilmoqda...`);
     let sent = 0;
@@ -1456,6 +1491,14 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (!m) return sendMessage(token, chatId, "Foydalanish: /tovar_narx nomi yangi_narx\nMasalan: /tovar_narx Coca-Cola 12000");
     const q = m[1].trim().toLowerCase();
     const newPrice = parseFloat(m[2]);
+    // TUZATILDI (MUHIM — XAVFSIZLIK): ilgari bu yerda yangi narx manfiy
+    // yoki nol bo'lishi mumkinligi umuman tekshirilmasdi (create_product/
+    // update_product amallarida bu allaqachon tuzatilgan edi, lekin bu
+    // bot buyrug'i o'sha tekshiruvni chetlab o'tardi — chunki mahsulotni
+    // to'g'ridan-to'g'ri, forbid()/validatsiyasiz yangilardi). Amalda
+    // regex "\d+" manfiy sonni qabul qilmaydi, lekin "0" ni qabul qiladi —
+    // shu sabab kamida nolni rad etish kerak edi.
+    if (!q || isNaN(newPrice) || newPrice <= 0) return sendMessage(token, chatId, "Narx musbat son bo'lishi kerak.");
     const productsSnap = await db.collection('products').get();
     const found = productsSnap.docs.filter((d) => (d.data().name || '').toLowerCase().includes(q));
     if (!found.length) return sendMessage(token, chatId, "Tovar topilmadi.");
@@ -1486,6 +1529,20 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
       role = rawParts.pop();
     }
     const parts = rawParts;
+    // TUZATILDI (JIDDIY XAVFSIZLIK ZAIFLIGI): ilgari bu buyruq FAQAT
+    // "manageAdmins" huquqini talab qilardi — lekin "owner" (bosh admin)
+    // roli hasPermission()'da BARCHA tekshiruvlarni chetlab o'tadi
+    // (cheklovsiz to'liq huquq). Bu degani: manageAdmins huquqiga ega
+    // (lekin boshqa hech qanday huquqqa ega bo'lmagan) ODDIY admin ham
+    // "/admin_qoshish <o'z_chat_id> Ism owner" deb yozib, O'ZINI yoki
+    // istalgan boshqa odamni bosh admin darajasiga ko'tarishi, shu orqali
+    // O'ZIGA berilmagan barcha huquqlarni (o'chirish, broadcast va h.k.)
+    // olishi mumkin edi — bu imtiyozni oshirish (privilege escalation)
+    // zaifligi edi. Endi FAQAT allaqachon owner bo'lgan admin boshqa
+    // birovni owner qilib qo'sha oladi.
+    if (role === 'owner' && !isOwnerChat(admins, chatId)) {
+      return sendMessage(token, chatId, "⛔ Faqat bosh admin (owner) boshqa birovni owner darajasida qo'sha oladi. Siz uni oddiy \"admin\" sifatida qo'shishingiz mumkin.");
+    }
     const idArg = parts[0];
     const name = parts.slice(1).join(' ') || 'Admin';
     if (!idArg) return sendMessage(token, chatId, "Foydalanish:\n/admin_qoshish 123456789 Ism [owner] — Chat ID bilan\n/admin_qoshish +998901234567 Ism [owner] — telefon raqami bilan\n/admin_qoshish @username Ism [owner] — username bilan\n\nOxiriga \"owner\" qo'shsangiz, u bosh admin sifatida qo'shiladi. Ko'rsatmasangiz, standart holatda cheklangan \"admin\" bo'ladi (admin qo'sha/o'chira va broadcast qila olmaydi).");
@@ -1528,6 +1585,15 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const pKey = phoneKey(target);
     const targetAdmin = admins.find((a) => String(a.chatId) === target || (target.startsWith('@') && usernameKey(a.username) === uKey) || (pKey && phoneKey(a.phone) === pKey));
     if (!targetAdmin) return sendMessage(token, chatId, "Bunday admin topilmadi.");
+    // TUZATILDI (JIDDIY XAVFSIZLIK ZAIFLIGI): ilgari faqat "oxirgi
+    // owner'ni o'chirib bo'lmaydi" tekshirilardi — lekin agar bir nechta
+    // owner bo'lsa, oddiy (manageAdmins huquqiga ega, lekin owner
+    // bo'lmagan) admin ULARDAN BIRINI o'chirib, uning boshqaruvdan
+    // chetlatilishiga sabab bo'lishi mumkin edi. Endi owner'ni o'chirish
+    // faqat boshqa owner tomonidan bajarilishi mumkin.
+    if ((targetAdmin.role || 'owner') === 'owner' && !isOwnerChat(admins, chatId)) {
+      return sendMessage(token, chatId, "⛔ Bosh admin (owner)ni faqat boshqa owner o'chira oladi.");
+    }
     // Xavfsizlik: oxirgi owner'ni o'chirib bo'lmaydi — aks holda hech kim
     // admin boshqaruvi qila olmay qoladigan holatga tushib qolish mumkin.
     const remainingOwners = admins.filter((a) => a !== targetAdmin && (a.role || 'owner') === 'owner');
@@ -1578,6 +1644,18 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     const pKey = phoneKey(target);
     const targetAdmin = admins.find((a) => String(a.chatId) === target || (target.startsWith('@') && usernameKey(a.username) === uKey) || (pKey && phoneKey(a.phone) === pKey));
     if (!targetAdmin) return sendMessage(token, chatId, "Bunday admin topilmadi.");
+    // TUZATILDI (JIDDIY XAVFSIZLIK ZAIFLIGI): /admin_qoshish bilan bir xil
+    // muammo — oddiy (manageAdmins huquqiga ega, lekin owner bo'lmagan)
+    // admin bu buyruq orqali O'ZINI (yoki boshqa birovni) "owner"
+    // darajasiga ko'tarib, cheklovsiz to'liq huquqqa ega bo'lishi mumkin
+    // edi. Xuddi shunday, oddiy admin haqiqiy OWNER'ning rolini pasaytirib,
+    // uni boshqaruvdan chetlatishi ham mumkin edi. Endi ikkala yo'nalish
+    // (owner qilish HAM owner darajasini pasaytirish) faqat allaqachon
+    // owner bo'lgan admin tomonidan bajarilishi mumkin.
+    const requesterIsOwner = isOwnerChat(admins, chatId);
+    if ((newRole === 'owner' || (targetAdmin.role || 'owner') === 'owner') && !requesterIsOwner) {
+      return sendMessage(token, chatId, "⛔ Owner darajasini o'zgartirish (berish yoki olib qo'yish) faqat bosh admin (owner) tomonidan bajarilishi mumkin.");
+    }
     const remainingOwners = admins.filter((a) => a !== targetAdmin && (a.role || 'owner') === 'owner');
     if ((targetAdmin.role || 'owner') === 'owner' && newRole === 'admin' && remainingOwners.length === 0) {
       return sendMessage(token, chatId, "⛔ Bu yagona bosh admin (owner) — uning rolini pasaytirib bo'lmaydi. Avval boshqa birortasini owner qiling.");

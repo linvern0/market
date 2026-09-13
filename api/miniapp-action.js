@@ -647,7 +647,18 @@ module.exports = async (req, res) => {
     // qatorlari "reverted:true" deb belgilanadi va omborga tovar qaytariladi.
     // Faqat admin va faqat sozlamalardagi "revertMinutes" oynasi ichida.
     if (action === 'revert_sale') {
-      if (!isAdmin) { res.status(403).json({ ok: false, error: 'not_admin' }); return; }
+      // TUZATILDI (MUHIM — XAVFSIZLIK NOMUVOFIQLIGI): ilgari bu yerda
+      // FAQAT "shaxs har qanday turdagi admin ekanligi" (isAdmin)
+      // tekshirilardi — boshqa barcha nozik amallar (masalan
+      // delete_product) kabi ANIQ huquq (forbid()) tekshirilmasdi. Bu
+      // degani: agar admin faqat "manageDebts" huquqi bilan cheklangan
+      // bo'lsa ham (masalan qarzlar bilan ishlash uchun qo'shilgan
+      // yordamchi), u baribir istalgan savdoni bekor qilib, ombordagi
+      // mahsulot sonini o'zgartira olar edi — bu mo'ljallangan
+      // cheklovni chetlab o'tish edi. Endi delete_product bilan bir xil
+      // huquq talab qilinadi (chunki bekor qilish ham mahsulot/ombor
+      // holatini o'zgartiradi, ham savdo yozuvini "o'chiradi").
+      if (forbid('manageProducts') || forbid('deleteRecords')) return;
       const { receiptId } = p;
       if (!receiptId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const salesSnap = await db.collection('sales').where('receiptId', '==', receiptId).get();
@@ -869,11 +880,17 @@ module.exports = async (req, res) => {
       if (forbid('manageAdmins')) return;
       const { name, phone, username, role, permissions } = p;
       if (!name || (!phone && !username)) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      // TUZATILDI (JIDDIY XAVFSIZLIK ZAIFLIGI): ilgari "role" maydoni
+      // foydalanuvchi (frontend) yuborgan qiymatga qarab to'g'ridan-
+      // to'g'ri o'rnatilardi — faqat "manageAdmins" huquqiga ega (lekin
+      // OWNER bo'lmagan) oddiy admin ham so'rovda role:'owner' yuborib,
+      // yangi bosh admin yaratishi mumkin edi — bu esa hasPermission()
+      // orqali BARCHA cheklovlarni chetlab o'tishga imkon berardi. Endi
+      // faqat allaqachon OWNER bo'lgan so'rovchi yangi owner yarata oladi.
+      if (role === 'owner' && (adminEntry?.role || 'owner') !== 'owner') {
+        res.status(403).json({ ok: false, error: 'only_owner_can_grant_owner' }); return;
+      }
       const list = Array.isArray(settings.telegramAdmins) ? [...settings.telegramAdmins] : [];
-      // YANGI: rol endi majburiy ravishda 'admin' (cheklangan) yoki 'owner'
-      // — ilgari bu yerda umuman belgilanmasdi, natijada rolsiz yozuv
-      // (ya'ni "owner" bilan bir xil to'liq huquqli deb hisoblanadi)
-      // yaratilardi. Endi standart holat — xavfsizroq 'admin'.
       // `permissions` — ixtiyoriy, PERMISSION_KEYS bo'yicha {key:true/false}.
       const cleanRole = role === 'owner' ? 'owner' : 'admin';
       const cleanPerms = (permissions && typeof permissions === 'object') ? permissions : undefined;
@@ -896,9 +913,21 @@ module.exports = async (req, res) => {
         (targetUsername && (a.username || '').toLowerCase() === String(targetUsername).toLowerCase()) ||
         (targetPhone && a.phone === targetPhone)
       ));
-      const filtered = list.filter((a) => a !== removed);
-      if (filtered.length === list.length) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
+      if (!removed) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
       if (String(chatId) === String(targetChatId)) { res.status(400).json({ ok: false, error: 'cannot_remove_self' }); return; }
+      // TUZATILDI (JIDDIY XAVFSIZLIK ZAIFLIGI + XATO): ilgari bu yerda (1)
+      // oddiy admin ownerni o'chirishi mumkin edi (huquqni oshirish
+      // zaifligi bilan bir oilaga tegishli — boshqaruvdan chetlatish), va
+      // (2) "oxirgi owner'ni o'chirib bo'lmaydi" himoyasi UMUMAN yo'q edi
+      // — bu esa BUTUN do'kon boshqaruvidan hech kim to'liq huquqli
+      // bo'lmay qolishiga (lock-out) olib kelishi mumkin edi. Endi bot
+      // buyrug'i (/admin_ochirish) bilan bir xil ikkala himoya ham bor.
+      if ((removed.role || 'owner') === 'owner') {
+        if ((adminEntry?.role || 'owner') !== 'owner') { res.status(403).json({ ok: false, error: 'only_owner_can_remove_owner' }); return; }
+        const remainingOwners = list.filter((a) => a !== removed && (a.role || 'owner') === 'owner');
+        if (!remainingOwners.length) { res.status(400).json({ ok: false, error: 'cannot_remove_last_owner' }); return; }
+      }
+      const filtered = list.filter((a) => a !== removed);
       await settingsRef.set({ telegramAdmins: filtered }, { merge: true });
       invalidateSettingsCache();
       audit('remove_admin', removed ? removed.name : '');
@@ -916,6 +945,17 @@ module.exports = async (req, res) => {
       const list = Array.isArray(settings.telegramAdmins) ? [...settings.telegramAdmins] : [];
       const idx = list.findIndex((a) => String(a.chatId) === String(targetChatId));
       if (idx === -1) { res.status(404).json({ ok: false, error: 'admin_not_found' }); return; }
+      // TUZATILDI (JIDDIY XAVFSIZLIK ZAIFLIGI): upsert_admin bilan bir xil
+      // muammo — oddiy (manageAdmins huquqiga ega, lekin owner bo'lmagan)
+      // admin bu amal orqali O'ZINI (yoki boshqa birovni) "owner"
+      // darajasiga ko'tarishi, YOKI haqiqiy ownerni "admin"ga tushirib,
+      // uni boshqaruvdan chetlatishi mumkin edi. Endi ikkala yo'nalish
+      // ham faqat allaqachon OWNER bo'lgan so'rovchi tomonidan bajarilishi
+      // mumkin.
+      const targetCurrentlyOwner = (list[idx].role || 'owner') === 'owner';
+      if ((role === 'owner' || targetCurrentlyOwner) && (adminEntry?.role || 'owner') !== 'owner') {
+        res.status(403).json({ ok: false, error: 'only_owner_can_change_owner' }); return;
+      }
       if (role === 'owner' || role === 'admin') list[idx].role = role;
       if (permissions && typeof permissions === 'object') list[idx].permissions = permissions;
       await settingsRef.set({ telegramAdmins: list }, { merge: true });
