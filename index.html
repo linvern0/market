@@ -2421,6 +2421,19 @@ body.dark table {
     </div>
   </div>
 
+  <div class="card" style="max-width:640px;margin-top:1rem" id="settings-voiceannounce-card" data-sgroup="receipt">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🔊 Sotuvda ovozli e'lon (Mini App)</h3>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Yoqilsa, Telegram Mini App orqali tovar sotilganda, qurilma ovoz balandligi ijozat bergan holatda, sotuv haqida ovozli xabar aytiladi (masalan "Coca-Cola sotildi, 8000 so'm"). <b>Muhim, halol eslatma:</b> bu — qurilmaning o'zidagi standart matn-ovoz texnologiyasi (Web Speech API) orqali ishlaydi; o'zbek tilidagi ovoz HAR BIR telefon/brauzerda ham mavjud bo'lavermaydi — mavjud bo'lmasa, qurilma standart (odatda ingliz yoki rus) ovozda, imkon qadar to'g'ri talaffuz qilishga harakat qiladi. Bu — kafolatlanmagan, qurilmaga bog'liq xususiyat.</p>
+    <label style="display:flex;align-items:center;gap:.4rem;font-size:13px;margin-bottom:.6rem"><input type="checkbox" id="voice-announce-enabled">🔊 Sotuvda ovozli e'lonni yoqish</label>
+    <div class="field">
+      <label>Nima aytilishi kerak (matn shabloni)</label>
+      <textarea id="voice-announce-template" rows="2" maxlength="200" placeholder="{mahsulot} sotildi, {summa} so'm" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">O'zgaruvchilar: <code>{mahsulot}</code> — sotilgan tovar(lar) nomi, <code>{summa}</code> — jami summa. Bo'sh qoldirsangiz standart matn ishlatiladi.</p>
+    </div>
+    <button class="btn sm blue" onclick="window.saveVoiceAnnounceSettings && window.saveVoiceAnnounceSettings()">💾 Saqlash</button>
+    <button class="btn sm" onclick="window.previewVoiceAnnounce && window.previewVoiceAnnounce()">🔊 Sinab ko'rish</button>
+  </div>
+
   <div class="card" style="max-width:640px;margin-top:1rem" id="settings-salereceipt-card" data-sgroup="receipt">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">🧾 Sotuv cheki sozlamalari (tovar sotilganda chiqadigan chek)</h3>
     <p style="font-size:13px;color:var(--text3);margin-bottom:.85rem">Bu — tovar sotilganda ochiladigan va chop etiladigan/mijozga beriladigan qog'oz chek (kassa cheki) sozlamalari. <b>Diqqat:</b> bu pastdagi "Chek sahifasi dizayni" (QR skanerlanganda ochiladigan onlayn sahifa — receipt.html) BILAN BOG'LIQ EMAS, alohida sozlanadi.</p>
@@ -4620,7 +4633,7 @@ window.addEventListener('unhandledrejection', (e)=>{
   if(ErrorHandler.errors.length > ErrorHandler.maxErrors) ErrorHandler.errors.shift();
 });
 
-window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramDebtIncludeItems: true, telegramDebtorNameStyle: 'full', telegramDebtorGenericWord: '', telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramTplLowstock: '', telegramTplOverdue: '', telegramTplDaily: '', telegramTplNewDebtAdmin: '', telegramTplPaymentAdmin: '', telegramAutoReplyOutsideHours: false, telegramButtonLabels: null, scheduledBroadcasts: [], animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null };
+window.DB = { products: [], sales: [], restocks: [], debts: [], debtors: [], expenses: [], suppliers: [], customers: [], promotions: [], pins: { admin:'1234', seller:'5678' }, sellers: [{id:'s_default', name:'Sotuvchi', pin:'5678'}], revertMinutes: 30, lowStockThreshold: 5, sellerName: 'Sotuvchi', shopName: "Do'kon", shopLogo: '', autoLockMinutes: 0, receiptLinks: [], shopAddress: '', shopPhone: '', receiptFooter: '', workHours: '', currencySymbol: "so'm", maxDiscountPercent: 0, overdueDaysGlobal: 14, brandAccent1: '', brandAccent2: '', appTitle: '', labelSettings: null, labelTemplates: null, receiptDesign: null, saleReceiptDesign: null, backupReminderDays: 7, workSchedule: null, pinMinLength: 4, telegramBotToken: '', telegramBotUsername: '', telegramChatId: '', telegramAdmins: [], telegramWelcomeText: '', receiptQrMode: 'auto', telegramWebhookSecret: '', telegramNotifyLowStock: false, telegramNotifyOverdueDebts: false, telegramNotifyDailyReport: false, telegramNotifyNewDebt: true, telegramDebtIncludeItems: true, telegramDebtorNameStyle: 'full', telegramDebtorGenericWord: '', telegramNotifyPayment: true, telegramQuietHoursEnabled: false, telegramQuietFrom: '22:00', telegramQuietTo: '08:00', telegramTplNewDebt: '', telegramTplPayment: '', telegramTplLowstock: '', telegramTplOverdue: '', telegramTplDaily: '', telegramTplNewDebtAdmin: '', telegramTplPaymentAdmin: '', telegramAutoReplyOutsideHours: false, telegramButtonLabels: null, scheduledBroadcasts: [], animSpeed: 1, toastSeconds: 2.6, uiSoundEnabled: false, uiVibrationEnabled: false, uiSoundVolume: 0.16, toastPosition: 'bottom-right', restrictedAdminPin: '', restrictedAdminPermissions: { hideStockInOut: false, hideSellerLogin: false, disableDelete: false }, loyaltyTiers: null, coinSettings: null, coinEnabled: true, coinOrders: [], defaultCreditLimit: 0, debtReminderOffsets: [0,3,7], telegramCommandsConfig: null, miniAppSectionsConfig: null, voiceAnnounceEnabled: false, voiceAnnounceTemplate: '' };
 // YANGI: "Sodiqlik ballari" endi "COIN" deb ataladi. Umumiy (standart)
 // qoida: necha so'mlik xariddan 1 COIN beriladi (earnPerAmount) va 1 COIN
 // qancha so'mlik chegirma qiymatiga teng (redeemValuePerCoin). Bu faqat
@@ -4958,7 +4971,7 @@ async function fbSaveSettings(){
   // kutishdan OLDIN, bitta "payload" obyektiga "suratga olinadi" — shu
   // sabab keyingi tinglagich yangilanishlari saqlanayotgan qiymatga
   // TA'SIR QILA OLMAYDI.
-  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7]};
+  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],voiceAnnounceEnabled:!!DB.voiceAnnounceEnabled,voiceAnnounceTemplate:DB.voiceAnnounceTemplate||''};
   (async ()=>{
     let versionForSave = localV+1;
     try{
@@ -5622,6 +5635,8 @@ function startListeners(){
       DB.telegramButtonLabels=(d.telegramButtonLabels && typeof d.telegramButtonLabels==='object')?d.telegramButtonLabels:null;
       DB.defaultCreditLimit=(typeof d.defaultCreditLimit==='number')?d.defaultCreditLimit:0;
       DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
+      DB.voiceAnnounceEnabled=!!d.voiceAnnounceEnabled;
+      DB.voiceAnnounceTemplate=d.voiceAnnounceTemplate||'';
       if(typeof window.applyCoinFeatureVisibility==='function') window.applyCoinFeatureVisibility();
       if(document.getElementById('page-debts')?.classList.contains('active') && typeof window.renderDebtSettingsFields==='function') window.renderDebtSettingsFields();
       if(document.getElementById('modal-customers') && !document.getElementById('modal-customers').classList.contains('hidden') && typeof window.renderCustomersList==='function') window.renderCustomersList();
@@ -5637,6 +5652,7 @@ function startListeners(){
         if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
         if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
         if(typeof window.fillSaleReceiptSettingsForm==='function') window.fillSaleReceiptSettingsForm();
+      if(typeof window.fillVoiceAnnounceSettingsForm==='function') window.fillVoiceAnnounceSettingsForm();
         if(typeof window.fillRestrictedAdminForm==='function') window.fillRestrictedAdminForm();
         if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
         if(typeof window.renderAuditLog==='function') window.renderAuditLog();
@@ -5955,6 +5971,8 @@ async function init(){
           DB.loyaltyTiers=(Array.isArray(d.loyaltyTiers)&&d.loyaltyTiers.length)?d.loyaltyTiers:window.getDefaultLoyaltyTiers();
           DB.defaultCreditLimit=(typeof d.defaultCreditLimit==='number')?d.defaultCreditLimit:0;
           DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
+      DB.voiceAnnounceEnabled=!!d.voiceAnnounceEnabled;
+      DB.voiceAnnounceTemplate=d.voiceAnnounceTemplate||'';
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
@@ -6263,6 +6281,7 @@ window.showPage = function(page, role){
     if(typeof window.fillBrandSettingsForm==='function') window.fillBrandSettingsForm();
     if(typeof window.fillReceiptDesignForm==='function') window.fillReceiptDesignForm();
     if(typeof window.fillSaleReceiptSettingsForm==='function') window.fillSaleReceiptSettingsForm();
+      if(typeof window.fillVoiceAnnounceSettingsForm==='function') window.fillVoiceAnnounceSettingsForm();
     if(typeof window.fillRestrictedAdminForm==='function') window.fillRestrictedAdminForm();
     if(typeof window.renderScheduleForm==='function') window.renderScheduleForm();
     if(typeof window.renderAuditLog==='function') window.renderAuditLog();
@@ -8351,6 +8370,10 @@ window.doCartSell=async function(){
     // belgilanadi, aks holda mijoz chekni botda skanerlaganda IKKINCHI
     // marta ball olib qolishi mumkin edi.
     openReceiptModal(buildReceiptFromItems(receiptItems, currentSellerName, total, saleGroupId, !!cartCustomerId));
+    // YANGI: sotuv haqida ovozli e'lon (agar admin sozlamalarda yoqib
+    // qo'ygan bo'lsa) — faqat HAQIQIY, yangi sotuv yakunlanganda aytiladi
+    // (eski chekni qayta chop etishda emas).
+    if(typeof speakSaleAnnouncement==='function') speakSaleAnnouncement(receiptItems.map(i=>i.name), total);
   }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
@@ -9897,6 +9920,44 @@ window.saveSaleReceiptSettings = function(){
   DB.saleReceiptDesign = collectSaleReceiptSettingsForm();
   toast('✓ Sotuv cheki sozlamalari saqlandi (barcha qurilmalarda)','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+// YANGI: Mini App'da sotuvda ovozli e'lon — sozlamalarni saqlash/yuklash.
+window.saveVoiceAnnounceSettings = function(){
+  DB.voiceAnnounceEnabled = !!document.getElementById('voice-announce-enabled')?.checked;
+  DB.voiceAnnounceTemplate = (document.getElementById('voice-announce-template')?.value || '').trim();
+  toast('✓ Ovozli e\'lon sozlamalari saqlandi','green');
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+}
+window.fillVoiceAnnounceSettingsForm = function(){
+  const en = document.getElementById('voice-announce-enabled'); if(en) en.checked = !!DB.voiceAnnounceEnabled;
+  const tpl = document.getElementById('voice-announce-template'); if(tpl) tpl.value = DB.voiceAnnounceTemplate || '';
+}
+// YANGI: admin "Sinab ko'rish" tugmasini bosganda, xuddi haqiqiy sotuvdagi
+// kabi namuna matnni brauzerning o'z ovoz-sintez tizimi orqali o'qib
+// beradi — shu orqali admin qurilmasida o'zbekcha ovoz mavjudligini yoki
+// matn qanday eshitilishini oldindan tekshirib ko'rishi mumkin.
+window.previewVoiceAnnounce = function(){
+  const tpl = (document.getElementById('voice-announce-template')?.value || '').trim();
+  speakSaleAnnouncement(['Coca-Cola 1.5L', 'Non'], 24000, tpl);
+}
+// YANGI: brauzerning standart matn→ovoz (Web Speech API) texnologiyasi
+// orqali sotuv haqida ovozli e'lon aytadi. Bu qurilmaga bog'liq — agar
+// qurilmada mos ovoz sintez tizimi/o'zbekcha ovoz bo'lmasa, ishlamasligi
+// yoki boshqa (masalan ingliz/rus) talaffuz bilan aytilishi mumkin — bu
+// texnologiyaning o'zidagi cheklov, tuzatib bo'lmaydigan narsa.
+function speakSaleAnnouncement(itemNames, total, templateOverride){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const tpl = (templateOverride!=null ? templateOverride : (DB.voiceAnnounceTemplate||'')).trim() || "{mahsulot} sotildi, {summa} so'm";
+    const mahsulot = (itemNames||[]).join(', ');
+    const text = tpl.replace(/\{mahsulot\}/g, mahsulot).replace(/\{summa\}/g, fmt(total));
+    if(!text) return;
+    window.speechSynthesis.cancel(); // oldingi tugallanmagan e'lonni to'xtatib, yangisini boshlaydi
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'uz-UZ';
+    utter.rate = 0.95;
+    window.speechSynthesis.speak(utter);
+  }catch(e){ console.error('Ovozli e\'lon xatosi:', e); }
 }
 window.resetSaleReceiptSettingsDefaults = function(){
   confirm2('Standart holatga qaytarish', 'Sotuv cheki sozlamalari asl (standart) holatiga qaytariladi. Davom etilsinmi?', ()=>{

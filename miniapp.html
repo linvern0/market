@@ -29,6 +29,19 @@
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   html{scrollbar-width:thin}
   body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:84px;-webkit-tap-highlight-color:transparent;letter-spacing:.1px}
+  /* TUZATILDI (MUHIM — MUHIM UI XATOSI): savatda tovar bo'lganda, suzuvchi
+     ".cart-bar" pastki tablar panelining USTIGA (bottom:64px) qo'shimcha
+     qatlam sifatida chiqadi — lekin body'ning pastki bo'shlig'i (84px)
+     buni HISOBGA OLMASDI, faqat tablar paneli uchun yetarli edi. Natijada
+     — aynan ENG KO'P ishlatiladigan holatda (savatda tovar bor, ya'ni
+     sotuv jarayonining o'zida!) — mahsulotlar to'rining oxirgi qatori
+     ikkala panel ostida yashirinib, ekranga to'liq sig'may qolardi.
+     Foydalanuvchi buni "tovarlar ekranga sig'maydi" deb ta'riflagan
+     muammoning aynan sababi shu edi. */
+  /* body.has-cart-bar padding-bottom endi JS orqali ANIQ (bashorat qilingan
+     taxminiy son emas — real o'lchangan) qiymat bilan sozlanadi (pastga
+     qarang: applyCartBarSpacing()) — har qanday shrift o'lchami/qurilma
+     xotira panelida ham piksel-aniq ishlashi uchun. */
   body,.card,.stat-box,.btn,.tab,.pill,.toggle,.chip,input,select,textarea{transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease,transform .12s ease,color .2s ease,opacity .2s ease}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:20px}
@@ -46,9 +59,24 @@
   .hero .label{font-size:13px;opacity:.88;position:relative;display:flex;align-items:center;gap:6px}
   .hero .amount{font-size:30px;font-weight:800;margin-top:3px;position:relative;letter-spacing:-.02em}
   .hero .sub{font-size:12px;opacity:.8;margin-top:5px;position:relative}
-  .section-title{font-size:13px;font-weight:700;color:var(--hint);margin:18px 0 9px;text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .name{font-weight:600;font-size:15px}
+  /* TUZATILDI (MUHIM — UI): bu qoidada "flex-wrap" yo'q edi. Tor telefon
+     ekranida (320-375px) sarlavha matni ("Faol qarzlar (5)" kabi) + bir
+     nechta tugma ("📤 Excel", "💵 + Naqd pul qarz") bitta qatorga sig'may,
+     bir-birining ustiga tushib ketishi yoki chetga chiqib ketishi mumkin
+     edi — "boshqaruv panelida yetarlicha UI muammo" deb ta'riflangan
+     muammoning asosiy sabablaridan biri shu edi. Endi kerak bo'lsa ikkinchi
+     qatorga o'tadi, hech narsa kesilmaydi/ustiga tushmaydi. */
+  .section-title{font-size:13px;font-weight:700;color:var(--hint);margin:18px 0 9px;text-transform:uppercase;letter-spacing:.06em;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center}
+  .section-title>span{display:flex;flex-wrap:wrap;gap:6px}
+  /* TUZATILDI (MUHIM — UI): ilgari bu qatorda "flex-wrap" yo'q edi va
+     matn konteyneri (masalan qarzdor/mahsulot nomi) uchun "min-width:0"
+     ham yo'q edi — flexbox standart xatti-harakati bo'yicha, uzun nom
+     (masalan uzun ism+tashkilot) o'ng tomondagi summa/belgi bilan bir
+     qatorga sig'may, chetga chiqib ketishi yoki ustma-ust tushishi
+     mumkin edi. Endi uzun matn to'g'ri qisqartiriladi/o'raladi. */
+  .row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 10px}
+  .row>*:first-child{min-width:0;flex:1 1 auto}
+  .name{font-weight:600;font-size:15px;overflow-wrap:break-word;word-break:break-word}
   .meta{font-size:12px;color:var(--hint);margin-top:2px}
   .amount-red{color:var(--danger);font-weight:700}
   .amount-green{color:var(--accent);font-weight:700}
@@ -84,7 +112,12 @@
   .hidden{display:none!important}
   .spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--button);border-radius:50%;animation:spin 0.8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  /* TUZATILDI (UI): matn qismi (masalan "Muddati o'tgan qarzlar haqida")
+     uchun min-width:0 yo'q edi — tor ekranda uzunroq matn tugma-belgini
+     (toggle) chetga surib chiqarib yuborishi yoki qator sig'may qolishi
+     mumkin edi. */
+  .switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);gap:10px}
+  .switch-row>span{min-width:0;overflow-wrap:break-word}
   .switch-row:last-child{border-bottom:none}
   .toggle{width:44px;height:26px;border-radius:20px;background:rgba(255,255,255,.15);position:relative;cursor:pointer;flex-shrink:0}
   .toggle.on{background:var(--accent)}
@@ -104,7 +137,12 @@
      savatdagi son va narx bitta kartada. ---- */
   .catalog-search{width:100%;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:var(--sec-bg);color:var(--text);font-size:14px;margin-bottom:12px}
   .catalog-search:focus{outline:none;border-color:var(--button)}
-  .product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  /* TUZATILDI (UI): "align-items" ko'rsatilmagan edi — standart holatda
+     ("stretch") tugagan (miqdor tugmalarisiz, shu sabab qisqaroq)
+     kartochkalar bir qatordagi boshqa (balandroq) kartochkaga tenglashtirib
+     cho'zilib, pastda g'alati bo'sh joy qoldirardi. Endi har bir kartochka
+     o'zining tabiiy balandligida qoladi. */
+  .product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-items:start}
   @media(min-width:460px){.product-grid{grid-template-columns:repeat(3,1fr)}}
   @media(min-width:720px){.product-grid{grid-template-columns:repeat(4,1fr)}}
   .prod-card{background:var(--sec-bg);border:1px solid rgba(255,255,255,.07);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.15);cursor:pointer}
@@ -161,6 +199,27 @@ const API_BASE = location.origin;
 let STATE = { data: null, tab: 'main', cart: {} };
 
 function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' '); }
+// YANGI: brauzerning standart matn→ovoz (Web Speech API) texnologiyasi
+// orqali sotuv haqida ovozli e'lon aytadi — index.html'dagi bilan bir xil
+// mantiq. Qurilmaga bog'liq xususiyat: agar qurilmada mos ovoz sintez
+// tizimi/o'zbekcha ovoz bo'lmasa, ishlamasligi yoki boshqa (masalan
+// ingliz/rus) talaffuz bilan aytilishi mumkin.
+function speakSaleAnnouncement(itemNames, total){
+  try{
+    const d = STATE.data;
+    if(!d || !d.voiceAnnounceEnabled) return;
+    if(!('speechSynthesis' in window)) return;
+    const tpl = (d.voiceAnnounceTemplate||'').trim() || "{mahsulot} sotildi, {summa} so'm";
+    const mahsulot = (itemNames||[]).join(', ');
+    const text = tpl.replace(/\{mahsulot\}/g, mahsulot).replace(/\{summa\}/g, fmt(total));
+    if(!text) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'uz-UZ';
+    utter.rate = 0.95;
+    window.speechSynthesis.speak(utter);
+  }catch(e){ console.error('Ovozli e\'lon xatosi:', e); }
+}
 // MUHIM: bu yerda faqat &, <, > va " belgilari escape qilinadi (lekin '
 // emas) — chunki bir nechta joyda (masalan onclick="...') ichida) apostrof
 // alohida .replace(/'/g,"\\'") orqali JS satri uchun maxsus escape qilinadi;
@@ -170,6 +229,36 @@ function fmt(n){ return Math.round(n||0).toLocaleString('ru-RU').replace(/,/g,' 
 // JS xatosi chiqadi. " belgisi HTML atributlarni (value="...") buzmasligi
 // uchun endi to'g'ri escape qilinadi.
 function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// TUZATILDI (MUHIM — TEZLIK): mahsulot qidirish maydonlarida ilgari HECH
+// QANDAY kechikish (debounce) yo'q edi — har bir bosilgan harfda BUTUN
+// mahsulotlar to'ri (masalan 50+ mahsulot) qaytadan to'liq chizilardi.
+// Tez-tez yozganda bu sezilarli "uzilib-uzilib ishlash" (jank) hissi
+// berardi — ilovaning "sekin ishlaydi" degan shikoyatining bir sababi
+// aynan shu edi. Endi qidiruv 150ms kutib, foydalanuvchi yozishni
+// TO'XTATGANDAN keyingina qayta chizadi.
+function debounce(fn, ms){
+  let t=null;
+  return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); };
+}
+// TUZATILDI (MUHIM — ANIQLIK): savat paneli ko'ringanda sahifaning pastki
+// bo'shlig'ini AVVAL taxminiy (qattiq yozilgan) piksel bilan hisoblagan
+// edik. Bu ko'p qurilmada ishlaydi, lekin foydalanuvchining shrift
+// o'lchami kattalashtirilgan yoki qurilmaning "xavfsiz hudud" (safe area,
+// masalan iPhone'ning pastki chizig'i) balandligi boshqacha bo'lsa,
+// noaniq bo'lib qolishi mumkin edi. Endi ikkala panelning HAQIQIY
+// balandligi to'g'ridan-to'g'ri DOM'dan o'lchanadi va sahifa bo'shlig'i
+// aynan shu qiymatga (+ ozgina zaxira) sozlanadi — piksel-aniq, har qanday
+// qurilma/shrift sozlamasida ham to'g'ri ishlaydi.
+function applyCartBarSpacing(){
+  requestAnimationFrame(()=>{
+    const tabsEl = document.getElementById('tabs');
+    const cartEl = document.getElementById('cart-bar');
+    const tabsH = tabsEl ? tabsEl.offsetHeight : 0;
+    if(!cartEl){ document.body.style.paddingBottom = ''; return; }
+    const cartH = cartEl.offsetHeight;
+    document.body.style.paddingBottom = (tabsH + cartH + 16) + 'px';
+  });
+}
 function cs(){ return esc(STATE.data.currencySymbol || "so'm"); }
 
 async function loadData(){
@@ -246,7 +335,7 @@ function switchClientTab(t){ STATE.clientTab = t; renderClient(); }
 function renderClientCatalog(app, d){
   STATE.clientCart = STATE.clientCart || {};
   let html = `<div class="section-title">🛍 Tovarlar katalogi</div>
-    <input type="text" class="catalog-search" id="catalog-search" placeholder="🔍 Tovar qidirish..." value="${esc(STATE.catalogSearch||'')}" oninput="STATE.catalogSearch=this.value; renderCatalogGrid()">`;
+    <input type="text" class="catalog-search" id="catalog-search" placeholder="🔍 Tovar qidirish..." value="${esc(STATE.catalogSearch||'')}" oninput="STATE.catalogSearch=this.value; debouncedRenderCatalogGrid()">`;
   html += `<div class="product-grid" id="catalog-grid"></div>`;
   app.innerHTML = html;
   renderCatalogGrid();
@@ -284,9 +373,9 @@ function renderCatalogGrid(){
     // (d.settings.coinSettings) avtomatik hisoblanadi.
     const coinCost = getProductCoinCostClient(p, d);
     return `<div class="prod-card ${out?'out':''}" data-id="${p.id}" onclick="clientCardTap(event,'${p.id}')">
-      <div class="img-wrap">
-        ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
-        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+      <div class="img-wrap" style="height:96px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04)">
+        ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <div class="no-img" style="font-size:34px;${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="pill ${out?'out':'in'}">${out?'Tugagan':'Mavjud'}</span></div>
         ${out ? '' : (coinOn ? `<div class="coin-price-badge">🪙 ${coinCost}</div>` : '')}
         ${cartBadge}
@@ -306,6 +395,10 @@ function renderCatalogGrid(){
     </div>`;
   }).join('');
 }
+// TUZATILDI (TEZLIK): qidiruv maydonidagi HAR bir harf uchun BUTUN
+// mahsulot to'rini qayta chizish o'rniga, yozish to'xtaganidan keyingina
+// (150ms) chizadi.
+const debouncedRenderCatalogGrid = debounce(renderCatalogGrid, 150);
 // Umumiy sozlamadan (yoki tovarga alohida belgilangan qiymatdan) coin
 // narxini hisoblaydi — index.html/api tarafidagi mantiq bilan bir xil.
 function getProductCoinCostClient(p, d){
@@ -366,12 +459,13 @@ function renderClientCartBar(d){
   let bar = document.getElementById('cart-bar');
   const count = Object.values(STATE.clientCart||{}).reduce((a,b)=>a+b,0);
   if (bar) bar.remove();
-  if (!count) return;
+  if (!count) { applyCartBarSpacing(); return; }
   bar = document.createElement('div');
   bar.id = 'cart-bar'; bar.className = 'cart-bar';
   bar.onclick = openClientCheckoutModal;
   bar.innerHTML = `<span>🛒 ${count} ta tovar</span><span>${fmt(clientCartTotal())} ${cs()} →</span>`;
   document.body.appendChild(bar);
+  applyCartBarSpacing();
 }
 function openClientCheckoutModal(){
   const d = STATE.data;
@@ -550,7 +644,7 @@ function renderWeekChart(days){
 // vizual uslub ishlatiladi (pastdagi CSS ham umumiy: .product-grid, .prod-card).
 function renderSell(app, d){
   let html = `<div class="section-title">Tovar tanlang</div>
-    <input type="text" class="catalog-search" id="sell-search" placeholder="🔍 Tovar qidirish..." value="${esc(STATE.sellSearch||'')}" oninput="STATE.sellSearch=this.value; renderSellGrid()">`;
+    <input type="text" class="catalog-search" id="sell-search" placeholder="🔍 Tovar qidirish..." value="${esc(STATE.sellSearch||'')}" oninput="STATE.sellSearch=this.value; debouncedRenderSellGrid()">`;
   html += `<div class="product-grid" id="sell-grid-mini"></div>`;
   app.innerHTML = html;
   renderSellGrid();
@@ -583,9 +677,9 @@ function renderSellGrid(){
     const low = !out && p.stock <= lowStockThreshold;
     const cartBadge = qty>0 ? `<div class="cart-badge-overlay">${qty}</div>` : '';
     return `<div class="prod-card ${out?'out':''}" data-id="${p.id}" onclick="sellCardTap(event,'${p.id}')">
-      <div class="img-wrap">
-        ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
-        <div class="no-img" style="${p.img?'display:none':''}">💧</div>
+      <div class="img-wrap" style="height:96px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04)">
+        ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <div class="no-img" style="font-size:34px;${p.img?'display:none':''}">💧</div>
         <div class="stock-badge"><span class="pill ${out?'out':low?'low':'in'}">${p.stock} ta</span></div>
         ${cartBadge}
       </div>
@@ -602,6 +696,8 @@ function renderSellGrid(){
     </div>`;
   }).join('');
 }
+// TUZATILDI (TEZLIK): renderCatalogGrid bilan bir xil sabab.
+const debouncedRenderSellGrid = debounce(renderSellGrid, 150);
 // Kartaning rasm/nom qismiga bosilganda — katalogdagi bilan bir xil — bitta
 // dona darhol savatga qo'shiladi (miqdor tugmalari alohida, event.stopPropagation bilan himoyalangan).
 function sellCardTap(e, id){
@@ -631,12 +727,13 @@ function renderCartBar(d){
   let bar = document.getElementById('cart-bar');
   const count = Object.values(STATE.cart).reduce((a,b)=>a+b,0);
   if (bar) bar.remove();
-  if (!count) return;
+  if (!count) { applyCartBarSpacing(); return; }
   bar = document.createElement('div');
   bar.id = 'cart-bar'; bar.className = 'cart-bar';
   bar.onclick = openCartReviewModal;
   bar.innerHTML = `<span>🛒 ${count} ta tovar</span><span>${fmt(cartTotal())} ${cs()} →</span>`;
   document.body.appendChild(bar);
+  applyCartBarSpacing();
 }
 // YANGI: savatni yakunlashdan oldin ko'rib chiqish oynasi — web-paneldagi
 // ("index.html") "modal-cart" bilan BIR XIL: har bir tovar alohida qatorda,
@@ -750,9 +847,19 @@ async function submitSell(){
   if (r.ok){
     if(tg) tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
     STATE.cart = {};
-    await loadData();
-    STATE.tab = 'sell'; renderAdmin();
+    // TUZATILDI (TEZLIK — sezilarli tezlik): ilgari bu yerda chek FAQAT
+    // BUTUN ma'lumot serverdan qayta yuklanib bo'lgach (loadData() —
+    // tarmoq orqali, biroz vaqt oladigan) ko'rsatilardi — garchi chek
+    // uchun kerakli HAMMA narsa (tovarlar, summa, coin) ALLAQACHON qo'lda
+    // mavjud bo'lsa ham. Foydalanuvchi "to'lov qabul qilindi" tasdig'ini
+    // kutib, ekranda bir necha soniya hech narsa bo'lmasligini kuzatardi.
+    // Endi chek DARHOL (tarmoqni kutmasdan) ko'rsatiladi, ombordagi
+    // yangilangan miqdorlarni olib kelish esa fonda davom etadi.
     showReceipt(cartItemsForReceipt, r.total, mode, r.pointsEarned||0);
+    // YANGI: sotuv haqida ovozli e'lon (agar admin sozlamalarda yoqib
+    // qo'ygan bo'lsa).
+    speakSaleAnnouncement(cartItemsForReceipt.map(i=>i.name), r.total);
+    loadData().then(()=>{ STATE.tab = 'sell'; renderAdmin(); });
   } else {
     toast('Xatolik: ' + (r.error||'') + (r.productName?(' — '+r.productName):''));
   }
@@ -815,7 +922,7 @@ function renderDebts(app, d){
       </div>
       ${x.items && x.items.length ? `<div style="margin-top:6px;font-size:12px;color:var(--hint)">${x.items.map(it=>`${esc(it.name)} ×${it.qty}`).join(', ')}</div>` : ''}
       ${x.dueDate ? `<div style="margin-top:6px"><span class="pill ${overdue?'out':'low'}">${overdue?"⏰ Muddati o'tgan":'📅 Muddat'}: ${new Date(x.dueDate).toLocaleDateString('uz-UZ')}</span></div>` : ''}
-      <div style="margin-top:8px;text-align:right;display:flex;gap:8px;justify-content:flex-end">
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end">
         ${x.debtorId ? `<button class="btn small btn-outline" onclick="remindDebtor('${x.debtorId}')">🔔 Eslatma</button>` : ''}
         <button class="btn small" onclick="openPayModal('${x.id}','${esc(x.name).replace(/'/g,"\\'")}',${x.remaining})">💵 To'lov qo'shish</button>
       </div>
@@ -913,15 +1020,15 @@ function renderStock(app, d){
     html += `<div class="card">
       <div class="row" style="align-items:flex-start">
         <div style="display:flex;gap:10px;align-items:center;min-width:0">
-          <div class="img-wrap" style="width:48px;height:48px;flex:0 0 auto;border-radius:8px">
-            ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+          <div class="img-wrap" style="width:48px;height:48px;flex:0 0 auto;border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04)">
+            ${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
             <div class="no-img" style="font-size:18px;${p.img?'display:none':''}">💧</div>
           </div>
           <div style="min-width:0"><div class="name">${esc(p.name)}</div><div class="meta">${fmt(p.price)} ${cs()} ${p.cost?('· tannarx '+fmt(p.cost)+' '+cs()):''}</div></div>
         </div>
         <span class="pill ${p.stock===0?'out':(low?'low':'')}" style="${p.stock>0 && !low?'background:rgba(16,185,129,.15);color:var(--accent)':''}">${p.stock} ta</span>
       </div>
-      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end">
         <button class="btn small btn-outline" onclick="openRestockModal('${p.id}','${esc(p.name).replace(/'/g,"\\'")}')">📦 Kirim</button>
         <button class="btn small btn-outline" onclick="openProductModal('${p.id}')">✏️ Tahrirlash</button>
         <button class="btn small danger" onclick="deleteProduct('${p.id}','${esc(p.name).replace(/'/g,"\\'")}')">🗑</button>
@@ -957,14 +1064,40 @@ function previewMiniImg(){
   const wrap = document.getElementById('pf-img-preview-wrap'); const prev = document.getElementById('pf-img-preview');
   if (url){ prev.src = url; wrap.style.display = 'block'; } else wrap.style.display = 'none';
 }
+// TUZATILDI (MUHIM — TEZLIK): index.html'dagi bilan bir xil sabab — ilgari
+// bu yerda telefon kamerasining TO'LIQ hajmdagi (ko'pincha bir necha MB)
+// rasmi hech qanday siqishsiz saqlanardi. Mini App orqali mahsulot rasmini
+// telefondan to'g'ridan-to'g'ri yuklash ehtimoli katta bo'lgani uchun, bu
+// aynan Mini App'ning o'zini ham sekinlashtirgan asosiy sabablardan biri
+// edi. Endi rasm avval kichraytiriladi (maksimal 700px) va siqiladi
+// (JPEG, 70%) — odatda bir necha MB o'rniga 30-100 KB atrofida bo'ladi.
 function loadMiniImgFile(input){
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = (e)=>{
-    window._pfImgValue = e.target.result;
-    document.getElementById('pf-img').value = '';
-    document.getElementById('pf-img-preview').src = e.target.result;
-    document.getElementById('pf-img-preview-wrap').style.display = 'block';
+    const img = new Image();
+    img.onload = ()=>{
+      const MAX=700;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){ h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; } }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      let dataUrl;
+      try{ dataUrl=canvas.toDataURL('image/jpeg',0.7); }catch(err){ dataUrl=e.target.result; }
+      window._pfImgValue = dataUrl;
+      document.getElementById('pf-img').value = '';
+      document.getElementById('pf-img-preview').src = dataUrl;
+      document.getElementById('pf-img-preview-wrap').style.display = 'block';
+    };
+    img.onerror = ()=>{
+      // Rasm sifatida o'qib bo'lmasa (kamdan-kam) — asl faylni saqlaymiz.
+      window._pfImgValue = e.target.result;
+      document.getElementById('pf-img').value = '';
+      document.getElementById('pf-img-preview').src = e.target.result;
+      document.getElementById('pf-img-preview-wrap').style.display = 'block';
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -1029,7 +1162,7 @@ function renderDebtorsTab(app, d){
         <span class="pill" style="${x.linked?'background:rgba(16,185,129,.15);color:var(--accent)':'background:rgba(245,158,11,.15);color:var(--warn)'}">${x.linked?'✅ Ulangan':'⏳ Kutilmoqda'}</span>
       </div>
       ${x.org ? `<div class="meta" style="margin-top:6px">Ko'rish huquqi: <b>${x.viewScope==='org'?'🏢 Butun tashkilot':"👤 Faqat o'zi"}</b></div>` : ''}
-      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end">
         <button class="btn small btn-outline" onclick='openDebtorModal(${JSON.stringify(x.id)})'>✏️ Tahrirlash</button>
         <button class="btn small danger" onclick="deleteDebtor('${x.id}','${esc(x.name).replace(/'/g,"\\'")}')">🗑</button>
       </div>
