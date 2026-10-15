@@ -14,7 +14,7 @@
 // uchun har doim try/catch bilan, xatolik bo'lsa faqat konsolga chiqariladi.
 // ----------------------------------------------------------------------------
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function uid() { return Date.now().toString(36) + require('crypto').randomBytes(5).toString('hex'); }
 
 async function logAction(db, { source, actorName, actorChatId, action, detail }) {
   try {

@@ -40,7 +40,7 @@ const { logAction } = require('./_audit');
 function getDb() { return require('./_firebase').getDb(); }
 const { getSettings, invalidateSettingsCache } = require('./_firebase');
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function uid() { return Date.now().toString(36) + require('crypto').randomBytes(5).toString('hex'); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 // YANGI (MUHIM): index.html/telegram-webhook.js bilan bir xil — admin
@@ -54,12 +54,49 @@ function debtRemaining(d) { const rem = (d.total || 0) - (d.paidAmount || 0); re
 
 const { computeCustomerTier } = require('./_loyalty');
 
+// ============ v7: UMUMIY HISOB-KITOB YORDAMCHILARI ============
+const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const MAX_LINES = 100, MAX_QTY = 1000000;
+// Savat qatorlarini tekshiradi va BIR XIL tovarni birlashtiradi (ilgari bir
+// tovar ikki qatorda yuborilsa, zaxira har qator uchun ALOHIDA tekshirilib,
+// omborda bor sondan KO'P sotish mumkin edi).
+function normalizeItems(items) {
+  if (!Array.isArray(items) || !items.length || items.length > MAX_LINES) return { error: 'no_items' };
+  const map = new Map();
+  for (const it of items) {
+    const pid = it && typeof it.productId === 'string' ? it.productId.trim() : '';
+    const qty = Number(it && it.qty);
+    if (!pid || pid.includes('/')) return { error: 'bad_product' };
+    if (!Number.isInteger(qty) || qty <= 0 || qty > MAX_QTY) return { error: 'bad_qty' };
+    map.set(pid, (map.get(pid) || 0) + qty);
+  }
+  return { items: [...map].map(([productId, qty]) => ({ productId, qty })) };
+}
+// Zaxirani ATOMIK (tranzaksiya) kamaytiradi: tekshirish va yozish orasida
+// boshqa sotuv kirib qolsa ham zaxira manfiyga ketmaydi.
+async function reserveStock(db, lines) {
+  await db.runTransaction(async (tx) => {
+    const snaps = await Promise.all(lines.map((x) => tx.get(x.ref)));
+    snaps.forEach((sn, i) => {
+      if (!sn.exists) { const e = new Error('product_not_found'); e.code = 'product_not_found'; throw e; }
+      if ((Number(sn.data().stock) || 0) < lines[i].qty) { const e = new Error('not_enough_stock'); e.code = 'not_enough_stock'; e.productName = sn.data().name; throw e; }
+    });
+    lines.forEach((x) => tx.update(x.ref, { stock: admin.firestore.FieldValue.increment(-x.qty) }));
+  });
+}
+async function releaseStock(lines) {
+  await Promise.allSettled(lines.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(x.qty) })));
+}
+
+
 async function tgSendMessage(token, chatId, text) {
   if (!token || !chatId) return;
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
-  }).catch(() => {});
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    });
+  } catch (e) { console.error('tgSendMessage xatolik:', e && e.message); }
 }
 
 // Bitta qarz uchun "nima uchun qarzdorligi" batafsil matnini quradi:
@@ -116,6 +153,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ ok: false, error: 'method_not_allowed' }); return; }
   try {
     const { initData, action, payload } = req.body || {};
+    if (typeof initData !== 'string' || initData.length > 4096 || typeof action !== 'string') { res.status(400).json({ ok: false, error: 'bad_request' }); return; }
     const db = getDb();
     const settingsRef = db.collection('dokon').doc('settings');
     // TEZLASHTIRISH: qisqa muddatli xotira-keshi (batafsil izoh uchun
@@ -160,13 +198,18 @@ module.exports = async (req, res) => {
     // Boshqa barcha amallar hamon faqat admin uchun.
     if (action === 'create_order') {
       if (isAdmin) { res.status(400).json({ ok: false, error: 'admins_cannot_order' }); return; }
-      const { items, usePoints } = p;
-      if (!Array.isArray(items) || !items.length) { res.status(400).json({ ok: false, error: 'no_items' }); return; }
+      const { usePoints } = p;
+      const norm = normalizeItems(p.items);
+      if (norm.error) { res.status(400).json({ ok: false, error: norm.error }); return; }
+      const items = norm.items;
 
       const customerSnap = await db.collection('customers').where('telegramChatId', '==', chatId).limit(1).get();
       if (customerSnap.empty) { res.status(400).json({ ok: false, error: 'not_registered' }); return; }
       const customerRef = customerSnap.docs[0].ref;
       const customerData = customerSnap.docs[0].data();
+      // v7: spamdan himoya — bitta mijozda 5 tadan ortiq kutilayotgan buyurtma bo'lmasin
+      const pendingSnap = await db.collection('orders').where('customerChatId', '==', chatId).where('status', '==', 'pending').limit(6).get();
+      if (pendingSnap.size >= 5) { res.status(429).json({ ok: false, error: 'too_many_pending' }); return; }
 
       // TUZATILDI: ilgari bu yerda "narx/10000" va "1 coin = 100 so'm"
       // qattiq yozilgan edi — admin sozlamalardan (coinSettings) coin
@@ -188,9 +231,9 @@ module.exports = async (req, res) => {
         if ((prod.stock || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
         const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / earnPerAmount);
         const subtotal = (prod.price || 0) * qty;
-        lineItems.push({ productId: prod.id, name: prod.name, qty, price: prod.price || 0, points: unitPoints * qty, subtotal });
+        lineItems.push({ productId: snap.id, name: prod.name, qty, price: Number(prod.price) || 0, points: unitPoints * qty, subtotal: round2((Number(prod.price) || 0) * qty) });
       }
-      const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
+      const total = round2(lineItems.reduce((a, x) => a + x.subtotal, 0));
       const totalPoints = isCoinEnabled(settings) ? lineItems.reduce((a, x) => a + x.points, 0) : 0;
 
       // Ball bilan to'lash: 1 ball = redeemValuePerCoin so'm chegirma (admin
@@ -202,8 +245,8 @@ module.exports = async (req, res) => {
       // qoldiriladi).
       if (usePoints && isCoinEnabled(settings)) {
         const neededPoints = Math.ceil(total / redeemValuePerCoin);
-        pointsUsed = Math.min(customerData.points || 0, neededPoints);
-        cashDue = Math.max(0, total - pointsUsed * redeemValuePerCoin);
+        pointsUsed = Math.min(Math.max(0, Math.floor(Number(customerData.points) || 0)), neededPoints);
+        cashDue = round2(Math.max(0, total - pointsUsed * redeemValuePerCoin));
       }
 
       const orderRef = db.collection('orders').doc();
@@ -252,8 +295,8 @@ module.exports = async (req, res) => {
       if (!isCoinEnabled(settings)) { res.status(400).json({ ok: false, error: 'coin_disabled' }); return; }
       if (isAdmin) { res.status(400).json({ ok: false, error: 'admins_cannot_order' }); return; }
       const productId = String(p.productId || '');
-      const qty = Math.max(1, parseInt(p.qty, 10) || 1);
-      if (!productId) { res.status(400).json({ ok: false, error: 'no_product' }); return; }
+      const qty = Math.min(MAX_QTY, Math.max(1, parseInt(p.qty, 10) || 1));
+      if (!productId || productId.includes('/')) { res.status(400).json({ ok: false, error: 'no_product' }); return; }
 
       const customerSnap = await db.collection('customers').where('telegramChatId', '==', chatId).limit(1).get();
       if (customerSnap.empty) { res.status(400).json({ ok: false, error: 'not_registered' }); return; }
@@ -267,7 +310,11 @@ module.exports = async (req, res) => {
 
       const unitCoinCost = productCoinCost(prod, settings);
       const totalCoinCost = unitCoinCost * qty;
-      const balance = customerData.points || 0;
+      // v7: kutilayotgan (hali tasdiqlanmagan) coin buyurtmalar ham hisobga olinadi —
+      // aks holda mijoz balansidan ko'p buyurtma yig'ib, adminni chalg'itishi mumkin edi.
+      const pendCoin = await db.collection('coinOrders').where('customerChatId', '==', chatId).where('status', '==', 'pending').limit(20).get();
+      const reserved = pendCoin.docs.reduce((a, d) => a + (Number(d.data().totalCoinCost) || 0), 0);
+      const balance = Math.max(0, Math.floor(Number(customerData.points) || 0)) - reserved;
       if (balance < totalCoinCost) { res.status(400).json({ ok: false, error: 'not_enough_coins', need: totalCoinCost, have: balance }); return; }
 
       const coinOrderRef = db.collection('coinOrders').doc();
@@ -301,7 +348,7 @@ module.exports = async (req, res) => {
       if (forbid('manageDebts')) return;
       const { debtId, amount } = p;
       const amt = parseFloat(amount);
-      if (!debtId || isNaN(amt) || amt <= 0) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      if (typeof debtId !== 'string' || !debtId || !isFinite(amt) || Math.round(amt) <= 0) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const debtRef = db.collection('debts').doc(debtId);
       // TUZATILDI (poyga holati / race condition): ilgari bu yerda avval
       // debtRef.get() bilan o'qib, "qancha to'landi"/"to'liq yopildimi"
@@ -475,46 +522,45 @@ module.exports = async (req, res) => {
 
     // ---------------- SOTISH (naqd yoki nasiya/qarzga) ----------------
     if (action === 'sell') {
-      const { items, mode, debtorId, name, org, phone, note, dueDate, customerId, forceOverLimit } = p;
-      if (!Array.isArray(items) || !items.length) { res.status(400).json({ ok: false, error: 'no_items' }); return; }
+      const { mode, debtorId, phone, note, dueDate, customerId, forceOverLimit } = p;
+      const name = String(p.name || '').trim();   // v7: trim — ilgari bo'sh joyli ism takroriy qarzdor yaratardi
+      const org = String(p.org || '').trim();
+      const norm = normalizeItems(p.items);
+      if (norm.error) { res.status(400).json({ ok: false, error: norm.error }); return; }
+      const items = norm.items;
       if (mode === 'debt') {
         if (forbid('manageDebts')) return;
-        if (!debtorId && !(name || '').trim()) { res.status(400).json({ ok: false, error: 'debtor_name_required' }); return; }
+        if (!debtorId && !name) { res.status(400).json({ ok: false, error: 'debtor_name_required' }); return; }
+        if (debtorId && typeof debtorId !== 'string') { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+        if (dueDate && !/^\d{4}-\d{2}-\d{2}/.test(String(dueDate))) { res.status(400).json({ ok: false, error: 'bad_due_date' }); return; }
       }
 
-      // Tovarlarni o'qib, zaxirani tekshiramiz
       const productRefs = items.map((it) => db.collection('products').doc(it.productId));
       const productSnaps = await Promise.all(productRefs.map((r) => r.get()));
       const lineItems = [];
       for (let i = 0; i < items.length; i++) {
         const snap = productSnaps[i];
-        const qty = parseInt(items[i].qty, 10);
+        const qty = items[i].qty;
         if (!snap.exists) { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
         const prod = snap.data();
-        if (!qty || qty <= 0) { res.status(400).json({ ok: false, error: 'bad_qty' }); return; }
-        if ((prod.stock || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
-        lineItems.push({ ref: snap.ref, product: prod, qty, subtotal: (prod.price || 0) * qty });
+        if ((Number(prod.stock) || 0) < qty) { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: prod.name }); return; }
+        const price = Number(prod.price) || 0;
+        lineItems.push({ ref: snap.ref, product: { ...prod, id: snap.id, price }, qty, subtotal: round2(price * qty) });
       }
-      const total = lineItems.reduce((a, x) => a + x.subtotal, 0);
+      const total = round2(lineItems.reduce((a, x) => a + x.subtotal, 0));
       const now = new Date().toISOString();
       const seller = 'Admin (Mini App)';
-      // YANGI: bitta xarid (checkout) ichidagi barcha qatorlarni bitta
-      // receiptId bilan bog'laymiz — bu web-panelidagi ("index.html")
-      // savdo tarixi bilan BIR XIL mantiq: chek chop etish va "↩ Qaytarish"
-      // (revert_sale) shu receiptId orqali butun xaridni birdaniga qaytaradi.
       const receiptId = uid();
 
-      // Zaxirani kamaytiramiz
-      await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(-x.qty) })));
-
+      // v7 (MUHIM TUZATISH): qarzdor va kredit limiti zaxira kamaytirilishidan OLDIN
+      // tekshiriladi. Ilgari zaxira avval yechilar, keyin "qarzdor topilmadi" (404)
+      // bo'lsa ombor tiklanmasdan qolib ketardi (tovar "yo'qolardi").
+      let debtorRef, debtorData, newDebtor = false;
       if (mode === 'debt') {
-        // Mavjud qarzdorni topamiz yoki yangi yaratamiz
-        let debtorRef, debtorData;
         if (debtorId) {
-          debtorRef = db.collection('debtors').doc(debtorId);
-          const s = await debtorRef.get();
-          if (!s.exists) { res.status(404).json({ ok: false, error: 'debtor_not_found' }); return; }
-          debtorData = s.data();
+          const s0 = await db.collection('debtors').doc(debtorId).get();
+          if (!s0.exists) { res.status(404).json({ ok: false, error: 'debtor_not_found' }); return; }
+          debtorRef = s0.ref; debtorData = s0.data();
         } else {
           const existingSnap = org
             ? await db.collection('debtors').where('org', '==', org).where('name', '==', name).get()
@@ -523,38 +569,51 @@ module.exports = async (req, res) => {
           if (existing) { debtorRef = existing.ref; debtorData = existing.data(); }
           else {
             const newId = uid();
-            debtorData = { id: newId, name: name.trim(), org: org || '', phone: phone || '', login: '', password: '', createdAt: now, viewScope: 'own' };
+            debtorData = { id: newId, name, org, phone: phone || '', login: '', password: '', createdAt: now, viewScope: 'own' };
             debtorRef = db.collection('debtors').doc(newId);
-            await debtorRef.set(debtorData);
+            newDebtor = true;
           }
         }
-
-        // YANGI: qarz limiti tekshiruvi (agar shu qarzdor/umumiy sozlamada
-        // belgilangan bo'lsa). Limitdan oshsa va admin ataylab
-        // (forceOverLimit) tasdiqlamagan bo'lsa — savdo YOZILMAYDI (lekin
-        // zaxira allaqachon kamaytirilgan bo'lishi mumkin, shu sabab avval
-        // tekshirib, keyin zaxirani kamaytirish tartibiga rioya qilamiz —
-        // pastda buni to'g'rilaymiz).
         const limitCheck = await checkCreditLimit(db, debtorData, settings, total);
         if (limitCheck.wouldExceed && !forceOverLimit) {
-          // Bu holatda zaxira allaqachon kamaytirilgan (yuqorida) — qaytaramiz.
-          await Promise.all(lineItems.map((x) => x.ref.update({ stock: admin.firestore.FieldValue.increment(x.qty) })));
           res.status(409).json({ ok: false, error: 'credit_limit_exceeded', limit: limitCheck.limit, currentRemaining: limitCheck.currentRemaining, newAmount: total });
           return;
         }
+      }
+
+      // Zaxirani ATOMIK kamaytirish (tekshirish + yechish bitta tranzaksiyada)
+      try { await reserveStock(db, lineItems); }
+      catch (e) {
+        if (e.code === 'not_enough_stock') { res.status(400).json({ ok: false, error: 'not_enough_stock', productName: e.productName }); return; }
+        if (e.code === 'product_not_found') { res.status(404).json({ ok: false, error: 'product_not_found' }); return; }
+        throw e;
+      }
+
+      // Savdo qatorlari: hujjat ID si va `id` maydoni BIR XIL (ilgari har xil uid() edi)
+      const makeRows = (extra, perLine) => lineItems.map((x) => {
+        const id = uid();
+        return { id, receiptId, productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
+          cost: Number(x.product.cost) || 0, total: x.subtotal, seller, date: now, reverted: false, ...extra, ...(perLine ? perLine(x) : {}) };
+      });
+      const writeRows = (rows) => Promise.all(rows.map((r) => db.collection('sales').doc(r.id).set(r)));
+
+      if (mode === 'debt') {
+        if (newDebtor) { try { await debtorRef.set(debtorData); } catch (err) { await releaseStock(lineItems); throw err; } }
 
         const debtItems = lineItems.map((x) => ({ productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price, subtotal: x.subtotal }));
         const debtId = uid();
         const debtDoc = {
           id: debtId, debtorId: debtorData.id, debtorName: debtorData.name, org: debtorData.org || '', phone: debtorData.phone || '',
-          items: debtItems, total, paid: false, paidDate: null, date: now, dueDate: dueDate || null, note: note || '', seller, type: debtorData.org ? 'organization' : 'person',
+          items: debtItems, total, receiptId, paid: false, paidDate: null, date: now, dueDate: dueDate || null, note: note || '', seller, type: debtorData.org ? 'organization' : 'person',
         };
-        await db.collection('debts').doc(debtId).set(debtDoc);
-
-        await Promise.all(lineItems.map((x) => db.collection('sales').doc(uid()).set({
-          id: uid(), receiptId, productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
-          cost: x.product.cost || 0, total: x.subtotal, seller, date: now, reverted: false, isDebt: true, debtorName: debtorData.name, org: debtorData.org || '',
-        })));
+        try {
+          await db.collection('debts').doc(debtId).set(debtDoc);
+          await writeRows(makeRows({ isDebt: true, debtorName: debtorData.name, org: debtorData.org || '' }));
+        } catch (err) {
+          await db.collection('debts').doc(debtId).delete().catch(() => {});
+          await releaseStock(lineItems);
+          throw err;
+        }
 
         // TUZATILDI (MUHIM): ilgari Mini App orqali (masalan bot ichida)
         // nasiyaga sotilganda ADMINGA HECH QANDAY xabar ketmasdi — faqat
@@ -595,40 +654,28 @@ module.exports = async (req, res) => {
       }
 
       // Naqd sotish
-      await Promise.all(lineItems.map((x) => db.collection('sales').doc(uid()).set({
-        id: uid(), receiptId, productId: x.product.id, productName: x.product.name, volume: x.product.volume || '', qty: x.qty, price: x.product.price,
-        cost: x.product.cost || 0, total: x.subtotal, seller, date: now, reverted: false, isDebt: false,
-      })));
-
-      // YANGI: agar naqd sotuv sodiqlik mijoziga bog'langan bo'lsa (mijoz
-      // katalogdan tanlangan) — web-paneldagi applyCustomerPurchase bilan
-      // BIR XIL mantiq: totalSpent/purchaseCount oshadi va coin hisoblanadi
-      // (settings.coinSettings.earnPerAmount bo'yicha).
-      let pointsEarned = 0;
-      if (customerId) {
-        const custRef = db.collection('customers').doc(customerId);
-        const custSnap = await custRef.get();
-        if (custSnap.exists) {
-          // YANGI: COIN o'chirilgan bo'lsa — yangi coin hisoblanmaydi
-          // (0 qoladi), lekin jami xarid/daraja statistikasi baribir
-          // yuritiladi (bu COIN emas, sodiqlik darajasi uchun kerak).
-          // TUZATILDI (MUHIM): ilgari bu yerda FAQAT umumiy summadan
-          // (total/earnPerAmount) hisoblanardi — agar biror mahsulotga
-          // admin ALOHIDA coin miqdori belgilagan bo'lsa (masalan aksiya
-          // uchun), bu qoida shu yerda (kassadagi sotuvda) butunlay
-          // e'tiborga olinmas edi — faqat Mini App orqali mijozning o'zi
-          // buyurtma berganda (create_order, yuqorida) to'g'ri ishlardi.
-          // Endi bu yerda ham har bir tovar bo'yicha, agar alohida coin
-          // belgilangan bo'lsa o'shani, aks holda standart
-          // (narx/earnPerAmount) qoidani qo'llaydi.
-          if (isCoinEnabled(settings)) {
-            const { earnPerAmount } = getCoinSettings(settings);
-            pointsEarned = lineItems.reduce((a, x) => {
-              const prod = x.product;
-              const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / earnPerAmount);
-              return a + unitPoints * x.qty;
-            }, 0);
-          }
+      let pointsEarned = 0, custRef = null;
+      try {
+        if (customerId && typeof customerId === 'string') {
+          custRef = db.collection('customers').doc(customerId);
+          const custSnap = await custRef.get();
+          if (!custSnap.exists) custRef = null;
+        }
+        if (custRef && isCoinEnabled(settings)) {
+          const { earnPerAmount } = getCoinSettings(settings);
+          pointsEarned = lineItems.reduce((a, x) => {
+            const prod = x.product;
+            const unitPoints = (prod.points || prod.points === 0) ? Math.max(0, parseInt(prod.points, 10) || 0) : Math.floor((prod.price || 0) / earnPerAmount);
+            return a + unitPoints * x.qty;
+          }, 0);
+        }
+        // Qaytarish (revert) paytida mijoz coini va jami xaridini TO'G'RI ayirish uchun
+        // har bir qatorda mijoz va coin saqlanadi (ilgari qaytarishda coin qolib ketardi).
+        await writeRows(makeRows({ isDebt: false }, (x) => custRef ? {
+          customerId: custRef.id,
+          pointsEarned: (() => { const pr = x.product; const eps = getCoinSettings(settings).earnPerAmount; const u = (pr.points || pr.points === 0) ? Math.max(0, parseInt(pr.points, 10) || 0) : Math.floor((pr.price || 0) / eps); return isCoinEnabled(settings) ? u * x.qty : 0; })(),
+        } : {}));
+        if (custRef) {
           await custRef.update({
             totalSpent: admin.firestore.FieldValue.increment(total),
             purchaseCount: admin.firestore.FieldValue.increment(1),
@@ -636,7 +683,7 @@ module.exports = async (req, res) => {
             lastPurchaseAt: now,
           });
         }
-      }
+      } catch (err) { await releaseStock(lineItems); throw err; }
       res.status(200).json({ ok: true, total, receiptId, pointsEarned });
       return;
     }
@@ -660,7 +707,7 @@ module.exports = async (req, res) => {
       // holatini o'zgartiradi, ham savdo yozuvini "o'chiradi").
       if (forbid('manageProducts') || forbid('deleteRecords')) return;
       const { receiptId } = p;
-      if (!receiptId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
+      if (typeof receiptId !== 'string' || !receiptId) { res.status(400).json({ ok: false, error: 'bad_params' }); return; }
       const salesSnap = await db.collection('sales').where('receiptId', '==', receiptId).get();
       const docs = salesSnap.docs.filter((d) => !d.data().reverted);
       if (!docs.length) { res.status(404).json({ ok: false, error: 'sale_not_found' }); return; }
@@ -671,15 +718,50 @@ module.exports = async (req, res) => {
         return isNaN(t) || (nowMs - t) / 60000 > revertMinutes;
       });
       if (expired) { res.status(400).json({ ok: false, error: 'revert_window_expired' }); return; }
-      await Promise.all(docs.map(async (d) => {
-        const s = d.data();
-        await d.ref.update({ reverted: true });
-        if (s.productId) {
-          await db.collection('products').doc(s.productId)
-            .update({ stock: admin.firestore.FieldValue.increment(s.qty || 0) })
-            .catch(() => {});
-        }
-      }));
+
+      // v7 (MUHIM TUZATISH): butun qaytarish BITTA tranzaksiyada. Ilgari:
+      //  - ikki marta bosilsa ombor 2 marta to'lib ketardi (poyga holati);
+      //  - nasiya sotuv qaytarilganda QARZ yozuvi o'chmay qolardi;
+      //  - naqd sotuvda mijozning coini/jami xaridi qaytarilmasdi.
+      try {
+        await db.runTransaction(async (tx) => {
+          const fresh = await Promise.all(docs.map((d) => tx.get(d.ref)));
+          const live = fresh.filter((f) => f.exists && !f.data().reverted);
+          if (!live.length) { const e = new Error('sale_not_found'); e.code = 'sale_not_found'; throw e; }
+          const debtSnap = await tx.get(db.collection('debts').where('receiptId', '==', receiptId));
+          for (const ds of debtSnap.docs) {
+            if ((Number(ds.data().paidAmount) || 0) > 0) { const e = new Error('debt_has_payments'); e.code = 'debt_has_payments'; throw e; }
+          }
+          const stockBack = new Map();
+          let custId = null, pointsBack = 0, spentBack = 0;
+          live.forEach((f) => {
+            const d = f.data();
+            if (d.productId) stockBack.set(d.productId, (stockBack.get(d.productId) || 0) + (Number(d.qty) || 0));
+            if (d.customerId) { custId = d.customerId; pointsBack += Number(d.pointsEarned) || 0; spentBack += Number(d.total) || 0; }
+          });
+          const prodRefs = [...stockBack.keys()].map((id) => db.collection('products').doc(id));
+          const prodSnaps = await Promise.all(prodRefs.map((r) => tx.get(r)));
+          const custRef = custId ? db.collection('customers').doc(custId) : null;
+          const custSnap = custRef ? await tx.get(custRef) : null;
+
+          live.forEach((f) => tx.update(f.ref, { reverted: true, revertedAt: new Date().toISOString() }));
+          prodSnaps.forEach((ps) => { if (ps.exists) tx.update(ps.ref, { stock: admin.firestore.FieldValue.increment(stockBack.get(ps.id)) }); });
+          debtSnap.docs.forEach((ds) => tx.delete(ds.ref));
+          if (custSnap && custSnap.exists) {
+            const c = custSnap.data();
+            tx.update(custRef, {
+              points: Math.max(0, (Number(c.points) || 0) - pointsBack),
+              totalSpent: Math.max(0, (Number(c.totalSpent) || 0) - spentBack),
+              purchaseCount: Math.max(0, (Number(c.purchaseCount) || 0) - 1),
+            });
+          }
+        });
+      } catch (e) {
+        if (e.code === 'sale_not_found') { res.status(404).json({ ok: false, error: 'sale_not_found' }); return; }
+        if (e.code === 'debt_has_payments') { res.status(409).json({ ok: false, error: 'debt_has_payments' }); return; }
+        throw e;
+      }
+      audit('revert_sale', receiptId);
       res.status(200).json({ ok: true });
       return;
     }
@@ -1100,6 +1182,6 @@ module.exports = async (req, res) => {
     res.status(400).json({ ok: false, error: 'unknown_action' });
   } catch (e) {
     console.error('miniapp-action xatolik:', e);
-    res.status(500).json({ ok: false, error: String(e) });
+    res.status(500).json({ ok: false, error: 'server_error' });
   }
 };

@@ -37,7 +37,7 @@ let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
 const { getSettings, invalidateSettingsCache } = require('./_firebase');
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function uid() { return Date.now().toString(36) + require('crypto').randomBytes(5).toString('hex'); }
 function fmt(n) { return Math.round(n || 0).toLocaleString('ru-RU').replace(/,/g, ' '); }
 function esc(s) { return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 // YANGI (MUHIM): index.html'dagi fillTelegramTemplate() bilan bir xil —
@@ -1742,6 +1742,14 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
       }
       let customerRef = null;
       if (order.customerId) customerRef = db.collection('customers').doc(order.customerId);
+      // v7: balldan to'langan qism tasdiqlash paytida ham yetarli bo'lishi shart
+      // (ilgari mijoz balli oraliqda sarflansa, balans MANFIYGA ketardi).
+      if (customerRef && (order.pointsUsed || 0) > 0) {
+        const cs = await tx.get(customerRef);
+        if (!cs.exists || (Number(cs.data().points) || 0) < order.pointsUsed) {
+          const e = new Error('not_enough_coins'); e.code = 'not_enough_coins'; throw e;
+        }
+      }
       productSnaps.forEach((snap, i) => {
         tx.update(snap.ref, { stock: admin.firestore.FieldValue.increment(-items[i].qty) });
         tx.set(db.collection('sales').doc(saleIds[i]), {
@@ -1762,6 +1770,7 @@ async function handleOrderDecision(db, token, settingsRef, cq, orderId, isConfir
     });
   } catch (e) {
     if (e.code === 'already_decided') { await answerCallbackQuery(token, cq.id, "Bu buyurtma allaqachon boshqa admin tomonidan hal qilingan.", true); return; }
+    if (e.code === 'not_enough_coins') { await answerCallbackQuery(token, cq.id, "⚠️ Mijozning balli endi yetarli emas. Buyurtmani bekor qiling.", true); return; }
     if (e.code === 'not_enough_stock') { await answerCallbackQuery(token, cq.id, `⚠️ "${e.itemName}" omborda yetarli emas. Buyurtmani bekor qiling yoki avval omborni to'ldiring.`, true); return; }
     throw e;
   }
@@ -2212,13 +2221,20 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
   await sendMessage(token, chatId, helpText(isAdmin), isAdmin ? { reply_markup: adminMenuKeyboard(req) } : { reply_markup: debtorMenuKeyboard(req, settingsData) });
 }
 
+// XAVFSIZLIK: timing-hujumga chidamli taqqoslash
+function safeEqual(a, b) {
+  const A = Buffer.from(String(a)); const B = Buffer.from(String(b));
+  if (A.length !== B.length) return false;
+  return require('crypto').timingSafeEqual(A, B);
+}
+
 module.exports = async (req, res) => {
   // Faqat Telegram'dan (to'g'ri "maxfiy token" header bilan) kelgan so'rovlarni
   // qabul qilamiz - boshqa hech kim bu manzilni chaqirib, botni boshqara olmasin.
   const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
   if (expectedSecret) {
-    const got = req.headers['x-telegram-bot-api-secret-token'];
-    if (got !== expectedSecret) { res.status(401).json({ ok: false, error: 'unauthorized' }); return; }
+    const got = String(req.headers['x-telegram-bot-api-secret-token'] || '');
+    if (!safeEqual(got, expectedSecret)) { res.status(401).json({ ok: false, error: 'unauthorized' }); return; }
   }
   if (req.method !== 'POST') { res.status(200).json({ ok: true, info: 'Telegram webhook is up' }); return; }
 

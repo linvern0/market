@@ -230,6 +230,11 @@ async function buildAdminPayload(db, settings) {
     // YANGI: Mini App'da sotuvda ovozli e'lon sozlamalari.
     voiceAnnounceEnabled: !!settings.voiceAnnounceEnabled,
     voiceAnnounceTemplate: settings.voiceAnnounceTemplate || '',
+    voiceLang: settings.voiceLang || 'uz-UZ',
+    voiceName: settings.voiceName || '',
+    voiceRate: typeof settings.voiceRate === 'number' ? settings.voiceRate : 0.95,
+    voicePitch: typeof settings.voicePitch === 'number' ? settings.voicePitch : 1,
+    voiceVolume: typeof settings.voiceVolume === 'number' ? settings.voiceVolume : 1,
     stats: { revenue, profit, salesCount: todaySales.length },
     last7Days,
     report: { ...reportStats, topProducts, recentSales },
@@ -451,6 +456,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(200).json({ ok: true, info: 'Mini App data endpoint is up' }); return; }
   try {
     const { initData } = req.body || {};
+    if (typeof initData !== 'string' || initData.length > 4096) { res.status(400).json({ ok: false, error: 'bad_request' }); return; }
     const db = getDb();
     // TEZLASHTIRISH: qisqa muddatli xotira-keshi — Mini App tez-tez (har
     // tab almashganda) shu endpoint'ga murojaat qiladi, shuning uchun
@@ -473,6 +479,6 @@ module.exports = async (req, res) => {
     res.status(200).json(payload);
   } catch (e) {
     console.error('miniapp-data xatolik:', e);
-    res.status(200).json({ ok: false, error: String(e) });
+    res.status(500).json({ ok: false, error: 'server_error' });
   }
 };

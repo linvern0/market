@@ -118,7 +118,11 @@ async function runNotify() {
 
   const shopName = s.shopName || "Do'kon";
   const currencySymbol = s.currencySymbol || "so'm";
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // v7: sana do'kon vaqt zonasida (standart Asia/Tashkent). Ilgari UTC ishlatilib,
+  // zonasi boshqacha do'konlarda "bugun/kecha" 1 kunga adashardi.
+  let todayStr;
+  try { todayStr = new Date().toLocaleDateString('en-CA', { timeZone: s.timezone || 'Asia/Tashkent' }); }
+  catch (e) { todayStr = new Date().toISOString().slice(0, 10); }
 
   const sentLogRef = db.collection('dokon').doc('telegramSentLog');
   const sentLogSnap = await sentLogRef.get();
@@ -131,8 +135,9 @@ async function runNotify() {
     const productsSnap = await db.collection('products').get();
     const products = productsSnap.docs.map((d) => d.data());
     const threshold = s.lowStockThreshold || 5;
-    const low = products.filter((p) => p.stock <= threshold && p.stock > 0);
-    const empty = products.filter((p) => p.stock === 0);
+    const stockOf = (p) => Number(p.stock) || 0;
+    const low = products.filter((p) => stockOf(p) <= threshold && stockOf(p) > 0);
+    const empty = products.filter((p) => stockOf(p) <= 0); // v7: manfiy/bo'sh zaxira ham "tugagan"
     if (low.length || empty.length) {
       let text = `⚠️ <b>Zaxira ogohlantirishi</b> — ${esc(shopName)}\n\n`;
       if (empty.length) text += `🔴 Tugagan (${empty.length} ta): ${empty.slice(0, 15).map((p) => esc(p.name)).join(', ')}\n`;
@@ -154,7 +159,7 @@ async function runNotify() {
     const debts = debtsSnap.docs.map((d) => d.data());
     const overdueDays = s.overdueDaysGlobal || 14;
     const overdue = debts.filter(
-      (d) => Date.now() - new Date(d.date).getTime() >= overdueDays * 86400000
+      (d) => ((d.total || 0) - (d.paidAmount || 0)) > 0.5 && Date.now() - new Date(d.date).getTime() >= overdueDays * 86400000
     );
     if (overdue.length) {
       const remaining = (d) => (d.total || 0) - (d.paidAmount || 0);
@@ -274,7 +279,8 @@ module.exports = async (req, res) => {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const auth = req.headers['authorization'] || '';
-    if (auth !== `Bearer ${cronSecret}`) {
+    const a = Buffer.from(auth), b = Buffer.from(`Bearer ${cronSecret}`);
+    if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) {
       res.status(401).json({ ok: false, error: 'unauthorized' });
       return;
     }
@@ -285,6 +291,6 @@ module.exports = async (req, res) => {
     res.status(200).json(result);
   } catch (e) {
     console.error('notify-cron xatolik:', e);
-    res.status(200).json({ ok: false, error: String(e) });
+    res.status(500).json({ ok: false, error: 'server_error' });
   }
 };

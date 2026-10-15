@@ -22,6 +22,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(200).json({ role: 'guest' }); return; }
   try {
     const { initData } = req.body || {};
+    if (typeof initData !== 'string' || initData.length > 4096) { res.status(200).json({ role: 'guest' }); return; }
     const db = getDb();
     const settingsRef = db.collection('dokon').doc('settings');
     // TEZLASHTIRISH: qisqa muddatli xotira-keshi (api/_firebase.js) — bu
