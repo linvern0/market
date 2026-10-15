@@ -57,13 +57,15 @@
       'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
     ],
     JsBarcode: 'https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js',
-    QRCode: 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js'
+    QRCode: 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+    bwipjs: 'https://cdn.jsdelivr.net/npm/bwip-js@4.3.2/dist/bwip-js-min.js'
   };
   const loaded = {};
   function loadScript(src){
     return new Promise((resolve, reject)=>{
       const s = document.createElement('script');
       s.src = src;
+      s.crossOrigin = 'anonymous'; // CORS: service worker keshlay oladi (offline ishlash)
       s.onload = resolve;
       s.onerror = ()=>reject(new Error('Kutubxona yuklanmadi: '+src));
       document.head.appendChild(s);
@@ -90,7 +92,7 @@
   // tugmasini bossa, kutubxona odatda ALLAQACHON tayyor bo'ladi va
   // qo'shimcha kutish bo'lmaydi.
   function idlePreload(){
-    Object.keys(VENDOR_URLS).forEach(k => window.loadVendorLib(k).catch(()=>{}));
+    Object.keys(VENDOR_URLS).filter(k => k !== 'bwipjs').forEach(k => window.loadVendorLib(k).catch(()=>{}));
   }
   if('requestIdleCallback' in window){
     requestIdleCallback(idlePreload, { timeout: 5000 });
@@ -99,6 +101,10 @@
   }
 })();
 </script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1148,6 +1154,9 @@
     <button class="tab" onclick="showPage('stock-history','admin')">🚚 Kirim/Chiqim</button>
     <button class="tab" onclick="showPage('debts','admin')">💳 Qarzlar</button>
     <button class="tab" onclick="showPage('expenses','admin')">💰 Xarajatlar</button>
+    <button class="tab" onclick="showPage('branches','admin')">🏬 Filiallar</button>
+    <button class="tab" onclick="showPage('stocktake','admin')">📋 Revizi</button>
+    <button class="tab" onclick="showPage('codes','admin')">🏷 Kodlar</button>
     <button class="tab" onclick="showPage('ai-assistant','admin')">🤖 AI Tahlilchi</button>
     <button class="tab" onclick="showPage('settings','admin')">⚙️ Sozlamalar</button>
   </div>
@@ -1168,6 +1177,7 @@
     <button class="btn sm" onclick="toggleDarkMode()" id="dark-toggle" title="Tungi rejim" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🌙</button>
     <button class="btn sm" onclick="window.openCashCalc && window.openCashCalc()" id="calc-nav-btn" title="Naqd pul / qaytim hisoblagichi (C)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🧮</button>
     <button class="btn sm" onclick="window.openNotesBoard && window.openNotesBoard()" id="notes-nav-btn" title="Eslatmalar taxtasi (N)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">📝</button>
+    <button class="btn sm" id="lang-toggle-btn" onclick="window.toggleUiLang && window.toggleUiLang()" title="Til / Язык" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🌐 UZ</button>
     <button class="btn sm" onclick="window.openShiftModal && window.openShiftModal()" id="shift-nav-btn" title="Kassa smena (K)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🧾</button>
     <button class="btn sm" onclick="window.openTasksModal && window.openTasksModal()" id="tasks-nav-btn" title="Vazifalar rejasi (T)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">✅<span id="tasks-due-badge" style="display:none"></span></button>
     <button class="btn sm" onclick="window.quickLock && window.quickLock()" id="lock-nav-btn" title="Tezkor qulflash (L)" style="background:#1b4a40;border-color:#475569;color:#9fb3ac">🔒</button>
@@ -1879,7 +1889,7 @@ body.dark table {
     <div class="field" style="margin-bottom:.5rem">
       <label>Logotip (rasm, ixtiyoriy)</label>
       <div style="display:flex;align-items:center;gap:.75rem;margin-top:.35rem;flex-wrap:wrap">
-        <img id="shop-logo-preview" style="width:52px;height:52px;object-fit:contain;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);display:none">
+        <img loading="lazy" decoding="async" id="shop-logo-preview" style="width:52px;height:52px;object-fit:contain;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);display:none">
         <input type="file" id="shop-logo-input" accept="image/*" onchange="previewShopLogo(this)">
       </div>
       <button class="btn sm" id="shop-logo-remove-btn" style="margin-top:.5rem;display:none" onclick="removeShopLogo()">✕ Logotipni o'chirish</button>
@@ -2430,6 +2440,35 @@ body.dark table {
       <textarea id="voice-announce-template" rows="2" maxlength="200" placeholder="{mahsulot} sotildi, {summa} so'm" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
       <p style="font-size:11px;color:var(--text3);margin-top:.3rem">O'zgaruvchilar: <code>{mahsulot}</code> — sotilgan tovar(lar) nomi, <code>{summa}</code> — jami summa. Bo'sh qoldirsangiz standart matn ishlatiladi.</p>
     </div>
+    <div class="field">
+      <label>🌐 Ovoz tili</label>
+      <select id="voice-lang" onchange="window.refreshVoiceList && window.refreshVoiceList(true)" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;font-family:inherit">
+        <option value="uz-UZ">🇺🇿 O'zbekcha (uz-UZ)</option>
+        <option value="ru-RU">🇷🇺 Русский (ru-RU)</option>
+        <option value="en-US">🇺🇸 English (en-US)</option>
+        <option value="en-GB">🇬🇧 English (en-GB)</option>
+        <option value="tr-TR">🇹🇷 Türkçe (tr-TR)</option>
+        <option value="kk-KZ">🇰🇿 Qozoqcha (kk-KZ)</option>
+        <option value="ar-SA">🇸🇦 العربية (ar-SA)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>🎙 Ovoz kutubxonasi (qurilmadagi ovozlar)</label>
+      <select id="voice-name" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px;outline:none;font-family:inherit"><option value="">Avtomatik (tilga mos ovoz)</option></select>
+      <p style="font-size:11px;color:var(--text3);margin-top:.3rem">Bu ro'yxat shu qurilma/brauzerda o'rnatilgan ovozlardan olinadi. Boshqa ovoz kerak bo'lsa, qurilma sozlamalarida (Til va kiritish → Matnni ovozga aylantirish) ovoz paketini yuklab oling, so'ng sahifani yangilang.</p>
+    </div>
+    <div class="field">
+      <label>⏩ Tezlik: <b id="voice-rate-val">0.95</b></label>
+      <input type="range" id="voice-rate" min="0.5" max="2" step="0.05" value="0.95" oninput="document.getElementById('voice-rate-val').textContent=this.value" style="width:100%">
+    </div>
+    <div class="field">
+      <label>🎚 Ton balandligi: <b id="voice-pitch-val">1</b></label>
+      <input type="range" id="voice-pitch" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('voice-pitch-val').textContent=this.value" style="width:100%">
+    </div>
+    <div class="field">
+      <label>🔈 Ovoz balandligi: <b id="voice-volume-val">100</b>%</label>
+      <input type="range" id="voice-volume" min="0" max="1" step="0.05" value="1" oninput="document.getElementById('voice-volume-val').textContent=Math.round(this.value*100)" style="width:100%">
+    </div>
     <button class="btn sm blue" onclick="window.saveVoiceAnnounceSettings && window.saveVoiceAnnounceSettings()">💾 Saqlash</button>
     <button class="btn sm" onclick="window.previewVoiceAnnounce && window.previewVoiceAnnounce()">🔊 Sinab ko'rish</button>
   </div>
@@ -2643,6 +2682,218 @@ body.dark table {
 </div>
 
 <!-- ================= YANGI: XARAJATLAR (10.1-bo'lim) ================= -->
+<div class="page" id="page-branches">
+  <div class="section-header">
+    <div><h2>🏬 Filiallar va omborlar</h2><p>Bir nechta do'kon/ombor, tovar ko'chirish va filiallar bo'yicha savdo</p></div>
+  </div>
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.5rem">📍 Shu qurilma qaysi filialda ishlaydi?</h3>
+    <select id="br-device-select" onchange="window.setDeviceBranch && window.setDeviceBranch(this.value)" style="width:100%;max-width:360px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px"></select>
+    <p style="font-size:12px;color:var(--text3);margin-top:.4rem">Sotuvlar shu filialning qoldig'idan ayriladi va shu filial hisobiga yoziladi. Tanlov faqat shu qurilmada saqlanadi.</p>
+  </div>
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.5rem">🏢 Filiallar ro'yxati</h3>
+    <div id="br-list" style="margin-bottom:.7rem"></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <input type="text" id="br-new-name" placeholder="Filial nomi (masalan: Chilonzor filiali)" maxlength="60" style="flex:1;min-width:200px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px">
+      <input type="text" id="br-new-addr" placeholder="Manzil (ixtiyoriy)" maxlength="120" style="flex:1;min-width:200px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:13px">
+      <button class="btn sm blue" onclick="window.addBranch && window.addBranch()">➕ Qo'shish</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <h3 style="font-size:15px;font-weight:700">📦 Omborlar bo'yicha qoldiq</h3>
+      <input type="text" id="br-stock-search" oninput="window.renderBranchStockTable && window.renderBranchStockTable()" placeholder="🔍 Tovar qidirish" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:13px">
+    </div>
+    <div id="br-stock-table" style="overflow-x:auto"></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <h3 style="font-size:15px;font-weight:700">💹 Filiallar bo'yicha savdo</h3>
+      <select id="br-report-period" onchange="window.renderBranchReport && window.renderBranchReport()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.4rem .7rem;font-size:13px">
+        <option value="today">Bugun</option><option value="week">7 kun</option><option value="month" selected>Shu oy</option><option value="all">Hammasi</option>
+      </select>
+    </div>
+    <div id="br-report" style="overflow-x:auto"></div>
+  </div>
+</div>
+
+<div class="page" id="page-stocktake">
+  <div class="section-header">
+    <div><h2>📋 Revizi (inventarizatsiya)</h2><p>Omborni sanab chiqing — farqlar avtomatik tuzatiladi va Kirim/Chiqim tarixiga yoziladi</p></div>
+  </div>
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem">
+      <select id="st-branch" onchange="window.stBranchChanged && window.stBranchChanged()" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .7rem;font-size:13px;outline:none"></select>
+      <input type="text" id="st-scan" placeholder="📷 Shtrix-kod skanerlang / yozing va Enter" onkeydown="if(event.key==='Enter'){window.stScan(this.value);this.value='';}" style="flex:1;min-width:220px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .7rem;font-size:13px;outline:none">
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <input type="text" id="st-search" oninput="window.renderStocktakeTable && window.renderStocktakeTable()" placeholder="🔍 Tovar qidirish" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.45rem .7rem;font-size:13px;outline:none">
+      <label style="font-size:13px;display:flex;align-items:center;gap:.3rem"><input type="checkbox" id="st-only-diff" onchange="window.renderStocktakeTable && window.renderStocktakeTable()"> Faqat farqlilar</label>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:.5rem">Skanerlasangiz har bir skan sanalgan miqdorni +1 qiladi. Sanalmagan (bo'sh qoldirilgan) tovarlarga tegilmaydi. Sanash jarayoni qurilmada saqlanadi — sahifani yangilasangiz ham yo'qolmaydi.</p>
+  </div>
+  <div class="card" style="margin-bottom:1rem"><div id="st-summary" style="font-size:13px"></div></div>
+  <div class="card" style="margin-bottom:1rem"><div id="st-table" style="overflow-x:auto"></div></div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem">
+    <button class="btn blue" onclick="window.stFinish && window.stFinish()">✓ Revizini yakunlash va tuzatish</button>
+    <button class="btn" onclick="window.stExport && window.stExport()">📥 Excel</button>
+    <button class="btn red sm" onclick="window.stClear && window.stClear()">🗑 Sanashni tozalash</button>
+  </div>
+</div>
+
+<div class="page" id="page-codes">
+  <style>
+    #page-codes .ccx-in{border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2);width:100%}
+    #page-codes .ccx-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+    #page-codes .ccx-chips{display:flex;gap:.35rem;flex-wrap:wrap;margin:.1rem 0 .7rem}
+    #page-codes .ccx-chk{display:flex;align-items:center;gap:.4rem;font-size:13px}
+    #page-codes .ccx-chk{white-space:nowrap}
+    #page-codes .ccx-chk input[type=checkbox]{width:auto;flex:none;margin:0}
+    #page-codes .ccx-prev{background:repeating-conic-gradient(#f0f2f1 0% 25%,#fff 0% 50%) 0 0/16px 16px;border:1.5px dashed var(--border2);border-radius:var(--radius);padding:.7rem;display:flex;justify-content:center;align-items:center;min-height:90px;overflow:auto}
+    #page-codes details summary{cursor:pointer;font-weight:700;font-size:14px}
+    #page-codes details ol{font-size:13px;color:var(--text2);margin:.5rem 0 0 1.2rem;line-height:1.55}
+  </style>
+  <div class="section-header">
+    <div><h2>🏷 Kodlar markazi</h2><p>Kodsiz tovarlarga CHEKSIZ miqdorda noyob QR / DataMatrix / barcode yarating, yuqori sifatda chop eting va skanerlab soting</p></div>
+  </div>
+  <div class="card" style="margin-bottom:1rem"><div id="cc-stats" style="font-size:13px"></div></div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">✨ Yangi partiya yaratish (har bir dona uchun noyob kod)</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.7rem">Kodlar bazaga alohida-alohida yozilmaydi — ular <b>partiya</b> sifatida saqlanadi, shuning uchun son cheklanmagan (1 ta amalda 99 999 999 tagacha). Har bir kodda xato-himoya belgisi bor: noto'g'ri o'qilgan yoki yozilgan kod darhol aniqlanadi. Sotuvchi skanerlaydi — har bir kod faqat bitta marta sotiladi.</p>
+    <div class="field"><label>Tovar</label><select id="cc-product" onchange="window.ccProductChanged && window.ccProductChanged()" class="ccx-in"></select></div>
+    <div id="cc-info" style="font-size:12px;color:var(--text2);margin:-.2rem 0 .7rem"></div>
+    <div class="field"><label>Nechta kod</label><input type="number" id="cc-count" min="1" max="99999999" value="10" class="ccx-in"></div>
+    <div class="ccx-chips">
+      <button class="btn sm" onclick="window.ccQuick(10)">10</button><button class="btn sm" onclick="window.ccQuick(50)">50</button><button class="btn sm" onclick="window.ccQuick(100)">100</button><button class="btn sm" onclick="window.ccQuick(500)">500</button><button class="btn sm" onclick="window.ccQuick(1000)">1 000</button><button class="btn sm" onclick="window.ccQuick(5000)">5 000</button><button class="btn sm" onclick="window.ccQuick(10000)">10 000</button><button class="btn sm" onclick="window.ccQuick(100000)">100 000</button>
+      <button class="btn sm" onclick="window.ccFillUncoded && window.ccFillUncoded()">Kodlanmaganlar sonini qo'yish</button>
+    </div>
+    <div class="ccx-grid">
+      <div class="field"><label>Kod turi</label><select id="cc-format" onchange="window.ccPreview()" class="ccx-in"><option value="datamatrix">DataMatrix (tavsiya)</option><option value="qr">QR kod</option><option value="code128">Code 128 (chiziqli)</option></select></div>
+      <div class="field"><label>Yorliq o'lchami</label><select id="cc-size" onchange="window.ccPreview()" class="ccx-in"></select></div>
+    </div>
+    <div id="cc-custom-size" class="ccx-grid" style="display:none">
+      <div class="field"><label>Eni (mm)</label><input type="number" id="cc-cw" min="15" max="150" step="0.5" value="40" oninput="window.ccPreview()" class="ccx-in"></div>
+      <div class="field"><label>Bo'yi (mm)</label><input type="number" id="cc-ch" min="10" max="200" step="0.5" value="30" oninput="window.ccPreview()" class="ccx-in"></div>
+    </div>
+    <div class="ccx-grid">
+      <div class="field"><label>Printer aniqligi (DPI)</label><select id="cc-dpi" onchange="window.ccPreview()" class="ccx-in"><option value="203">203 dpi (ko'pchilik termo printerlar)</option><option value="300">300 dpi</option><option value="600">600 dpi</option><option value="0">Moslash kerak emas (A4 lazer/inkjet)</option></select></div>
+      <div class="field"><label>Yorliqda ko'rsatilsin</label>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;padding:.4rem 0">
+          <label class="ccx-chk"><input type="checkbox" id="cc-shname" checked onchange="window.ccPreview()"> Nomi</label>
+          <label class="ccx-chk"><input type="checkbox" id="cc-shprice" checked onchange="window.ccPreview()"> Narxi</label>
+          <label class="ccx-chk"><input type="checkbox" id="cc-shcode" checked onchange="window.ccPreview()"> Kod matni</label>
+        </div>
+      </div>
+    </div>
+    <div class="ccx-grid">
+      <div class="field"><label>Yorliq joylashuvi</label><select id="cc-layout" onchange="window.ccPreview()" class="ccx-in"><option value="side">Kod chapda, matn o'ngda</option><option value="top">Kod tepada, matn pastda</option></select></div>
+      <div class="field"><label>Har bir koddan nusxa soni</label><input type="number" id="cc-copies" min="1" max="10" value="1" onchange="window.ccPreview()" class="ccx-in"></div>
+    </div>
+    <div class="ccx-grid">
+      <div class="field"><label>Qo'shimcha ma'lumot</label>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;padding:.4rem 0">
+          <label class="ccx-chk"><input type="checkbox" id="cc-shdate" onchange="window.ccPreview()"> Chop sanasi</label>
+          <label class="ccx-chk"><input type="checkbox" id="cc-shseq" onchange="window.ccPreview()"> Tartib raqami (№)</label>
+        </div>
+      </div>
+      <div class="field"><label>Qo'shimcha matn (ixtiyoriy)</label><input type="text" id="cc-extra" maxlength="40" placeholder="Masalan: do'kon nomi yoki telefon" oninput="window.ccPreview()" class="ccx-in"></div>
+    </div>
+    <div class="field"><label>Chop etish usuli</label>
+      <select id="cc-out" onchange="window.ccOutChanged && window.ccOutChanged()" class="ccx-in">
+        <option value="browser">Brauzer orqali (oddiy printer, A4 varaq, termo drayveri)</option>
+        <option value="tspl">⚡ Termo printerga to'g'ridan-to'g'ri — TSPL (TSC, Xprinter, Gprinter, Godex…)</option>
+        <option value="zpl">⚡ Termo printerga to'g'ridan-to'g'ri — ZPL (Zebra va mos printerlar)</option>
+      </select>
+    </div>
+    <div id="cc-dp-box" style="display:none;border:1.5px dashed var(--border2);border-radius:var(--radius);padding:.6rem .8rem;margin-bottom:.8rem">
+      <div id="cc-dp-status" style="font-size:13px;margin-bottom:.5rem"></div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+        <button class="btn sm blue" id="cc-dp-usb" onclick="window.ccDpConnect('usb')">🔌 USB printer ulash</button>
+        <button class="btn sm" id="cc-dp-serial" onclick="window.ccDpConnect('serial')">🔌 Serial / COM ulash</button>
+        <button class="btn sm" onclick="window.ccDpTest()">🧪 Test yorliq</button>
+      </div>
+      <div class="ccx-grid">
+        <div class="field"><label>Yorliqlar orasi (gap)</label><select id="cc-gap" onchange="window.ccPreview()" class="ccx-in"><option value="gap2">Gap 2 mm (standart)</option><option value="gap3">Gap 3 mm</option><option value="cont">Uzluksiz lenta</option></select></div>
+        <div class="field"><label>Serial tezligi (baud)</label><select id="cc-baud" class="ccx-in"><option>115200</option><option>9600</option><option>19200</option><option>38400</option><option>57600</option></select></div>
+      </div>
+      <label class="ccx-chk"><input type="checkbox" id="cc-inv" onchange="window.ccPreview()"> Ranglar teskari chiqsa (oq-qora almashgan) — belgilang</label>
+      <div style="font-size:11px;color:var(--text3);margin-top:.4rem">Birinchi marta avval "🧪 Test yorliq"ni chop eting: ramka to'liq ko'rinsa, o'lcham to'g'ri. Printer aniqligini (DPI) yuqoridagi tanlovdan moslang (odatda 203). Chop etish istalgan miqdorda, to'xtatib-davom ettiriladi.</div>
+    </div>
+    <div id="cc-a4-opts" class="ccx-grid" style="display:none;grid-template-columns:1fr 1fr 1fr">
+      <div class="field"><label>Ishlatilgan kataklar (o'tkazib yuborish)</label><input type="number" id="cc-skip" min="0" max="64" value="0" class="ccx-in"></div>
+      <div class="field"><label>Siljitish ← → (mm)</label><input type="number" id="cc-ox" step="0.5" value="0" onchange="window.ccPreview()" class="ccx-in"></div>
+      <div class="field"><label>Siljitish ↑ ↓ (mm)</label><input type="number" id="cc-oy" step="0.5" value="0" onchange="window.ccPreview()" class="ccx-in"></div>
+    </div>
+    <div style="margin:.2rem 0 .3rem;font-size:12px;color:var(--text2)">Yorliq ko'rinishi (oldindan):</div>
+    <div class="ccx-prev" id="cc-preview"></div>
+    <div id="cc-preview-info" style="font-size:12px;color:var(--text2);margin:.35rem 0 .8rem"></div>
+    <label class="ccx-chk" style="margin:.2rem 0 .8rem"><input type="checkbox" id="cc-stock"> Omborga ham kirim qilish (+ shuncha dona) — yangi kelgan tovar uchun</label>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn blue" onclick="window.ccCreate && window.ccCreate(true)">🖨 Yaratish va chop etish</button>
+      <button class="btn" onclick="window.ccCreate && window.ccCreate(false)">Faqat yaratish</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">📦 Tanlangan tovar partiyalari — qayta chop etish / CSV</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.6rem">Yorliq yirtilgan yoki yo'qolgan bo'lsa — oraliqni tanlab qayta chop eting (kod o'zgarmaydi). "Faqat sotilmaganlar" yoqilsa, sotilgan kodlar o'tkazib yuboriladi.</p>
+    <div id="cc-batches" style="margin-bottom:.8rem"></div>
+    <div class="field"><label>Partiya</label><select id="cc-rb" onchange="window.ccRangeFill()" class="ccx-in"></select></div>
+    <div class="ccx-grid">
+      <div class="field"><label>Raqamdan</label><input type="number" id="cc-rf" min="1" class="ccx-in"></div>
+      <div class="field"><label>Raqamgacha</label><input type="number" id="cc-rt" min="1" class="ccx-in"></div>
+    </div>
+    <label class="ccx-chk" style="margin:.1rem 0 .7rem"><input type="checkbox" id="cc-ru" checked> Faqat sotilmaganlarini chop etish</label>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn sm blue" onclick="window.ccPrintRange()">🖨 Oraliqni chop etish</button>
+      <button class="btn sm" onclick="window.ccCsvRange()">⬇ CSV yuklab olish</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">📃 Eski (MC-…) va zavod kodli donalar / qayta chop etish</h3>
+    <div id="cc-list-summary" style="font-size:12px;color:var(--text2);margin-bottom:.5rem"></div>
+    <div id="cc-list" style="overflow-x:auto;max-height:320px;overflow-y:auto"></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem">
+      <button class="btn sm blue" onclick="window.ccReprint && window.ccReprint()">🖨 Tanlanganlarni chop etish</button>
+      <button class="btn sm" onclick="window.ccToggleAll && window.ccToggleAll()">☑ Hammasini belgilash</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">🔎 Kodni tekshirish</h3>
+    <div style="display:flex;gap:.5rem">
+      <input type="text" id="cc-check-input" placeholder="Kodni skanerlang yoki yozing, Enter" onkeydown="if(event.key==='Enter'){window.ccCheck(this.value);}" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none">
+      <button class="btn sm" onclick="openFieldScanner('cc-check-input')" title="Kamera bilan skanerlash">📷</button>
+      <button class="btn sm blue" onclick="window.ccCheck(document.getElementById('cc-check-input').value)">Tekshirish</button>
+    </div>
+    <div id="cc-check-result" style="margin-top:.6rem;font-size:13px"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">🧾 Barcode'i yo'q tovarlar — ichki barcode yaratish</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.6rem">Tovar umumiy (dona bo'yicha kuzatilmaydigan) barcode bilan sotilsin desangiz: tizim ichki EAN-13 yaratadi (2 bilan boshlanadi — do'kon ichki foydalanishi uchun).</p>
+    <div style="margin-bottom:.6rem"><button class="btn sm" onclick="window.ccGenAllBarcodes && window.ccGenAllBarcodes()">⚡ Hammasiga yaratish</button></div>
+    <div id="cc-nobarcode"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem">
+    <details>
+      <summary>ℹ️ Yaxshi chop etish bo'yicha maslahatlar</summary>
+      <ol>
+        <li>Chop etish oynasida <b>"Masshtab: 100% / Haqiqiy o'lcham"</b> ni tanlang ("Sahifaga moslash" yoqilmasin) va <b>chekkalar: yo'q</b> qiling.</li>
+        <li>Termo printerda DPI'ni to'g'ri tanlang (odatda 203). Tizim modul o'lchamini printer nuqtalariga butun son qilib moslaydi — kod o'tkir chiqadi.</li>
+        <li>Ko'rinishdagi <b>o'qilish sifati</b> "Yaxshi" yoki "A'lo" bo'lsin. "Juda mayda" chiqsa — kattaroq yorliq tanlang yoki nom/narxni o'chiring.</li>
+        <li>Katta partiyalar avtomatik qismlarga bo'linadi (termo: 300 ta, A4: 8 varaq). Printer to'xtab qolsa — "Qismdan boshlash" bilan davom ettiring.</li>
+        <li>A4 varaqning bir qismi ishlatilgan bo'lsa — "Ishlatilgan kataklar" ga sonini yozing. Chop etish siljib chiqsa — "Siljitish" bilan to'g'rilang.</li>
+        <li>Yorliqni yorug'lik aks etmaydigan, tekis joyga yopishtiring; kodni suyuqlik/qopqoq burmalaridan uzoqroqqa qo'ying.</li>
+      </ol>
+    </details>
+  </div>
+</div>
+
 <div class="page" id="page-expenses">
   <div class="section-header">
     <div><h2>💰 Xarajatlar</h2><p>Ijara, ish haqi, kommunal va boshqa do'kon xarajatlarini kuzatib boring</p></div>
@@ -2830,6 +3081,7 @@ body.dark table {
   <div class="section-header">
     <div><h2>Sotish</h2><p>Tovarlarni tanlang va savat orqali soting</p></div>
   </div>
+  <div id="sell-branch-bar" style="display:none;margin-bottom:.6rem;align-items:center;gap:.5rem;font-size:13px">🏬 <b>Filial:</b> <select id="sell-branch-select" onchange="window.setDeviceBranch && window.setDeviceBranch(this.value)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.35rem .6rem;font-size:13px"></select></div>
   <div style="margin-bottom:1rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
     <input type="text" id="sell-search" onkeyup="handleSellSearchKey(event)" placeholder="🔍 Tovar nomi bo'yicha qidirish... (Enter — birinchisini savatga qo'shadi)" style="flex:1;min-width:220px;max-width:400px;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.65rem 1rem;font-size:14px;outline:none">
     <button class="btn sm" id="fav-filter-btn" onclick="window.toggleFavFilter && window.toggleFavFilter()" title="Faqat sevimli tovarlarni ko'rsatish">⭐ Sevimlilar</button>
@@ -2929,7 +3181,7 @@ body.dark table {
       </div>
     </div>
     <div id="img-preview-wrap" style="display:none;margin-bottom:.75rem">
-      <img id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
+      <img loading="lazy" decoding="async" id="img-preview" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
     </div>
     <div class="form-row full">
       <div class="field"><label>Izoh</label><textarea id="p-note" placeholder="Qo'shimcha ma'lumot..."></textarea></div>
@@ -3027,6 +3279,12 @@ body.dark table {
       <label>🎫 Mijoz <span style="color:var(--text3);font-weight:400">(ixtiyoriy — tanlansa, xarid tarixiga va coiniga avtomatik qo'shiladi)</span></label>
       <select id="cart-customer-select" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)"></select>
     </div>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>💳 To'lov usuli</label>
+      <select id="cart-pay-method" style="width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2)">
+        <option value="cash">💵 Naqd</option><option value="card">💳 Karta (Uzcard/Humo)</option><option value="click">Click</option><option value="payme">Payme</option><option value="uzum">Uzum</option><option value="transfer">🏦 O'tkazma</option>
+      </select>
+    </div>
     <div style="border-top:1.5px solid var(--border);padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
       <span style="font-size:14px;color:var(--text2)">Jami summa:</span>
       <span style="font-size:22px;font-weight:700;color:var(--green)" id="cart-grand-total">0 so'm</span>
@@ -3035,7 +3293,7 @@ body.dark table {
       <button class="btn" onclick="closeModal('modal-cart')">Yopish</button>
       <button class="btn red sm" onclick="clearCart()">🗑 Savatni tozalash</button>
       <button class="btn amber" onclick="openDebtModal()">💳 Qarzga sotish</button>
-      <button class="btn green" onclick="doCartSell()">✓ Naqd sotish</button>
+      <button class="btn green" onclick="doCartSell()">✓ Sotish</button>
     </div>
   </div>
 </div>
@@ -3637,7 +3895,7 @@ body.dark table {
     <div id="receipt-content" style="font-family:'Courier New',monospace;font-size:13px;color:#111">
       <div id="receipt-eyebrow" style="text-align:center;font-size:11px;color:#777;letter-spacing:.03em;margin-bottom:.2rem;display:none"></div>
       <div style="text-align:center;margin-bottom:.75rem">
-        <img id="receipt-logo" src="" style="max-width:110px;max-height:55px;object-fit:contain;display:none;margin:0 auto .3rem">
+        <img loading="lazy" decoding="async" id="receipt-logo" src="" style="max-width:110px;max-height:55px;object-fit:contain;display:none;margin:0 auto .3rem">
         <div id="receipt-shopname" style="font-size:18px;font-weight:700">🏪 Do'kon</div>
         <div id="receipt-shopmeta" style="font-size:11px;color:#555"></div>
         <div id="receipt-date" style="font-size:12px;color:#555"></div>
@@ -3651,7 +3909,7 @@ body.dark table {
       <div id="receipt-footer-text" style="text-align:center;margin-top:1rem;font-size:11px;color:#777">Xaridingiz uchun rahmat!</div>
       <div id="receipt-custom-lines" style="text-align:center;margin-top:.4rem;font-size:11px;color:#777"></div>
       <div id="receipt-qr" style="text-align:center;margin-top:.6rem">
-        <img id="receipt-qr-img" src="" alt="QR" style="width:110px;height:110px;display:none;margin:0 auto">
+        <img loading="lazy" decoding="async" id="receipt-qr-img" src="" alt="QR" style="width:110px;height:110px;display:none;margin:0 auto">
         <div id="receipt-qr-caption" style="font-size:10px;color:#777;margin-top:.25rem"></div>
         <div id="receipt-coin-promo" style="font-size:11px;color:#a8462f;font-weight:700;margin-top:.3rem;display:none"></div>
       </div>
@@ -3726,7 +3984,7 @@ body.dark table {
     <div class="field" style="margin-bottom:.85rem">
       <label>📱 Mijoz uchun QR (avtomatik kirish)</label>
       <div style="display:flex;gap:.85rem;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem">
-        <img id="dl-qr-img" style="width:96px;height:96px;background:#fff;border-radius:6px;flex-shrink:0;display:none">
+        <img loading="lazy" decoding="async" id="dl-qr-img" style="width:96px;height:96px;background:#fff;border-radius:6px;flex-shrink:0;display:none">
         <div style="flex:1;min-width:0">
           <p style="font-size:12px;color:var(--text2);line-height:1.5">Mijoz shu kodni telefon kamerasi bilan skanerlasa, login/parol kiritmasdan o'z xarid tarixi va qarzini ko'radi.</p>
           <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
@@ -3838,6 +4096,15 @@ body.dark table {
   </button>
   <button id="mtab-stock-history" onclick="showPage('stock-history','admin');closeMobileMoreMenu()">
     <span class="tab-icon">🚚</span>Kirim/Chiqim
+  </button>
+  <button id="mtab-branches" onclick="showPage('branches','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">🏬</span>Filiallar va ombor
+  </button>
+  <button id="mtab-stocktake" onclick="showPage('stocktake','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">📋</span>Revizi (inventarizatsiya)
+  </button>
+  <button id="mtab-codes" onclick="showPage('codes','admin');closeMobileMoreMenu()">
+    <span class="tab-icon">🏷</span>Kodlar (QR / DataMatrix / barcode)
   </button>
   <button id="mtab-expenses" onclick="showPage('expenses','admin');closeMobileMoreMenu()">
     <span class="tab-icon">💰</span>Xarajatlar
@@ -4315,7 +4582,7 @@ body.dark table {
           <input id="cul-link-url" readonly style="background:var(--surface2);font-size:12px">
         </div>
         <div style="display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap">
-          <img id="cul-link-qr" style="width:120px;height:120px;border-radius:8px;border:1px solid var(--border)">
+          <img loading="lazy" decoding="async" id="cul-link-qr" style="width:120px;height:120px;border-radius:8px;border:1px solid var(--border)">
           <div style="display:flex;flex-direction:column;gap:.4rem">
             <button class="btn sm" onclick="window.copyCustomerLinkToken()">📋 Nusxalash</button>
             <button class="btn sm" onclick="window.generateCustomerLinkToken(true)">🔄 Yangilash (eskisini bekor qiladi)</button>
@@ -4971,7 +5238,7 @@ async function fbSaveSettings(){
   // kutishdan OLDIN, bitta "payload" obyektiga "suratga olinadi" — shu
   // sabab keyingi tinglagich yangilanishlari saqlanayotgan qiymatga
   // TA'SIR QILA OLMAYDI.
-  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],voiceAnnounceEnabled:!!DB.voiceAnnounceEnabled,voiceAnnounceTemplate:DB.voiceAnnounceTemplate||''};
+  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],voiceAnnounceEnabled:!!DB.voiceAnnounceEnabled,voiceAnnounceTemplate:DB.voiceAnnounceTemplate||'',voiceLang:DB.voiceLang||'uz-UZ',voiceName:DB.voiceName||'',voiceRate:(typeof DB.voiceRate==='number')?DB.voiceRate:0.95,voicePitch:(typeof DB.voicePitch==='number')?DB.voicePitch:1,voiceVolume:(typeof DB.voiceVolume==='number')?DB.voiceVolume:1,branches:Array.isArray(DB.branches)?DB.branches:[]};
   (async ()=>{
     let versionForSave = localV+1;
     try{
@@ -5637,6 +5904,8 @@ function startListeners(){
       DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
       DB.voiceAnnounceEnabled=!!d.voiceAnnounceEnabled;
       DB.voiceAnnounceTemplate=d.voiceAnnounceTemplate||'';
+      DB.voiceLang=d.voiceLang||'uz-UZ'; DB.voiceName=d.voiceName||''; DB.voiceRate=(typeof d.voiceRate==='number')?d.voiceRate:0.95; DB.voicePitch=(typeof d.voicePitch==='number')?d.voicePitch:1; DB.voiceVolume=(typeof d.voiceVolume==='number')?d.voiceVolume:1;
+      DB.branches=Array.isArray(d.branches)?d.branches:[];
       if(typeof window.applyCoinFeatureVisibility==='function') window.applyCoinFeatureVisibility();
       if(document.getElementById('page-debts')?.classList.contains('active') && typeof window.renderDebtSettingsFields==='function') window.renderDebtSettingsFields();
       if(document.getElementById('modal-customers') && !document.getElementById('modal-customers').classList.contains('hidden') && typeof window.renderCustomersList==='function') window.renderCustomersList();
@@ -5973,6 +6242,8 @@ async function init(){
           DB.debtReminderOffsets=Array.isArray(d.debtReminderOffsets)&&d.debtReminderOffsets.length?d.debtReminderOffsets:[0,3,7];
       DB.voiceAnnounceEnabled=!!d.voiceAnnounceEnabled;
       DB.voiceAnnounceTemplate=d.voiceAnnounceTemplate||'';
+      DB.voiceLang=d.voiceLang||'uz-UZ'; DB.voiceName=d.voiceName||''; DB.voiceRate=(typeof d.voiceRate==='number')?d.voiceRate:0.95; DB.voicePitch=(typeof d.voicePitch==='number')?d.voicePitch:1; DB.voiceVolume=(typeof d.voiceVolume==='number')?d.voiceVolume:1;
+      DB.branches=Array.isArray(d.branches)?d.branches:[];
           if(typeof window.applyGlobalAutoLock==='function') window.applyGlobalAutoLock();
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
@@ -6241,6 +6512,1305 @@ window.logout = function(){
   document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
 }
 
+// ================== YANGI: FILIALLAR VA OMBORLAR ==================
+// Asosiy ombor = mavjud "stock" maydoni (eski ma'lumotlar buzilmaydi).
+// Qo'shimcha filiallar qoldig'i mahsulotning "branchStock" xaritasida saqlanadi.
+// Ko'chirish bitta ATOMIK updateDoc orqali ikkala maydonni birga o'zgartiradi.
+window.getBranches = function(){ return Array.isArray(DB.branches) ? DB.branches : []; };
+window.getAllBranches = function(){ return [{id:'main', name:(DB.mainBranchName||'Asosiy ombor')}].concat(window.getBranches()); };
+window.currentBranchId = function(){
+  let id = 'main';
+  try{ id = localStorage.getItem('dokon_branch_id') || 'main'; }catch(e){}
+  return (id==='main' || window.getBranches().some(b=>b.id===id)) ? id : 'main';
+};
+window.branchNameOf = function(id){ const b = window.getAllBranches().find(x=>x.id===(id||'main')); return b ? b.name : "O'chirilgan filial"; };
+window.stockOf = function(p, bid){
+  bid = bid || window.currentBranchId();
+  if(bid==='main') return p.stock||0;
+  return (p.branchStock && p.branchStock[bid]) || 0;
+};
+window.totalStockOf = function(p){
+  let t = p.stock||0;
+  if(p.branchStock) Object.keys(p.branchStock).forEach(k=>{ if(window.getBranches().some(b=>b.id===k)) t += (p.branchStock[k]||0); });
+  return t;
+};
+// Lokal holatni darhol yangilaydi + serverga ATOMIK increment yuboradi.
+window.applyStockDelta = function(p, bid, delta){
+  bid = bid || 'main';
+  if(bid==='main'){
+    p.stock = (p.stock||0) + delta;
+    return fbUpdateProductFields(p.id, {stock: increment(delta)});
+  }
+  p.branchStock = p.branchStock || {};
+  p.branchStock[bid] = (p.branchStock[bid]||0) + delta;
+  return fbUpdateProductFields(p.id, {['branchStock.'+bid]: increment(delta)});
+};
+window.setDeviceBranch = function(id){
+  try{ localStorage.setItem('dokon_branch_id', id||'main'); }catch(e){}
+  toast('📍 Filial: '+window.branchNameOf(id),'blue');
+  if(window.refreshBranchBar) window.refreshBranchBar();
+  if(typeof renderSellGrid==='function') renderSellGrid();
+  if(window.renderBranchesPage && document.getElementById('page-branches')?.classList.contains('active')) window.renderBranchesPage();
+};
+window.refreshBranchBar = function(){
+  const bar = document.getElementById('sell-branch-bar'); const sel = document.getElementById('sell-branch-select');
+  if(!bar || !sel) return;
+  const has = window.getBranches().length > 0;
+  bar.style.display = has ? 'flex' : 'none';
+  sel.innerHTML = window.getAllBranches().map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
+  sel.value = window.currentBranchId();
+};
+window.addBranch = function(){
+  const name = (document.getElementById('br-new-name')?.value||'').trim();
+  const addr = (document.getElementById('br-new-addr')?.value||'').trim();
+  if(!name){ toast('Filial nomini kiriting','red'); return; }
+  if(window.getAllBranches().some(b=>b.name.toLowerCase()===name.toLowerCase())){ toast('Bunday nomli filial bor','red'); return; }
+  DB.branches = window.getBranches().concat([{id:'b'+uid(), name:name, address:addr, createdAt:new Date().toISOString()}]);
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
+  try{ logAudit('Filial qo\'shildi', name); }catch(e){}
+  document.getElementById('br-new-name').value=''; document.getElementById('br-new-addr').value='';
+  toast('✓ Filial qo\'shildi','green'); window.renderBranchesPage();
+};
+window.renameBranch = function(id){
+  const b = window.getBranches().find(x=>x.id===id); if(!b) return;
+  const n = (prompt('Filialning yangi nomi:', b.name)||'').trim(); if(!n) return;
+  b.name = n; fbSaveSettings().catch(e=>console.error(e)); window.renderBranchesPage();
+};
+window.deleteBranch = function(id){
+  const b = window.getBranches().find(x=>x.id===id); if(!b) return;
+  const left = DB.products.reduce((t,p)=>t+((p.branchStock&&p.branchStock[id])||0),0);
+  if(left>0){ toast(`Avval "${b.name}" qoldig'ini (${left} ta) boshqa omborga ko'chiring`,'red'); return; }
+  confirm2("Filialni o'chirish", `"${b.name}" filiali o'chiriladi (qoldig'i yo'q). Eski savdolar tarixda saqlanib qoladi. Davom etilsinmi?`, ()=>{
+    DB.branches = window.getBranches().filter(x=>x.id!==id);
+    if(localStorage.getItem('dokon_branch_id')===id) localStorage.setItem('dokon_branch_id','main');
+    fbSaveSettings().catch(e=>console.error(e));
+    try{ logAudit('Filial o\'chirildi', b.name); }catch(e){}
+    window.renderBranchesPage();
+  });
+};
+window.renderBranchesPage = function(){
+  const ds = document.getElementById('br-device-select');
+  if(ds){ ds.innerHTML = window.getAllBranches().map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join(''); ds.value = window.currentBranchId(); }
+  const list = document.getElementById('br-list');
+  if(list){
+    const rows = window.getBranches().map(b=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-bottom:1px solid var(--border2)"><div style="flex:1"><b>${esc(b.name)}</b>${b.address?`<div style="font-size:12px;color:var(--text3)">${esc(b.address)}</div>`:''}</div><button class="btn sm" onclick="window.renameBranch('${b.id}')">✏️</button><button class="btn sm red" onclick="window.deleteBranch('${b.id}')">🗑</button></div>`).join('');
+    list.innerHTML = `<div style="padding:.45rem 0;border-bottom:1px solid var(--border2)"><b>${esc(window.branchNameOf('main'))}</b> <span class="badge blue">asosiy</span></div>` + (rows || '<p style="font-size:12px;color:var(--text3);margin-top:.5rem">Qo\'shimcha filial hali yo\'q. Pastdan qo\'shing.</p>');
+  }
+  window.renderBranchStockTable(); window.renderBranchReport(); window.refreshBranchBar();
+};
+window.renderBranchStockTable = function(){
+  const box = document.getElementById('br-stock-table'); if(!box) return;
+  const q = (document.getElementById('br-stock-search')?.value||'').trim().toLowerCase();
+  const br = window.getAllBranches();
+  const prods = DB.products.filter(p=>!q || (p.name||'').toLowerCase().includes(q) || (p.barcode&&String(p.barcode).includes(q))).slice(0,150);
+  if(!prods.length){ box.innerHTML='<p style="font-size:13px;color:var(--text3)">Tovar topilmadi</p>'; return; }
+  const th = br.map(b=>`<th style="text-align:right;padding:.4rem .5rem">${esc(b.name)}</th>`).join('');
+  const tr = prods.map(p=>`<tr style="border-top:1px solid var(--border2)"><td style="padding:.4rem .5rem">${esc(p.name)}</td>${br.map(b=>`<td style="text-align:right;padding:.4rem .5rem;${window.stockOf(p,b.id)<=(DB.lowStockThreshold||0)?'color:var(--red);font-weight:700':''}">${window.stockOf(p,b.id)}</td>`).join('')}<td style="text-align:right;padding:.4rem .5rem"><b>${window.totalStockOf(p)}</b></td><td style="padding:.4rem .5rem"><button class="btn sm" onclick="window.openTransferModal('${p.id}')">↔ Ko'chirish</button></td></tr>`).join('');
+  box.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:.4rem .5rem">Tovar</th>${th}<th style="text-align:right;padding:.4rem .5rem">Jami</th><th></th></tr></thead><tbody>${tr}</tbody></table>`;
+};
+window.openTransferModal = function(pid){
+  const p = DB.products.find(x=>x.id===pid); if(!p) return;
+  const br = window.getAllBranches();
+  if(br.length<2){ toast("Ko'chirish uchun kamida bitta qo'shimcha filial kerak",'red'); return; }
+  const old = document.getElementById('br-transfer-overlay'); if(old) old.remove();
+  const opts = (sel)=>br.map(b=>`<option value="${esc(b.id)}" ${b.id===sel?'selected':''}>${esc(b.name)} (${window.stockOf(p,b.id)} ta)</option>`).join('');
+  const ov = document.createElement('div'); ov.id='br-transfer-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  const st='width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .7rem;font-size:14px;margin-bottom:.6rem;background:var(--bg,#fff);color:inherit';
+  ov.innerHTML=`<div style="background:var(--card,#fff);color:var(--text,#111);border-radius:14px;padding:1.1rem;width:min(94vw,380px)"><h3 style="font-size:16px;font-weight:700;margin-bottom:.7rem">↔ ${esc(p.name)} — ko'chirish</h3><label style="font-size:12px">Qayerdan</label><select id="tr-from" style="${st}">${opts(br[0].id)}</select><label style="font-size:12px">Qayerga</label><select id="tr-to" style="${st}">${opts(br[1].id)}</select><label style="font-size:12px">Soni</label><input id="tr-qty" type="number" min="1" step="1" value="1" style="${st}"><div style="display:flex;gap:.5rem;justify-content:flex-end"><button class="btn sm" onclick="document.getElementById('br-transfer-overlay').remove()">Bekor</button><button class="btn sm blue" onclick="window.doBranchTransfer('${p.id}')">✓ Ko'chirish</button></div></div>`;
+  document.body.appendChild(ov);
+};
+window.doBranchTransfer = function(pid){
+  const p = DB.products.find(x=>x.id===pid); if(!p) return;
+  const from = document.getElementById('tr-from').value, to = document.getElementById('tr-to').value;
+  const qty = Math.floor(Number(document.getElementById('tr-qty').value));
+  if(from===to){ toast('Bir xil omborga ko\'chirib bo\'lmaydi','red'); return; }
+  if(!(qty>0)){ toast('Sonni to\'g\'ri kiriting','red'); return; }
+  if(window.stockOf(p,from) < qty){ toast(`${window.branchNameOf(from)}da yetarli emas (${window.stockOf(p,from)} ta bor)`,'red'); return; }
+  const key = id => id==='main' ? 'stock' : 'branchStock.'+id;
+  const fields = {}; fields[key(from)] = increment(-qty); fields[key(to)] = increment(qty);
+  // lokal holat
+  p.branchStock = p.branchStock || {};
+  if(from==='main') p.stock=(p.stock||0)-qty; else p.branchStock[from]=(p.branchStock[from]||0)-qty;
+  if(to==='main') p.stock=(p.stock||0)+qty; else p.branchStock[to]=(p.branchStock[to]||0)+qty;
+  fbUpdateProductFields(p.id, fields);
+  try{ logAudit('Tovar ko\'chirildi', `${p.name}: ${qty} ta, ${window.branchNameOf(from)} → ${window.branchNameOf(to)}`); }catch(e){}
+  document.getElementById('br-transfer-overlay')?.remove();
+  toast(`✓ ${qty} ta ko'chirildi`,'green');
+  window.renderBranchStockTable();
+  if(typeof renderSellGrid==='function') renderSellGrid();
+};
+const PMN = {cash:'Naqd',card:'Karta',click:'Click',payme:'Payme',uzum:'Uzum',transfer:"O'tkazma"};
+window.exportBranchReport = function(){
+  const per = document.getElementById('br-report-period')?.value || 'month';
+  const rows = (window._brReportRows||[]).concat([['','','',''],['To\'lov turi','Summa','','']], (window._brReportPay||[]).map(r=>[r[0],r[1],'','']));
+  exportToExcel(`filiallar_hisoboti_${per}_${new Date().toISOString().slice(0,10)}.xlsx`, 'Filiallar', ['Filial','Sotuvlar','Tushum','Foyda'], rows);
+};
+window.renderBranchReport = function(){
+  const box = document.getElementById('br-report'); if(!box) return;
+  const per = document.getElementById('br-report-period')?.value || 'month';
+  const now = new Date(); let from = null;
+  if(per==='today'){ from = new Date(now.getFullYear(),now.getMonth(),now.getDate()); }
+  else if(per==='week'){ from = new Date(now.getTime()-6*86400000); from.setHours(0,0,0,0); }
+  else if(per==='month'){ from = new Date(now.getFullYear(),now.getMonth(),1); }
+  const agg = {};
+  window.getAllBranches().forEach(b=>{ agg[b.id]={n:0,rev:0,profit:0}; });
+  const pm = {};
+  (DB.sales||[]).forEach(s=>{
+    if(s.reverted) return;
+    if(from && new Date(s.date) < from) return;
+    const id = (s.branchId && agg[s.branchId]) ? s.branchId : 'main';
+    const a = agg[id]; a.n += 1; a.rev += (s.total||0); a.profit += (s.total||0) - (s.cost||0)*(s.qty||0); const pk = s.payMethod||'cash'; pm[pk] = (pm[pk]||0) + (s.total||0);
+  });
+  const rows = window.getAllBranches().map(b=>`<tr style="border-top:1px solid var(--border2)"><td style="padding:.4rem .5rem">${esc(b.name)}</td><td style="text-align:right;padding:.4rem .5rem">${agg[b.id].n}</td><td style="text-align:right;padding:.4rem .5rem">${fmt(agg[b.id].rev)}</td><td style="text-align:right;padding:.4rem .5rem">${fmt(agg[b.id].profit)}</td></tr>`).join('');
+  box.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:.4rem .5rem">Filial</th><th style="text-align:right;padding:.4rem .5rem">Sotuvlar</th><th style="text-align:right;padding:.4rem .5rem">Tushum (so'm)</th><th style="text-align:right;padding:.4rem .5rem">Foyda (so'm)</th></tr></thead><tbody>${rows}</tbody></table><p style="font-size:11px;color:var(--text3);margin-top:.4rem">Filial belgisi yo'q eski savdolar "asosiy ombor"ga hisoblanadi.</p>
+  <h4 style="font-size:13px;font-weight:700;margin:.8rem 0 .3rem">To'lov turlari bo'yicha</h4>
+  <table style="width:100%;font-size:13px;border-collapse:collapse"><tbody>${Object.keys(pm).map(k=>`<tr style="border-top:1px solid var(--border2)"><td style="padding:.35rem .5rem">${esc(PMN[k]||k)}</td><td style="text-align:right;padding:.35rem .5rem">${fmt(pm[k])}</td></tr>`).join('') || '<tr><td style="padding:.35rem .5rem;color:var(--text3)">Savdo yo\'q</td></tr>'}</tbody></table>
+  <button class="btn sm" style="margin-top:.7rem" onclick="window.exportBranchReport && window.exportBranchReport()">📥 Excel</button>`;
+  window._brReportRows = window.getAllBranches().map(b=>[b.name, agg[b.id].n, Math.round(agg[b.id].rev), Math.round(agg[b.id].profit)]);
+  window._brReportPay = Object.keys(pm).map(k=>[PMN[k]||k, Math.round(pm[k])]);
+};
+
+// ================== YANGI: REVIZI (INVENTARIZATSIYA) ==================
+// Tanlangan filial/ombor bo'yicha tovarlar haqiqiy sanaladi; yakunlanganda farq
+// ATOMIK increment bilan tuzatiladi va Kirim/Chiqim tarixiga yoziladi.
+let _stDraft = {};
+function stBranch(){ return document.getElementById('st-branch')?.value || window.currentBranchId(); }
+function stKey(){ return 'dokon_stocktake_'+stBranch(); }
+function stLoad(){ try{ _stDraft = JSON.parse(localStorage.getItem(stKey())||'{}') || {}; }catch(e){ _stDraft = {}; } }
+function stSave(){ try{ localStorage.setItem(stKey(), JSON.stringify(_stDraft)); }catch(e){} }
+window.stBranchChanged = function(){ stLoad(); window.renderStocktakeTable(); };
+window.renderStocktakePage = function(){
+  const sel = document.getElementById('st-branch'); if(!sel) return;
+  const keep = sel.value || window.currentBranchId();
+  sel.innerHTML = window.getAllBranches().map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
+  sel.value = window.getAllBranches().some(b=>b.id===keep) ? keep : 'main';
+  stLoad(); window.renderStocktakeTable();
+};
+function stCalc(){
+  const b = stBranch(); let counted=0, plus=0, minus=0, money=0;
+  Object.keys(_stDraft).forEach(pid=>{
+    const p = DB.products.find(x=>x.id===pid); if(!p) return;
+    counted++; const d = _stDraft[pid] - window.stockOf(p,b);
+    if(d>0) plus += d; else if(d<0) minus += -d;
+    money += d * (p.cost||0);
+  });
+  return {counted, plus, minus, money};
+}
+function stUpdateSummary(){
+  const el = document.getElementById('st-summary'); if(!el) return;
+  const c = stCalc();
+  el.innerHTML = `Sanalgan tovar: <b>${c.counted}</b> / ${DB.products.length} &nbsp;•&nbsp; Ortiqcha: <b style="color:var(--green)">+${c.plus}</b> &nbsp;•&nbsp; Kamomad: <b style="color:var(--red)">−${c.minus}</b> &nbsp;•&nbsp; Tannarx farqi: <b style="color:${c.money<0?'var(--red)':'var(--green)'}">${c.money>0?'+':''}${fmt(c.money)} so'm</b>`;
+}
+window.renderStocktakeTable = function(){
+  const box = document.getElementById('st-table'); if(!box) return;
+  const b = stBranch();
+  const q = (document.getElementById('st-search')?.value||'').trim().toLowerCase();
+  const onlyDiff = !!document.getElementById('st-only-diff')?.checked;
+  let prods = DB.products.filter(p=>!q || (p.name||'').toLowerCase().includes(q) || (p.barcode&&String(p.barcode).includes(q)));
+  if(onlyDiff) prods = prods.filter(p=>_stDraft[p.id]!==undefined && _stDraft[p.id]!==window.stockOf(p,b));
+  const total = prods.length; prods = prods.slice(0,200);
+  if(!prods.length){ box.innerHTML='<p style="font-size:13px;color:var(--text3)">Tovar topilmadi</p>'; stUpdateSummary(); return; }
+  const rows = prods.map(p=>{
+    const exp = window.stockOf(p,b); const has = _stDraft[p.id]!==undefined; const d = has ? _stDraft[p.id]-exp : null;
+    return `<tr style="border-top:1px solid var(--border2)"><td style="padding:.4rem .5rem">${esc(p.name)}${p.volume?` <span style="color:var(--text3);font-size:11px">${esc(String(p.volume))} L</span>`:''}</td><td style="text-align:right;padding:.4rem .5rem">${exp}</td><td style="text-align:right;padding:.3rem .5rem"><input type="number" min="0" step="1" inputmode="numeric" value="${has?_stDraft[p.id]:''}" oninput="window.stSet('${p.id}',this.value)" style="width:76px;text-align:right;border:1.5px solid var(--border2);border-radius:8px;padding:.3rem .4rem;font-size:13px"></td><td id="st-diff-${p.id}" style="text-align:right;padding:.4rem .5rem;font-weight:700;color:${d>0?'var(--green)':d<0?'var(--red)':'var(--text3)'}">${d===null?'—':(d>0?'+':'')+d}</td></tr>`;
+  }).join('');
+  box.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:.4rem .5rem">Tovar</th><th style="text-align:right;padding:.4rem .5rem">Tizimda</th><th style="text-align:right;padding:.4rem .5rem">Sanaldi</th><th style="text-align:right;padding:.4rem .5rem">Farq</th></tr></thead><tbody>${rows}</tbody></table>${total>200?`<p style="font-size:11px;color:var(--text3);margin-top:.4rem">Dastlabki 200 ta ko'rsatildi — qidiruvdan foydalaning.</p>`:''}`;
+  stUpdateSummary();
+};
+window.stSet = function(pid, val){
+  const p = DB.products.find(x=>x.id===pid); if(!p) return;
+  if(val===''||val==null){ delete _stDraft[pid]; } else { const n = Math.floor(Number(val)); if(isNaN(n)||n<0) return; _stDraft[pid] = n; }
+  stSave();
+  const cell = document.getElementById('st-diff-'+pid);
+  if(cell){
+    const has = _stDraft[pid]!==undefined; const d = has ? _stDraft[pid]-window.stockOf(p,stBranch()) : null;
+    cell.textContent = d===null ? '—' : (d>0?'+':'')+d;
+    cell.style.color = d>0 ? 'var(--green)' : d<0 ? 'var(--red)' : 'var(--text3)';
+  }
+  stUpdateSummary();
+};
+window.stScan = function(code){
+  code = String(code||'').trim(); if(!code) return;
+  const p = DB.products.find(x=>(p_eq(x.barcode,code)||p_eq(x.qrCode,code)));
+  if(!p){ toast('Kod bo\'yicha tovar topilmadi: '+code,'red'); return; }
+  _stDraft[p.id] = (_stDraft[p.id]||0) + 1; stSave();
+  toast(`${p.name}: ${_stDraft[p.id]} ta`,'blue');
+  window.renderStocktakeTable();
+};
+function p_eq(a,b){ return a!=null && a!=='' && String(a)===String(b); }
+window.stClear = function(){
+  confirm2('Sanashni tozalash','Shu ombor uchun kiritilgan barcha sanoq o\'chiriladi (tizim qoldig\'i o\'zgarmaydi). Davom etilsinmi?',()=>{ _stDraft = {}; stSave(); window.renderStocktakeTable(); });
+};
+window.stExport = function(){
+  const b = stBranch();
+  const rows = Object.keys(_stDraft).map(pid=>{ const p = DB.products.find(x=>x.id===pid); if(!p) return null; const exp = window.stockOf(p,b), d = _stDraft[pid]-exp; return [p.name, p.barcode||'', exp, _stDraft[pid], d, d*(p.cost||0)]; }).filter(Boolean);
+  if(!rows.length){ toast('Avval tovarlarni sanang','red'); return; }
+  exportToExcel(`revizi_${window.branchNameOf(b)}_${new Date().toISOString().slice(0,10)}.xlsx`, 'Revizi', ['Tovar','Shtrix-kod','Tizimda','Sanaldi','Farq','Tannarx farqi (so\'m)'], rows);
+};
+window.stFinish = function(){
+  const b = stBranch(); const items = [];
+  Object.keys(_stDraft).forEach(pid=>{ const p = DB.products.find(x=>x.id===pid); if(!p) return; const exp = window.stockOf(p,b), d = _stDraft[pid]-exp; if(d!==0) items.push({p, exp, cnt:_stDraft[pid], d}); });
+  if(!Object.keys(_stDraft).length){ toast('Avval tovarlarni sanang','red'); return; }
+  if(!items.length){ toast('✓ Farq yo\'q — hammasi mos keldi','green'); _stDraft = {}; stSave(); window.renderStocktakeTable(); return; }
+  confirm2('Revizini yakunlash', `${window.branchNameOf(b)}: ${items.length} ta tovar qoldig'i tuzatiladi (sanalmagan tovarlarga tegilmaydi). Davom etilsinmi?`, ()=>{
+    const date = new Date().toISOString();
+    items.forEach(({p,exp,cnt,d})=>{
+      window.applyStockDelta(p, b, d);
+      fbSaveRestock({ id:uid(), productId:p.id, productName:p.name, volume:p.volume||'', type: d>0?'in':'out', qty:Math.abs(d), stockBefore:exp, stockAfter:cnt, reason:`Inventarizatsiya (revizi) — ${window.branchNameOf(b)}`, date, branchId:b });
+    });
+    try{ logAudit('Revizi yakunlandi', `${window.branchNameOf(b)}: ${items.length} ta tovar tuzatildi`); }catch(e){}
+    _stDraft = {}; stSave();
+    toast(`✓ Revizi yakunlandi: ${items.length} ta tovar tuzatildi`,'green');
+    refreshProductViews(); window.renderStocktakeTable();
+  });
+};
+
+// ================== KODLAR MARKAZI v2 (QR / DataMatrix / barcode) ==================
+// YANGILANDI (2026-10): CHEKSIZ noyob kodlar, partiya (diapazon) tizimi.
+//
+// ESKI TIZIM muammosi: har bir noyob kod mahsulot hujjatidagi `serialCodes` xaritasiga
+// alohida kalit bo'lib yozilardi. Firestore hujjati 1 MiB bilan cheklangan (va xarita
+// kalitlari indekslanadi), shuning uchun bir martada 500 ta, umuman esa taxminan
+// o'n minglab kodlardan keyin tizim buzilardi.
+//
+// YANGI TIZIM: kodlar SAQLANMAYDI — ular partiyadan HISOBLANADI.
+//   Kod:  MB-<PARTIYA>-<RAQAM>-<NAZORAT>     masalan  MB-K7QD-0000123-X7
+//     PARTIYA  — 4 belgi (tasodifiy, hamma tovarlar bo'yicha noyob)
+//     RAQAM    — 7 xonali tartib raqami (1 partiyada 9 999 999 tagacha)
+//     NAZORAT  — 2 belgi (kod bo'yicha hisoblanadi: noto'g'ri yozilgan/o'qilgan/soxta
+//                kodni darhol aniqlaydi)
+//   Tovar hujjatida faqat kichik yozuv: codeBatches:[{id, from, to, fmt, at, by}]
+//   Shu bois 1 ta partiya = ~100 bayt, kodlar soni esa amalda CHEKSIZ.
+//   "Sotilgan" kodlar avvalgidek soldCodes'da (takror sotishdan himoya o'zgarmagan).
+//   Eski MC-XXXX-XXXX kodlari va zavod GS1 DataMatrix kodlari avvalgidek ishlaydi.
+const CC_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 0/O, 1/I/L kabi chalkash belgilarsiz (31 ta)
+const CC_BATCH_RE = /^MB-([A-HJKMNP-Z2-9]{4})-(\d{7})-([A-HJKMNP-Z2-9]{2})$/;
+const CC_LEGACY_RE = /^MC-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
+const CC_BATCH_MAX = 9999999;      // 1 partiyadagi maksimal kodlar soni (7 xonali raqam)
+const CC_MAX_PER_OP = 99999999;    // 1 amalda yaratish mumkin bo'lgan kodlar (10 tagacha partiyaga bo'linadi)
+
+function ccRand(n){ const a = new Uint32Array(n); (window.crypto||window.msCrypto).getRandomValues(a); let r=''; for(let i=0;i<n;i++) r += CC_ALPHA[a[i]%CC_ALPHA.length]; return r; }
+// FNV-1a (32 bit) — nazorat belgisi uchun
+function ccHash(str){ let h = 0x811c9dc5; for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+function ccCheckChars(batch, seq){ const h = ccHash('MB|'+batch+'|'+seq) % (CC_ALPHA.length*CC_ALPHA.length); return CC_ALPHA[Math.floor(h/CC_ALPHA.length)] + CC_ALPHA[h%CC_ALPHA.length]; }
+function ccBuildCode(batch, seq){ return 'MB-'+batch+'-'+String(seq).padStart(7,'0')+'-'+ccCheckChars(batch, seq); }
+
+// ---- Skaner/klaviatura xatolaridan himoya ----
+// USB/Bluetooth skaner klaviatura rejimida yozadi, shuning uchun: CapsLock (kichik harf),
+// RUS klaviatura tartibi (MB-K7QD → ЬИ-Л7ЙВ), tire o'rniga boshqa belgi, ortiqcha bo'sh joy
+// kabi holatlar bo'ladi. Faqat MB-/MC- ko'rinishidagi kodlarga tegamiz; GS1 va boshqa kodlar o'zgarmaydi.
+const CC_RU2EN = {'й':'q','ц':'w','у':'e','к':'r','е':'t','н':'y','г':'u','ш':'i','щ':'o','з':'p','х':'[','ъ':']','ф':'a','ы':'s','в':'d','а':'f','п':'g','р':'h','о':'j','л':'k','д':'l','ж':';','э':"'",'я':'z','ч':'x','с':'c','м':'v','и':'b','т':'n','ь':'m','б':',','ю':'.','ё':'`'};
+function ccFixLayout(s){ return s.replace(/[а-яё]/gi, ch=>{ const m = CC_RU2EN[ch.toLowerCase()]; return m ? m : ch; }); }
+function ccCanonicalCode(raw){
+  const orig = String(raw==null?'':raw).trim();
+  if(!orig || orig.length>30 || /[\u0000-\u001f]/.test(orig)) return orig;
+  let s = /[а-яё]/i.test(orig) ? ccFixLayout(orig) : orig;
+  s = s.toUpperCase().replace(/[\u2010-\u2015\u2212_\s]+/g,'-').replace(/-+/g,'-');
+  return /^M[BC]-/.test(s) ? s : orig;
+}
+function ccParseBatchCode(raw){
+  const code = ccCanonicalCode(raw);
+  const m = CC_BATCH_RE.exec(code); if(!m) return null;
+  const seq = parseInt(m[2],10);
+  return { code, batch:m[1], seq, check:m[3], valid: ccCheckChars(m[1], seq) === m[3] };
+}
+// MB- bilan boshlanadigan, lekin tuzilishi yoki nazorat belgisi noto'g'ri kod
+function ccBadBatchCode(raw){
+  const code = ccCanonicalCode(raw);
+  if(!/^MB-/.test(code)) return false;
+  const pc = ccParseBatchCode(code);
+  return !pc || !pc.valid;
+}
+function ccFindBatchOwner(pc){
+  if(!pc || !pc.valid) return null;
+  for(const p of DB.products){
+    const bs = p.codeBatches; if(!bs || !bs.length) continue;
+    for(const b of bs){ if(b.id===pc.batch && pc.seq>=b.from && pc.seq<=b.to) return { product:p, batch:b }; }
+  }
+  return null;
+}
+// Kod shu tovarning partiyasiga tegishlimi (sotilgan-sotilmaganidan qat'i nazar)
+function ccIsBatchOwned(p, code){
+  const pc = ccParseBatchCode(code);
+  if(!pc || !pc.valid || !p || !p.codeBatches) return false;
+  return p.codeBatches.some(b=>b.id===pc.batch && pc.seq>=b.from && pc.seq<=b.to);
+}
+// Kod omborda (ro'yxatga olingan VA sotilmagan) turibdimi — eski serialCodes ham, yangi partiya ham
+function hasUnsoldSerial(p, code){
+  if(!p) return false;
+  if(p.serialCodes && p.serialCodes[code]) return true;
+  if(p.soldCodes && p.soldCodes[code]) return false;
+  return ccIsBatchOwned(p, code);
+}
+// Partiyalar statistikasi: [{b, total, sold, left}]
+function ccBatchStats(p){
+  const bs = Array.isArray(p.codeBatches) ? p.codeBatches : [];
+  if(!bs.length) return [];
+  const soldBy = {};
+  const sold = p.soldCodes || {};
+  for(const k in sold){
+    if(k.charCodeAt(1)!==66) continue; // 'B'
+    const m = CC_BATCH_RE.exec(k); if(!m) continue;
+    (soldBy[m[1]] = soldBy[m[1]] || []).push(parseInt(m[2],10));
+  }
+  return bs.map(b=>{
+    const total = b.to - b.from + 1;
+    let s = 0; const arr = soldBy[b.id];
+    if(arr) for(let i=0;i<arr.length;i++){ if(arr[i]>=b.from && arr[i]<=b.to) s++; }
+    return { b, total, sold:s, left: total - s };
+  });
+}
+// Tovardagi ro'yxatga olingan (omborda, sotilmagan) kodli donalar soni
+function ccRegisteredCount(p){
+  let n = 0; const sc = p.serialCodes || {};
+  for(const k in sc){ if(!CC_BATCH_RE.test(k)) n++; }
+  const st = ccBatchStats(p); for(const x of st) n += x.left;
+  return n;
+}
+function ccUsedBatchIds(){ const s = new Set(); DB.products.forEach(p=>(p.codeBatches||[]).forEach(b=>s.add(b.id))); return s; }
+function ccNewBatchId(used){ let id, g=0; do{ id = ccRand(4); g++; }while(used.has(id) && g<1000); used.add(id); return id; }
+
+function ccEan13(){
+  let d = '2'; for(let i=0;i<11;i++) d += Math.floor(Math.random()*10);
+  let sum = 0; for(let i=0;i<12;i++) sum += Number(d[i]) * (i%2===0 ? 1 : 3);
+  return d + ((10 - (sum%10)) % 10);
+}
+window._ccEan13 = ccEan13;
+function ccProd(){ return DB.products.find(x=>x.id===document.getElementById('cc-product')?.value); }
+function ccEl(id){ return document.getElementById(id); }
+function fmt_(n){ const v=Math.round(Number(n)||0); return (v===0?0:v).toLocaleString('uz-UZ'); }
+
+// ---------- yorliq o'lchamlari va sozlamalar ----------
+const CC_SIZES = {
+  t30x20:{ w:30, h:20, label:'Termo yorliq 30×20 mm' },
+  t40x30:{ w:40, h:30, label:'Termo yorliq 40×30 mm' },
+  t50x30:{ w:50, h:30, label:'Termo yorliq 50×30 mm' },
+  t58x40:{ w:58, h:40, label:'Termo yorliq 58×40 mm' },
+  t70x50:{ w:70, h:50, label:'Termo yorliq 70×50 mm' },
+  custom:{ custom:true, label:'Boshqa o\'lcham (o\'zingiz kiriting)…' },
+  a4_3x8:{ a4:true, cols:3, rows:8,  w:63.5, h:33.9, gx:2.5, gy:0, label:'A4 varaq · 3×8 (63.5×33.9 mm)' },
+  a4_3x7:{ a4:true, cols:3, rows:7,  w:63.5, h:38.1, gx:2.5, gy:0, label:'A4 varaq · 3×7 (63.5×38.1 mm)' },
+  a4_5x13:{ a4:true, cols:5, rows:13, w:38.1, h:21.2, gx:2.5, gy:0, label:'A4 varaq · 5×13 (38.1×21.2 mm)' }
+};
+const CC_PREF_KEY = 'cc_prefs_v2';
+function ccLoadPrefs(){ try{ return JSON.parse(localStorage.getItem(CC_PREF_KEY)||'{}')||{}; }catch(e){ return {}; } }
+function ccSavePrefs(){
+  try{ const o = ccReadOpts(); localStorage.setItem(CC_PREF_KEY, JSON.stringify(o)); }catch(e){}
+}
+function ccReadOpts(over){
+  const g = id=>document.getElementById(id);
+  const num = (id, d)=>{ const v = parseFloat(g(id)?.value); return isFinite(v) ? v : d; };
+  const o = {
+    fmt: g('cc-format')?.value || 'datamatrix',
+    size: g('cc-size')?.value || 't40x30',
+    cw: num('cc-cw', 40), ch: num('cc-ch', 30),
+    dpi: parseInt(g('cc-dpi')?.value) || 0,
+    showName: g('cc-shname') ? g('cc-shname').checked : true,
+    showPrice: g('cc-shprice') ? g('cc-shprice').checked : true,
+    showCode: g('cc-shcode') ? g('cc-shcode').checked : true,
+    skip: Math.max(0, parseInt(g('cc-skip')?.value) || 0),
+    ox: num('cc-ox', 0), oy: num('cc-oy', 0),
+    layout: g('cc-layout')?.value || 'side',
+    showDate: g('cc-shdate') ? g('cc-shdate').checked : false,
+    showSeq: g('cc-shseq') ? g('cc-shseq').checked : false,
+    extra: (g('cc-extra')?.value || '').trim(),
+    copies: Math.max(1, Math.min(10, parseInt(g('cc-copies')?.value) || 1)),
+    out: g('cc-out')?.value || 'browser',
+    gap: g('cc-gap')?.value || 'gap2',
+    inv: g('cc-inv') ? g('cc-inv').checked : false
+  };
+  return Object.assign(o, over||{});
+}
+function ccLayout(o){
+  let s = CC_SIZES[o.size] || CC_SIZES.t40x30;
+  if(s.custom){
+    const w = Math.min(150, Math.max(15, o.cw||40)), h = Math.min(200, Math.max(10, o.ch||30));
+    s = { custom:true, w, h };
+  }
+  return s;
+}
+// Termo printer nuqtalariga (dot) moslab, modul o'lchamini BUTUN nuqtaga keltiradi —
+// aks holda modullar xira (anti-alias) chiqib, kichik DataMatrix o'qilmay qolishi mumkin.
+function ccSnapMm(totalModules, maxMm, dpi){
+  if(!dpi || !totalModules) return maxMm;
+  const dotMm = 25.4/dpi;
+  const k = Math.floor(maxMm/(totalModules*dotMm));
+  if(k < 1) return maxMm;
+  return Math.round(k*totalModules*dotMm*1000)/1000;
+}
+
+// ---------- kod rasmi (VEKTOR — har qanday printer DPI'sida o'tkir) ----------
+const CC_DM_SIZES = [10,12,14,16,18,20,22,24,26,32,36,40,44,48,52,64,72,80,88,96,104,120,132,144];
+let _ccWarned = {};
+function ccWarnOnce(key, msg, color){ if(_ccWarned[key]) return; _ccWarned[key] = 1; try{ toast(msg, color||'amber'); }catch(e){} }
+// Tayyor SVG matnini (bwip-js / qrcode) yagona ko'rinishga keltiradi: tinch zona (quiet zone),
+// oq fon, 100% o'lcham — va modullar sonini aniqlaydi (nuqtaga moslash uchun).
+function ccWrapSvg(raw, kind, qz){
+  const open = /<svg\b[^>]*>/i.exec(raw); if(!open) return null;
+  const vb = /viewBox\s*=\s*"\s*([\d.\-]+)[\s,]+([\d.\-]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/i.exec(open[0]);
+  let W, H;
+  if(vb){ W = parseFloat(vb[3]); H = parseFloat(vb[4]); }
+  else {
+    const w = /\swidth\s*=\s*"([\d.]+)/i.exec(open[0]), h = /\sheight\s*=\s*"([\d.]+)/i.exec(open[0]);
+    if(!w || !h) return null; W = parseFloat(w[1]); H = parseFloat(h[1]);
+  }
+  if(!(W>0 && H>0)) return null;
+  let unit = 1, modules = W;
+  if(kind==='dm'){
+    for(const k of [1,2,3,4,5,6,8]){ const m = W/k; if(Number.isInteger(m) && CC_DM_SIZES.indexOf(m)>=0){ unit = k; modules = m; break; } }
+  }
+  const q = (qz==null ? 1 : qz) * unit;
+  const inner = raw.slice(open.index + open[0].length).replace(/<\/svg>\s*$/i,'');
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+(-q)+' '+(-q)+' '+(W+2*q)+' '+(H+2*q)+'" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect x="'+(-q)+'" y="'+(-q)+'" width="'+(W+2*q)+'" height="'+(H+2*q)+'" fill="#fff"/>'+inner+'</svg>';
+  return { svg, total: modules + 2*(q/unit), linear:false };
+}
+function ccCanvasWithMargin(c, m){
+  const c2 = document.createElement('canvas'); c2.width = c.width + 2*m; c2.height = c.height + 2*m;
+  const x = c2.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0,0,c2.width,c2.height); x.drawImage(c, m, m);
+  return c2;
+}
+async function ccSymbol(fmt, text){
+  if(fmt==='datamatrix'){
+    try{
+      await window.loadVendorLib('bwipjs');
+      const bw = window.bwipjs;
+      if(typeof bw.toSVG === 'function'){
+        const r = ccWrapSvg(bw.toSVG({bcid:'datamatrix', text:text, scale:1, padding:0}), 'dm', 1);
+        if(r) return r;
+      }
+      const c = document.createElement('canvas');
+      bw.toCanvas(c, {bcid:'datamatrix', text:text, scale:6, padding:0});
+      return { url: ccCanvasWithMargin(c, 12).toDataURL('image/png'), linear:false };
+    }catch(e){ console.warn('DataMatrix yaratilmadi, QR ishlatiladi:', e); ccWarnOnce('dm', 'DataMatrix kutubxonasi yuklanmadi — QR ishlatildi'); fmt = 'qr'; }
+  }
+  if(fmt==='qr'){
+    await window.loadVendorLib('QRCode');
+    try{
+      const svgStr = await QRCode.toString(text, {type:'svg', margin:2, errorCorrectionLevel:'M'});
+      const r = ccWrapSvg(svgStr, 'qr', 0);
+      if(r) return r;
+    }catch(e){ /* quyida PNG */ }
+    const url = await QRCode.toDataURL(text, {margin:2, width:560, errorCorrectionLevel:'M'});
+    return { url, linear:false };
+  }
+  await window.loadVendorLib('JsBarcode');
+  const c = document.createElement('canvas');
+  const opt = {displayValue:false, height:80, margin:0, marginLeft:30, marginRight:30, width:3};
+  try{ JsBarcode(c, text, Object.assign({format: fmt==='ean13' ? 'EAN13' : 'CODE128'}, opt)); }
+  catch(e){ JsBarcode(c, text, Object.assign({format:'CODE128'}, opt)); }
+  return { url: c.toDataURL('image/png'), linear:true };
+}
+
+// ---------- yorliq HTML / CSS ----------
+function ccLabelCss(L, o){
+  const w = L.w, h = L.h, pad = Math.max(1, Math.min(2, h*0.06));
+  const nf = w>=58 ? 9 : (w>=40 ? 7.5 : 6.5), pf = w>=58 ? 10 : (w>=40 ? 8.5 : 7), cf = w>=58 ? 7.5 : (w>=40 ? 6 : 5.5);
+  let css = '*{box-sizing:border-box} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + '.ccl{width:'+w+'mm;height:'+h+'mm;padding:'+pad+'mm '+(pad+0.5)+'mm;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#000;background:#fff;font-family:Arial,Helvetica,sans-serif}'
+    + '.ccl-row{display:flex;align-items:center;justify-content:center;gap:1.6mm;width:100%;min-height:0}'
+    + '.ccl-s{flex:none;display:block;background:#fff}.ccl-s svg{display:block;width:100%;height:100%}'
+    + '.ccl-side{flex:1 1 0;min-width:0;text-align:left}'
+    + '.ccl-n{font-weight:700;font-size:'+nf+'pt;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}'
+    + '.ccl-p{font-size:'+pf+'pt;font-weight:700;margin-top:.6mm}'
+    + ".ccl-c{font-family:'Courier New',monospace;font-size:"+cf+"pt;margin-top:.5mm;white-space:nowrap;line-height:1.1}"
+    + '.ccl-in{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%}'
+    + '.ccl-lin{display:block;image-rendering:pixelated}'
+    + '.ccl-col{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:0}'
+    + '.ccl-nc{text-align:center;-webkit-line-clamp:2;margin-top:.4mm}'
+    + '.ccl-x{font-size:'+cf+'pt;line-height:1.1;white-space:nowrap;margin-top:.3mm;font-family:Arial,Helvetica,sans-serif}';
+  return { css, pad, cf };
+}
+function ccLabelHtml(p, code, sym, L, o){
+  const w = L.w, h = L.h, pad = Math.max(1, Math.min(2, h*0.06));
+  const small = w < 38;
+  const T = ccLabelTexts(p, code, L, o);
+  const nm = esc(T.nm);
+  const price = T.price;
+  const codeH = (o.showCode ? (small ? 2.4 : 3) : 0) + (T.ex ? (small ? 2.2 : 2.6) : 0);
+  const codeTxt = (o.showCode ? '<div class="ccl-c">'+esc(code)+'</div>' : '') + (T.ex ? '<div class="ccl-x">'+esc(T.ex)+'</div>' : '');
+  if(sym.linear){
+    const bh = Math.max(6, Math.round((h - 2*pad - codeH - (o.showName?4:0) - (o.showPrice?3.5:0))*10)/10);
+    return '<div class="ccl"><div class="ccl-in">'+(o.showName?'<div class="ccl-n">'+nm+'</div>':'')
+      + '<img class="ccl-lin" src="'+sym.url+'" style="width:'+(w-2*pad).toFixed(1)+'mm;height:'+bh+'mm">'
+      + codeTxt + (o.showPrice?'<div class="ccl-p">'+price+'</div>':'') + '</div></div>';
+  }
+  const hasText = o.showName || o.showPrice;
+  const symMm = ccSymMmFor(L, o, sym);
+  const symHtml = sym.svg
+    ? '<div class="ccl-s" style="width:'+symMm+'mm;height:'+symMm+'mm">'+sym.svg+'</div>'
+    : '<img class="ccl-s" src="'+sym.url+'" style="width:'+symMm+'mm;height:'+symMm+'mm;image-rendering:pixelated">';
+  if(o.layout === 'top' && hasText){
+    return '<div class="ccl"><div class="ccl-col">'+symHtml+(o.showName?'<div class="ccl-n ccl-nc">'+nm+'</div>':'')+(o.showPrice?'<div class="ccl-p">'+price+'</div>':'')+'</div>'+codeTxt+'</div>';
+  }
+  const side = hasText ? '<div class="ccl-side">'+(o.showName?'<div class="ccl-n">'+nm+'</div>':'')+(o.showPrice?'<div class="ccl-p">'+price+'</div>':'')+'</div>' : '';
+  return '<div class="ccl"><div class="ccl-row">'+symHtml+side+'</div>'+codeTxt+'</div>';
+}
+function ccDocHtml(items, L, o, skipCells){
+  const { css } = ccLabelCss(L, o);
+  let style, body;
+  if(L.a4){
+    const left = (210 - (L.cols*L.w + (L.cols-1)*L.gx))/2 + (o.ox||0);
+    const top = (297 - (L.rows*L.h + (L.rows-1)*L.gy))/2 + (o.oy||0);
+    const per = L.cols*L.rows;
+    style = '@page{size:A4;margin:0}'+css
+      + '.sheet{width:210mm;height:296mm;padding-top:'+top+'mm;padding-left:'+left+'mm;display:grid;grid-template-columns:repeat('+L.cols+','+L.w+'mm);grid-auto-rows:'+L.h+'mm;column-gap:'+L.gx+'mm;row-gap:'+L.gy+'mm;align-content:start;overflow:hidden;page-break-after:always;break-after:page}'
+      + '.sheet:last-child{page-break-after:auto;break-after:auto}.ccl-empty{width:'+L.w+'mm;height:'+L.h+'mm}';
+    const all = []; for(let i=0;i<(skipCells||0);i++) all.push('<div class="ccl-empty"></div>'); items.forEach(x=>all.push(x));
+    const sheets = []; for(let i=0;i<all.length;i+=per) sheets.push('<div class="sheet">'+all.slice(i,i+per).join('')+'</div>');
+    body = sheets.join('');
+  } else {
+    style = '@page{size:'+L.w+'mm '+L.h+'mm;margin:0}'+css+'.ccl{page-break-after:always;break-after:page}.ccl:last-child{page-break-after:auto;break-after:auto}';
+    body = items.join('');
+  }
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kod yorliqlari</title><style>'+style+'</style></head><body>'+body+'</body></html>';
+}
+// Yorliq ko'rinishi (oldindan ko'rish) — chop etishdan oldin sifatni tekshirish uchun
+let _ccPrevTimer = null;
+window.ccPreview = function(){
+  clearTimeout(_ccPrevTimer);
+  _ccPrevTimer = setTimeout(async ()=>{
+    const box = ccEl('cc-preview'); if(!box) return;
+    const cust = ccEl('cc-custom-size'); const sz = ccEl('cc-size');
+    if(cust && sz) cust.style.display = (sz.value==='custom') ? 'grid' : 'none';
+    const a4 = ccEl('cc-a4-opts'); if(a4) a4.style.display = (CC_SIZES[sz?.value] && CC_SIZES[sz.value].a4) ? 'grid' : 'none';
+    ccSavePrefs();
+    const p = ccProd();
+    const o = ccReadOpts(); const L = ccLayout(o);
+    const sample = ccBuildCode('K7QD', 1);
+    let sym;
+    try{ sym = await ccSymbol(o.fmt, sample); }catch(e){ box.innerHTML = '<span style="color:var(--text3);font-size:12px">Ko\'rinish yuklanmadi (kutubxona)</span>'; return; }
+    const prod = p || { name:'Tovar nomi', price:12000, volume:'' };
+    const html = ccLabelHtml(prod, sample, sym, L, o);
+    const css = ccLabelCss(L, o).css.replace(/html,body\{[^}]*\}/,'');
+    const scale = Math.min(2.2, 300/(L.w*3.78));
+    box.innerHTML = '<style>'+css+'</style><div style="width:'+(L.w*3.78*scale)+'px;height:'+(L.h*3.78*scale)+'px"><div style="transform:scale('+scale+');transform-origin:0 0;width:'+L.w+'mm;height:'+L.h+'mm;box-shadow:0 0 0 1px #bbb;display:inline-block">'+html+'</div></div>';
+    const info = ccEl('cc-preview-info'); if(info){
+      let t = 'Yorliq: '+L.w+'×'+L.h+' mm';
+      if(sym.total && !sym.linear){
+        const symMm = ccSymMmFor(L, o, sym);
+        const mod = symMm/sym.total; const dots = o.dpi ? mod*o.dpi/25.4 : 0;
+        let q, col;
+        if(mod >= 0.5){ q = 'A\'lo'; col='var(--green)'; } else if(mod >= 0.33){ q = 'Yaxshi'; col='var(--green)'; } else if(mod >= 0.25){ q = 'Chegarada — sifatli printer kerak'; col='var(--amber)'; } else { q = 'JUDA MAYDA — kattaroq yorliq tanlang'; col='var(--red)'; }
+        t += ' · Kod: '+sym.total+'×'+sym.total+' modul, '+symMm.toFixed(1)+' mm · modul '+mod.toFixed(2)+' mm'+(dots?' ('+dots.toFixed(1)+' nuqta)':'')+' · o\'qilish sifati: <b style="color:'+col+'">'+q+'</b>';
+      }
+      info.innerHTML = t;
+    }
+  }, 120);
+};
+
+// ---------- chop etish ishchisi (qismlab, to'xtatib-davom ettiriladigan) ----------
+// Kursor: { total, next(n) -> [kodlar], skip(n) } — millionlab kodni xotirada ushlamaydi.
+function ccArrayCursor(arr){ let i = 0; return { total: arr.length, next(n){ const r = arr.slice(i, i+n); i += r.length; return r; }, skip(n){ i += n; } }; }
+// segs: [{b, from, to}] — partiyalar oralig'i; onlyUnsold — sotilganlarni o'tkazib yuboradi
+function ccBatchCursor(p, segs, onlyUnsold){
+  const soldBy = {};
+  if(onlyUnsold){
+    const sc = p.soldCodes || {};
+    for(const k in sc){ const m = CC_BATCH_RE.exec(k); if(m){ (soldBy[m[1]] = soldBy[m[1]] || new Set()).add(parseInt(m[2],10)); } }
+  }
+  let total = 0;
+  segs.forEach(s=>{
+    let t = s.to - s.from + 1;
+    if(onlyUnsold && soldBy[s.b.id]){ soldBy[s.b.id].forEach(x=>{ if(x>=s.from && x<=s.to) t--; }); }
+    total += t;
+  });
+  let si = 0, seq = segs.length ? segs[0].from : 0;
+  function step(build){
+    while(si < segs.length){
+      const s = segs[si];
+      if(seq > s.to){ si++; if(si<segs.length) seq = segs[si].from; continue; }
+      const skipIt = onlyUnsold && soldBy[s.b.id] && soldBy[s.b.id].has(seq);
+      const cur = seq; seq++;
+      if(skipIt) continue;
+      return build ? ccBuildCode(s.b.id, cur) : true;
+    }
+    return null;
+  }
+  return {
+    total,
+    next(n){ const out = []; while(out.length < n){ const c = step(true); if(c===null) break; out.push(c); } return out; },
+    skip(n){ for(let i=0;i<n;i++){ if(step(false)===null) break; } }
+  };
+}
+let _ccJob = null;
+function ccPrintHtml(html){
+  return new Promise(resolve=>{
+    let frame = document.getElementById('print-frame'); if(frame) frame.remove();
+    frame = document.createElement('iframe'); frame.id = 'print-frame';
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(frame);
+    const d = frame.contentWindow.document; d.open(); d.write(html); d.close();
+    setTimeout(()=>{ try{ waitForImagesThenPrint(frame, 3000); }catch(e){ try{ frame.contentWindow.print(); }catch(e2){} } setTimeout(resolve, 500); }, 200);
+  });
+}
+async function ccRenderPart(job, idx, onProgress){
+  const cur = job.mk();
+  let before = 0; for(let i=0;i<idx;i++) before += job.sizes[i];
+  cur.skip(before);
+  const codes = cur.next(job.sizes[idx]);
+  const items = [];
+  for(let i=0;i<codes.length;i++){
+    const sym = await ccSymbol(job.o.fmt, codes[i]);
+    items.push(ccLabelHtml(job.p, codes[i], sym, job.L, job.o));
+    if(i%12===11){ if(onProgress) onProgress((i+1)/codes.length); await new Promise(r=>setTimeout(r,0)); }
+  }
+  return ccDocHtml(items, job.L, job.o, (job.L.a4 && idx===0) ? job.skipCells : 0);
+}
+async function ccStartPrintJob(p, mk, total, o, L){
+  if(o.copies > 1){ const mk0 = mk; mk = ()=>ccCopiesCursor(mk0(), o.copies); total = total * o.copies; }
+  if(o.out && o.out !== 'browser'){
+    if(L.a4){ toast("A4 varaq uchun brauzer orqali chop etiladi (termo usul faqat yorliq printerlari uchun)", 'amber'); }
+    else return ccDirectPrintJob(p, mk, total, o, L);
+  }
+  if(!(total > 0)){ toast('Chop etish uchun kod yo\'q','red'); return; }
+  const perPage = L.a4 ? L.cols*L.rows : 1;
+  const perJob = L.a4 ? perPage*8 : 300;          // A4: 8 varaq, termo: 300 yorliq — bitta chop etish vazifasi
+  const skipCells = L.a4 ? Math.min(perPage-1, o.skip||0) : 0;
+  const sizes = []; let rest = total, first = true;
+  while(rest > 0){ const cap = first ? perJob - skipCells : perJob; const take = Math.min(rest, cap); sizes.push(take); rest -= take; first = false; }
+  const job = { p, mk, total, o, L, sizes, skipCells, idx:0, busy:false };
+  if(sizes.length === 1){
+    toast('Yorliqlar tayyorlanmoqda...','blue');
+    const html = await ccRenderPart(job, 0);
+    await ccPrintHtml(html);
+    return;
+  }
+  _ccJob = job; ccPanelRender(); ccPanelMsg(`Jami ${total.toLocaleString('en-US')} ta yorliq ${sizes.length} qismga bo'lindi (printer navbati o'chib qolmasligi uchun). "Chop etish"ni bosing.`);
+}
+function ccPanel(){
+  let el = document.getElementById('cc-pp'); if(el) return el;
+  el = document.createElement('div'); el.id = 'cc-pp';
+  el.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:100000;background:#fff;color:#111;border:1.5px solid #cfd8d3;border-radius:14px;padding:12px 14px;box-shadow:0 10px 36px rgba(0,0,0,.28);width:min(460px,94vw);font-size:13px';
+  document.body.appendChild(el); return el;
+}
+function ccPanelRender(){
+  const j = _ccJob; if(!j) return;
+  const el = ccPanel(); const n = j.sizes.length;
+  const done = j.idx >= n;
+  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>🖨 Chop etish — '+esc(String(j.p.name||''))+'</b><button class="btn sm" onclick="window.ccJobClose()">✕</button></div>'
+    + '<div>Jami <b>'+j.total.toLocaleString('en-US')+'</b> ta yorliq • <b>'+n+'</b> qism</div>'
+    + '<div style="height:8px;background:#e6ece9;border-radius:6px;margin:8px 0;overflow:hidden"><div id="cc-pp-bar" style="height:100%;width:'+Math.round(100*Math.min(j.idx,n)/n)+'%;background:#0f766e;transition:width .15s"></div></div>'
+    + '<div id="cc-pp-msg" style="color:#555;margin-bottom:8px;min-height:18px"></div>'
+    + '<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">'
+    + (done ? '<b style="color:#0f766e">✅ Hammasi chop etildi</b>' : '<button class="btn blue" id="cc-pp-go" onclick="window.ccJobPrint()">🖨 '+(j.idx+1)+'-qismni chop etish ('+j.sizes[j.idx]+' ta)</button>')
+    + '<label style="font-size:12px;display:flex;align-items:center;gap:.3rem">Qismdan boshlash: <input type="number" min="1" max="'+n+'" value="'+Math.min(j.idx+1,n)+'" style="width:64px;border:1.5px solid #ccc;border-radius:8px;padding:.25rem .4rem" onchange="window.ccJobGoto(this.value)"></label></div>';
+}
+function ccPanelMsg(t){ const m = document.getElementById('cc-pp-msg'); if(m) m.textContent = t; }
+window.ccJobGoto = function(v){ if(!_ccJob) return; const n = _ccJob.sizes.length; _ccJob.idx = Math.max(0, Math.min(n-1, (parseInt(v)||1)-1)); ccPanelRender(); };
+window.ccJobClose = function(){ _ccJob = null; const el = document.getElementById('cc-pp'); if(el) el.remove(); };
+window.ccJobPrint = async function(){
+  const j = _ccJob; if(!j || j.busy || j.idx >= j.sizes.length) return;
+  j.busy = true; const btn = document.getElementById('cc-pp-go'); if(btn) btn.disabled = true;
+  const at = j.idx;
+  try{
+    ccPanelMsg(`${at+1}-qism tayyorlanmoqda...`);
+    const html = await ccRenderPart(j, at, f=>{ const b = document.getElementById('cc-pp-bar'); if(b) b.style.width = Math.round(100*(at+f)/j.sizes.length)+'%'; });
+    await ccPrintHtml(html);
+    j.idx = at + 1; j.busy = false;
+    ccPanelRender();
+    ccPanelMsg(j.idx >= j.sizes.length ? '' : `✓ ${at+1}-qism printerga yuborildi. Tugagach keyingisini bosing.`);
+  }catch(e){
+    console.error(e); j.busy = false; ccPanelRender(); ccPanelMsg('Xatolik: '+(e.message||e));
+  }
+};
+// Ixtiyoriy kodlar ro'yxatini chop etish (eski/zavod kodlar, barcode yorliqlari)
+async function ccPrintList(p, codes, over){
+  if(!codes.length) return;
+  const o = ccReadOpts(over); const L = ccLayout(o);
+  await ccStartPrintJob(p, ()=>ccArrayCursor(codes), codes.length, o, L);
+}
+
+// ---------- sahifa ----------
+let _ccSel = new Set();
+window.renderCodeCenter = function(){
+  const sel = ccEl('cc-product'); if(!sel) return;
+  // birinchi ochilishda o'lcham ro'yxatini to'ldirib, saqlangan sozlamalarni tiklaymiz
+  const szSel = ccEl('cc-size');
+  if(szSel && !szSel.options.length){
+    szSel.innerHTML = Object.keys(CC_SIZES).map(k=>'<option value="'+k+'">'+CC_SIZES[k].label+'</option>').join('');
+    const pr = ccLoadPrefs();
+    const set = (id, v)=>{ const e = ccEl(id); if(e && v!=null) e.value = v; };
+    const chk = (id, v)=>{ const e = ccEl(id); if(e && v!=null) e.checked = !!v; };
+    set('cc-format', pr.fmt); set('cc-size', pr.size); set('cc-cw', pr.cw); set('cc-ch', pr.ch); set('cc-dpi', pr.dpi!=null?String(pr.dpi):null);
+    chk('cc-shname', pr.showName); chk('cc-shprice', pr.showPrice); chk('cc-shcode', pr.showCode); set('cc-ox', pr.ox); set('cc-oy', pr.oy);
+    set('cc-layout', pr.layout); chk('cc-shdate', pr.showDate); chk('cc-shseq', pr.showSeq); set('cc-extra', pr.extra); set('cc-copies', pr.copies); set('cc-out', pr.out); set('cc-gap', pr.gap); chk('cc-inv', pr.inv);
+    if(window.ccOutChanged) window.ccOutChanged();
+  }
+  const keep = sel.value;
+  const prods = DB.products.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','uz'));
+  sel.innerHTML = prods.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+(p.volume?' · '+esc(String(p.volume))+' L':'')+'</option>').join('');
+  if(keep && prods.some(p=>p.id===keep)) sel.value = keep;
+  let batches=0, gen=0, left=0, soldB=0, legacy=0, sold=0;
+  DB.products.forEach(p=>{
+    ccBatchStats(p).forEach(x=>{ batches++; gen += x.total; left += x.left; soldB += x.sold; });
+    legacy += Object.keys(p.serialCodes||{}).filter(c=>!CC_BATCH_RE.test(c)).length;
+    sold += Object.keys(p.soldCodes||{}).length;
+  });
+  const nob = DB.products.filter(p=>!p.barcode).length;
+  ccEl('cc-stats').innerHTML = 'Partiyalar: <b>'+batches+'</b> &nbsp;•&nbsp; yaratilgan kodlar: <b>'+gen.toLocaleString('en-US')+'</b> (omborda: <b>'+left.toLocaleString('en-US')+'</b>, sotilgan: <b>'+soldB.toLocaleString('en-US')+'</b>) &nbsp;•&nbsp; eski/zavod kodli donalar: <b>'+legacy.toLocaleString('en-US')+'</b> &nbsp;•&nbsp; jami sotilgan kodlar: <b>'+sold.toLocaleString('en-US')+'</b> &nbsp;•&nbsp; Barcode\'siz tovar: <b style="color:'+(nob?'var(--amber)':'var(--green)')+'">'+nob+'</b>';
+  try{ window.loadVendorLib('bwipjs').catch(()=>{}); }catch(e){} // DataMatrix kutubxonasini oldindan yuklab (va keshlab) qo'yamiz
+  window.ccProductChanged(); window.ccRenderNoBarcode();
+};
+window.ccProductChanged = function(){
+  const p = ccProd(); const info = ccEl('cc-info'); _ccSel = new Set();
+  if(!p){ if(info) info.textContent=''; const l = ccEl('cc-list'); if(l) l.innerHTML=''; const b = ccEl('cc-batches'); if(b) b.innerHTML=''; return; }
+  const reg = ccRegisteredCount(p);
+  info.innerHTML = 'Omborda: <b>'+(p.stock||0)+'</b> ta &nbsp;•&nbsp; kodlangan: <b>'+reg.toLocaleString('en-US')+'</b> ta &nbsp;•&nbsp; kodlanmagan: <b style="color:'+((p.stock||0)>reg?'var(--amber)':'inherit')+'">'+Math.max(0,(p.stock||0)-reg)+'</b> ta';
+  info.innerHTML += ccStorageHtml(p);
+  window.ccRenderBatches(); window.ccRenderList(); window.ccPreview();
+};
+window.ccQuick = function(n){ ccEl('cc-count').value = n; };
+window.ccFillUncoded = function(){
+  const p = ccProd(); if(!p) return;
+  const n = Math.max(1, (p.stock||0) - ccRegisteredCount(p));
+  ccEl('cc-count').value = n;
+  toast('Kodlanmagan: '+n+' ta','blue');
+};
+// ---------- yaratish ----------
+function ccActor(){ try{ return currentRole==='admin' ? 'Admin' : (currentSellerName||'Sotuvchi'); }catch(e){ return 'Admin'; } }
+window.ccCreate = async function(print){
+  const p = ccProd(); if(!p){ toast('Tovarni tanlang','red'); return; }
+  const n = Math.floor(Number(ccEl('cc-count').value));
+  if(!(n>=1) || n>CC_MAX_PER_OP){ toast('Kodlar soni 1 dan '+CC_MAX_PER_OP.toLocaleString('en-US')+' gacha bo\'lsin','red'); return; }
+  const addStock = !!ccEl('cc-stock').checked;
+  const o = ccReadOpts();
+  const go = async ()=>{
+    const used = ccUsedBatchIds(); const batches = []; let left = n;
+    while(left > 0){ const cnt = Math.min(left, CC_BATCH_MAX); batches.push({ id: ccNewBatchId(used), from:1, to:cnt, fmt:o.fmt, at:new Date().toISOString(), by:ccActor() }); left -= cnt; }
+    p.codeBatches = (p.codeBatches||[]).concat(batches);
+    const before = p.stock||0;
+    if(addStock) p.stock = before + n;
+    const upd = { codeBatches: arrayUnion(...batches) };
+    if(addStock) upd.stock = increment(n);
+    fbUpdateProductFields(p.id, upd);
+    if(addStock){
+      fbSaveRestock({ id:uid(), productId:p.id, productName:p.name, volume:p.volume||'', type:'in', qty:n, stockBefore:before, stockAfter:before+n, reason:"Kod partiyasi yaratildi (kirim): "+batches.map(b=>b.id).join(', '), date:new Date().toISOString() });
+    }
+    try{ logAudit('Kod partiyasi yaratildi', p.name+': '+n.toLocaleString('en-US')+' ta ['+batches.map(b=>b.id).join(', ')+']'+(addStock?' (+ kirim)':'')); }catch(e){}
+    refreshProductViews();
+    toast('✓ '+n.toLocaleString('en-US')+' ta noyob kod yaratildi (partiya: '+batches.map(b=>b.id).join(', ')+')','green');
+    window.ccProductChanged();
+    if(print){
+      try{
+        const segs = batches.map(b=>({ b, from:b.from, to:b.to }));
+        await ccStartPrintJob(p, ()=>ccBatchCursor(p, segs, false), n, o, ccLayout(o));
+      }catch(e){ console.error(e); toast('Chop etishda xatolik: '+(e.message||e),'red'); }
+    }
+  };
+  if(n > 10000 || (addStock && n > 5000)){
+    confirm2('Katta partiya', n.toLocaleString('en-US')+' ta kod yaratiladi'+(addStock?' va ombor qoldig\'i +'+n.toLocaleString('en-US')+' ga oshadi':'')+'. Davom etilsinmi?', go);
+  } else go();
+};
+// ---------- partiyalar ro'yxati ----------
+window.ccRenderBatches = function(){
+  const p = ccProd(); const box = ccEl('cc-batches'); if(!box) return;
+  if(!p){ box.innerHTML = ''; return; }
+  const st = ccBatchStats(p);
+  const rsel = ccEl('cc-rb');
+  if(!st.length){
+    box.innerHTML = '<p style="font-size:13px;color:var(--text3)">Bu tovarda hali kod partiyasi yo\'q. Yuqorida yangi partiya yarating.</p>';
+    if(rsel) rsel.innerHTML = '';
+    return;
+  }
+  const keep = rsel ? rsel.value : '';
+  let total=0, left=0, sold=0; st.forEach(x=>{ total+=x.total; left+=x.left; sold+=x.sold; });
+  box.innerHTML = '<div style="font-size:12px;color:var(--text2);margin-bottom:.4rem">Jami: <b>'+total.toLocaleString('en-US')+'</b> • omborda: <b style="color:var(--green)">'+left.toLocaleString('en-US')+'</b> • sotilgan: <b>'+sold.toLocaleString('en-US')+'</b></div>'
+    + '<div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--text3)"><th style="padding:.25rem .4rem">Partiya</th><th>Oraliq</th><th>Qoldi</th><th>Sotilgan</th><th>Sana</th><th></th></tr></thead><tbody>'
+    + st.slice().reverse().map(x=>'<tr style="border-top:1px solid var(--border2)"><td style="padding:.3rem .4rem;font-family:monospace;font-weight:700">'+esc(x.b.id)+'</td><td>'+x.b.from.toLocaleString('en-US')+'–'+x.b.to.toLocaleString('en-US')+'</td><td style="color:var(--green);font-weight:600">'+x.left.toLocaleString('en-US')+'</td><td>'+x.sold.toLocaleString('en-US')+'</td><td style="color:var(--text3);white-space:nowrap">'+esc((x.b.at||'').slice(0,10))+'</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="window.ccPickBatch(\''+esc(x.b.id)+'\')">Tanlash</button></td></tr>').join('')
+    + '</tbody></table></div>';
+  if(rsel){
+    rsel.innerHTML = st.slice().reverse().map(x=>'<option value="'+esc(x.b.id)+'">'+esc(x.b.id)+' ('+x.b.from.toLocaleString('en-US')+'–'+x.b.to.toLocaleString('en-US')+', qoldi '+x.left.toLocaleString('en-US')+')</option>').join('');
+    if(keep && st.some(x=>x.b.id===keep)) rsel.value = keep;
+    window.ccRangeFill();
+  }
+};
+function ccSelBatch(){ const p = ccProd(); if(!p) return null; const id = ccEl('cc-rb')?.value; return (p.codeBatches||[]).find(b=>b.id===id) || null; }
+window.ccRangeFill = function(){ const b = ccSelBatch(); if(!b) return; ccEl('cc-rf').value = b.from; ccEl('cc-rt').value = b.to; };
+window.ccPickBatch = function(id){ const r = ccEl('cc-rb'); if(r){ r.value = id; window.ccRangeFill(); r.scrollIntoView({behavior:'smooth', block:'center'}); } };
+function ccReadRange(){
+  const p = ccProd(); const b = ccSelBatch();
+  if(!p || !b){ toast('Partiyani tanlang','red'); return null; }
+  const from = Math.floor(Number(ccEl('cc-rf').value)), to = Math.floor(Number(ccEl('cc-rt').value));
+  if(!(from>=b.from) || !(to<=b.to) || from>to){ toast('Oraliq '+b.from+' dan '+b.to+' gacha va "dan" ≤ "gacha" bo\'lsin','red'); return null; }
+  return { p, b, from, to, onlyUnsold: !!ccEl('cc-ru')?.checked };
+}
+window.ccPrintRange = async function(){
+  const r = ccReadRange(); if(!r) return;
+  const o = ccReadOpts();
+  const cur = ccBatchCursor(r.p, [{b:r.b, from:r.from, to:r.to}], r.onlyUnsold);
+  if(!cur.total){ toast('Chop etiladigan kod yo\'q (hammasi sotilgan)','amber'); return; }
+  try{ await ccStartPrintJob(r.p, ()=>ccBatchCursor(r.p, [{b:r.b, from:r.from, to:r.to}], r.onlyUnsold), cur.total, o, ccLayout(o)); }
+  catch(e){ console.error(e); toast('Chop etishda xatolik: '+(e.message||e),'red'); }
+};
+window.ccCsvRange = function(){
+  const r = ccReadRange(); if(!r) return;
+  const cur = ccBatchCursor(r.p, [{b:r.b, from:r.from, to:r.to}], false);
+  if(cur.total > 3000000){ toast('CSV uchun 3 000 000 tagacha oraliq tanlang','red'); return; }
+  const sold = r.p.soldCodes || {};
+  const q = s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const parts = ['\ufeffkod,tovar,narx,partiya,raqam,holat\n'];
+  let buf = [];
+  for(let seq=r.from; seq<=r.to; seq++){
+    const code = ccBuildCode(r.b.id, seq);
+    buf.push(q(code)+','+q(r.p.name+(r.p.volume?' '+r.p.volume+'L':''))+','+(r.p.price||0)+','+r.b.id+','+seq+','+(sold[code]?'sotilgan':'omborda'));
+    if(buf.length >= 20000){ parts.push(buf.join('\n')+'\n'); buf = []; }
+  }
+  if(buf.length) parts.push(buf.join('\n')+'\n');
+  const blob = new Blob(parts, {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kodlar-'+r.b.id+'-'+r.from+'-'+r.to+'.csv';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast('✓ CSV tayyor ('+cur.total.toLocaleString('en-US')+' ta kod)','green');
+};
+// ---------- eski (MC-) va zavod kodlari ro'yxati / qayta chop ----------
+window.ccRenderList = function(){
+  const p = ccProd(); const box = ccEl('cc-list'); const sum = ccEl('cc-list-summary');
+  if(!box||!p) return;
+  const codes = Object.keys(p.serialCodes||{}).filter(c=>!CC_BATCH_RE.test(c));
+  sum.innerHTML = 'Eski/zavod kodli donalar: <b>'+codes.length+'</b>';
+  if(!codes.length){ box.innerHTML = '<p style="font-size:13px;color:var(--text3)">Bu tovarda eski usuldagi (MC-…) yoki zavod kodli dona yo\'q.</p>'; return; }
+  const shown = codes.slice(0,300);
+  box.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>'+shown.map(c=>'<tr style="border-top:1px solid var(--border2)"><td style="padding:.3rem .4rem;width:28px"><input type="checkbox" '+(_ccSel.has(c)?'checked':'')+' onchange="window.ccToggle(this.dataset.c,this.checked)" data-c="'+esc(c)+'"></td><td style="padding:.3rem .4rem;font-family:monospace;word-break:break-all">'+esc(c)+'</td><td style="padding:.3rem .4rem;color:var(--text3);white-space:nowrap">'+(c.startsWith('MC-')?'qo\'lda (eski)':'zavod')+'</td></tr>').join('')+'</tbody></table>'+(codes.length>300?'<p style="font-size:11px;color:var(--text3)">Dastlabki 300 ta ko\'rsatildi.</p>':'');
+};
+window.ccToggle = function(c, on){ if(on) _ccSel.add(c); else _ccSel.delete(c); };
+window.ccToggleAll = function(){
+  const p = ccProd(); if(!p) return; const codes = Object.keys(p.serialCodes||{}).filter(c=>!CC_BATCH_RE.test(c)).slice(0,300);
+  if(_ccSel.size >= codes.length) _ccSel = new Set(); else _ccSel = new Set(codes);
+  window.ccRenderList();
+};
+window.ccReprint = async function(){
+  const p = ccProd(); if(!p) return;
+  const codes = Array.from(_ccSel).filter(c=>p.serialCodes && p.serialCodes[c]);
+  if(!codes.length){ toast('Chop etish uchun kodlarni belgilang','red'); return; }
+  try{ await ccPrintList(p, codes); }catch(e){ console.error(e); toast('Chop etishda xatolik','red'); }
+};
+// ---------- tekshirish ----------
+window.ccCheck = function(raw){
+  const input = String(raw||'').trim(); const box = ccEl('cc-check-result'); if(!box) return;
+  if(!input){ box.innerHTML=''; return; }
+  const code = ccCanonicalCode(input);
+  const gs = parseGS1(code);
+  let kind, status, prod = null, extra = '';
+  if(/^MB-/.test(code)){
+    kind = 'Partiya kodi (MB)';
+    const pc = ccParseBatchCode(code);
+    if(!pc || !pc.valid){
+      status = '❌ <b style="color:var(--red)">Kod buzilgan yoki noto\'g\'ri yozilgan</b> — nazorat belgisi mos kelmadi (qayta skanerlang yoki yorliqni tekshiring)';
+    } else {
+      const soldOwner = DB.products.find(p=>p.soldCodes && p.soldCodes[code]);
+      const o = ccFindBatchOwner(pc);
+      if(soldOwner){ prod = soldOwner; status = '❌ <b style="color:var(--red)">Sotilgan</b> — bu kod bilan qayta sotib bo\'lmaydi'; }
+      else if(!o){ status = '❓ <b style="color:var(--amber)">Kod to\'g\'ri tuzilgan, lekin tizimda partiyasi topilmadi</b> — partiya boshqa qurilmada yaratilgan va hali yangilanmagan bo\'lishi mumkin'; }
+      else {
+        prod = o.product;
+        status = (prod.stock||0) > 0 ? '✅ <b style="color:var(--green)">Omborda — sotuvga tayyor</b>' : '⚠️ <b style="color:var(--amber)">Kod to\'g\'ri, lekin tovar qoldig\'i 0</b> — avval kirim qiling';
+      }
+      extra = '<div style="margin-top:.3rem;color:var(--text3);font-size:12px">Partiya: <b>'+esc(pc.batch)+'</b> • tartib raqami: <b>'+pc.seq.toLocaleString('en-US')+'</b></div>';
+    }
+  } else {
+    kind = gs.isGS1 ? 'GS1 DataMatrix (zavod kodi)' : code.startsWith('MC-') ? "Qo'lda yaratilgan ichki kod (eski)" : "Oddiy kod (barcode/QR)";
+    const soldOwner = DB.products.find(p=>p.soldCodes && p.soldCodes[code]);
+    if(soldOwner){ prod = soldOwner; status = '❌ <b style="color:var(--red)">Sotilgan</b> — bu kod bilan qayta sotib bo\'lmaydi'; }
+    else {
+      let r = findProductByCode(code); if(!r){ const n = normalizeScanCode(code); if(n!==code) r = findProductByCode(n); }
+      if(!r) status = '❓ <b style="color:var(--amber)">Tizimda topilmadi</b>';
+      else {
+        prod = r.product;
+        if(r.type==='serial') status = hasUnsoldSerial(prod, code) ? '✅ <b style="color:var(--green)">Omborda — sotuvga tayyor</b>' : '⚠️ <b style="color:var(--amber)">Tovar aniqlandi, lekin bu dona ro\'yxatga olinmagan</b> (avval kirim/ro\'yxatga olish kerak)';
+        else if(r.type==='barcode') status = '📦 Umumiy barcode — donalar bo\'yicha kuzatilmaydi';
+        else status = '📷 Tovarga biriktirilgan QR/DataMatrix';
+      }
+    }
+  }
+  box.innerHTML = '<div style="padding:.6rem .8rem;border:1.5px solid var(--border2);border-radius:var(--radius)"><div>'+status+'</div>'+(prod?'<div style="margin-top:.3rem"><b>'+esc(prod.name)+'</b>'+(prod.volume?' · '+esc(String(prod.volume))+' L':'')+' — '+fmt_(prod.price)+' so\'m, omborda '+(prod.stock||0)+' ta</div>':'')+extra+'<div style="margin-top:.3rem;color:var(--text3);font-size:12px">Tur: '+kind+'</div></div>';
+};
+// ---------- barcode'siz tovarlar ----------
+function ccBarcodeTaken(b){ return DB.products.some(p=>p.barcode && codesMatch(p.barcode,b)); }
+function ccAssignBarcode(p){
+  let b, guard=0; do{ b = ccEan13(); guard++; }while(ccBarcodeTaken(b) && guard<50);
+  p.barcode = b; fbUpdateProductFields(p.id, {barcode:b}); return b;
+}
+window.ccRenderNoBarcode = function(){
+  const box = ccEl('cc-nobarcode'); if(!box) return;
+  const list = DB.products.filter(p=>!p.barcode).slice(0,100);
+  if(!list.length){ box.innerHTML = '<p style="font-size:13px;color:var(--green)">✅ Barcha tovarlarda barcode bor.</p>'; return; }
+  box.innerHTML = list.map(p=>'<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px solid var(--border2)"><div style="flex:1;font-size:13px">'+esc(p.name)+(p.volume?' · '+esc(String(p.volume))+' L':'')+'</div><button class="btn sm" onclick="window.ccGenBarcode(\''+p.id+'\')">Barcode yaratish</button></div>').join('');
+};
+window.ccGenBarcode = function(pid){
+  const p = DB.products.find(x=>x.id===pid); if(!p) return;
+  const b = ccAssignBarcode(p);
+  try{ logAudit('Ichki barcode yaratildi', p.name+': '+b); }catch(e){}
+  refreshProductViews(); toast('✓ '+p.name+': '+b,'green');
+  window.renderCodeCenter();
+  confirm2('Yorliq chop etish', '"'+p.name+'" uchun barcode yorlig\'i chop etilsinmi? ('+b+')', ()=>{ window.ccPrintBarcode(pid); });
+};
+window.ccGenAllBarcodes = function(){
+  const list = DB.products.filter(p=>!p.barcode);
+  if(!list.length){ toast('Barcha tovarlarda barcode bor','green'); return; }
+  confirm2('Hammasiga barcode yaratish', list.length+' ta tovarga ichki EAN-13 barcode yaratiladi. Davom etilsinmi?', ()=>{
+    list.forEach(p=>ccAssignBarcode(p));
+    try{ logAudit('Ichki barcode yaratildi', list.length+' ta tovar'); }catch(e){}
+    refreshProductViews(); toast('✓ '+list.length+' ta tovarga barcode yaratildi','green'); window.renderCodeCenter();
+  });
+};
+window.ccPrintBarcode = async function(pid){
+  const p = DB.products.find(x=>x.id===pid); if(!p||!p.barcode) return;
+  const cnt = Math.max(1, Math.min(5000, parseInt(prompt('Nechta yorliq chop etilsin?','1'))||1));
+  const f = /^\d{13}$/.test(p.barcode) ? 'ean13' : 'code128';
+  try{ await ccPrintList(p, Array(cnt).fill(p.barcode), {fmt:f}); }catch(e){ console.error(e); toast('Chop etishda xatolik: '+(e.message||e),'red'); }
+};
+
+// ===== CC-V3-BEGIN =====
+// ================== KODLAR MARKAZI v3 ==================
+// 1) SAQLASH HAJMI NAZORATI — mahsulot hujjatidagi serialCodes/soldCodes kalitlari soni.
+// 2) YORLIQ MATNLARI — sana, tartib raqami (№), qo'shimcha matn (brauzer va termo chop uchun bir xil).
+// 3) TERMO PRINTERGA TO'G'RIDAN-TO'G'RI CHOP ETISH (TSPL / ZPL) — WebUSB yoki Web Serial orqali:
+//    brauzerning chop etish oynasisiz, qismlarga bo'linmasdan, istalgan miqdorda (to'xtatib-davom ettiriladigan).
+//    Yorliq printer nuqtalariga (dpi) moslab, 1-bitli rastr sifatida chiziladi — modul o'lchami BUTUN nuqta.
+
+// ---------- 1. saqlash hajmi ----------
+// Firestore hujjatida bitta xarita kaliti 2 ta indeks yozuvi oladi, hujjatga esa 40 000 ta indeks yozuvi
+// ruxsat etiladi (~20 000 kalit). Chegaradan o'tilsa mahsulotni yozish (sotuv, kirim) umuman to'xtaydi.
+const CC_KEYS_LIMIT = 18000;      // xavfsiz yuqori chegara (kalitlar soni)
+const CC_BYTES_LIMIT = 950000;    // hujjat 1 MiB
+function ccStorageLoad(p){
+  let keys = 0, bytes = 0;
+  const sc = (p && p.serialCodes) || {}, so = (p && p.soldCodes) || {};
+  for(const k in sc){ keys++; bytes += k.length + 4; }
+  for(const k in so){ keys++; bytes += k.length + 4; }
+  const fill = Math.max(keys / CC_KEYS_LIMIT, bytes / CC_BYTES_LIMIT);
+  return { keys, bytes, fill };
+}
+function ccStorageHtml(p){
+  const s = ccStorageLoad(p); const pct = Math.min(100, Math.round(s.fill * 100));
+  const col = s.fill >= 0.85 ? 'var(--red)' : (s.fill >= 0.6 ? 'var(--amber)' : 'var(--green)');
+  let note = '';
+  if(s.fill >= 1) note = '<div style="color:var(--red);margin-top:.2rem">❌ Hajm to\'ldi — zavod kodlarini yangi ro\'yxatga olish to\'xtatildi. Partiya (MB-) kodlari bu holatda ham ishlaydi.</div>';
+  else if(s.fill >= 0.85) note = '<div style="color:var(--red);margin-top:.2rem">⚠️ Hajm deyarli to\'ldi. Zavod kodlarini ro\'yxatga olish o\'rniga partiya (MB-) kodlaridan foydalaning.</div>';
+  else if(s.fill >= 0.6) note = '<div style="color:var(--amber);margin-top:.2rem">Hajmning katta qismi band. Yangi donalar uchun partiya (MB-) kodlari tavsiya etiladi.</div>';
+  return '<div style="margin-top:.35rem">Kod yozuvlari hajmi: <b style="color:'+col+'">'+pct+'%</b> <span style="color:var(--text3)">('+s.keys.toLocaleString('en-US')+' ta yozuv)</span>'
+    + '<div style="height:6px;background:var(--border2);border-radius:4px;margin-top:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div>'+note+'</div>';
+}
+const _ccStorageWarned = {};
+function ccStorageWarn(p){
+  try{
+    if(!p || _ccStorageWarned[p.id]) return;
+    const s = ccStorageLoad(p);
+    if(s.fill >= 0.85){ _ccStorageWarned[p.id] = 1; toast('⚠️ '+p.name+': kod yozuvlari hajmi '+Math.round(s.fill*100)+'% — administratorga xabar bering', 'amber'); }
+  }catch(e){}
+}
+
+// ---------- 2. yorliq matnlari ----------
+function ccLabelTexts(p, code, L, o){
+  const w = L.w;
+  const nameMax = w>=58 ? 44 : (w>=40 ? 30 : 22);
+  const nm = String(p.name||'').slice(0, nameMax) + (p.volume ? ' '+p.volume+'L' : '');
+  const price = fmt_(p.price) + " so'm";
+  const ex = [];
+  if(o.showDate){ const d = new Date(); ex.push(String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()); }
+  if(o.showSeq){ const pc = ccParseBatchCode(code); if(pc && pc.valid) ex.push('№ '+pc.seq.toLocaleString('en-US')); }
+  if(o.extra) ex.push(String(o.extra).slice(0,40));
+  return { nm, price, ex: ex.join(' · ') };
+}
+function ccHasExtra(o){ return !!(o.showDate || o.showSeq || o.extra); }
+// Kod rasmining (mm) hajmi — oldindan ko'rish, HTML va rastr chop BIR XIL hisoblaydi.
+function ccSymMmFor(L, o, sym){
+  const pad = Math.max(1, Math.min(2, L.h*0.06));
+  const small = L.w < 38;
+  const codeH = (o.showCode ? (small?2.4:3) : 0) + (ccHasExtra(o) ? (small?2.2:2.6) : 0);
+  const availH = L.h - 2*pad - codeH;
+  const hasText = o.showName || o.showPrice;
+  let symMm;
+  if(o.layout === 'top' && hasText){
+    const textH = (o.showName ? (L.w>=40 ? 7 : 5.5) : 0) + (o.showPrice ? 3.6 : 0);
+    symMm = Math.min(availH - textH, L.w*0.8);
+    symMm = Math.max(symMm, Math.min(availH, 8));
+  } else {
+    symMm = Math.min(availH, L.w*(hasText ? 0.52 : 0.9));
+  }
+  if(sym && sym.total) symMm = ccSnapMm(sym.total, symMm, o.dpi);
+  return symMm;
+}
+// Nusxalar: har bir kod n marta (masalan qopqoq + quti uchun 2 ta yorliq)
+function ccCopiesCursor(cur, n){
+  let pend = null, left = 0;
+  return {
+    total: cur.total * n,
+    next(k){ const out = []; while(out.length < k){ if(left <= 0){ const c = cur.next(1); if(!c.length) break; pend = c[0]; left = n; } out.push(pend); left--; } return out; },
+    skip(k){ for(let i=0;i<k;i++){ if(left <= 0){ const c = cur.next(1); if(!c.length) return; pend = c[0]; left = n; } left--; } }
+  };
+}
+
+// ---------- 3. rastr yorliq (termo printer uchun) ----------
+function ccWrapLines(ctx, text, maxW, maxLines){
+  const words = String(text).split(/\s+/).filter(Boolean); const lines = []; let cur = '';
+  for(const w of words){ const t = cur ? cur+' '+w : w; if(!cur || ctx.measureText(t).width <= maxW) cur = t; else { lines.push(cur); cur = w; } }
+  if(cur) lines.push(cur);
+  const out = [];
+  for(const ln of lines){
+    let s = ln;
+    while(ctx.measureText(s).width > maxW && s.length > 1){ let k = s.length; while(k > 1 && ctx.measureText(s.slice(0,k)).width > maxW) k--; out.push(s.slice(0,k)); s = s.slice(k); }
+    out.push(s);
+  }
+  if(out.length > maxLines){ out.length = maxLines; let last = out[maxLines-1]; while(last.length > 1 && ctx.measureText(last+'…').width > maxW) last = last.slice(0,-1); out[maxLines-1] = last+'…'; }
+  return out;
+}
+async function ccSymbolImage(sym, px){
+  let src;
+  if(sym.svg){ src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sym.svg.replace('<svg ', '<svg width="'+px+'" height="'+px+'" ')); }
+  else src = sym.url;
+  const img = new Image(); img.src = src;
+  if(img.decode){ await img.decode(); } else await new Promise((res, rej)=>{ img.onload = res; img.onerror = rej; });
+  return img;
+}
+async function ccLinearCanvas(text, fmt, targetW, h){
+  await window.loadVendorLib('JsBarcode');
+  const mk = (w)=>{ const c = document.createElement('canvas'); const opt = { displayValue:false, height:Math.max(10, Math.round(h)), margin:0, width:w };
+    try{ JsBarcode(c, text, Object.assign({ format: fmt==='ean13' ? 'EAN13' : 'CODE128' }, opt)); }catch(e){ JsBarcode(c, text, Object.assign({ format:'CODE128' }, opt)); } return c; };
+  const c1 = mk(1); const m = Math.max(1, Math.floor(targetW / c1.width));
+  return m === 1 ? c1 : mk(m);
+}
+// Bitta yorliqni printer nuqtalarida chizadi. Qaytaradi: {W,H,rb,bytes} — bytes: 1 bit/nuqta, 1 = qora, qator boshiga MSB.
+async function ccRasterLabel(p, code, L, o, dpi, frame){
+  const mm = dpi / 25.4;
+  const W0 = Math.round(L.w*mm), H = Math.round(L.h*mm), W = Math.ceil(W0/8)*8;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d', { willReadFrequently:true });
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'top'; ctx.imageSmoothingEnabled = false;
+  const w = L.w, pad = Math.max(1, Math.min(2, L.h*0.06)) * mm, small = w < 38;
+  const T = ccLabelTexts(p, code, L, o);
+  const nf = (w>=58 ? 9 : (w>=40 ? 7.5 : 6.5)) * dpi/72, pf = (w>=58 ? 10 : (w>=40 ? 8.5 : 7)) * dpi/72, cf0 = (w>=58 ? 7.5 : (w>=40 ? 6 : 5.5)) * dpi/72;
+  const SANS = 'Arial, Helvetica, sans-serif', MONO = "'Courier New', monospace";
+  const hasEx = !!T.ex;
+  const innerW = W0 - 2*(pad + 0.5*mm);
+  // pastki qator: kod matni + qo'shimcha matn
+  let bottomH = 0; const bottom = [];
+  if(o.showCode){ let cf = cf0; ctx.font = cf+'px '+MONO; while(cf > 4 && ctx.measureText(code).width > innerW){ cf -= 0.5; ctx.font = cf+'px '+MONO; } bottom.push({ t:code, f:cf, font:MONO }); bottomH += cf*1.15; }
+  if(hasEx){ let xf = cf0; ctx.font = xf+'px '+SANS; while(xf > 4 && ctx.measureText(T.ex).width > innerW){ xf -= 0.5; ctx.font = xf+'px '+SANS; } bottom.push({ t:T.ex, f:xf, font:SANS }); bottomH += xf*1.15; }
+  const bottomTop = H - pad - bottomH;
+  const drawBottom = ()=>{ let y = bottomTop; bottom.forEach(b=>{ ctx.font = b.f+'px '+b.font; ctx.textAlign = 'center'; ctx.fillText(b.t, W0/2, y); y += b.f*1.15; }); };
+  const availH = bottomTop - pad;
+  const hasText = o.showName || o.showPrice;
+  const linear = (o.fmt === 'code128' || o.fmt === 'ean13');
+
+  if(linear){
+    let y = pad;
+    if(o.showName){ ctx.font = 'bold '+nf+'px '+SANS; ctx.textAlign = 'center'; const ln = ccWrapLines(ctx, T.nm, innerW, 1); ctx.fillText(ln[0]||'', W0/2, y); y += nf*1.2; }
+    const priceH = o.showPrice ? pf*1.25 : 0;
+    const bh = Math.max(6*mm, bottomTop - y - priceH - 0.5*mm);
+    const bc = await ccLinearCanvas(code, o.fmt, innerW, bh);
+    const bx = Math.round((W0 - bc.width)/2);
+    ctx.drawImage(bc, Math.max(0, bx), Math.round(y), bc.width, Math.round(bh));
+    y += bh + 0.4*mm;
+    if(o.showPrice){ ctx.font = 'bold '+pf+'px '+SANS; ctx.textAlign = 'center'; ctx.fillText(T.price, W0/2, Math.min(y, bottomTop - pf*1.1)); }
+    drawBottom();
+  } else {
+    const sym = await ccSymbol(o.fmt, code);
+    const symMm = ccSymMmFor(L, Object.assign({}, o, { dpi }), sym);
+    const S = Math.max(8, Math.round(symMm*mm));
+    const img = await ccSymbolImage(sym, S);
+    if(o.layout === 'top' && hasText){
+      const lines = o.showName ? ccWrapLines((ctx.font = 'bold '+nf+'px '+SANS, ctx), T.nm, innerW, 2) : [];
+      const textH = lines.length*nf*1.1 + (o.showPrice ? pf*1.2 : 0);
+      const blockH = S + 0.6*mm + textH; let y = pad + Math.max(0, (availH - blockH)/2);
+      ctx.drawImage(img, Math.round((W0 - S)/2), Math.round(y), S, S); y += S + 0.6*mm;
+      ctx.textAlign = 'center'; ctx.font = 'bold '+nf+'px '+SANS;
+      lines.forEach(l=>{ ctx.fillText(l, W0/2, y); y += nf*1.1; });
+      if(o.showPrice){ ctx.font = 'bold '+pf+'px '+SANS; ctx.fillText(T.price, W0/2, y); }
+    } else if(hasText){
+      const gap = 1.6*mm; const sideW = innerW - S - gap;
+      const rowW = S + gap + sideW; const x0 = (W0 - rowW)/2; const y0 = pad + Math.max(0, (availH - S)/2);
+      ctx.drawImage(img, Math.round(x0), Math.round(y0), S, S);
+      ctx.textAlign = 'left'; const tx = x0 + S + gap;
+      let lines = []; if(o.showName){ ctx.font = 'bold '+nf+'px '+SANS; lines = ccWrapLines(ctx, T.nm, sideW, 3); }
+      const textH = lines.length*nf*1.1 + (o.showPrice ? pf*1.2 + 0.6*mm : 0);
+      let ty = y0 + Math.max(0, (S - textH)/2);
+      ctx.font = 'bold '+nf+'px '+SANS; lines.forEach(l=>{ ctx.fillText(l, tx, ty); ty += nf*1.1; });
+      if(o.showPrice){ ty += 0.6*mm; ctx.font = 'bold '+pf+'px '+SANS; ctx.fillText(T.price, tx, ty); }
+    } else {
+      ctx.drawImage(img, Math.round((W0 - S)/2), Math.round(pad + Math.max(0, (availH - S)/2)), S, S);
+    }
+    drawBottom();
+  }
+  if(frame){ ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.strokeRect(0.5, 0.5, W0-1, H-1); }
+  const id = ctx.getImageData(0, 0, W, H).data; const rb = W/8; const bytes = new Uint8Array(rb*H);
+  for(let y=0; y<H; y++){ for(let x=0; x<W0; x++){ const i = (y*W + x)*4; if((id[i]*299 + id[i+1]*587 + id[i+2]*114)/1000 < 150) bytes[y*rb + (x>>3)] |= (0x80 >> (x & 7)); } }
+  return { W, H, rb, bytes };
+}
+
+// ---------- printer buyruqlari ----------
+function ccU8(s){ return new TextEncoder().encode(s); }
+function ccCat(arrs){ let n = 0; arrs.forEach(a=>n += a.length); const o = new Uint8Array(n); let k = 0; arrs.forEach(a=>{ o.set(a, k); k += a.length; }); return o; }
+function ccTsplHeader(L, o){
+  const gap = o.gap === 'cont' ? '0 mm,0 mm' : (o.gap === 'gap3' ? '3 mm,0 mm' : '2 mm,0 mm');
+  return ccU8('SIZE '+L.w+' mm,'+L.h+' mm\r\nGAP '+gap+'\r\nDIRECTION 1\r\nREFERENCE 0,0\r\n');
+}
+// TSPL BITMAP: 0 = qora nuqta (standart). "Teskari" belgisi yoqilsa 1 = qora.
+function ccTsplLabel(r, o){
+  const b = new Uint8Array(r.bytes.length); const flip = !o.inv;
+  for(let i=0; i<b.length; i++) b[i] = flip ? (~r.bytes[i] & 255) : r.bytes[i];
+  return ccCat([ccU8('CLS\r\nBITMAP 0,0,'+r.rb+','+r.H+',0,'), b, ccU8('\r\nPRINT 1,1\r\n')]);
+}
+const CC_HEX = (()=>{ const t = []; for(let i=0;i<256;i++) t.push((i<16?'0':'')+i.toString(16).toUpperCase()); return t; })();
+// ZPL ^GFA: 1 = qora nuqta (standart). "Teskari" belgisi yoqilsa 0 = qora.
+function ccZplLabel(r, o){
+  const n = r.bytes.length; const parts = new Array(n);
+  for(let i=0; i<n; i++) parts[i] = CC_HEX[o.inv ? (~r.bytes[i] & 255) : r.bytes[i]];
+  return ccU8('^XA^PW'+r.W+'^LL'+r.H+'^LH0,0^FO0,0^GFA,'+n+','+n+','+r.rb+','+parts.join('')+'^FS^PQ1,0,1,N^XZ\r\n');
+}
+function ccLabelBytes(r, o){ return o.out === 'zpl' ? ccZplLabel(r, o) : ccTsplLabel(r, o); }
+
+// ---------- ulanish: WebUSB / Web Serial ----------
+const CC_DP = { dev:null, kind:null, name:'', writer:null, ep:null, ifn:null };
+async function ccDpClose(){
+  try{
+    if(CC_DP.kind === 'serial'){ try{ CC_DP.writer && CC_DP.writer.releaseLock(); }catch(e){} await CC_DP.dev.close(); }
+    else if(CC_DP.kind === 'usb'){ try{ await CC_DP.dev.releaseInterface(CC_DP.ifn); }catch(e){} await CC_DP.dev.close(); }
+  }catch(e){}
+  CC_DP.dev = null; CC_DP.kind = null; CC_DP.writer = null; CC_DP.name = '';
+}
+async function ccDpOpenUsb(dev){
+  await dev.open();
+  if(dev.configuration === null) await dev.selectConfiguration(1);
+  let pick = null;
+  for(const itf of dev.configuration.interfaces){
+    for(const alt of itf.alternates){
+      const out = alt.endpoints.find(e=>e.direction === 'out' && e.type === 'bulk');
+      if(out){ const score = alt.interfaceClass === 7 ? 2 : 1; if(!pick || score > pick.score) pick = { itf, alt, out, score }; }
+    }
+  }
+  if(!pick) throw new Error('Printerning chiqish (OUT) kanali topilmadi');
+  await dev.claimInterface(pick.itf.interfaceNumber);
+  if(pick.alt.alternateSetting) await dev.selectAlternateInterface(pick.itf.interfaceNumber, pick.alt.alternateSetting);
+  CC_DP.dev = dev; CC_DP.kind = 'usb'; CC_DP.ifn = pick.itf.interfaceNumber; CC_DP.ep = pick.out.endpointNumber;
+  CC_DP.name = (dev.productName || 'USB printer') + (dev.manufacturerName ? ' ('+dev.manufacturerName+')' : '');
+}
+async function ccDpOpenSerial(port, baud){
+  await port.open({ baudRate: baud || 115200, bufferSize: 65536 });
+  CC_DP.dev = port; CC_DP.kind = 'serial'; CC_DP.writer = port.writable.getWriter(); CC_DP.name = 'Serial port ('+(baud||115200)+' baud)';
+}
+// from — qaysi baytdan boshlash (uzilgan yuborishni AYNAN o'sha joydan davom ettirish uchun);
+// onChunk(offset) — har bir muvaffaqiyatli bo'lakdan keyin chaqiriladi. Shunda yarim yuborilgan yorliq
+// qayta boshidan yuborilmaydi (printerda buzilgan/dublikat yorliq chiqmaydi).
+async function ccDpSend(bytes, from, onChunk){
+  if(!CC_DP.dev) throw new Error('Printer ulanmagan');
+  const CH = CC_DP.kind === 'usb' ? 16384 : 8192;
+  for(let i=(from||0); i<bytes.length; i+=CH){
+    const end = Math.min(bytes.length, i+CH);
+    const part = bytes.subarray(i, end);
+    if(CC_DP.kind === 'usb'){ const r = await CC_DP.dev.transferOut(CC_DP.ep, part); if(r && r.status && r.status !== 'ok') throw new Error('USB: '+r.status); }
+    else await CC_DP.writer.write(part);
+    if(onChunk) onChunk(end);
+  }
+}
+function ccDpStatus(){
+  const el = ccEl('cc-dp-status'); if(!el) return;
+  const sup = [navigator.usb ? 'USB' : null, navigator.serial ? 'Serial' : null].filter(Boolean);
+  el.innerHTML = CC_DP.dev ? '🟢 Ulangan: <b>'+esc(CC_DP.name)+'</b> <button class="btn sm" onclick="window.ccDpDisconnect()">Uzish</button>'
+    : '⚪ Ulanmagan' + (sup.length ? '' : ' — bu brauzer USB/Serial\'ni qo\'llamaydi (Chrome yoki Edge kerak)');
+  const bu = ccEl('cc-dp-usb'), bs = ccEl('cc-dp-serial');
+  if(bu) bu.style.display = navigator.usb ? '' : 'none';
+  if(bs) bs.style.display = navigator.serial ? '' : 'none';
+}
+window.ccDpConnect = async function(kind){
+  try{
+    await ccDpClose();
+    if(kind === 'usb'){
+      if(!navigator.usb) throw new Error("Bu brauzer WebUSB'ni qo'llamaydi (Chrome/Edge kerak)");
+      await ccDpOpenUsb(await navigator.usb.requestDevice({ filters: [] }));
+    } else {
+      if(!navigator.serial) throw new Error("Bu brauzer Web Serial'ni qo'llamaydi (kompyuterda Chrome/Edge kerak)");
+      await ccDpOpenSerial(await navigator.serial.requestPort(), parseInt(ccEl('cc-baud') && ccEl('cc-baud').value) || 115200);
+    }
+    toast('✓ Printer ulandi: '+CC_DP.name, 'green');
+  }catch(e){
+    await ccDpClose();
+    if(e && e.name === 'NotFoundError') { /* foydalanuvchi oynani yopdi */ }
+    else if(e && /claimInterface|Access denied|busy/i.test(String(e.message||e))) toast("Printerni band qilib bo'lmadi. Windows'da printer drayveri USB'ni egallab olgan bo'lishi mumkin (Zadig/WinUSB kerak) — yoki Serial usulini sinang. Android'da odatda ishlaydi.", 'red');
+    else toast('Ulanmadi: '+(e && e.message || e), 'red');
+  }
+  ccDpStatus();
+};
+window.ccDpDisconnect = async function(){ await ccDpClose(); ccDpStatus(); toast('Printer uzildi', 'blue'); };
+let _ccDpAutoTried = false;
+async function ccDpAuto(){
+  if(_ccDpAutoTried || CC_DP.dev) return; _ccDpAutoTried = true;
+  try{ if(navigator.usb){ const list = await navigator.usb.getDevices(); if(list.length){ await ccDpOpenUsb(list[0]); ccDpStatus(); } } }catch(e){ await ccDpClose(); }
+}
+window.ccOutChanged = function(){
+  const o = ccEl('cc-out') ? ccEl('cc-out').value : 'browser';
+  const box = ccEl('cc-dp-box'); if(box) box.style.display = (o === 'browser') ? 'none' : 'block';
+  ccDpStatus(); if(o !== 'browser') ccDpAuto();
+  window.ccPreview();
+};
+
+// ---------- to'g'ridan-to'g'ri chop etish ishchisi ----------
+let _ccDp = null;
+async function ccDirectPrintJob(p, mk, total, o, L){
+  if(!(total > 0)){ toast("Chop etish uchun kod yo'q", 'red'); return; }
+  if(!CC_DP.dev){ toast('Avval printerni ulang ("Termo printer" bo\'limida USB yoki Serial tugmasi)', 'amber'); return; }
+  const o2 = Object.assign({}, o, { dpi: o.dpi || 203 });
+  _ccDp = { p, total, o:o2, L, cur:mk(), done:0, stop:false, running:false, pending:null, pendingN:0, headerSent:false, t0:0, done0:0, err:'' };
+  ccDpPanelRender(); window.ccDpRun();
+}
+function ccDpPanelEl(){
+  let el = document.getElementById('cc-dpp'); if(el) return el;
+  el = document.createElement('div'); el.id = 'cc-dpp';
+  el.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:100001;background:#fff;color:#111;border:1.5px solid #cfd8d3;border-radius:14px;padding:12px 14px;box-shadow:0 10px 36px rgba(0,0,0,.28);width:min(460px,94vw);font-size:13px';
+  document.body.appendChild(el); return el;
+}
+function ccDpPanelRender(){
+  const j = _ccDp; if(!j) return; const el = ccDpPanelEl();
+  const pct = j.total ? Math.round(100*j.done/j.total) : 0; const fin = j.done >= j.total;
+  let speed = '';
+  if(j.running && j.done > j.done0){ const sec = (Date.now()-j.t0)/1000; const rate = (j.done-j.done0)/Math.max(sec, 0.1); const left = (j.total-j.done)/Math.max(rate, 0.01); speed = ' • '+rate.toFixed(1)+' ta/s • taxminan '+(left>=90 ? Math.round(left/60)+' daq' : Math.round(left)+' s'); }
+  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>⚡ Termo chop — '+esc(String(j.p.name||''))+'</b><button class="btn sm" onclick="window.ccDpClosePanel()">✕</button></div>'
+    + '<div><b>'+j.done.toLocaleString('en-US')+'</b> / '+j.total.toLocaleString('en-US')+' ta yorliq ('+pct+'%)'+speed+'</div>'
+    + '<div style="height:8px;background:#e6ece9;border-radius:6px;margin:8px 0;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#0f766e;transition:width .15s"></div></div>'
+    + '<div style="color:'+(j.err?'#b91c1c':'#555')+';margin-bottom:8px;min-height:18px">'+(j.err ? '❌ '+esc(j.err) : (fin ? '✅ Hammasi printerga yuborildi' : (j.running ? 'Yuborilmoqda…' : (j.stop ? "To'xtatildi" : 'Tayyor'))))+'</div>'
+    + '<div style="display:flex;gap:.5rem;flex-wrap:wrap">'
+    + (j.running ? '<button class="btn sm" onclick="window.ccDpStop()">⏸ To\'xtatish</button>' : (fin ? '' : '<button class="btn sm blue" onclick="window.ccDpRun()">▶ Davom ettirish</button>'))
+    + '</div>';
+}
+window.ccDpStop = function(){ if(_ccDp) _ccDp.stop = true; };
+window.ccDpClosePanel = function(){ if(_ccDp){ _ccDp.stop = true; } _ccDp = null; const el = document.getElementById('cc-dpp'); if(el) el.remove(); };
+window.ccDpRun = async function(){
+  const j = _ccDp; if(!j || j.running) return;
+  j.running = true; j.stop = false; j.err = ''; j.t0 = Date.now(); j.done0 = j.done; ccDpPanelRender();
+  try{
+    if(!CC_DP.dev) throw new Error('Printer ulanmagan — qayta ulang');
+    if(!j.headerSent){ if(j.o.out !== 'zpl') await ccDpSend(ccTsplHeader(j.L, j.o)); j.headerSent = true; }
+    if(j.pending){ await ccDpSend(j.pending, j.pendingOff || 0, off=>{ j.pendingOff = off; }); j.done += j.pendingN; j.pending = null; j.pendingN = 0; j.pendingOff = 0; }
+    while(j.done < j.total && !j.stop){
+      const codes = j.cur.next(Math.min(8, j.total - j.done)); if(!codes.length){ j.total = j.done; break; }
+      const parts = [];
+      for(const code of codes){ parts.push(ccLabelBytes(await ccRasterLabel(j.p, code, j.L, j.o, j.o.dpi), j.o)); }
+      const bytes = ccCat(parts);
+      j.pending = bytes; j.pendingN = codes.length; j.pendingOff = 0;
+      await ccDpSend(bytes, 0, off=>{ j.pendingOff = off; });
+      j.pending = null; j.done += codes.length; j.pendingN = 0; j.pendingOff = 0;
+      ccDpPanelRender();
+      await new Promise(r=>setTimeout(r, 0));
+    }
+  }catch(e){ j.err = (e && e.message) || String(e); }
+  j.running = false; ccDpPanelRender();
+};
+window.ccDpTest = async function(){
+  try{
+    const o = ccReadOpts(); if(o.out === 'browser'){ toast('Avval "Chop etish usuli"ni termo printerga o\'zgartiring', 'amber'); return; }
+    if(!CC_DP.dev){ toast('Avval printerni ulang', 'amber'); return; }
+    const L = ccLayout(o); if(L.a4){ toast('A4 varaq uchun termo chop mavjud emas', 'amber'); return; }
+    const o2 = Object.assign({}, o, { dpi: o.dpi || 203 });
+    const prod = ccProd() || { name:'TEST YORLIQ', price:12345, volume:'' };
+    const r = await ccRasterLabel(prod, ccBuildCode('TEST', 1), L, o2, o2.dpi, true);
+    if(o2.out !== 'zpl') await ccDpSend(ccTsplHeader(L, o2));
+    await ccDpSend(ccLabelBytes(r, o2));
+    toast('🧪 Test yorliq yuborildi. Ramka to\'liq ko\'rinsa o\'lcham to\'g\'ri; hammasi qora chiqsa "Teskari" belgisini yoqing.', 'blue');
+  }catch(e){ toast('Test xatosi: '+(e && e.message || e), 'red'); }
+};
+// ===== CC-V3-END =====
+
 window.showPage = function(page, role){
   // Cheklangan admin uchun "Kirim/Chiqim" yashirilgan bo'lsa — tugma
   // yashirilgan bo'lsa ham, to'g'ridan-to'g'ri chaqirilishining oldini olamiz.
@@ -6258,13 +7828,16 @@ window.showPage = function(page, role){
   if(mtab) mtab.classList.add('active');
   const moreBtn = document.getElementById('mtab-more-btn');
   if(moreBtn){
-    const morePages = ['profit','analytics','stock-history','expenses','ai-assistant','settings'];
+    const morePages = ['profit','analytics','stock-history','expenses','branches','stocktake','codes','ai-assistant','settings'];
     moreBtn.classList.toggle('active', morePages.includes(page));
   }
   if(page==='history'){ initHistory(); renderHistory(); }
   if(page==='profit'){ renderProfit(); }
   if(page==='my-sales'){ setMySalesFilter('today'); }
-  if(page==='sell') renderSellGrid();
+  if(page==='sell'){ renderSellGrid(); if(window.refreshBranchBar) window.refreshBranchBar(); }
+  if(page==='branches' && window.renderBranchesPage) window.renderBranchesPage();
+  if(page==='stocktake' && window.renderStocktakePage) window.renderStocktakePage();
+  if(page==='codes' && window.renderCodeCenter) window.renderCodeCenter();
   if(page==='settings'){
     document.getElementById('revert-minutes').value=DB.revertMinutes;
     const lst=document.getElementById('low-stock-threshold'); if(lst) lst.value=DB.lowStockThreshold;
@@ -6602,7 +8175,7 @@ window.renderProducts = function(){
   const none=document.getElementById('no-products');
   if(!grid) return;
   const q=(document.getElementById('prod-search')?.value||'').toLowerCase().trim();
-  const list = q ? DB.products.filter(p=>p.name.toLowerCase().includes(q)) : DB.products;
+  const list = q ? (window.smartSearchProducts ? (()=>{ const _hit=new Set(window.smartSearchProducts(DB.products,q)); return DB.products.filter(p=>_hit.has(p)||(p.barcode&&String(p.barcode).includes(q))); })() : DB.products.filter(p=>p.name.toLowerCase().includes(q))) : DB.products;
   if(!list.length){
     grid.innerHTML='';
     none.style.display='block';
@@ -7146,9 +8719,9 @@ window.updateCartBtn=function(){
 }
 window.addToCartWithFeedback = function(id, cardEl){
   const p=DB.products.find(x=>x.id===id);
-  if(!p||p.stock===0){ toast("Omborda yo'q",'red'); return; }
+  if(!p||window.stockOf(p)===0){ toast("Omborda yo'q",'red'); return; }
   const inCart=cart[id]||0;
-  if(inCart>=p.stock){ toast("Ombordan ko'p bo'ladi!",'red'); return; }
+  if(inCart>=window.stockOf(p)){ toast("Ombordan ko'p bo'ladi!",'red'); return; }
   cart[id]=(cart[id]||0)+1;
   // Visual feedback on card
   if(cardEl){
@@ -7179,10 +8752,10 @@ window.updateSingleCard = function(id){
   } else if(badge){ badge.remove(); }
   // Update stock text
   const stockEl=card.querySelector('.prod-stock');
-  if(stockEl) stockEl.textContent=inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+p.stock+' ta';
+  if(stockEl) stockEl.textContent=inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+window.stockOf(p)+' ta';
   if(stockEl) stockEl.style.color=inCart>0?'var(--accent)':'var(--text3)';
   // Update card sig so next full render skips it
-  card.dataset.sig=`${p.stock}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
+  card.dataset.sig=`${window.stockOf(p)}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
 }
 // Savatdagi (checkout qilinmagan) bitta noyob kodni bekor qiladi: uni
 // qaytadan omborga (serialCodes) qo'shadi, "sotilgan" (soldCodes)
@@ -7196,14 +8769,13 @@ function revertCartSerialCode(id){
   if(!codes.length) delete cartSerialCodes[id];
   const p = DB.products.find(x=>x.id===id);
   if(p){
-    if(!p.serialCodes) p.serialCodes = {};
-    p.serialCodes[code] = true;
+    // Partiya kodi serialCodes'ga yozilmaydi — u partiya oralig'idan hisoblanadi
+    const viaBatch = ccIsBatchOwned(p, code);
+    if(!viaBatch){ if(!p.serialCodes) p.serialCodes = {}; p.serialCodes[code] = true; }
     if(p.soldCodes) delete p.soldCodes[code];
     p.stock = (p.stock||0) + 1;
-    fbUpdateProductCodeFields(id,
-      { stock: increment(1) },
-      [['serialCodes', code, true], ['soldCodes', code, deleteField()]]
-    );
+    const pairs = viaBatch ? [['soldCodes', code, deleteField()]] : [['serialCodes', code, true], ['soldCodes', code, deleteField()]];
+    fbUpdateProductCodeFields(id, { stock: increment(1) }, pairs);
   }
   return true;
 }
@@ -7788,8 +9360,7 @@ window.renderDebts = async function(){
   if(from) dateFiltered = dateFiltered.filter(d=>new Date(d.date)>=new Date(from));
   if(to)   dateFiltered = dateFiltered.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(q) dateFiltered = dateFiltered.filter(d=>
-    (d.debtorName||'').toLowerCase().includes(q) ||
-    (d.org||'').toLowerCase().includes(q)
+    (window.smartTextMatch ? (window.smartTextMatch(d.debtorName,q) || window.smartTextMatch(d.org,q)) : ((d.debtorName||'').toLowerCase().includes(q) || (d.org||'').toLowerCase().includes(q)))
   );
 
   // 2-bosqich: holat filtri (Faol/To'langan/Tashkilot/Shaxs) — TANLANGAN
@@ -8293,7 +9864,7 @@ window.doCartSell=async function(){
     const p=DB.products.find(x=>x.id===id);
     const serialQty = (cartSerialCodes[id]||[]).length;
     const nonSerialQty = Math.max(0, qty - serialQty);
-    if(!p || (nonSerialQty>0 && p.stock<nonSerialQty)){ toast(`${p?p.name:'Tovar'} yetarli emas!`,'red'); ok=false; }
+    if(!p || (nonSerialQty>0 && window.stockOf(p)<nonSerialQty)){ toast(`${p?p.name:'Tovar'} yetarli emas!`,'red'); ok=false; }
   });
   if(!ok) return;
   const total=cartTotal();
@@ -8320,7 +9891,7 @@ window.doCartSell=async function(){
       try{
         const p=DB.products.find(x=>x.id===id);
         if(!p) throw new Error('Tovar topilmadi: '+id);
-        const sale={id:uid(),receiptId:saleGroupId,productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',date:now,reverted:false};
+        const sale={id:uid(),receiptId:saleGroupId,productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',branchId:window.currentBranchId(),payMethod:(document.getElementById('cart-pay-method')?.value||'cash'),date:now,reverted:false};
         // TUZATILDI: productId ham saqlanadi — pastda applyCustomerPurchase()
         // har bir tovarning ALOHIDA belgilangan coin/ball miqdorini (agar
         // mahsulot tahrirlashda "p-points" maydoniga qiymat kiritilgan
@@ -8337,8 +9908,7 @@ window.doCartSell=async function(){
         const serialQty = (cartSerialCodes[id]||[]).length;
         const nonSerialQty = Math.max(0, qty - serialQty);
         if(nonSerialQty > 0){
-          p.stock = p.stock - nonSerialQty;
-          writes.push(fbUpdateProductFields(p.id, {stock: increment(-nonSerialQty)}));
+          writes.push(window.applyStockDelta(p, window.currentBranchId(), -nonSerialQty));
         }
         delete cartSerialCodes[id]; // endi haqiqatan ham sotildi — "checkout kutilmoqda" ro'yxatidan chiqaramiz
       }catch(itemErr){
@@ -8374,14 +9944,31 @@ window.doCartSell=async function(){
     // qo'ygan bo'lsa) — faqat HAQIQIY, yangi sotuv yakunlanganda aytiladi
     // (eski chekni qayta chop etishda emas).
     if(typeof speakSaleAnnouncement==='function') speakSaleAnnouncement(receiptItems.map(i=>i.name), total);
+    { const _pm=document.getElementById('cart-pay-method'); if(_pm) _pm.value='cash'; }
   }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik yuz berdi','red'); });
 }
 
 window.handleSellSearchKey=function(e){
   if(e.key==='Enter'){
-    const q=(document.getElementById('sell-search').value||'').trim();
+    const q=ccCanonicalCode((document.getElementById('sell-search').value||'').trim());
     if(!q) return;
+    if(ccBadBatchCode(q)){ toast("❌ Kod noto'g'ri yozilgan yoki o'qilgan (nazorat belgisi mos emas)",'red'); document.getElementById('sell-search').value=''; return; }
+    // YANGI/TUZATILDI: noyob dona kodi (qo'lda yaratilgan MC-... yoki GS1 DataMatrix
+    // seriya raqami bilan) — avval findProductByCode orqali aniqlanadi va sellCodeMatch
+    // bilan sotiladi (soldCodes/serialCodes himoyasi bilan). Ilgari bunday kod qidiruv
+    // qatoriga tushsa "topilmadi" bo'lardi yoki umumiy barcode sifatida qo'shilardi.
+    {
+      const _sold = DB.products.find(pp=>pp.soldCodes && pp.soldCodes[q]);
+      if(_sold){ toast(`❌ Bu kod allaqachon sotilgan: ${q}`,'red'); document.getElementById('sell-search').value=''; renderSellGrid(); return; }
+      let _r = findProductByCode(q);
+      if(!_r){ const _n = normalizeScanCode(q); if(_n!==q) _r = findProductByCode(_n); }
+      if(_r && _r.type==='serial'){
+        const _res = sellCodeMatch(_r.product, q, 'serial', 1);
+        if(_res.ok){ toast(`✅ ${_r.product.name} savatga qo'shildi`,'green'); if(navigator.vibrate) navigator.vibrate([60,30,60]); }
+        document.getElementById('sell-search').value=''; renderSellGrid(); return;
+      }
+    }
     // Avval barcode bo'yicha aniq qidirish (scanner inputi uchun)
     let match = DB.products.find(p=>p.barcode && codesMatch(p.barcode, q) && p.stock>0);
     let matchType = match ? 'barcode' : null;
@@ -8391,7 +9978,7 @@ window.handleSellSearchKey=function(e){
     // soldCodes/serialCodes umuman TEKSHIRILMASDAN qo'shilardi)
     if(!match){ match = DB.products.find(p=>p.qrCode && codesMatch(p.qrCode, q) && p.stock>0); if(match) matchType='qrCode'; }
     // Topilmasa nom bo'yicha
-    if(!match){ match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0); matchType=null; }
+    if(!match){ match = (window.smartSearchProducts?window.smartSearchProducts(DB.products.filter(p=>p.stock>0),q)[0]:DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0)); matchType=null; }
     if(match){
       if(matchType==='qrCode'){
         const res = sellCodeMatch(match, q, 'qrCode', 1);
@@ -8409,14 +9996,14 @@ window.handleSellSearchKey=function(e){
     }
     return;
   }
-  renderSellGrid();
+  clearTimeout(window._sellSearchT); window._sellSearchT=setTimeout(function(){ renderSellGrid(); },110); // v8: debounce
 }
 window.renderSellGrid=function(){
   const q=(document.getElementById('sell-search')?.value||'').trim();
   const ql=q.toLowerCase();
   const grid=document.getElementById('sell-grid'); const none=document.getElementById('no-sell');
   if(!grid) return;
-  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.barcode&&p.barcode.includes(q))||(p.qrCode&&p.qrCode.includes(q)));
+  const prods=!q?DB.products:(()=>{ const byCode=DB.products.filter(p=>(p.barcode&&p.barcode.includes(q))||(p.qrCode&&p.qrCode.includes(q))); const byName=window.smartSearchProducts?window.smartSearchProducts(DB.products,q):DB.products.filter(p=>p.name.toLowerCase().includes(ql)); return [...new Set([...byCode,...byName])]; })();
   if(!prods.length){ grid.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
@@ -8432,19 +10019,19 @@ window.renderSellGrid=function(){
 
   let lastEl = null;
   for(const p of prods){
-    const out=p.stock===0; const inCart=cart[p.id]||0;
+    const out=window.stockOf(p)===0; const inCart=cart[p.id]||0;
     const volLabel=p.volume?`<span class="badge blue" style="font-size:11px">${p.volume} L</span> `:'';
     const cartBadge=inCart>0?`<div class="cart-badge-overlay">${inCart}</div>`:'';
     const newHTML = `<div class="img-wrap" style="${out?'opacity:.5':''}">
         ${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}
         <div class="no-img" style="${p.img?'display:none':''}">💧</div>
-        <div class="stock-badge"><span class="badge ${p.stock===0?'red':p.stock<=DB.lowStockThreshold?'amber':'green'}">${p.stock}</span></div>
+        <div class="stock-badge"><span class="badge ${window.stockOf(p)===0?'red':window.stockOf(p)<=DB.lowStockThreshold?'amber':'green'}">${window.stockOf(p)}</span></div>
         ${cartBadge}
       </div>
       <div class="body">
         <div class="prod-name">${esc(p.name)}</div>
         <div style="margin:.2rem 0">${volLabel}<span class="prod-price">${fmt(p.price)} so'm</span></div>
-        <div class="prod-stock" style="font-size:12px;color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+p.stock+' ta'}</div>
+        <div class="prod-stock" style="font-size:12px;color:${out?'var(--red)':inCart>0?'var(--accent)':'var(--text3)'}">${out?'⚠️ Tugagan':inCart>0?`🛒 ${inCart} ta savatda`:'Mavjud: '+window.stockOf(p)+' ta'}</div>
       </div>`;
 
     let card = existing.get(p.id);
@@ -8458,7 +10045,7 @@ window.renderSellGrid=function(){
       });
     }
     // Update only if content changed
-    const sig = `${p.stock}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
+    const sig = `${window.stockOf(p)}|${inCart}|${p.price}|${p.name}|${p.volume}|${p.img}`;
     if(card.dataset.sig !== sig){
       card.innerHTML = newHTML;
       card.dataset.sig = sig;
@@ -8531,7 +10118,7 @@ window.revertSaleGroup=function(receiptId){
   items.forEach(s=>{
     const p=DB.products.find(x=>x.id===s.productId);
     writes.push(fbUpdateSale(s.id,{reverted:true}));
-    if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
+    if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
   });
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
@@ -8546,7 +10133,7 @@ window.adminRevertGroup=function(receiptId){
     items.forEach(s=>{
       const p=DB.products.find(x=>x.id===s.productId);
       writes.push(fbUpdateSale(s.id,{reverted:true}));
-      if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
+      if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
     });
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
@@ -8646,7 +10233,7 @@ window.revertSale=function(id){
   const p=DB.products.find(x=>x.id===s.productId);
   toast('Savdo qaytarildi','amber');
   const writes=[fbUpdateSale(id,{reverted:true})];
-  if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
+  if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
@@ -8735,7 +10322,7 @@ window.adminRevert=function(id){
     const p=DB.products.find(x=>x.id===s.productId);
     toast('Savdo qaytarildi','amber');
     const writes=[fbUpdateSale(id,{reverted:true})];
-    if(p){ p.stock = p.stock + s.qty; writes.push(fbUpdateProductFields(p.id, {stock: increment(s.qty)})); }
+    if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
 }
@@ -8912,8 +10499,7 @@ window.printDebtsList=async function(){
   if(from) list = list.filter(d=>new Date(d.date)>=new Date(from));
   if(to)   list = list.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(q) list = list.filter(d=>
-    (d.debtorName||'').toLowerCase().includes(q) ||
-    (d.org||'').toLowerCase().includes(q)
+    (window.smartTextMatch ? (window.smartTextMatch(d.debtorName,q) || window.smartTextMatch(d.org,q)) : ((d.debtorName||'').toLowerCase().includes(q) || (d.org||'').toLowerCase().includes(q)))
   );
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
@@ -9291,7 +10877,7 @@ window.renderStockHistory=async function(){
   }
   else if(shFilter==='today'){ start=new Date(now); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
   else if(shFilter==='yesterday'){ const y=new Date(now); y.setDate(now.getDate()-1); start=new Date(y); start.setHours(0,0,0,0); end=new Date(y); end.setHours(23,59,59,999); }
-  else if(shFilter==='week'){ start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
+  else if(shFilter==='week'){ start=new Date(now); start.setDate(now.getDate()-((now.getDay()+6)%7)); start.setHours(0,0,0,0); end=new Date(now); end.setHours(23,59,59,999); }
   let rows=[...mergedHistory('restocks')].reverse();
   if(start) rows=rows.filter(r=>new Date(r.date)>=start);
   if(end) rows=rows.filter(r=>new Date(r.date)<=end);
@@ -9925,12 +11511,51 @@ window.saveSaleReceiptSettings = function(){
 window.saveVoiceAnnounceSettings = function(){
   DB.voiceAnnounceEnabled = !!document.getElementById('voice-announce-enabled')?.checked;
   DB.voiceAnnounceTemplate = (document.getElementById('voice-announce-template')?.value || '').trim();
+  const g = (id,def)=>{ const v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?def:v; };
+  DB.voiceLang = document.getElementById('voice-lang')?.value || 'uz-UZ';
+  DB.voiceName = document.getElementById('voice-name')?.value || '';
+  DB.voiceRate = g('voice-rate',0.95);
+  DB.voicePitch = g('voice-pitch',1);
+  DB.voiceVolume = g('voice-volume',1);
   toast('✓ Ovozli e\'lon sozlamalari saqlandi','green');
   fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
+// Qurilmadagi ovozlar ro'yxatini tanlangan tilga qarab to'ldiradi.
+window.refreshVoiceList = function(langChanged){
+  const sel = document.getElementById('voice-name'); if(!sel) return;
+  const lang = (document.getElementById('voice-lang')?.value || 'uz-UZ').toLowerCase();
+  const base = lang.split('-')[0];
+  const keep = langChanged ? '' : (DB.voiceName || sel.value || '');
+  const voices = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+  const match = voices.filter(v=>v.lang.toLowerCase().startsWith(base));
+  const list = match.length ? match : voices;
+  sel.innerHTML = '';
+  const o0 = document.createElement('option'); o0.value=''; o0.textContent = match.length ? 'Avtomatik (tilga mos ovoz)' : "Avtomatik (bu til uchun ovoz topilmadi — boshqa tillar ko'rsatilgan)"; sel.appendChild(o0);
+  list.forEach(v=>{ const o=document.createElement('option'); o.value=v.name; o.textContent=v.name+' ('+v.lang+')'; sel.appendChild(o); });
+  sel.value = keep; if(sel.value!==keep) sel.value='';
+}
+if(window.speechSynthesis){ try{ window.speechSynthesis.addEventListener('voiceschanged', ()=>window.refreshVoiceList && window.refreshVoiceList(false)); }catch(e){} }
 window.fillVoiceAnnounceSettingsForm = function(){
   const en = document.getElementById('voice-announce-enabled'); if(en) en.checked = !!DB.voiceAnnounceEnabled;
   const tpl = document.getElementById('voice-announce-template'); if(tpl) tpl.value = DB.voiceAnnounceTemplate || '';
+  const L = document.getElementById('voice-lang'); if(L) L.value = DB.voiceLang || 'uz-UZ';
+  const setR = (id,val,fmtv)=>{ const el=document.getElementById(id); if(el) el.value=val; const lb=document.getElementById(id+'-val'); if(lb) lb.textContent=fmtv; };
+  const r=(typeof DB.voiceRate==='number')?DB.voiceRate:0.95, pi=(typeof DB.voicePitch==='number')?DB.voicePitch:1, vo=(typeof DB.voiceVolume==='number')?DB.voiceVolume:1;
+  setR('voice-rate',r,r); setR('voice-pitch',pi,pi); setR('voice-volume',vo,Math.round(vo*100));
+  window.refreshVoiceList(false);
+}
+// Tanlangan til/ovoz/tezlik sozlamalarini utterance'ga qo'llaydi.
+window.applyVoiceSettings = function(utter, cfg){
+  cfg = cfg || {};
+  const lang = cfg.voiceLang || 'uz-UZ';
+  utter.lang = lang;
+  const voices = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+  let v = cfg.voiceName ? voices.find(x=>x.name===cfg.voiceName) : null;
+  if(!v){ const l=lang.toLowerCase(), b=l.split('-')[0]; v = voices.find(x=>x.lang.toLowerCase()===l) || voices.find(x=>x.lang.toLowerCase().startsWith(b)) || null; }
+  if(v){ utter.voice = v; utter.lang = v.lang; }
+  utter.rate = (typeof cfg.voiceRate==='number') ? cfg.voiceRate : 0.95;
+  utter.pitch = (typeof cfg.voicePitch==='number') ? cfg.voicePitch : 1;
+  utter.volume = (typeof cfg.voiceVolume==='number') ? cfg.voiceVolume : 1;
 }
 // YANGI: admin "Sinab ko'rish" tugmasini bosganda, xuddi haqiqiy sotuvdagi
 // kabi namuna matnni brauzerning o'z ovoz-sintez tizimi orqali o'qib
@@ -9938,15 +11563,21 @@ window.fillVoiceAnnounceSettingsForm = function(){
 // matn qanday eshitilishini oldindan tekshirib ko'rishi mumkin.
 window.previewVoiceAnnounce = function(){
   const tpl = (document.getElementById('voice-announce-template')?.value || '').trim();
-  speakSaleAnnouncement(['Coca-Cola 1.5L', 'Non'], 24000, tpl);
+  const g = (id,def)=>{ const v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?def:v; };
+  const cfg = { voiceLang: document.getElementById('voice-lang')?.value || 'uz-UZ', voiceName: document.getElementById('voice-name')?.value || '', voiceRate: g('voice-rate',0.95), voicePitch: g('voice-pitch',1), voiceVolume: g('voice-volume',1) };
+  speakSaleAnnouncement(['Coca-Cola 1.5L', 'Non'], 24000, tpl, cfg);
 }
 // YANGI: brauzerning standart matn→ovoz (Web Speech API) texnologiyasi
 // orqali sotuv haqida ovozli e'lon aytadi. Bu qurilmaga bog'liq — agar
 // qurilmada mos ovoz sintez tizimi/o'zbekcha ovoz bo'lmasa, ishlamasligi
 // yoki boshqa (masalan ingliz/rus) talaffuz bilan aytilishi mumkin — bu
 // texnologiyaning o'zidagi cheklov, tuzatib bo'lmaydigan narsa.
-function speakSaleAnnouncement(itemNames, total, templateOverride){
+function speakSaleAnnouncement(itemNames, total, templateOverride, cfgOverride){
   try{
+    // TUZATILDI: ilgari sozlamadagi "yoqish" belgisi tekshirilmas edi va har sotuvda
+    // ovoz avtomatik eshitilardi. Endi faqat admin yoqqan bo'lsa yoki "Sinab ko'rish" bosilganda aytiladi.
+    const isPreview = (templateOverride!=null);
+    if(!isPreview && !DB.voiceAnnounceEnabled) return;
     if(!('speechSynthesis' in window)) return;
     const tpl = (templateOverride!=null ? templateOverride : (DB.voiceAnnounceTemplate||'')).trim() || "{mahsulot} sotildi, {summa} so'm";
     const mahsulot = (itemNames||[]).join(', ');
@@ -9954,8 +11585,7 @@ function speakSaleAnnouncement(itemNames, total, templateOverride){
     if(!text) return;
     window.speechSynthesis.cancel(); // oldingi tugallanmagan e'lonni to'xtatib, yangisini boshlaydi
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'uz-UZ';
-    utter.rate = 0.95;
+    window.applyVoiceSettings(utter, cfgOverride || DB);
     window.speechSynthesis.speak(utter);
   }catch(e){ console.error('Ovozli e\'lon xatosi:', e); }
 }
@@ -11564,15 +13194,15 @@ window.toast=function(msg,type=''){
   _runToastQueue();
 }
 
-function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function fmt(n){ return Math.round(n).toLocaleString('uz-UZ'); }
+function uid(){ let r=''; try{ const a=new Uint32Array(2); crypto.getRandomValues(a); r=a[0].toString(36)+a[1].toString(36); }catch(e){ r=Math.random().toString(36).slice(2,10); } return Date.now().toString(36)+r.slice(0,8).padEnd(8,'0'); }
+function fmt(n){ const v=Math.round(Number(n)||0); return (v===0?0:v).toLocaleString('uz-UZ'); } // v7: NaN/undefined/-0 chiqmaydi
 function timeStr(iso){
   const d=new Date(iso);
   return d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
 }
 function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
-function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
-function download(name,type,content){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); }
+function isThisWeek(d,now){ const start=new Date(now); const dow=(now.getDay()+6)%7; start.setDate(now.getDate()-dow); start.setHours(0,0,0,0); return d>=start; } // v8: dushanba
+function download(name,type,content){ const url=URL.createObjectURL(new Blob([content],{type})); const a=document.createElement('a'); a.href=url; a.download=name; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{ a.remove(); URL.revokeObjectURL(url); },1500); }
 
 // ===== YANGI: UMUMIY CHOP ETISH (PRINT) YORDAMCHISI =====
 // Butun ilova sahifasini chop etish (window.print()) o'rniga, chop etiladigan
@@ -11936,6 +13566,7 @@ async function loadZXing(){
   return new Promise((resolve)=>{
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    s.crossOrigin = 'anonymous';
     s.onload = ()=>{ _zxingReady=true; _zxingLoading=false; resolve(true); };
     s.onerror = ()=>{ _zxingLoading=false; resolve(false); };
     document.head.appendChild(s);
@@ -11981,6 +13612,7 @@ async function ensureJsQR(){
   return new Promise(resolve=>{
     const s=document.createElement('script');
     s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.crossOrigin='anonymous';
     s.onload=()=>{ _jsQRReady = typeof window.jsQR === 'function'; _jsQRLoading=false; resolve(_jsQRReady); };
     s.onerror=()=>{ _jsQRLoading=false; resolve(false); };
     document.head.appendChild(s);
@@ -13447,6 +15079,15 @@ function looksLikePlainBarcodeForProduct(code, product){
 // albatta o'tkazadi.
 function findProductByCode(code){
   if(!code) return null;
+  // YANGI: partiya kodlari (MB-...) — kod saqlanmaydi, partiya oralig'idan aniqlanadi.
+  // Noto'g'ri (nazorat belgisi mos kelmaydigan) MB- kod HECH QACHON tovarga bog'lanmaydi.
+  code = ccCanonicalCode(code);
+  if(/^MB-/.test(code)){
+    const _pc = ccParseBatchCode(code);
+    const _own = ccFindBatchOwner(_pc);
+    if(_own) return { product: _own.product, type: 'serial' };
+    return null;
+  }
 
   // 1) Avval — bu ANIQ kod allaqachon biror tovarning serialCodes
   //    ro'yxatida ro'yxatga olinganmi (avval kirim qilingan noyob dona)?
@@ -13493,8 +15134,15 @@ function findProductByCode(code){
 }
 
 window.processCode = function(code){
-  code = (code||'').trim();
+  code = ccCanonicalCode((code||'').trim());
   if(!code){ toast('Kod bo\'sh', 'red'); return; }
+  // YANGI: MB- kodning nazorat belgisi mos kelmasa — noto'g'ri o'qilgan/yozilgan/soxta kod
+  if(ccBadBatchCode(code)){
+    setScanStatus(`⚠️ Kod noto'g'ri o'qildi (nazorat belgisi mos emas) — qayta skanerlang: ${code}`, 'err');
+    toast('⚠️ Kod buzilgan yoki noto\'g\'ri o\'qildi — qayta skanerlang', 'red');
+    if(navigator.vibrate) navigator.vibrate([200,100,200]);
+    return;
+  }
   _scannedCode = code;
   document.getElementById('manual-code-input').value = code;
 
@@ -13532,7 +15180,7 @@ window.processCode = function(code){
       // admin uchun bu yerda TO'XTATILMAYDI (findProductByCode GTIN orqali
       // tovarni allaqachon to'g'ri aniqlab bergan, scanDoRestock esa yangi
       // kodni serialCodes'ga qo'shib, stockni +1 oshiradi).
-      if(_scanMode === 'seller' && (!prod.serialCodes || !prod.serialCodes[code])){
+      if(_scanMode === 'seller' && !hasUnsoldSerial(prod, code)){
         setScanStatus(`⚠️ Bu kod omborda yo'q! (${code})`, 'err');
         toast('⚠️ Bu kod omborda mavjud emas!', 'red');
         return;
@@ -13741,8 +15389,8 @@ window.scanDoRestock = function(){
   const isSerial = _scannedCodeType === 'serial';
   
   if(isSerial){
-    // Kod allaqachon omborda mavjudmi?
-    if(prod.serialCodes && prod.serialCodes[code]){
+    // Kod allaqachon omborda mavjudmi? (eski serialCodes YOKI partiya kodi)
+    if(hasUnsoldSerial(prod, code)){
       toast(`ℹ️ Bu kod allaqachon omborda mavjud: ${code}`, 'amber');
       resetScanForNext();
       return;
@@ -13914,11 +15562,18 @@ function sellCodeMatch(prod, code, codeType, qty){
   // olingan dona") bo'lishi shart. 'qrCode' turi tovarning o'ziga
   // biriktirilgan yagona maydon bo'lgani uchun bu qo'shimcha tekshiruv
   // shart emas — soldCodes tekshiruvi yetarli.
-  if(codeType === 'serial' && (!prod.serialCodes || !prod.serialCodes[code])){
+  if(codeType === 'serial' && !hasUnsoldSerial(prod, code)){
     toast(`❌ Bu kod omborda yo'q: ${code}`, 'red');
     return {ok:false};
   }
+  // YANGI: partiya kodlari uchun qo'shimcha himoya — qoldiq 0 bo'lsa sotilmaydi
+  // (cheksiz kod yaratish mumkin bo'lgani uchun, kod soni emas, ombor qoldig'i hal qiladi).
+  if(codeType === 'serial' && ccIsBatchOwned(prod, code) && !(prod.serialCodes && prod.serialCodes[code]) && (prod.stock||0) <= 0){
+    toast(`❌ ${prod.name}: omborda qoldiq yo'q (avval kirim qiling)`, 'red');
+    return {ok:false};
+  }
 
+  ccStorageWarn(prod);
   if(!prod.soldCodes) prod.soldCodes = {};
   prod.soldCodes[code] = true;
   if(prod.serialCodes) delete prod.serialCodes[code];
@@ -14021,7 +15676,7 @@ window.startBarcodeAssignQueue = function(){
 // Har bir tovar uchun kerakli sonni skanerlab bo'lgach, navbat avtomatik
 // keyingi tovarga o'tadi.
 function unregisteredUnitCount(p){
-  const registered = Object.keys(p.serialCodes||{}).length;
+  const registered = ccRegisteredCount(p);
   return Math.max(0, (p.stock||0) - registered);
 }
 
@@ -14144,7 +15799,7 @@ window.openAssignBarcode = async function(productId){
 
   if(_assignMode === 'serial'){
     titleEl.textContent = '🔢 Donalarni ro\'yxatga olish';
-    const registered = Object.keys(p.serialCodes||{}).length;
+    const registered = ccRegisteredCount(p);
     const total = p.stock||0;
     const remaining = unregisteredUnitCount(p);
     document.getElementById('assign-product-info').innerHTML =
@@ -14370,6 +16025,7 @@ window.doAssignBarcode = async function(code, format){
     _assignDone = true;
     const input = document.getElementById(_assignFieldTarget);
     if(input) input.value = code;
+    if(_assignFieldTarget === 'cc-check-input' && window.ccCheck){ setTimeout(()=>window.ccCheck(code), 200); }
     if(navigator.vibrate) navigator.vibrate(100);
     document.getElementById('assign-status').textContent = `✅ Kod maydonga yozildi: ${code}`;
     document.getElementById('assign-status').style.color = 'var(--green)';
@@ -14526,7 +16182,7 @@ function doRegisterSerialUnit(code, format){
   // 1) Bu ANIQ kod (butun DataMatrix/QR matni) bazada — ISTALGAN mahsulotning
   //    serialCodes ro'yxatida — allaqachon ro'yxatdan o'tganmi? Har bir dona
   //    faqat BIR MARTA ro'yxatga olinishi kerak (ikki marta sanalmasligi uchun).
-  const existingOwner = DB.products.find(p=>p.serialCodes && p.serialCodes[code]);
+  const existingOwner = DB.products.find(p=>hasUnsoldSerial(p, code));
   if(existingOwner){
     if(navigator.vibrate) navigator.vibrate(50);
     unitProgEl.style.background = 'var(--amber-bg)';
@@ -14579,6 +16235,14 @@ function doRegisterSerialUnit(code, format){
   //    (qo'shaloq hisoblash). Endi bu funksiya FAQAT serialCodes'ga yozadi;
   //    stockni faqat "to'g'ridan-to'g'ri kirim skaneri" (doAdminIntake /
   //    yuqoridagi increment(1) chaqiruvlari, alohida rejim) oshiradi.
+  { const _ld = ccStorageLoad(product);
+    if(_ld.fill >= 1){
+      if(navigator.vibrate) navigator.vibrate([200,80,200]);
+      unitProgEl.style.background = 'var(--red-bg)'; unitProgEl.style.borderColor = 'var(--red-border)'; unitProgEl.style.color = 'var(--red)';
+      unitProgEl.textContent = `❌ ${product.name}: kod yozuvlari hajmi to'ldi (${_ld.keys.toLocaleString('en-US')} ta). Yangi zavod kodini ro'yxatga olib bo'lmaydi — partiya (MB-) kodlaridan foydalaning.`;
+      return;
+    }
+    ccStorageWarn(product); }
   if(!product.serialCodes) product.serialCodes = {};
   product.serialCodes[code] = true;
   // ATOMIK: faqat shu bitta KOD kalitini qo'shamiz — stockga TEGMAYMIZ
@@ -14587,7 +16251,7 @@ function doRegisterSerialUnit(code, format){
   fbUpdateProductCodeFields(product.id, null, [['serialCodes', code, true]]);
   refreshProductViews();
 
-  const registeredCount = Object.keys(product.serialCodes).length;
+  const registeredCount = ccRegisteredCount(product);
   const totalStock = product.stock || 0;
   const remaining = Math.max(0, totalStock - registeredCount);
   const overCount = registeredCount > totalStock;
@@ -16210,7 +17874,31 @@ function printEpsonSheetHTML(sheetsHtml, s){
       .a4-sheet:last-child{page-break-after:auto}
       .lbl-cell{width:${s.labelWidth}mm;height:${s.labelHeight}mm;overflow:hidden;display:flex;align-items:center;justify-content:center}
       .lbl-cell-inner{text-align:center;width:100%;padding:1mm}
-    </style></head>
+    </style><style id="upgrade-v6-mobile-ux">
+/* v6 UPGRADE: mobil qulaylik, kirish imkoniyati va silliqlik */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+button,[role="button"],a,select,label,summary,input[type=checkbox],input[type=radio]{touch-action:manipulation}
+body{overscroll-behavior-y:none;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid #1d9e75;outline-offset:2px;border-radius:6px}
+:focus:not(:focus-visible){outline:none}
+img{max-width:100%;height:auto}
+table{max-width:100%}
+.modal,[class*="modal"] [class*="content"],[class*="modal-box"]{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+@media (max-width:820px){
+  /* iOS inputga fokus berilganda sahifa "zoom" bo'lib ketishini oldini oladi */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}
+  body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+}
+@media (pointer:coarse){
+  button,.btn,[role="button"],select,input:not([type=checkbox]):not([type=radio]){min-height:44px}
+  input[type=checkbox],input[type=radio]{width:20px;height:20px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
     <body>${sheetsHtml}</body></html>`);
   doc.close();
   frame.onload = function(){ waitForImagesThenPrint(frame); };
@@ -18466,7 +20154,7 @@ document.addEventListener('keydown', function(e){
   'use strict';
 
   function fmt(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }
-  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function uid(){ let r=''; try{ const a=new Uint32Array(2); crypto.getRandomValues(a); r=a[0].toString(36)+a[1].toString(36); }catch(e){ r=Math.random().toString(36).slice(2,10); } return Date.now().toString(36)+r.slice(0,8).padEnd(8,'0'); }
   function esc(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
   function safeToast(msg, type){ try{ if(typeof window.toast === 'function') window.toast(msg, type); }catch(e){} }
 
@@ -18766,11 +20454,7 @@ document.addEventListener('keydown', function(e){
       try{
         const sum = Math.round(rd.total).toLocaleString('uz-UZ').replace(/,/g,' ');
         const utter = new SpeechSynthesisUtterance(`Xarid qabul qilindi. Jami summa: ${sum} so'm. Rahmat!`);
-        const uzVoice = pickUzVoice();
-        if(uzVoice) utter.voice = uzVoice;
-        utter.lang = 'uz-UZ';
-        utter.rate = 0.92;
-        utter.pitch = 1;
+        window.applyVoiceSettings(utter, DB);
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utter);
       }catch(e){ safeToast("Ovozli o'qishda xatolik", 'red'); }
@@ -18863,7 +20547,7 @@ document.addEventListener('keydown', function(e){
 (function(){
   function esc(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
   function fmt2(n){ return Math.round(n||0).toLocaleString('uz-UZ'); }
-  function uid2(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function uid2(){ let r=''; try{ const a=new Uint32Array(2); crypto.getRandomValues(a); r=a[0].toString(36)+a[1].toString(36); }catch(e){ r=Math.random().toString(36).slice(2,10); } return Date.now().toString(36)+r.slice(0,8).padEnd(8,'0'); }
   function toast2(msg,type){ try{ if(typeof window.toast==='function') window.toast(msg,type); }catch(e){} }
   // YANGI: mijoz ism/telefon/daraja tahrirlash oynasi qaysi mijozga
   // tegishli ekanini shu IIFE ICHIDA saqlaymiz (boshqa <script> yoki
@@ -20710,6 +22394,307 @@ document.addEventListener('keydown', function(e){
       return r;
     };
   }
+})();
+</script>
+<script>
+/* ================== YANGI: INTERFEYS TILI (O'zbekcha / Русский) ==================
+   Matnlar lug'at orqali almashtiriladi: lug'atda yo'q matn o'zbekcha qoladi.
+   Tanlov shu qurilmada saqlanadi (localStorage: dokon_lang). */
+(function(){
+  const RU = {
+    "Kodlar":"Коды","Kodlar markazi":"Центр кодов","Qo'lda kod yaratish":"Создать код вручную","Nechta kod":"Сколько кодов","Kod turi":"Тип кода","Yorliq o'lchami":"Размер этикетки",
+    "Yaratish va chop etish":"Создать и напечатать","Faqat yaratish":"Только создать","Kodni tekshirish":"Проверить код","Tekshirish":"Проверить","Barcode yaratish":"Создать штрихкод","Hammasiga yaratish":"Создать для всех",
+    "Revizi":"Инвентаризация","Revizi (inventarizatsiya)":"Ревизия (инвентаризация)","Faqat farqlilar":"Только расхождения","Tizimda":"В системе","Sanaldi":"Подсчитано","Farq":"Разница",
+    "Revizini yakunlash va tuzatish":"Завершить ревизию и скорректировать","Sanashni tozalash":"Очистить подсчёт","Tovar qidirish":"Поиск товара","Revizi yakunlandi":"Ревизия завершена",
+    "Revizi (inventarizatsiya)":"Ревизия (инвентаризация)","Omborni sanab chiqing":"Пересчитайте склад",
+    "Do'kon Tizimi":"Система магазина","Firebase bilan ulanmoqda":"Подключение к Firebase","Rolni tanlang va PIN kiriting":"Выберите роль и введите PIN",
+    "Admin":"Админ","Tovar boshqaruvi":"Управление товарами","Sotuvchi":"Продавец","Savdo qilish":"Продажи","PIN kod":"PIN-код","Kirish":"Войти","Do'kon":"Магазин",
+    "Bosh sahifa":"Главная","Tovarlar":"Товары","Savdo tarixi":"История продаж","Foyda":"Прибыль","Analitika":"Аналитика","Kirim/Chiqim":"Приход/Расход",
+    "Qarzlar":"Долги","Xarajatlar":"Расходы","Filiallar":"Филиалы","AI Tahlilchi":"AI-аналитик","Sozlamalar":"Настройки","Sotish":"Продажа",
+    "Mening sotuvlarim":"Мои продажи","Offline":"Офлайн","Chiqish":"Выход","Bildirishnomalar":"Уведомления","Qidiruv":"Поиск","Yorliqlar":"Ярлыки",
+    "Tungi rejim":"Ночной режим","Kalkulyator":"Калькулятор","Eslatmalar":"Заметки","Kassa smena":"Кассовая смена","Vazifalar":"Задачи",
+    "Yetkazib beruvchilar":"Поставщики","Mijozlar / Coin":"Клиенты / Коины","Aksiya va chegirmalar":"Акции и скидки","Tezkor qulflash":"Быстрая блокировка",
+    "Zaxiraga o'tish":"Перейти к резервной копии","Bugun":"Сегодня","Bu hafta":"На этой неделе","Bu oy":"В этом месяце","Hammasi":"Все","Barchasi":"Все",
+    "So'nggi 7 kunlik savdo trendi":"Динамика продаж за 7 дней","Bugungi savdolar":"Продажи за сегодня","Top sotilganlar":"Самые продаваемые",
+    "Top sotuvchilar":"Лучшие продавцы","Top qarzdorlar":"Главные должники","Kam qolgan tovarlar":"Товары с низким остатком","Xarid ro'yxati":"Список закупок",
+    "Tovarlarni qo'shing va yangilang":"Добавляйте и обновляйте товары","Tovar qo'shish":"Добавить товар","Tartib":"Порядок","Hali tovar yo'q":"Товаров пока нет",
+    "Kecha":"Вчера","Tozalash":"Очистить","Chop etish":"Печать","Sana/Vaqt":"Дата/время","Tovar":"Товар","Miqdor":"Количество","Narx":"Цена","Jami":"Итого",
+    "Holat":"Статус","Amal":"Действие","Savdo tarixi topilmadi":"История продаж не найдена","Sotilgan miqdor":"Продано (кол-во)","Sotuv summasi":"Сумма продаж",
+    "Tannarx summasi":"Сумма себестоимости","Foyda / Zarar":"Прибыль / Убыток","Bu davrda savdo yo'q":"В этом периоде продаж нет",
+    "Kirim / Chiqim tarixi":"История прихода / расхода","Faqat Kirim":"Только приход","Faqat Chiqim":"Только расход","Turi":"Тип","Sabab":"Причина",
+    "PIN kodlarni o'zgartirish":"Изменение PIN-кодов","Admin PIN":"PIN администратора","Saqlash":"Сохранить","Sotuvchilar":"Продавцы","Qo'shish":"Добавить",
+    "Do'kon nomi":"Название магазина","Manzil":"Адрес","Telefon raqami":"Номер телефона","Ish vaqti":"Время работы","Valyuta belgisi":"Символ валюты",
+    "Hammasini saqlash":"Сохранить всё","Kam qoldiq chegarasi":"Порог низкого остатка","dona":"шт.","kun":"дн.","daqiqa":"мин.","so'm":"сум",
+    "Kunlik savdo maqsadi":"Дневная цель продаж","Brend rangi":"Фирменный цвет","Ixcham ko'rinish":"Компактный вид","Avtomatik qulflash":"Автоблокировка",
+    "O'chirilgan":"Отключено","Joriy holat":"Текущее состояние","Tez":"Быстро","Sekin":"Медленно","Tasdiqlash tovushi":"Звук подтверждения",
+    "Tovush balandligi":"Громкость","Ma'lumotlar":"Данные","Hammasini o'chirish":"Удалить всё","Savdolar tarixi":"История продаж","Mijozlar":"Клиенты","Aksiyalar":"Акции",
+    "Matn o'lchami":"Размер текста","Asl holat":"По умолчанию","Amallar jurnali":"Журнал действий","Jurnalni ko'rish":"Открыть журнал",
+    "Bluetooth termoprinter":"Bluetooth-термопринтер","Printerni ulash":"Подключить принтер","Sinov chek chiqarish":"Пробный чек","Ilovani o'rnatish":"Установить приложение",
+    "Telegram bot":"Telegram-бот","Mini App":"Мини-приложение","Admin panel":"Админ-панель","Bot token":"Токен бота","Holatni tekshirish":"Проверить состояние",
+    "Uzish":"Отключить","Telegram adminlari":"Администраторы Telegram","Admin qo'shish":"Добавить админа","Kunlik hisobot":"Дневной отчёт",
+    "Sinab ko'rish":"Проверить","Ovoz tili":"Язык озвучки","Ovoz kutubxonasi (qurilmadagi ovozlar)":"Голос (доступные на устройстве)","Tezlik":"Скорость",
+    "Ton balandligi":"Высота тона","Ovoz balandligi":"Громкость голоса","Sotuvda ovozli e'lon (Mini App)":"Голосовое объявление при продаже (Mini App)",
+    "Sotuvda ovozli e'lonni yoqish":"Включить голосовое объявление при продаже","Qarzlar boshqaruvi":"Управление долгами","Faol qarzlar":"Активные долги",
+    "To'langan":"Оплачено","Tashkilotlar":"Организации","Shaxslar":"Физлица","Sana":"Дата","Qarz topilmadi":"Долги не найдены","Xarajat qo'shish":"Добавить расход",
+    "Barcha toifalar":"Все категории","Ijara":"Аренда","Ish haqi":"Зарплата","Kommunal":"Коммунальные","Transport":"Транспорт","Soliq":"Налоги","Ta'mirlash":"Ремонт",
+    "Boshqa":"Другое","Nomi":"Название","Toifa":"Категория","Summa":"Сумма","Izoh":"Комментарий","Xarajat topilmadi":"Расходы не найдены","Yangilash":"Обновить",
+    "Tahlil qilish":"Анализировать","Nusxalash":"Копировать","Kunlik":"Дневной","Haftalik":"Недельный","Sevimlilar":"Избранное","Filial":"Филиал","Vaqt":"Время",
+    "Qaytarish":"Возврат","Savdolar yo'q":"Продаж нет","Yangi tovar":"Новый товар","Tovar nomi":"Название товара","Hajm (litr)":"Объём (л)","Hajmsiz":"Без объёма",
+    "Narx (so'm)":"Цена (сум)","Tannarx (so'm)":"Себестоимость (сум)","Boshlang'ich miqdor":"Начальное количество","Bekor qilish":"Отмена","Kirim":"Приход",
+    "Hozirgi zaxira":"Текущий остаток","Natija":"Результат","Chiqim":"Расход","Chiqim qilish":"Списать","Savat":"Корзина","Mijoz":"Клиент","Jami summa":"Общая сумма",
+    "Yopish":"Закрыть","Savatni tozalash":"Очистить корзину","Qarzga sotish":"Продать в долг","Naqd sotish":"Продать за наличные","Sotish":"Продажа",
+    "Qarz oluvchi ismi":"Имя должника","Qarz summasi":"Сумма долга","To'lov muddati":"Срок оплаты","Login":"Логин","Parol":"Пароль","Shaxs":"Физлицо",
+    "Klaviatura yorliqlari":"Горячие клавиши","Global qidiruv":"Глобальный поиск","Sinxronizatsiya holati":"Состояние синхронизации","Orqaga":"Назад",
+    "Import qilish":"Импортировать","Tasdiqlash":"Подтверждение","Yo'q":"Нет","Ha, davom etish":"Да, продолжить","Kiriting":"Введите","JAMI":"ИТОГО",
+    "Xaridingiz uchun rahmat":"Спасибо за покупку","Ulashish":"Поделиться","Qarzdor":"Должник","Tur":"Тип","To'lov qabul qilish":"Принять платёж","Jami qarz":"Общий долг",
+    "Qoldiq":"Остаток","To'lov summasi":"Сумма платежа","To'lovlar tarixi":"История платежей","To'lovni qabul qilish":"Принять платёж","Bosh":"Главная","Tarix":"История",
+    "Ko'proq":"Ещё","Kirim qo'shish":"Добавить приход","Savatga qo'shish":"В корзину","Hech narsa topilmadi":"Ничего не найдено","QAYTIM":"СДАЧА",
+    "Eslatmalar taxtasi":"Доска заметок","Hozircha eslatma yo'q":"Заметок пока нет","Hozircha vazifa yo'q":"Задач пока нет","Ism":"Имя","Mijoz qo'shish":"Добавить клиента",
+    "Darajalar":"Уровни","Xabar yuborish":"Отправить сообщение","Daraja":"Уровень","Aksiya qo'shish":"Добавить акцию","Tugash sanasi":"Дата окончания",
+    "Filiallar va omborlar":"Филиалы и склады","Shu qurilma qaysi filialda ishlaydi?":"В каком филиале работает это устройство?","Filiallar ro'yxati":"Список филиалов",
+    "Omborlar bo'yicha qoldiq":"Остатки по складам","Filiallar bo'yicha savdo":"Продажи по филиалам","Shu oy":"Этот месяц","Filiallar va ombor":"Филиалы и склад",
+    "Asosiy ombor":"Основной склад","Ko'chirish":"Переместить","Qayerdan":"Откуда","Qayerga":"Куда","Soni":"Количество","Bekor":"Отмена","Sotuvlar":"Продажи","Tushum":"Выручка",
+    "To'lov usuli":"Способ оплаты","Naqd":"Наличные","Karta (Uzcard/Humo)":"Карта (Uzcard/Humo)","O'tkazma":"Перевод","Sotish ✓":"Продать","To'lov turlari bo'yicha":"По способам оплаты",
+    "Savat bo'sh":"Корзина пуста","Omborda yo'q":"Нет на складе","Ombordan ko'p bo'ladi!":"Больше, чем на складе!","Savdo qaytarildi":"Продажа возвращена",
+    "Tugagan":"Закончился","Mavjud":"В наличии","Yanvar":"Январь","Fevral":"Февраль","Mart":"Март","Aprel":"Апрель","May":"Май","Iyun":"Июнь","Iyul":"Июль",
+    "Avgust":"Август","Sentabr":"Сентябрь","Oktabr":"Октябрь","Noyabr":"Ноябрь","Dekabr":"Декабрь","Barcha oylar":"Все месяцы","Barcha yillar":"Все годы",
+    "Barcha sotuvchilar":"Все продавцы","Barcha tovarlar":"Все товары","Kam zaxira":"Мало на складе","Qo'shilgan tartib":"По порядку добавления","Hajm bo'yicha":"По объёму",
+    "Rasm URL (ixtiyoriy)":"URL изображения (необязательно)","Yoki rasm yuklash":"Или загрузить изображение","Barcode (GTIN/EAN)":"Штрихкод (GTIN/EAN)",
+    "Tashkilot nomi":"Название организации","ixtiyoriy":"необязательно","Yaroqsiz / eskirgan":"Непригодный / просроченный","Sinib ketdi / zararlandi":"Разбито / повреждено",
+    "Inventarizatsiya tuzatish":"Корректировка по инвентаризации","Yetkazuvchiga qaytarildi":"Возвращено поставщику","Kassadan naqd qarz berish":"Выдать наличные в долг из кассы",
+    "Chek raqami (ID)":"Номер чека (ID)","Sotuvchi ismi":"Имя продавца","Pastki rahmat matni":"Текст благодарности внизу","Yuqori yozuv":"Верхний текст"
+  };
+  const PAT = [
+    [/^Mavjud: (\d+) ta$/, 'В наличии: $1 шт.'], [/^(\d+) ta savatda$/, '$1 шт. в корзине'],
+    [/^(\d+) daqiqadan so'ng$/, 'Через $1 мин.'], [/^Bugun$/, 'Сегодня'], [/^(\d+) ta tovar$/, '$1 тов.']
+  ];
+  const apos = s => s.replace(/[\u2019\u02BB\u2018`\u02BC]/g, "'");
+  const split = t => { const m = t.match(/^([^\p{L}\p{N}]*)([\s\S]*?)([^\p{L}\p{N}]*)$/u); return m ? [m[1], m[2], m[3]] : ['', t, '']; };
+  const DICT = {}; Object.keys(RU).forEach(k => { DICT[apos(split(k)[1]).toLowerCase()] = RU[k]; });
+  const SKIP = new Set(['SCRIPT','STYLE','TEXTAREA','CODE','PRE']);
+  let lang = 'uz'; try{ lang = localStorage.getItem('dokon_lang') || 'uz'; }catch(e){}
+  function tr(core){
+    const key = apos(core).toLowerCase();
+    if(Object.prototype.hasOwnProperty.call(DICT, key)) return DICT[key];
+    for(const [re, to] of PAT){ if(re.test(core)) return core.replace(re, to); }
+    return null;
+  }
+  function trText(node){
+    const raw = node.nodeValue; if(!raw || !raw.trim()) return;
+    const ws = raw.match(/^(\s*)([\s\S]*?)(\s*)$/); const parts = split(ws[2]);
+    if(!/[\p{L}]/u.test(parts[1])) return;
+    const out = tr(parts[1]); if(out == null) return;
+    if(node.__uz === undefined) node.__uz = raw;
+    node.nodeValue = ws[1] + parts[0] + out + parts[2] + ws[3];
+  }
+  const ATTRS = ['placeholder','title','aria-label'];
+  function trAttrs(el){
+    for(const a of ATTRS){
+      const v = el.getAttribute && el.getAttribute(a); if(!v) continue;
+      const parts = split(v.trim()); const out = tr(parts[1]); if(out == null) continue;
+      if(!el.__uzAttr) el.__uzAttr = {}; if(el.__uzAttr[a] === undefined) el.__uzAttr[a] = v;
+      el.setAttribute(a, parts[0] + out + parts[2]);
+    }
+  }
+  function walk(root, fn, attrFn){
+    if(!root) return;
+    if(root.nodeType === 3){ fn(root); return; }
+    if(root.nodeType !== 1 || SKIP.has(root.tagName) || (root.closest && root.closest('[data-notr]'))) return;
+    attrFn(root);
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, { acceptNode(n){
+      if(n.nodeType === 1) return SKIP.has(n.tagName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
+      return NodeFilter.FILTER_ACCEPT; } });
+    let n; while((n = tw.nextNode())) fn(n);
+    root.querySelectorAll && root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(attrFn);
+  }
+  const restoreText = n => { if(n.__uz !== undefined){ n.nodeValue = n.__uz; delete n.__uz; } };
+  const restoreAttr = el => { if(el.__uzAttr){ for(const a in el.__uzAttr) el.setAttribute(a, el.__uzAttr[a]); delete el.__uzAttr; } };
+  let obs = null;
+  function startObs(){
+    if(obs) return;
+    obs = new MutationObserver(muts => { if(lang !== 'ru') return;
+      for(const m of muts) m.addedNodes.forEach(n => walk(n, trText, trAttrs)); });
+    obs.observe(document.body, { childList:true, subtree:true });
+  }
+  function updateBtn(){ const b = document.getElementById('lang-toggle-btn'); if(b) b.textContent = lang === 'ru' ? '🌐 RU' : '🌐 UZ'; }
+  window.setUiLang = function(l){
+    lang = (l === 'ru') ? 'ru' : 'uz';
+    try{ localStorage.setItem('dokon_lang', lang); }catch(e){}
+    document.documentElement.lang = lang;
+    if(lang === 'ru'){ walk(document.body, trText, trAttrs); startObs(); }
+    else { walk(document.body, restoreText, restoreAttr); }
+    updateBtn();
+  };
+  window.toggleUiLang = function(){ window.setUiLang(lang === 'ru' ? 'uz' : 'ru'); };
+  window.getUiLang = function(){ return lang; };
+  function init(){ updateBtn(); if(lang === 'ru') window.setUiLang('ru'); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  window.addEventListener('load', () => { if(lang === 'ru') walk(document.body, trText, trAttrs); });
+})();
+</script>
+
+<script>
+/* YANGI: USB/Bluetooth (klaviatura rejimidagi) skaner — Sotish sahifasida qidiruv qatorini bosmasdan
+   ham skanerlash ishlaydi. Skaner belgilarni <80 ms oralig'ida yuboradi; oddiy yozuv bundan sekin,
+   shuning uchun u skaner deb adashtirilmaydi. */
+(function(){
+  let buf = '', last = 0;
+  document.addEventListener('keydown', function(e){
+    const pg = document.getElementById('page-sell');
+    if(!pg || !pg.classList.contains('active')) return;
+    const t = e.target;
+    if(t && t.id === 'sell-search') return; // u yerda o'z ishlovchisi bor
+    if(t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    if(document.querySelector('.modal-overlay:not(.hidden)')) return;
+    const now = Date.now();
+    if(e.key === 'Enter' || (e.key === 'Tab' && buf.length >= 4 && (now - last) < 120)){
+      const code = buf; buf = '';
+      if(code.length >= 4 && (now - last) < 120){
+        e.preventDefault();
+        const si = document.getElementById('sell-search');
+        if(si && typeof window.handleSellSearchKey === 'function'){ si.value = code; window.handleSellSearchKey({key:'Enter'}); si.value = ''; }
+      }
+      return;
+    }
+    if(e.ctrlKey && e.key === ']'){ if(now - last > 80) buf = ''; buf += '\u001d'; last = now; e.preventDefault(); return; } // GS belgisi
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(e.key && e.key.length === 1){ if(now - last > 80) buf = ''; buf += e.key; last = now; }
+  }, true);
+})();
+</script>
+
+<style id="desktop-v8">
+/* ===== v8: KOMPYUTER (>=1100px) — chap yon panel, keng kontent, qulay jadval/kartalar ===== */
+@media (min-width:1100px){
+  :root{--sb-w:244px;--sb-w-c:68px}
+  #app{display:block}
+  body.has-sidebar #app>nav{position:fixed;left:0;top:0;bottom:0;width:var(--sb-w);flex-direction:column;align-items:stretch;gap:.35rem;padding:.9rem .7rem!important;min-height:100vh!important;overflow-y:auto;overflow-x:hidden;z-index:120;transition:width .2s ease}
+  body.has-sidebar #app>nav .logo{font-size:17px;padding:.25rem .4rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:.35rem}
+  body.has-sidebar #nav-admin,body.has-sidebar #nav-seller{flex-direction:column!important;gap:2px!important;flex-wrap:nowrap!important;overflow:visible!important}
+  body.has-sidebar #app>nav button.tab{width:100%;text-align:left;justify-content:flex-start;padding:.62rem .8rem;border-radius:10px;font-size:13.5px;white-space:nowrap;border:0;transition:background .15s,transform .15s}
+  body.has-sidebar #app>nav button.tab:hover{background:rgba(255,255,255,.09);transform:translateX(2px)}
+  body.has-sidebar #app>nav button.tab.active{background:linear-gradient(90deg,#1f9d77,#188564);color:#fff;box-shadow:0 4px 14px rgba(24,133,100,.35)}
+  body.has-sidebar .nav-right-tools{display:flex!important;flex-wrap:wrap;gap:.35rem;margin-top:auto;padding-top:.8rem;border-top:1px solid rgba(255,255,255,.1)}
+  body.has-sidebar #nav-more-btn{display:none!important}
+  body.has-sidebar #user-badge,body.has-sidebar .user-badge{margin:.25rem 0}
+  body.has-sidebar .page{margin-left:var(--sb-w);width:auto;max-width:none;padding:1.4rem 2rem 2rem;transition:margin .2s ease}
+  body.has-sidebar.sb-collapsed #app>nav{width:var(--sb-w-c)}
+  body.has-sidebar.sb-collapsed .page{margin-left:var(--sb-w-c)}
+  body.has-sidebar.sb-collapsed #app>nav button.tab{font-size:0;padding:.62rem 0;text-align:center}
+  body.has-sidebar.sb-collapsed #app>nav button.tab::first-letter{font-size:18px}
+  body.has-sidebar.sb-collapsed #app>nav .logo span,body.has-sidebar.sb-collapsed #nav-clock{display:none}
+  body.has-sidebar.sb-collapsed .nav-right-tools{justify-content:center}
+  #sb-toggle{display:flex;align-items:center;justify-content:center;width:100%;margin-top:.3rem;padding:.4rem;border-radius:8px;border:1px dashed rgba(255,255,255,.2);background:transparent;color:#9fb3ac;cursor:pointer;font-size:12px}
+  #sb-toggle:hover{color:#fff;border-color:rgba(255,255,255,.45)}
+  /* kartalar va jadvallar */
+  .page table{border-collapse:separate;border-spacing:0}
+  .page thead th{position:sticky;top:0;z-index:5;backdrop-filter:blur(6px)}
+  .page tbody tr{transition:background .12s}
+  .page tbody tr:hover{background:rgba(24,133,100,.07)}
+  .stat-card,.card{transition:transform .15s,box-shadow .15s}
+  .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.1)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(120,140,135,.45);border-radius:10px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(120,140,135,.75);background-clip:content-box}
+  :focus-visible{outline:2px solid #1f9d77;outline-offset:2px}
+}
+@media (max-width:1099px){ #sb-toggle{display:none} }
+@media print{ #sb-toggle{display:none} body.has-sidebar .page{margin-left:0!important} }
+@media (min-width:1100px){
+  .modal{max-width:640px}
+  .modal-overlay{backdrop-filter:blur(3px)}
+  #dash-grid{grid-template-columns:1.5fr 1fr!important;gap:1.25rem!important}
+  .section-header{position:sticky;top:0;z-index:20;padding:.35rem 0 .6rem;background:var(--bg,transparent)}
+  .tbl-wrap{max-height:calc(100vh - 260px);overflow:auto;border-radius:12px}
+  .btn{transition:transform .12s,box-shadow .12s,filter .12s}
+  .btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  body.has-sidebar #app>nav button.tab[data-k]::after{content:attr(data-k);margin-left:auto;font-size:10.5px;opacity:.45;border:1px solid currentColor;border-radius:5px;padding:0 5px;line-height:16px}
+  body.has-sidebar.sb-collapsed #app>nav button.tab[data-k]::after{display:none}
+  body.dark .page tbody tr:hover{background:rgba(31,157,119,.14)}
+}
+@media (min-width:1700px){ body.has-sidebar .page{padding:1.6rem 3rem 2.5rem} }
+</style>
+
+<script id="desktop-v8-js">
+/* ===== v8: aqlli qidiruv + yon panel boshqaruvi + Alt+raqam navigatsiya ===== */
+(function(){
+  'use strict';
+  // Kirill -> lotin, apostrof va diakritiklarni tenglashtirish (Uzbek: o', g', sh, ch)
+  const CYR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'j',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'x',ц:'s',ч:'ch',ш:'sh',щ:'sh',ъ:'',ы:'i',ь:'',э:'e',ю:'yu',я:'ya',ў:'o',қ:'q',ғ:'g',ҳ:'h'};
+  function norm(t){
+    return String(t==null?'':t).toLowerCase()
+      .replace(/[а-яёўқғҳ]/g,c=>CYR[c]!==undefined?CYR[c]:c)
+      .replace(/[ʻʼ’‘`´']/g,'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/\s+/g,' ').trim();
+  }
+  // Tartiblangan qidiruv: barcha so'zlar mos bo'lishi shart (AND); ball: aniq > boshidan > so'z boshi > ichida
+  window.smartSearchProducts=function(list,q){
+    const nq=norm(q); if(!nq) return list.slice();
+    const toks=nq.split(' ');
+    const out=[];
+    for(const p of list){
+      const nn=norm(p&&p.name); if(!nn) continue;
+      let score=0, ok=true;
+      for(const t of toks){
+        if(nn===t) score+=100;
+        else if(nn.startsWith(t)) score+=60;
+        else if((' '+nn).includes(' '+t)) score+=40;
+        else if(nn.includes(t)) score+=20;
+        else { ok=false; break; }
+      }
+      if(ok){ if((p.stock||0)>0) score+=3; out.push({p,score}); }
+    }
+    out.sort((a,b)=>b.score-a.score||String(a.p.name).length-String(b.p.name).length);
+    return out.map(x=>x.p);
+  };
+
+  window.smartTextMatch=function(text,q){
+    const nt=norm(text), toks=norm(q).split(' ').filter(Boolean);
+    return !!nt && toks.every(function(t){ return nt.includes(t); });
+  };
+  function isDesktop(){ return window.matchMedia('(min-width:1100px)').matches; }
+  function setup(){
+    const app=document.getElementById('app'); if(!app) return;
+    const nav=app.querySelector(':scope>nav'); if(!nav) return;
+    document.body.classList.add('has-sidebar');
+    try{ if(localStorage.getItem('sb-collapsed')==='1') document.body.classList.add('sb-collapsed'); }catch(e){}
+    if(!document.getElementById('sb-toggle')){
+      const b=document.createElement('button'); b.id='sb-toggle'; b.type='button';
+      b.title='Panelni yig\'ish / ochish (Ctrl+B)'; b.textContent='◀ Yig\'ish';
+      b.onclick=toggle; nav.appendChild(b);
+    }
+  }
+  function toggle(){
+    const c=document.body.classList.toggle('sb-collapsed');
+    try{ localStorage.setItem('sb-collapsed',c?'1':'0'); }catch(e){}
+    const b=document.getElementById('sb-toggle'); if(b) b.textContent=c?'▶':'◀ Yig\'ish';
+  }
+  // F2 — sotuv sahifasiga o'tib, qidiruv maydoniga fokus
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='F2'||e.ctrlKey||e.altKey||e.metaKey||!window.currentRole) return;
+    e.preventDefault();
+    try{ if(typeof window.showPage==='function') window.showPage('sell',window.currentRole==='admin'?'admin':'seller'); }catch(_){}
+    setTimeout(function(){ const i=document.getElementById('sell-search'); if(i){ i.focus(); i.select(); } },60);
+  });
+  // Alt+1..9 — ko'rinib turgan sahifa tugmalariga o'tish; Ctrl+B — panel
+  document.addEventListener('keydown',function(e){
+    const tag=(e.target&&e.target.tagName||'').toLowerCase();
+    const typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='b'&&isDesktop()){ e.preventDefault(); toggle(); return; }
+    if(e.altKey&&!e.ctrlKey&&!e.metaKey&&!typing&&/^[1-9]$/.test(e.key)){
+      const tabs=[...document.querySelectorAll('#nav-admin:not([style*="display:none"]) .tab, #nav-seller:not([style*="display:none"]) .tab')].filter(t=>t.offsetParent!==null);
+      const t=tabs[Number(e.key)-1]; if(t){ e.preventDefault(); t.click(); }
+    }
+  });
+  function labelTabs(){
+    ['nav-admin','nav-seller'].forEach(function(id){
+      const box=document.getElementById(id); if(!box) return;
+      [...box.querySelectorAll('.tab')].forEach(function(t,i){ if(i<9){ t.setAttribute('data-k','Alt+'+(i+1)); } t.title=t.textContent.replace(/\s+/g,' ').trim(); });
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setup(); labelTabs(); }); else { setup(); labelTabs(); }
 })();
 </script>
 </body>

@@ -4,26 +4,55 @@
       "collectionGroup": "debtors",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "org", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
+        {
+          "fieldPath": "org",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "debts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "org", "order": "ASCENDING" },
-        { "fieldPath": "paid", "order": "ASCENDING" }
+        {
+          "fieldPath": "org",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paid",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "debts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "debtorId", "order": "ASCENDING" },
-        { "fieldPath": "paid", "order": "ASCENDING" }
+        {
+          "fieldPath": "debtorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paid",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "products",
+      "fieldPath": "soldCodes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "products",
+      "fieldPath": "serialCodes",
+      "indexes": []
+    }
+  ]
 }
