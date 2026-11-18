@@ -65,7 +65,7 @@ async function buildAdminPayload(db, settings) {
   //  - Statistika (kunlik grafik + oy/oy solishtiruv) uchun oxirgi ~70
   //    kunlik yozuvlar yetarli (eng uzun holat: oy boshi bilan oldingi
   //    oyni solishtirish, bu 62 kungacha borishi mumkin — 70 kun bilan
-  //    xavfsiz zахира qoldirilgan).
+  //    xavfsiz zaxira qoldirilgan).
   const statsFromDate = (() => { const d0 = new Date(); d0.setDate(d0.getDate() - 70); return d0.toISOString().slice(0, 10); })();
 
   const [unpaidDebtsSnap, recentDebtsSnap, productsSnap, recentSalesSnap, debtorsSnap, customersSnap] = await Promise.all([

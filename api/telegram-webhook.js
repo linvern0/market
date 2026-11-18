@@ -32,6 +32,7 @@ const { computeCustomerTier, getCoinSettings, productCoinCost, isCoinEnabled } =
 // shunda bot va Mini App bir xil qoidalar bilan ishlaydi.
 const { hasPermission } = require('./_permissions');
 const { logAction } = require('./_audit');
+const R = require('./_bot-reports');
 
 let firebaseApp = null;
 function getDb() { return require('./_firebase').getDb(); }
@@ -160,6 +161,9 @@ async function setCommandsForChat(token, chatId, isAdmin) {
     { command: 'statistika', description: 'Bugungi savdo hisoboti' },
     { command: 'haftalik', description: 'Haftalik hisobot' },
     { command: 'oylik', description: 'Oylik hisobot' },
+    { command: 'kassa', description: "Bugungi kassa va sotuvchilar" },
+    { command: 'sotuvlar', description: "So'nggi sotuvlar" },
+    { command: 'top_tovar', description: "Eng ko'p sotilgan tovarlar" },
     { command: 'ombor', description: "Kam qolgan/tugagan tovarlar" },
     { command: 'mahsulot', description: 'Tovar narxi va qoldig\'i' },
     { command: 'tovar_narx', description: 'Tovar narxini yangilash' },
@@ -351,6 +355,7 @@ function adminMenuKeyboard(req) {
     [{ text: '🏆 TOP qarzdorlar', callback_data: 'cmd:/top' }],
     [{ text: '📊 Bugungi', callback_data: 'cmd:/statistika' }, { text: '📆 Haftalik', callback_data: 'cmd:/haftalik' }, { text: '🗓 Oylik', callback_data: 'cmd:/oylik' }],
     [{ text: '📦 Ombor holati', callback_data: 'cmd:/ombor' }, { text: '📄 Export (CSV)', callback_data: 'cmd:/export' }],
+    [{ text: '💵 Kassa', callback_data: 'cmd:/kassa' }, { text: '🧾 Sotuvlar', callback_data: 'cmd:/sotuvlar' }, { text: '🏆 TOP tovar', callback_data: 'cmd:/top_tovar' }],
     [{ text: '👤 Adminlar', callback_data: 'cmd:/adminlar' }],
   ];
   const mini = miniAppKeyboard(req, true);
@@ -407,6 +412,9 @@ function helpText(isAdmin) {
       `/haftalik — oxirgi 7 kunlik hisobot\n` +
       `/oylik — joriy oy hisoboti\n` +
       `/top — eng katta 10 ta qarzdor (tezkor to'lov tugmasi bilan)\n` +
+      `/kassa — bugungi kassa: naqd/nasiya, foyda, sotuvchilar kesimi\n` +
+      `/sotuvlar — bugungi so'nggi 10 ta chek\n` +
+      `/top_tovar [7|30] — eng ko'p sotilgan tovarlar\n` +
       `/ombor — kam qolgan/tugagan tovarlar\n` +
       `/mahsulot &lt;nom&gt; — tovar narxi va qoldig'ini ko'rish\n` +
       `/tovar_narx &lt;nom&gt; &lt;yangi narx&gt; — tovar narxini yangilash\n` +
@@ -1107,6 +1115,8 @@ async function handleCustomerPaymentHistory(db, token, chatId, req) {
 async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, argStr, kb, req) {
   const settingsData0 = await getSettings(db);
   const shopName = settingsData0?.shopName || "Do'kon";
+  // v8: 30 kunlik tugma ham /top_tovar sozlamasiga (yoqish/o'chirish) bo'ysunadi
+  if (cmd === '/top_tovar30') { cmd = '/top_tovar'; argStr = '30'; }
 
   // YANGI: admin panelidan o'chirilgan buyruqlar bu yerda to'xtatiladi.
   if (!isTelegramCommandEnabled(settingsData0, cmd)) {
@@ -1315,37 +1325,22 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
   }
 
   if (cmd === '/statistika' || cmd === '/haftalik' || cmd === '/oylik') {
-    const now = new Date();
-    let fromStr, prevFromStr, prevToStr, label;
-    if (cmd === '/statistika') {
-      fromStr = now.toISOString().slice(0, 10); label = 'Bugungi hisobot';
-      const y = new Date(now); y.setDate(y.getDate() - 1);
-      prevFromStr = y.toISOString().slice(0, 10); prevToStr = prevFromStr;
-    } else if (cmd === '/haftalik') {
-      const from = new Date(now); from.setDate(from.getDate() - 6); fromStr = from.toISOString().slice(0, 10); label = "Oxirgi 7 kunlik hisobot";
-      const pf = new Date(now); pf.setDate(pf.getDate() - 13); prevFromStr = pf.toISOString().slice(0, 10);
-      const pt = new Date(now); pt.setDate(pt.getDate() - 7); prevToStr = pt.toISOString().slice(0, 10);
-    } else {
-      fromStr = now.toISOString().slice(0, 8) + '01'; label = "Joriy oy hisoboti";
-      const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      prevFromStr = pm.toISOString().slice(0, 10);
-      prevToStr = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-    }
-    // TEZLASHTIRISH: butun savdo/qarz tarixini o'qish o'rniga, faqat shu
-    // hisobot uchun kerakli sana oralig'i (joriy + solishtiriladigan
-    // oldingi davr) o'qiladi — bu tarix yillar davomida to'plansa ham
-    // hisobot tezligini bir xil saqlaydi.
+    // v8: sanalar do'kon vaqt zonasida (avval UTC edi — tungi savdolar noto'g'ri kunga tushardi)
+    const tz = R.safeTz(settingsData0 && settingsData0.timezone);
+    const range = R.periodRange(cmd === '/statistika' ? 'day' : cmd === '/haftalik' ? 'week' : 'month', tz);
+    const { from: fromStr, prevFrom: prevFromStr, prevTo: prevToStr, label } = range;
+    // Zona farqi uchun so'rovni 1 kun oldindan boshlaymiz, so'ng zona bo'yicha filtrlaymiz.
     const [salesSnap, debtsSnap] = await Promise.all([
-      db.collection('sales').where('date', '>=', prevFromStr).get(),
-      db.collection('debts').where('date', '>=', fromStr).get(),
+      db.collection('sales').where('date', '>=', R.addDays(prevFromStr, -1)).get(),
+      db.collection('debts').where('date', '>=', R.addDays(fromStr, -1)).get(),
     ]);
     const allSales = salesSnap.docs.map((d) => d.data()).filter((s) => !s.reverted);
-    const periodSales = allSales.filter((s) => (s.date || '').slice(0, 10) >= fromStr);
-    const prevSales = allSales.filter((s) => { const d = (s.date || '').slice(0, 10); return d >= prevFromStr && d <= prevToStr; });
+    const periodSales = allSales.filter((s) => R.inRange(s, fromStr, range.to, tz));
+    const prevSales = allSales.filter((s) => R.inRange(s, prevFromStr, prevToStr, tz));
     const revenue = periodSales.reduce((a, s) => a + (s.total || 0), 0);
     const profit = periodSales.reduce((a, s) => a + (s.price - (s.cost || 0)) * s.qty, 0);
     const prevRevenue = prevSales.reduce((a, s) => a + (s.total || 0), 0);
-    const newDebts = debtsSnap.docs.map((d) => d.data());
+    const newDebts = debtsSnap.docs.map((d) => d.data()).filter((d) => R.inRange(d, fromStr, range.to, tz));
     const newDebtTotal = newDebts.reduce((a, d) => a + (d.total || 0), 0);
     const avgCheck = periodSales.length ? revenue / periodSales.length : 0;
     const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -1355,7 +1350,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (prevRevenue > 0) {
       const change = ((revenue - prevRevenue) / prevRevenue) * 100;
       const arrow = change >= 0 ? '▲' : '▼';
-      const trendLabel = cmd === '/statistika' ? "kechagiga nisbatan" : cmd === '/haftalik' ? "oldingi haftaga nisbatan" : "oldingi oyga nisbatan";
+      const trendLabel = range.vs;
       trendLine = `${arrow} ${change >= 0 ? '+' : ''}${change.toFixed(1)}% (${trendLabel})\n`;
     } else if (revenue > 0) {
       trendLine = `🆕 oldingi davrda savdo bo'lmagan\n`;
@@ -1375,6 +1370,24 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
     if (periodSales.length) text += `🧮 O'rtacha chek: ${fmt(avgCheck)} so'm\n`;
     text += `📝 Yangi qarzga sotish: ${newDebts.length} ta (${fmt(newDebtTotal)} so'm)`;
     return sendMessage(token, chatId, text);
+  }
+
+  // ===== v8: YANGI HISOBOT BUYRUQLARI (do'kon vaqt zonasida) =====
+  if (cmd === '/kassa' || cmd === '/sotuvlar' || cmd === '/top_tovar') {
+    const tz = R.safeTz(settingsData0 && settingsData0.timezone);
+    const today = R.todayStr(tz);
+    if (cmd === '/top_tovar') {
+      const days = /^\s*30\b/.test(argStr || '') ? 30 : 7;
+      const from = R.addDays(today, -(days - 1));
+      const snap = await db.collection('sales').where('date', '>=', R.addDays(from, -1)).get();
+      const rows = snap.docs.map((d) => d.data()).filter((x) => !x.reverted && R.inRange(x, from, today, tz));
+      const kbTop = { inline_keyboard: [[{ text: days === 7 ? '✅ 7 kun' : '7 kun', callback_data: 'cmd:/top_tovar' }, { text: days === 30 ? '✅ 30 kun' : '30 kun', callback_data: 'cmd:/top_tovar30' }]] };
+      return sendMessage(token, chatId, R.topProductsText(R.topProducts(rows, 10), days, shopName), { reply_markup: kbTop });
+    }
+    const snap = await db.collection('sales').where('date', '>=', R.addDays(today, -1)).get();
+    const rows = snap.docs.map((d) => d.data()).filter((x) => !x.reverted && R.tzDate(x.date, tz) === today);
+    if (cmd === '/kassa') return sendMessage(token, chatId, R.kassaText(R.summarizeDay(rows, today, tz), shopName, tz));
+    return sendMessage(token, chatId, R.receiptsText(R.groupReceipts(rows), shopName, tz, 10));
   }
 
   if (cmd === '/top') {
@@ -1679,7 +1692,7 @@ async function handleAdminCommand(db, token, settingsRef, admins, chatId, cmd, a
 // keladi. Admin buyruqlari uchun handleAdminCommand'ni, mijoz (qarzdor)
 // buyruqlari uchun mos handler funksiyani chaqiramiz — mantiq matn buyruq
 // bilan AYNAN bir xil, faqat ikkinchi marta yozilmaydi.
-const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/muddatlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu']);
+const ADMIN_MENU_COMMANDS = new Set(['/qarzlar', '/muddatlar', '/top', '/statistika', '/haftalik', '/oylik', '/ombor', '/export', '/adminlar', '/menu', '/kassa', '/sotuvlar', '/top_tovar', '/top_tovar30']);
 const DEBTOR_MENU_COMMANDS = new Set(['/qarzim', '/tarix', '/ballarim', '/coinlarim']);
 
 // ============ YANGI: MIJOZ BUYURTMASI — TASDIQLASH / BEKOR QILISH ============
@@ -2204,7 +2217,8 @@ async function processUpdate(db, token, settingsRef, admins, sellers, upd, req, 
 
   if (text.startsWith('/')) {
     const spaceIdx = text.indexOf(' ');
-    const cmd = (spaceIdx === -1 ? text : text.slice(0, spaceIdx)).toLowerCase();
+    // v8: guruhlarda keladigan "/kassa@bot_nomi" shaklini ham taniymiz
+    const cmd = (spaceIdx === -1 ? text : text.slice(0, spaceIdx)).toLowerCase().replace(/@[a-z0-9_]+$/, '');
     const argStr = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1);
     if (!isAdmin) { await sendMessage(token, chatId, "Bu buyruq faqat do'kon adminlari uchun. /start yozib ro'yxatdan o'ting yoki /qarzim orqali qarzingizni ko'ring."); return; }
     try {
