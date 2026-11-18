@@ -5,8 +5,8 @@
 // allaqachon ilova ichida `persistentLocalCache` orqali offline saqlanadi.
 // Bu service worker faqat statik fayllarga tegishli.
 
-const CACHE_VERSION = 'dokon-shell-v8';
-const RUNTIME_CACHE = 'dokon-runtime-v8';
+const CACHE_VERSION = 'dokon-shell-v6';
+const RUNTIME_CACHE = 'dokon-runtime-v6';
 const MAX_RUNTIME_ENTRIES = 80;
 
 const SHELL_FILES = [

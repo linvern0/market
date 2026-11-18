@@ -53,6 +53,16 @@
       "collectionGroup": "products",
       "fieldPath": "serialCodes",
       "indexes": []
+    },
+    {
+      "collectionGroup": "products",
+      "fieldPath": "voidCodes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "products",
+      "fieldPath": "codeBatches",
+      "indexes": []
     }
   ]
 }

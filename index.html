@@ -1043,6 +1043,404 @@
     .page{animation:none!important}
   }
 </style>
+
+
+
+<style id="design-v9-polish">
+/* v9: komponentlar sayqali — jadval, tugma, forma, modal, statistika, fokus. Hamma ekranda, desktopda kuchliroq. */
+:root{--r-sm:8px;--r-md:12px;--r-lg:16px;--ring:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent);--line:color-mix(in srgb,var(--border) 85%,transparent)}
+:focus-visible{outline:2px solid var(--accent2);outline-offset:2px;border-radius:6px}
+::selection{background:color-mix(in srgb,var(--accent) 25%,transparent)}
+/* tugmalar */
+.btn{font-weight:600;letter-spacing:0;transition:background .15s,border-color .15s,box-shadow .15s,transform .1s}
+.btn:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.btn:active{transform:translateY(1px)}
+.btn.blue:hover{background:color-mix(in srgb,var(--accent) 88%,#000)}
+.btn.sm{padding:.4rem .75rem;font-size:12.5px;min-height:34px;border-radius:var(--r-sm)}
+/* forma */
+input,select,textarea{font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus,#stat-period:focus{border-color:var(--accent);box-shadow:var(--ring)}
+.field label{font-size:12.5px;color:var(--text2)}
+/* jadval */
+.tbl-wrap{border-radius:var(--r-md);border-color:var(--line);background:var(--surface);box-shadow:var(--shadow)}
+th{position:sticky;top:0;z-index:1;font-size:12px;font-weight:600;color:var(--text3);padding:.7rem 1rem;white-space:nowrap}
+td{padding:.75rem 1rem;border-bottom-color:var(--line)}
+tbody tr{transition:background .12s}
+tr:hover td{background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+body.dark tr:hover td{background:var(--surface2)}
+td:last-child,th:last-child{padding-right:1.25rem}
+.badge{font-size:11.5px;padding:3px 10px}
+/* kartalar va statistika */
+.card{border:1px solid var(--line);box-shadow:var(--shadow);background:var(--surface)}
+.card h3{letter-spacing:-.01em}
+.stat{border:1px solid var(--line);box-shadow:var(--shadow);position:relative;overflow:hidden;transition:box-shadow .2s,border-color .2s}
+.stat::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--accent2);opacity:.9}
+.stat:hover{border-color:var(--border2);box-shadow:var(--shadow-lg)}
+.stat .val{font-size:28px;letter-spacing:-.02em;line-height:1.15}
+.stat .lbl{font-size:12.5px}
+/* modal */
+.modal-overlay{background:rgba(8,22,18,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.modal{border-radius:var(--r-lg);box-shadow:var(--shadow-lg);border:1px solid var(--line)}
+.modal h3{font-size:19px;letter-spacing:-.01em;padding-bottom:.85rem;border-bottom:1px solid var(--line)}
+.modal-footer{padding-top:1rem;border-top:1px solid var(--line)}
+/* kirish oynasi */
+.login-card{border-radius:var(--r-lg);border:1px solid var(--line)}
+/* bo'sh holat va scroll */
+*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+@media (min-width:1025px){
+  .section-header{padding-bottom:1rem;border-bottom:1px solid var(--line);margin-bottom:1.5rem}
+  .section-header>div:last-child .btn,.section-header>div:last-child select{height:36px}
+  .section-header p{color:var(--text3);font-size:13.5px;margin-top:.2rem}
+  .tbl-wrap{max-height:calc(100vh - 230px);overflow:auto}
+  .stat-grid{margin-bottom:1.25rem}
+  .card{margin-bottom:0}
+  .modal{max-width:min(560px,92vw)}
+  .modal.wide,.modal[style*="max-width"]{max-width:revert-layer}
+  nav .nav-right-tools .btn{font-size:15px}
+  nav button.tab{transition:background .15s,color .15s}
+  #nav-admin::before,#nav-seller::before{content:"";display:block}
+}
+/* Katta ekran: kontentni juda cho'zib yubormaslik */
+@media (min-width:1700px){.page>*{max-width:1640px}.page{padding-left:3rem;padding-right:3rem}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media print{#nav-admin,#nav-seller,nav,#mobile-tabbar{display:none!important}.page{margin:0!important;width:100%!important;padding:0!important}}
+</style>
+
+
+
+<style id="design-v10-buttons">
+.btn::before,.btn::after{display:none!important}
+.btn.blue{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}
+.btn.amber{background:var(--amber)!important;border-color:var(--amber)!important;color:#fff!important}
+.btn.green{background:var(--green)!important;border-color:var(--green)!important;color:#fff!important}
+.btn.red{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important}
+.btn.blue,.btn.amber,.btn.green,.btn.red{background-image:none!important;box-shadow:0 1px 2px rgba(0,0,0,.12)!important}
+</style>
+<style id="design-v12-bottom-menu">
+/* v12: yagona menyu — pastki panel (hamma ekranda). Yuqoridagi tab-qator va chap panel o'chirilgan. */
+#nav-admin,#nav-seller{display:none!important}
+/* Kirish sahifasida hech qanday menyu/suzuvchi tugma ko'rinmasin */
+body:not(.in-app) #mobile-tabbar,body:not(.in-app) #mobile-more-menu,body:not(.in-app) #mobile-more-overlay,
+body:not(.in-app) #nav-more-menu,body:not(.in-app) #sticky-cart,body:not(.in-app) #scroll-top-btn{display:none!important}
+body.in-app #mobile-tabbar{display:flex!important}
+body.in-app .page{padding-bottom:96px}
+body.role-seller #mtab-sell{order:1}body.role-seller #mtab-my-sales{order:2}body.role-seller #mtab-debts{order:3}
+@media (min-width:769px){
+  body.in-app #mobile-tabbar{left:50%;right:auto;transform:translateX(-50%);bottom:16px;width:max-content;min-width:360px;max-width:calc(100vw - 32px);height:68px;padding:0 10px;gap:6px;border:1px solid rgba(255,255,255,.12)!important;border-radius:20px;background:rgba(14,43,38,.95)!important;box-shadow:0 14px 34px rgba(0,0,0,.3);align-items:center}
+  body.in-app #mobile-tabbar button{flex:0 0 auto;min-width:96px;height:52px;padding:0 14px;border-radius:14px;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12.5px;color:#a9bdb6;transition:background .15s,color .15s}
+  body.in-app #mobile-tabbar button .tab-icon{font-size:19px;line-height:1}
+  body.in-app #mobile-tabbar button:hover{background:rgba(255,255,255,.08);color:#fff}
+  body.in-app #mobile-tabbar button.active{background:#1b4a40;color:#d9b25c}
+  body.in-app #mobile-tabbar button.active::before{display:none}
+  #mobile-more-menu{bottom:100px;width:min(560px,94vw)}
+  #mobile-more-menu:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  #mobile-more-menu button{font-size:14.5px}
+  body.in-app #sticky-cart{bottom:96px}
+  body.in-app #scroll-top-btn{bottom:100px!important}
+}
+@media (min-width:1025px){
+  .page{margin:0 auto;max-width:1560px;padding:1.5rem 2rem 110px}
+  body.role-admin #nav-more-btn{display:flex!important;align-items:center;justify-content:center}
+  body.nav-compact .nav-right-tools{display:flex!important}
+  body.in-app #mobile-tabbar{min-width:440px}
+}
+</style>
+<script>
+(function(){
+  var BIZ=['nav-more-business-sep','nav-more-suppliers-btn','nav-more-customers-btn','nav-more-promotions-btn'];
+  function sync(){
+    var app=document.getElementById('app'),b=document.body,r=window.currentRole;
+    var inApp=!!app&&app.style.display!=='none'&&!!r;
+    b.classList.toggle('in-app',inApp);
+    b.classList.toggle('role-admin',inApp&&r==='admin');
+    b.classList.toggle('role-seller',inApp&&r==='seller');
+    if(window.innerWidth>=1025)b.classList.remove('nav-compact');
+    if(!inApp){['mobile-more-menu','mobile-more-overlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.add('hidden');});}
+    if(r!=='admin'){BIZ.forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});}
+    if(window.logout&&!window.logout.__v12){var o=window.logout;window.logout=function(){var x=o.apply(this,arguments);sync();return x;};window.logout.__v12=1;}
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    sync();
+    var mo=new MutationObserver(sync);
+    ['app','login-page'].forEach(function(id){var e=document.getElementById(id);if(e)mo.observe(e,{attributes:true,attributeFilter:['style']});});
+    setInterval(sync,500);window.addEventListener('resize',sync);
+  });
+})();
+</script>
+
+<script id="design-v14-currency">
+/* v14: "Valyuta belgisi" sozlamasi (Sozlamalar → Rekvizitlar) endi butun interfeysda ishlaydi.
+   Standart "so'm" yozuvlari tanlangan belgi bilan almashtiriladi (kiritish maydonlariga tegmaydi). */
+(function(){
+  var DEF="so'm", last=null, busy=false;
+  function sym(){ return (window.DB && window.DB.currencySymbol) || DEF; }
+  function skip(n){ var p=n.parentNode; if(!p) return true; var t=p.nodeName; return t==='SCRIPT'||t==='STYLE'||t==='TEXTAREA'||t==='INPUT'||t==='OPTION'&&false||(p.isContentEditable===true); }
+  function swap(root){
+    var s=sym(); if(s===DEF||s.indexOf(DEF)!==-1||!root) return;
+    var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n,list=[];
+    while((n=w.nextNode())) if(n.nodeValue.indexOf(DEF)!==-1 && !skip(n)) list.push(n);
+    busy=true; list.forEach(function(x){ x.nodeValue=x.nodeValue.split(DEF).join(s); }); busy=false;
+  }
+  function start(){
+    var mo=new MutationObserver(function(ms){
+      if(busy||sym()===DEF) return;
+      ms.forEach(function(m){
+        if(m.type==='characterData'){ swap(m.target.parentNode); }
+        else m.addedNodes.forEach(function(a){ if(a.nodeType===1) swap(a); else if(a.nodeType===3) swap(a.parentNode); });
+      });
+    });
+    mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+    setInterval(function(){ var s=sym(); if(s!==last){ last=s; swap(document.body); } },800);
+  }
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+</script>
+
+<script id="design-v15-settings-center">
+/* v15: Sozlamalar markazi — (1) Sozlamalar salomatligi (xavfsizlik/to'liqlik tekshiruvi, "Tuzatish" tugmalari),
+   (2) Sozlamalarni JSON ko'rinishida eksport/import (PIN, token va sirlarsiz). */
+(function(){
+  var SAFE_KEYS=['shopName','shopLogo','shopAddress','shopPhone','workHours','receiptFooter','currencySymbol','maxDiscountPercent','overdueDaysGlobal','revertMinutes','lowStockThreshold','autoLockMinutes','brandAccent1','brandAccent2','appTitle','saleReceiptDesign','receiptDesign','receiptLinks','labelSettings','labelTemplates','workSchedule','dailyGoal','defaultCreditLimit','debtReminderOffsets','voiceAnnounceEnabled','voiceAnnounceTemplate','voiceLang','voiceName','voiceRate','voicePitch','voiceVolume','toastPosition','toastSeconds','animSpeed','uiSoundEnabled','uiSoundVolume','uiVibrationEnabled','telegramTplDaily','telegramTplLowstock','telegramTplNewDebt','telegramTplNewDebtAdmin','telegramTplOverdue','telegramTplPayment','telegramTplPaymentAdmin','telegramNotifyNewDebt','telegramNotifyPayment','telegramNotifyOverdueDebts','telegramNotifyLowStock','telegramQuietFrom','telegramQuietTo','telegramWelcomeText','telegramDebtorGenericWord','telegramDebtorNameStyle','telegramDebtIncludeItems','telegramCommandsConfig','miniAppSectionsConfig','restrictedAdminPermissions','receiptQrMode','backupReminderDays','coinEnabled','coinSettings','loyaltyTiers'];
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  function $(id){return document.getElementById(id)}
+  function T(m,t){ try{ if(typeof window.toast==='function') window.toast(m,t||'green'); }catch(e){} }
+
+  // ---------- 1) SALOMATLIK TEKSHIRUVI ----------
+  window.computeSettingsHealth=function(){
+    var D=window.DB||{}, issues=[], pins=D.pins||{};
+    var add=function(level,title,hint,card){ issues.push({level:level,title:title,hint:hint,card:card}); };
+    var weak=function(p){ return !p||/^(\d)\1{3}$/.test(p)||['1234','4321','0123','1111','0000','1212','2580','5678'].indexOf(p)!==-1; };
+    if(weak(pins.admin)) add('high',"Admin PIN oson topiladi","1234 kabi standart yoki oddiy PIN. Yangi, murakkabroq PIN qo'ying.",'settings-pin-card');
+    if(D.restrictedAdminPin && D.restrictedAdminPin===pins.admin) add('high',"Cheklangan admin PIN i bosh admin PIN bilan bir xil","Cheklov ishlamaydi — farqli PIN qo'ying.",'restricted-admin-card');
+    var sellers=D.sellers||[];
+    if(sellers.some(function(s){return s&&weak(s.pin)})) add('mid',"Ba'zi sotuvchilarning PIN i oson","Standart/takrorlanuvchi PIN lar xavfli — har biriga alohida PIN bering.",'settings-sellers-card');
+    if(sellers.some(function(s){return s&&s.pin&&s.pin===pins.admin})) add('high',"Sotuvchi PIN i admin PIN bilan bir xil","Sotuvchi admin sifatida kira olishi mumkin.",'settings-sellers-card');
+    if(!(D.autoLockMinutes>0)) add('mid',"Avtomatik qulflash o'chiq","Kassa ochiq qolsa, begona odam ishlata oladi. 5–10 daqiqa tavsiya etiladi.",'settings-autolock-card');
+    if(!D.shopName || D.shopName==="Do'kon") add('low',"Do'kon nomi kiritilmagan","Chek va xabarlarda standart nom chiqadi.",'settings-shopname-card');
+    if(!(D.shopPhone||'').trim() && !(D.shopAddress||'').trim()) add('low',"Manzil va telefon kiritilmagan","Chekda aloqa ma'lumoti chiqmaydi.",'settings-business-card');
+    if(!(D.telegramBotToken||'').trim()) add('low',"Telegram bot ulanmagan","Qarz eslatmalari, kassa hisobotlari va Mini App ishlamaydi.",'settings-telegram-card');
+    else if(D.receiptQrMode==='coin' && !(D.telegramBotUsername||'').trim()) add('mid',"QR \"Coin\" rejimi tanlangan, lekin bot username yo'q","Chekdagi QR ishlamaydi.",'settings-telegram-card');
+    var sr=D.saleReceiptDesign||{};
+    if(sr.showQr && D.receiptQrMode==='none') add('low',"Chekda QR yoqilgan, lekin QR rejimi \"o'chiq\"","Chekda QR chiqmaydi.",'settings-salereceipt-card');
+    var order={high:0,mid:1,low:2}; issues.sort(function(a,b){return order[a.level]-order[b.level]});
+    var pen={high:25,mid:12,low:5}, score=100; issues.forEach(function(i){score-=pen[i.level]}); score=Math.max(0,score);
+    return {score:score,issues:issues};
+  };
+  window.jumpToSettingsCard=function(id){
+    try{ window._settingsActiveGroup='all'; if(window.renderSettingsGroupChips) window.renderSettingsGroupChips(); var si=$('settings-search-input'); if(si) si.value=''; if(window.filterSettingsCards) window.filterSettingsCards(''); }catch(e){}
+    var c=$(id); if(!c) return; c.style.display='';
+    c.scrollIntoView({behavior:'smooth',block:'start'});
+    c.style.transition='box-shadow .3s'; c.style.boxShadow='0 0 0 3px var(--accent2,#d9b25c)';
+    setTimeout(function(){ c.style.boxShadow=''; },1800);
+  };
+  var lastSig='';
+  window.renderSettingsHealth=function(force){
+    var box=$('settings-health-body'); if(!box) return;
+    var h=window.computeSettingsHealth(), sig=JSON.stringify(h.issues.map(function(i){return i.title}));
+    if(!force && sig===lastSig) return; lastSig=sig;
+    var col=h.score>=85?'var(--green,#16a34a)':h.score>=60?'var(--amber,#d97706)':'var(--red,#dc2626)';
+    var lv={high:['🔴','Muhim'],mid:['🟠',"O'rta"],low:['🟡','Tavsiya']};
+    box.innerHTML='<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem"><div style="font-size:30px;font-weight:800;color:'+col+'" id="settings-health-score">'+h.score+'</div><div style="font-size:13px;color:var(--text3)">/ 100 — '+(h.issues.length?h.issues.length+' ta e\'tibor talab qiladigan sozlama':'barcha asosiy sozlamalar joyida ✅')+'</div></div>'+
+      h.issues.map(function(i){return '<div class="settings-health-row" style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:.5rem .7rem;margin-bottom:.4rem"><div style="min-width:0"><div style="font-size:13.5px;font-weight:600">'+lv[i.level][0]+' '+esc(i.title)+'</div><div style="font-size:12px;color:var(--text3)">'+esc(i.hint)+'</div></div><button class="btn sm" type="button" onclick="jumpToSettingsCard(\''+i.card+'\')">Tuzatish →</button></div>'}).join('');
+  };
+
+  // ---------- 2) EKSPORT / IMPORT ----------
+  window.exportSettingsJSON=function(){
+    var D=window.DB||{}, out={};
+    SAFE_KEYS.forEach(function(k){ if(D[k]!==undefined && D[k]!==null) out[k]=D[k]; });
+    return JSON.stringify({format:'dokon-settings',version:1,exportedAt:new Date().toISOString(),settings:out},null,2);
+  };
+  window.downloadSettingsJSON=function(){
+    var txt=window.exportSettingsJSON(), blob=new Blob([txt],{type:'application/json'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='dokon-sozlamalar-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+    T("✓ Sozlamalar fayli yuklab olindi (PIN va tokenlar kiritilmagan)");
+  };
+  window.importSettingsFromText=function(text,opts){
+    var data; try{ data=JSON.parse(text); }catch(e){ T("Fayl noto'g'ri (JSON o'qilmadi)",'red'); return {ok:false}; }
+    if(!data || data.format!=='dokon-settings' || !data.settings || typeof data.settings!=='object'){ T("Bu Do'kon sozlamalari fayli emas",'red'); return {ok:false}; }
+    var D=window.DB, applied=[], skipped=[];
+    Object.keys(data.settings).forEach(function(k){
+      if(SAFE_KEYS.indexOf(k)===-1){ skipped.push(k); return; }
+      var nv=data.settings[k], cur=D[k];
+      if(cur!==undefined && cur!==null && nv!==null && typeof nv!==typeof cur){ skipped.push(k); return; }
+      if(Array.isArray(cur)!==Array.isArray(nv) && cur!==undefined && cur!==null){ skipped.push(k); return; }
+      applied.push(k);
+    });
+    var doApply=function(){
+      applied.forEach(function(k){ D[k]=data.settings[k]; });
+      Promise.resolve(window.fbSaveSettings()).then(function(){ T('✓ '+applied.length+" ta sozlama qo'llandi"); setTimeout(function(){ if(!(opts&&opts.noReload)) location.reload(); },900); }).catch(function(){ T('Saqlashda xatolik','red'); });
+    };
+    if(opts&&opts.noConfirm){ doApply(); return {ok:true,applied:applied,skipped:skipped}; }
+    if(typeof window.confirm2==='function') window.confirm2("Sozlamalarni import qilish", applied.length+" ta sozlama joriy qiymatlar ustiga yoziladi"+(skipped.length?" ("+skipped.length+" tasi o'tkazib yuboriladi)":"")+". PIN lar o'zgarmaydi. Davom etilsinmi?", doApply);
+    else if(window.confirm(applied.length+" ta sozlama qo'llansinmi?")) doApply();
+    return {ok:true,applied:applied,skipped:skipped};
+  };
+  window.importSettingsFile=function(inp){
+    var f=inp.files&&inp.files[0]; if(!f) return;
+    if(f.size>3*1024*1024){ T('Fayl juda katta','red'); inp.value=''; return; }
+    var r=new FileReader(); r.onload=function(){ window.importSettingsFromText(String(r.result)); inp.value=''; }; r.readAsText(f);
+  };
+
+  // ---------- Kartalarni sahifaga joylash ----------
+  function inject(){
+    var page=$('page-settings'); if(!page||$('settings-health-card')) return;
+    var first=page.querySelector('.card');
+    var health=document.createElement('div'); health.className='card owner-only'; health.id='settings-health-card'; health.setAttribute('data-sgroup','security'); health.style.cssText='max-width:640px;margin-top:.5rem';
+    health.innerHTML='<h3 style="font-size:16px;font-weight:700;margin-bottom:.6rem">🩺 Sozlamalar salomatligi</h3><div id="settings-health-body"></div>';
+    var io=document.createElement('div'); io.className='card owner-only'; io.id='settings-transfer-card'; io.setAttribute('data-sgroup','data'); io.style.cssText='max-width:520px;margin-top:1rem';
+    io.innerHTML='<h3 style="font-size:16px;font-weight:700;margin-bottom:.5rem">📦 Sozlamalarni eksport / import</h3><p style="font-size:13px;color:var(--text3);margin-bottom:.75rem">Barcha sozlamalarni (chek dizayni, Telegram matnlari, ish vaqti, brend va h.k.) bitta faylga saqlang yoki boshqa do\'konga ko\'chiring. <b>PIN kodlar, Telegram token va sirlar faylga kiritilmaydi.</b></p><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn sm blue" type="button" id="settings-export-btn" onclick="downloadSettingsJSON()">⬇️ Sozlamalarni yuklab olish</button><label class="btn sm" style="cursor:pointer">⬆️ Fayldan import<input type="file" accept="application/json,.json" style="display:none" id="settings-import-file" onchange="importSettingsFile(this)"></label></div>';
+    if(first) page.insertBefore(health,first); else page.appendChild(health);
+    page.appendChild(io);
+    window.renderSettingsHealth(true);
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    inject();
+    setInterval(function(){ var p=$('page-settings'); if(p&&p.classList.contains('active')) window.renderSettingsHealth(false); },1200);
+  });
+})();
+</script>
+
+<style id="design-v15-settings-grid">
+/* v15: Sozlamalar sahifasi kompyuterda ustunli to'r (avval hamma karta chapga siqilib, o'ng tomon bo'sh qolardi) */
+@media (min-width:1025px){
+  #page-settings.active{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:1.1rem;align-items:start;padding-bottom:120px}
+  #page-settings.active>.section-header,#page-settings.active>div:not(.card){grid-column:1/-1}
+  #page-settings.active>.card{max-width:none!important;width:100%;margin:0!important;box-sizing:border-box}
+  #page-settings.active>#settings-telegram-card,#page-settings.active>#settings-receiptdesign-card,#page-settings.active>#settings-schedule-card,
+  #page-settings.active>#settings-salereceipt-card,#page-settings.active>#settings-health-card{grid-column:span 2}
+}
+@media (min-width:1025px) and (max-width:1279px){
+  #page-settings.active>#settings-telegram-card,#page-settings.active>#settings-receiptdesign-card,#page-settings.active>#settings-schedule-card,
+  #page-settings.active>#settings-salereceipt-card,#page-settings.active>#settings-health-card{grid-column:1/-1}
+}
+@media (max-width:1024px){ #page-settings>.card{margin-bottom:1rem!important} }
+</style>
+<style id="design-v17-identity">
+/* v17: Do'kon — yagona dizayn tili. Issiq "qog'oz" fon, zumrad + oltin, serifli sarlavha/raqamlar. */
+:root{
+  --bg:#f5f3ec;--surface:#ffffff;--surface2:#faf8f2;--border:#e7e2d4;--border2:#d9d2bf;
+  --text:#1c2a26;--text2:#4a5a55;--text3:#7a857f;
+  --accent:#0b6b58;--accent2:#c8993a;--accent-bg:#e6f3ee;--accent-border:#b9dccf;
+  --shadow:0 1px 2px rgba(40,34,10,.05),0 6px 18px rgba(40,34,10,.05);
+  --shadow-lg:0 2px 4px rgba(40,34,10,.06),0 14px 34px rgba(40,34,10,.10);
+  --f-display:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+}
+body.dark{--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);--shadow-lg:0 2px 4px rgba(0,0,0,.35),0 14px 34px rgba(0,0,0,.35)}
+body{background:var(--bg);font-feature-settings:"tnum" 1,"cv11" 1}
+nav .logo,.section-header h2,.stat .val,.prod-price,.modal h3,.login-card h1,.login-card h2{font-family:var(--f-display)}
+.section-header h2{font-size:28px;font-weight:700;letter-spacing:-.015em}
+.section-header p{color:var(--text3)}
+td,th,.stat .val,.prod-price{font-variant-numeric:tabular-nums}
+.page.active{animation:v17-in .24s cubic-bezier(.2,.7,.3,1)}
+@keyframes v17-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+nav .nav-right-tools{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);padding:3px;border-radius:14px;gap:1px!important}
+nav .nav-right-tools .btn{background:transparent!important;border:0!important;box-shadow:none!important;min-height:32px;padding:4px 9px;border-radius:10px;color:#e9efe9}
+nav .nav-right-tools .btn:hover{background:rgba(255,255,255,.12)!important}
+nav .logo{font-size:19px;letter-spacing:-.01em}
+.stat{border-radius:16px;padding:1.1rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--border2);box-shadow:var(--shadow)}
+.stat::before{display:none!important}
+.stat.green{border-top-color:#2fa37a;background:linear-gradient(180deg,color-mix(in srgb,#2fa37a 7%,var(--surface)),var(--surface) 70%)}
+.stat.blue{border-top-color:var(--accent);background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--surface)),var(--surface) 70%)}
+.stat.amber{border-top-color:var(--accent2);background:linear-gradient(180deg,color-mix(in srgb,var(--accent2) 10%,var(--surface)),var(--surface) 70%)}
+.stat.red{border-top-color:#d6493f;background:linear-gradient(180deg,color-mix(in srgb,#d6493f 7%,var(--surface)),var(--surface) 70%)}
+.stat .val{font-size:30px;font-weight:700;letter-spacing:-.02em}
+.stat .lbl{margin-top:.2rem;font-size:12.5px;color:var(--text3)}
+.card{border-radius:16px}
+#sales-trend-chart rect{fill:var(--accent)!important;opacity:.82!important;transition:opacity .15s}
+#sales-trend-chart rect:hover{opacity:1!important}
+#sales-trend-chart rect:last-of-type{fill:var(--accent2)!important;opacity:1!important}
+#sales-trend-chart text{font-family:var(--f-display)}
+.prod-card{border-radius:18px;border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s}
+.prod-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--accent-border)}
+.prod-card .img-wrap{background:linear-gradient(135deg,var(--accent-bg),var(--surface2))}
+.prod-card .no-img{opacity:.55;filter:saturate(.7)}
+.prod-card .prod-name{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.prod-card .prod-price{font-size:19px;font-weight:700;color:var(--accent)}
+.prod-card .prod-actions .btn{background:var(--surface2)!important;color:var(--text2)!important;border:1px solid var(--border)!important;box-shadow:none!important;min-height:34px;border-radius:10px}
+.prod-card .prod-actions .btn:hover{color:#fff!important;border-color:transparent!important}
+.prod-card .prod-actions .btn.green:hover{background:#2fa37a!important}
+.prod-card .prod-actions .btn.amber:hover{background:var(--accent2)!important}
+.prod-card .prod-actions .btn.red{color:#c0392b!important}
+.prod-card .prod-actions .btn.red:hover{background:#d6493f!important;color:#fff!important}
+.prod-card .prod-actions .btn:not(.green):not(.amber):not(.red):hover{background:var(--accent)!important}
+.prod-card button.btn[onclick^="openAssignBarcode"]{background:transparent!important;border:1px dashed var(--border2)!important;color:var(--text3)!important;font-size:11.5px;min-height:28px;box-shadow:none!important}
+.prod-card button.btn[onclick^="openAssignBarcode"]:hover{color:var(--accent)!important;border-color:var(--accent)!important}
+.tbl-wrap{border-radius:16px}
+th{text-transform:none;letter-spacing:.01em;background:var(--surface2)}
+.btn{border-radius:11px}
+.badge{font-weight:600}
+@media (min-width:1025px){ .section-header{border-bottom:1px solid var(--border)} }
+</style>
+<script id="design-v17-uzdate">
+/* v17: ba'zi brauzerlarda 'uz-UZ' sana formati "2026 M10 22, Thu" bo'lib chiqardi — o'zbekcha matn bilan almashtirildi. */
+(function(){
+  var M=['yanvar','fevral','mart','aprel','may','iyun','iyul','avgust','sentyabr','oktyabr','noyabr','dekabr'];
+  var W=['yakshanba','dushanba','seshanba','chorshanba','payshanba','juma','shanba'];
+  var orig=Date.prototype.toLocaleDateString;
+  Date.prototype.toLocaleDateString=function(loc,o){
+    try{
+      if(typeof loc==='string' && loc.indexOf('uz')===0 && o && o.month==='long'){
+        var p=[]; if(o.day) p.push(this.getDate()+'-'+M[this.getMonth()]); else p.push(M[this.getMonth()]);
+        if(o.year) p[p.length-1]+=', '+this.getFullYear();
+        return (o.weekday?W[this.getDay()]+', ':'')+p.join(' ');
+      }
+    }catch(e){}
+    return orig.apply(this,arguments);
+  };
+})();
+</script>
+
+<style id="design-v17-layout-fixes">
+/* v17: filtr paneli kompyuterda qatorga sig'masdan o'ng tomonga chiqib ketardi */
+@media (min-width:1025px){
+  .filter-bar{flex-wrap:wrap!important;overflow:visible!important;row-gap:.5rem}
+  .filter-bar input[type="date"]{width:auto;min-width:150px}
+  .page .section-header>div:last-child{flex-wrap:wrap;justify-content:flex-end;row-gap:.5rem}
+}
+/* Sarlavhadagi ikkinchi darajali tugmalar tinch (neytral); asosiy amal rangli qoladi */
+.section-header .btn.green,.section-header .btn.amber{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border2)!important;box-shadow:none!important}
+.section-header .btn.green:hover,.section-header .btn.amber:hover{border-color:var(--accent)!important;color:var(--accent)!important}
+</style>
+<style id="design-v17-tables">
+table .btn.red{background:transparent!important;color:#c0392b!important;border:1px solid var(--border2)!important;box-shadow:none!important}
+table .btn.red:hover{background:#d6493f!important;color:#fff!important;border-color:transparent!important}
+.filter-bar .btn.green,.filter-bar .btn.amber{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border2)!important;box-shadow:none!important}
+.filter-bar .btn.green:hover,.filter-bar .btn.amber:hover{border-color:var(--accent)!important;color:var(--accent)!important}
+</style>
+<style id="design-v17-final">
+/* Pastki menyu: tugma kam bo'lsa (sotuvchi) o'rtaga yig'iladi */
+body.in-app #mobile-tabbar{min-width:0!important;justify-content:center}
+/* Kirish tugmasidagi ortiqcha oltin "yaltiroq" burchak olib tashlandi */
+.login-card button::before,.login-card button::after,.login-card .btn::before,.login-card .btn::after{display:none!important;content:none!important}
+.login-card button[onclick*="doLogin"]{background:var(--accent)!important;background-image:none!important;border:0!important;color:#fff!important;border-radius:12px;box-shadow:0 6px 16px rgba(11,107,88,.28)}
+.login-card button[onclick*="doLogin"]:hover{filter:brightness(1.07)}
+</style>
+<script id="design-v18-update-banner">
+/* v18: yangi versiya chiqqanda (service worker yangilanganda) kassa ishini to'xtatmasdan, "Yangilash" taklifi chiqadi. */
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  var had=!!navigator.serviceWorker.controller;
+  window.showUpdateBanner=function(){
+    if(document.getElementById('update-banner')) return;
+    var d=document.createElement('div'); d.id='update-banner';
+    d.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:100000;display:flex;align-items:center;gap:.75rem;background:#0e2b26;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:.55rem .6rem .55rem 1rem;box-shadow:0 12px 30px rgba(0,0,0,.3);font-size:14px;max-width:calc(100vw - 24px)';
+    d.innerHTML='<span>🔄 Yangi versiya tayyor</span><button type="button" style="background:#c8993a;color:#1b1405;border:0;border-radius:10px;padding:.4rem .9rem;font-weight:700;cursor:pointer" id="update-banner-go">Yangilash</button><button type="button" aria-label="Yopish" style="background:transparent;border:0;color:#9fb3ac;font-size:18px;cursor:pointer;padding:0 .4rem" id="update-banner-x">×</button>';
+    document.body.appendChild(d);
+    document.getElementById('update-banner-go').onclick=function(){ location.reload(); };
+    document.getElementById('update-banner-x').onclick=function(){ d.remove(); };
+  };
+  navigator.serviceWorker.addEventListener('controllerchange',function(){ if(had) window.showUpdateBanner(); });
+})();
+</script>
+
+<style id="design-v19-dark-fixes">
+/* v19: tungi rejimda kontrast tuzatishlari */
+body.dark #stat-period,body.dark .section-header select,body.dark .filter-bar select{color:var(--text)!important;background-color:var(--surface2)!important}
+body.dark .prod-card .prod-actions .btn.red,body.dark table .btn.red{color:#ff8f84!important}
+body.dark .prod-card .prod-actions .btn,body.dark .section-header .btn.green,body.dark .section-header .btn.amber,body.dark .filter-bar .btn.green,body.dark .filter-bar .btn.amber{color:var(--text)!important}
+body.dark .prod-card .prod-actions .btn:hover,body.dark table .btn.red:hover{color:#fff!important}
+</style>
 </head>
 <body>
 <script>
@@ -1208,10 +1606,6 @@
 </div>
 
 <div class="page active" id="page-dashboard">
-  <div id="backup-reminder-banner" style="display:none;align-items:center;gap:.6rem;background:#7c2d12;color:#fff;border-radius:var(--radius);padding:.65rem .9rem;margin-bottom:.85rem;font-size:13px;flex-wrap:wrap">
-    <span style="flex:1">⚠️ Ancha vaqtdan beri zaxira nusxa olinmagan. Ma'lumotlaringiz xavfsizligi uchun zaxira oling.</span>
-    <button class="btn sm" style="background:#fff;color:#7c2d12" onclick="showPage('settings','admin')">💾 Zaxiraga o'tish</button>
-  </div>
   <div class="section-header">
     <div><h2>Bosh sahifa</h2><p id="today-date"></p></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
@@ -2637,16 +3031,6 @@ body.dark table {
       <button class="btn sm" onclick="window.compressAllProductImages && window.compressAllProductImages()">🗜️ Barcha rasmlarni siqish</button>
       <div id="compress-images-progress" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
     </div>
-    <div class="field" style="margin-top:.85rem;border-top:1px dashed var(--border2);padding-top:.75rem">
-      <label>⏰ Eslatma: zaxira olinmasa necha kunda ogohlantirilsin</label>
-      <select id="backup-reminder-days" onchange="window.saveBackupReminderDays && window.saveBackupReminderDays(this.value)" style="border:1.5px solid var(--border2);border-radius:var(--radius);padding:.5rem .75rem;font-size:14px;outline:none;background:var(--surface2);margin-top:.35rem">
-        <option value="0">O'chirilgan</option>
-        <option value="3">3 kun</option>
-        <option value="7">7 kun</option>
-        <option value="14">14 kun</option>
-        <option value="30">30 kun</option>
-      </select>
-    </div>
     <p style="font-size:12px;color:var(--red);margin-top:.6rem">⚠️ Tiklash mavjud ma'lumotlar ustiga qo'shiladi (bir xil ID'lar yangilanadi). Xavfsizlik uchun tiklashda admin PIN so'raladi. Ehtiyot bo'ling.</p>
   </div>
 </div>
@@ -2762,9 +3146,17 @@ body.dark table {
   <div class="card" style="margin-bottom:1rem">
     <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">✨ Yangi partiya yaratish (har bir dona uchun noyob kod)</h3>
     <p style="font-size:12px;color:var(--text3);margin-bottom:.7rem">Kodlar bazaga alohida-alohida yozilmaydi — ular <b>partiya</b> sifatida saqlanadi, shuning uchun son cheklanmagan (1 ta amalda 99 999 999 tagacha). Har bir kodda xato-himoya belgisi bor: noto'g'ri o'qilgan yoki yozilgan kod darhol aniqlanadi. Sotuvchi skanerlaydi — har bir kod faqat bitta marta sotiladi.</p>
+    <div style="border:1px solid var(--accent-border,var(--border2));background:var(--accent-bg,var(--surface2));border-radius:12px;padding:.7rem .85rem;margin-bottom:.9rem">
+      <label style="display:flex;align-items:flex-start;gap:.55rem;cursor:pointer;font-size:13.5px"><input type="checkbox" id="cc-seqmode" checked style="margin-top:3px;width:auto;flex:none" onchange="window.ccSeqModeChanged()"><span>🔢 <b>Tartib raqamli kodlar</b> — har bir donaga 0000001, 0000002, 0000003 … raqam beriladi, <b>Code 128</b> barcode chiqadi (oddiy skaner o'qiydi, internet bo'lmasa ham chiziladi). Raqamlar butun do'kon bo'yicha davom etadi, takrorlanmaydi.</span></label>
+      <div id="cc-seqhint" style="font-size:12.5px;color:var(--text2);margin:.35rem 0 0 1.5rem"></div>
+      <div style="font-size:12px;color:var(--text2);margin:.3rem 0 0 1.5rem">⚙ Hisoblagichni o'zgartirish: <input id="cc-seq-set" type="number" min="1" class="ccx-in" style="width:120px;display:inline-block;padding:.25rem .5rem" placeholder="masalan 1000"> <button class="btn sm" type="button" onclick="ccSeqSetNext()">O'rnatish</button> <span style="color:var(--text3)">faqat kattaroq raqamga (takrorlanmaslik uchun)</span></div>
+    </div>
     <div class="field"><label>Tovar</label><select id="cc-product" onchange="window.ccProductChanged && window.ccProductChanged()" class="ccx-in"></select></div>
     <div id="cc-info" style="font-size:12px;color:var(--text2);margin:-.2rem 0 .7rem"></div>
-    <div class="field"><label>Nechta kod</label><input type="number" id="cc-count" min="1" max="99999999" value="10" class="ccx-in"></div>
+    <div id="cc-lastprint" style="font-size:12.5px;color:var(--text2);margin:-.3rem 0 .5rem;line-height:1.65"></div>
+    <div id="cc-next-row" style="display:none;gap:.5rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem"><span style="font-size:13px">Keyingi chop etilmagan kodlardan:</span><input type="number" id="cc-next-n" min="1" max="5000" class="ccx-in" style="width:90px" oninput="this.dataset.auto=''"><span style="font-size:13px">ta</span><button class="btn sm blue" type="button" onclick="ccPrintNext()">▶ Davom ettirib chop etish</button><span style="font-size:11.5px;color:var(--text3)">A4 da standart qiymat — bitta to'liq varaq</span></div>
+    <div id="cc-pt" style="display:none;gap:.5rem;align-items:center;flex-wrap:wrap;margin:-.2rem 0 .8rem;font-size:12.5px"><button class="btn sm" type="button" id="cc-undo-btn" onclick="ccUndoPrint()" title="Printer tiqilsa yoki varaq buzilsa">↺ Oxirgi chop etishni bekor qilish</button><span style="color:var(--text3)">yoki</span><input id="cc-mark-n" class="ccx-in" style="width:130px" placeholder="masalan 100"><button class="btn sm" type="button" onclick="ccMarkUpTo()">✔ shu raqamgacha chop etilgan deb belgilash</button></div>
+    <div class="field"><label>Nechta kod</label><input type="number" id="cc-count" min="1" max="99999999" value="10" class="ccx-in" oninput="window.ccSeqHint&&window.ccSeqHint()"></div>
     <div class="ccx-chips">
       <button class="btn sm" onclick="window.ccQuick(10)">10</button><button class="btn sm" onclick="window.ccQuick(50)">50</button><button class="btn sm" onclick="window.ccQuick(100)">100</button><button class="btn sm" onclick="window.ccQuick(500)">500</button><button class="btn sm" onclick="window.ccQuick(1000)">1 000</button><button class="btn sm" onclick="window.ccQuick(5000)">5 000</button><button class="btn sm" onclick="window.ccQuick(10000)">10 000</button><button class="btn sm" onclick="window.ccQuick(100000)">100 000</button>
       <button class="btn sm" onclick="window.ccFillUncoded && window.ccFillUncoded()">Kodlanmaganlar sonini qo'yish</button>
@@ -2826,6 +3218,41 @@ body.dark table {
       <div class="field"><label>Siljitish ← → (mm)</label><input type="number" id="cc-ox" step="0.5" value="0" onchange="window.ccPreview()" class="ccx-in"></div>
       <div class="field"><label>Siljitish ↑ ↓ (mm)</label><input type="number" id="cc-oy" step="0.5" value="0" onchange="window.ccPreview()" class="ccx-in"></div>
     </div>
+    <div id="cc-prof-row" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.2rem 0 .6rem;font-size:13px"><span>📚 Profil:</span><select id="cc-prof-sel" class="ccx-in" style="width:auto;min-width:200px" onchange="if(this.value)ccProfApply(this.value)"><option value="">— saqlangan profil —</option></select><button class="btn sm" type="button" onclick="ccProfSave()">💾 Hozirgi sozlamani saqlash</button><button class="btn sm" type="button" onclick="ccProfDelete()">🗑</button><span style="color:var(--text3);font-size:11.5px">har xil yorliq/printer uchun (shu qurilmada)</span></div>
+    <div id="cc-a4-adv" style="display:none;margin:.2rem 0 .4rem;padding:.7rem .8rem;border:1px solid var(--border2);border-radius:12px;background:var(--surface2)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:.5rem">📄 A4 varaq sozlamalari</div>
+      <div class="a4c-only" style="display:none">
+        <div class="ccx-grid" style="grid-template-columns:repeat(4,1fr)">
+          <div class="field"><label>Bir qatorda (ustun)</label><input type="number" id="cc-a4-cols" min="1" max="20" value="6" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Qator soni</label><input type="number" id="cc-a4-rows" min="1" max="40" value="10" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Yorliq eni, mm (bo'sh = avto)</label><input type="number" id="cc-a4-w" min="0" step="0.5" placeholder="avto" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Yorliq bo'yi, mm (bo'sh = avto)</label><input type="number" id="cc-a4-h" min="0" step="0.5" placeholder="avto" onchange="window.ccPreview()" class="ccx-in"></div>
+        </div>
+        <div style="font-size:11.5px;color:var(--text3);margin:-.1rem 0 .5rem">Eni/bo'yi kiritilsa, ustun/qator soni o'zi hisoblanadi; bo'sh qoldirsangiz o'lcham ustun/qator soniga qarab avto chiqadi.</div>
+        <div class="ccx-grid" style="grid-template-columns:repeat(4,1fr)">
+          <div class="field"><label>Chekka: tepa (mm)</label><input type="number" id="cc-a4-mt" min="0" max="60" step="0.5" value="10" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Chekka: o'ng (mm)</label><input type="number" id="cc-a4-mr" min="0" max="60" step="0.5" value="10" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Chekka: past (mm)</label><input type="number" id="cc-a4-mb" min="0" max="60" step="0.5" value="10" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Chekka: chap (mm)</label><input type="number" id="cc-a4-ml" min="0" max="60" step="0.5" value="10" onchange="window.ccPreview()" class="ccx-in"></div>
+        </div>
+        <div class="ccx-grid" style="grid-template-columns:repeat(4,1fr)">
+          <div class="field"><label>Yorliqlar orasi ↔ (mm)</label><input type="number" id="cc-a4-gx" min="0" max="30" step="0.5" value="2" onchange="window.ccPreview()" class="ccx-in"></div>
+          <div class="field"><label>Yorliqlar orasi ↕ (mm)</label><input type="number" id="cc-a4-gy" min="0" max="30" step="0.5" value="2" onchange="window.ccPreview()" class="ccx-in"></div>
+        </div>
+      </div>
+      <div class="ccx-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="field"><label>Yorliq ichki bo'shlig'i (padding, mm)</label><input type="number" id="cc-a4-pad" min="0" max="10" step="0.25" placeholder="avto" onchange="window.ccPreview()" class="ccx-in"></div>
+        <div class="field"><label>✂ Kesish chizig'i</label><select id="cc-cut" onchange="window.ccPreview()" class="ccx-in"><option value="dashed">Uzuq-uzuq (qator va ustunlar orasida)</option><option value="solid">To'liq ingichka chiziq</option><option value="none">Chiziq kerak emas</option></select></div>
+        <div class="field"><label>&nbsp;</label><label class="ccx-chk"><input type="checkbox" id="cc-cutframe" checked onchange="window.ccPreview()"> Tashqi chegarani ham chizish</label></div>
+      </div>
+      <div class="ccx-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="field"><label>Yorliqlar tartibi</label><select id="cc-order" onchange="window.ccPreview()" class="ccx-in"><option value="row">Qator bo'ylab (→ keyin pastga)</option><option value="col">Ustun bo'ylab (↓ keyin o'ngga)</option></select></div>
+        <div class="field"><label>&nbsp;</label><button type="button" class="btn sm" onclick="ccA4TestSheet()" title="Yorliq sarflamasdan masshtab va chekkalarni tekshirish">🧪 Test varaq chop etish</button></div>
+      </div>
+      <div id="cc-a4-used" style="margin:.2rem 0 .4rem"></div>
+      <div id="cc-a4-prev"></div>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:.4rem">🖨 Chop etish oynasida: <b>Masshtab — 100%</b> (“Sahifaga sig'dirish” emas), <b>Chekkalar — Yo'q (None)</b>, qog'oz <b>A4</b>. Birinchi marta oddiy qog'ozga sinab, varaqqa qo'yib ko'rib tekshiring.</div>
+    </div>
     <div style="margin:.2rem 0 .3rem;font-size:12px;color:var(--text2)">Yorliq ko'rinishi (oldindan):</div>
     <div class="ccx-prev" id="cc-preview"></div>
     <div id="cc-preview-info" style="font-size:12px;color:var(--text2);margin:.35rem 0 .8rem"></div>
@@ -2852,7 +3279,38 @@ body.dark table {
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:1rem">
+    <div class="card" id="cc-registry-card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">🗂 Ombordagi kodlar — reyestr</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.7rem">Yuqorida tanlangan tovarning har bir kodi: omborda / sotilgan / yaroqsiz. Kerakli kodlarni tanlab <b>qayta chop eting</b>; yo'qolgan yoki shikastlanganini <b>yaroqsiz</b> qiling (ombor soni o'zi kamayadi va kod sotilmaydi). Sotilgan kod qaysi savdoda ketgani ham ko'rinadi.</p>
+    <div id="cc-rg-sum" style="font-size:13px;margin-bottom:.6rem"></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem">
+      <select id="cc-rg-status" class="ccx-in" style="width:auto" onchange="ccRgRender(0)"><option value="all">Hammasi</option><option value="stock">🟢 Omborda</option><option value="sold">✅ Sotilgan</option><option value="void">⛔ Yaroqsiz</option></select>
+      <input id="cc-rg-q" class="ccx-in" style="width:190px" placeholder="Raqam: 12 yoki 0000012" onkeydown="if(event.key==='Enter')ccRgRender(0)">
+      <button class="btn sm" type="button" onclick="ccRgRender(0)">🔍 Qidirish</button>
+      <input id="cc-rg-list" class="ccx-in" style="flex:1;min-width:200px" placeholder="Tanlash ro'yxati: 3, 7, 10-15" onkeydown="if(event.key==='Enter')ccRgSelectList()">
+      <button class="btn sm" type="button" onclick="ccRgSelectList()">☑ Ro'yxatni tanlash</button>
+    </div>
+    <div id="cc-rg-bulk"></div>
+    <div class="tbl-wrap"><table style="width:100%;font-size:13px"><thead><tr><th style="width:34px"><input type="checkbox" onchange="ccRgSelectPage(this.checked)" title="Shu sahifani tanlash"></th><th>Kod</th><th>Holati</th><th>Izoh / savdo izi</th><th></th></tr></thead><tbody id="cc-rg-body"></tbody></table></div>
+    <div id="cc-rg-pager" style="display:flex;gap:.6rem;align-items:center;justify-content:center;margin-top:.6rem"></div>
+  </div>
+  <div class="card" id="cc-audit-card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">🔍 Kod bo'yicha revizi (skaner bilan)</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.7rem">Ombordagi har bir donani skanerlab chiqing — tizim nima <b>topilmaganini</b> (yo'qolgan), nima <b>ortiqcha</b> ekanini (sotilgan deb belgilangan, lekin omborda; begona tovar) ko'rsatadi. Revizi sahifa yangilansa ham saqlanib turadi.</p>
+    <div id="cc-au-box"></div><div id="cc-au-report"></div>
+  </div>
+  <div class="card" id="cc-scantest-card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">🔬 Skaner sinovi</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.7rem">Yangi chop etilgan yorliqni skanerlang — tizim skaner <b>aynan nima yuborganini</b> ko'rsatadi: ortiqcha belgi (prefiks/suffiks), kirill klaviatura, tezlik, kod formati va tovar. Yorliq yoki skaner sozlamasidagi muammoni birinchi sinovdayoq topadi.</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem"><input id="cc-st-in" class="ccx-in" autocomplete="off" placeholder="Shu yerga bosing va yorliqni skanerlang…" style="flex:1;min-width:220px;font-size:16px" onkeydown="ccScanTestKey(event)"><input id="cc-st-exp" class="ccx-in" style="width:190px" placeholder="Kutilgan kod (ixtiyoriy)"></div>
+    <div id="cc-st-out" style="border:1.5px solid var(--border2);border-radius:10px;padding:.6rem .8rem;font-size:13px;line-height:1.7;min-height:38px;color:var(--text2)">Natija shu yerda chiqadi.</div>
+  </div>
+  <div class="card" id="cc-log-card" style="margin-bottom:1rem">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">🕘 Chop etish tarixi</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:.7rem">Oxirgi 30 ta chop etish (kim, qachon, qaysi raqamlar). Bir bosishda qayta chop etish mumkin — yaroqsiz kodlar chop etilmaydi.</p>
+    <div class="tbl-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Sana</th><th>Kim</th><th>Tovar</th><th>Turi</th><th>Raqamlar</th><th></th></tr></thead><tbody id="cc-log-body"></tbody></table></div>
+  </div>
+<div class="card" style="margin-bottom:1rem">
     <h3 style="font-size:15px;font-weight:700;margin-bottom:.3rem">📃 Eski (MC-…) va zavod kodli donalar / qayta chop etish</h3>
     <div id="cc-list-summary" style="font-size:12px;color:var(--text2);margin-bottom:.5rem"></div>
     <div id="cc-list" style="overflow-x:auto;max-height:320px;overflow-y:auto"></div>
@@ -3214,12 +3672,13 @@ body.dark table {
     <div class="field" style="margin-bottom:1rem">
       <label>Qo'shiladigan miqdor *</label>
       <input id="rs-qty" type="number" min="1" placeholder="0" style="font-size:24px;text-align:center;font-weight:700"
-             oninput="updateRestockCalc()">
+             oninput="updateRestockCalc();window.rsSeqHint&&window.rsSeqHint()">
     </div>
     <div class="field" style="margin-bottom:1rem">
       <label>Sabab / Izoh (ixtiyoriy)</label>
       <input id="rs-reason" placeholder="Masalan: Yetkazuvchi №3 dan keldi">
     </div>
+    <label style="display:flex;align-items:flex-start;gap:.55rem;font-size:13px;margin-bottom:1rem;padding:.65rem .75rem;border:1px dashed var(--accent-border,var(--border2));border-radius:10px;background:var(--accent-bg,var(--surface2));cursor:pointer"><input type="checkbox" id="rs-seq" style="margin-top:3px;width:auto;flex:none" onchange="try{localStorage.setItem('dokon_rs_seq',this.checked?'1':'0')}catch(e){};window.rsSeqHint&&window.rsSeqHint()"><span>🔢 <b>Tartib raqamli yorliqlar chop etilsin</b> — har bir donaga 0000001, 0000002… raqam beriladi va Code 128 barcode printerga chiqadi.<br><span id="rs-seq-hint" style="color:var(--text3)"></span></span></label>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-restock')">Bekor qilish</button>
       <button class="btn green" onclick="doRestock()">✓ Qo'shish</button>
@@ -4083,7 +4542,7 @@ body.dark table {
     <span class="tab-icon">🛒</span>Sotish
   </button>
   <button id="mtab-my-sales" onclick="showPage('my-sales','seller')" style="display:none">
-    <span class="tab-icon">📋</span>Mening
+    <span class="tab-icon">📋</span>Sotuvlarim
   </button>
 </div>
 <div id="mobile-more-overlay" class="hidden" onclick="closeMobileMoreMenu()"></div>
@@ -5238,7 +5697,7 @@ async function fbSaveSettings(){
   // kutishdan OLDIN, bitta "payload" obyektiga "suratga olinadi" — shu
   // sabab keyingi tinglagich yangilanishlari saqlanayotgan qiymatga
   // TA'SIR QILA OLMAYDI.
-  const payload = {pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],voiceAnnounceEnabled:!!DB.voiceAnnounceEnabled,voiceAnnounceTemplate:DB.voiceAnnounceTemplate||'',voiceLang:DB.voiceLang||'uz-UZ',voiceName:DB.voiceName||'',voiceRate:(typeof DB.voiceRate==='number')?DB.voiceRate:0.95,voicePitch:(typeof DB.voicePitch==='number')?DB.voicePitch:1,voiceVolume:(typeof DB.voiceVolume==='number')?DB.voiceVolume:1,branches:Array.isArray(DB.branches)?DB.branches:[]};
+  const payload = {dailyGoal:DB.dailyGoal||0,pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:DB.shopAddress||'',shopPhone:DB.shopPhone||'',receiptFooter:DB.receiptFooter||'',workHours:DB.workHours||'',currencySymbol:DB.currencySymbol||"so'm",maxDiscountPercent:DB.maxDiscountPercent||0,overdueDaysGlobal:DB.overdueDaysGlobal||14,brandAccent1:DB.brandAccent1||'',brandAccent2:DB.brandAccent2||'',appTitle:DB.appTitle||'',labelSettings:DB.labelSettings||null,labelTemplates:DB.labelTemplates||null,receiptDesign:DB.receiptDesign||null,saleReceiptDesign:DB.saleReceiptDesign||null,backupReminderDays:DB.backupReminderDays||7,workSchedule:DB.workSchedule||null,pinMinLength:DB.pinMinLength||4,telegramBotToken:DB.telegramBotToken||'',telegramBotUsername:DB.telegramBotUsername||'',receiptQrMode:DB.receiptQrMode||'auto',telegramChatId:DB.telegramChatId||'',telegramAdmins:DB.telegramAdmins||[],telegramWelcomeText:DB.telegramWelcomeText||'',telegramWebhookSecret:DB.telegramWebhookSecret||'',telegramNotifyLowStock:!!DB.telegramNotifyLowStock,telegramNotifyOverdueDebts:!!DB.telegramNotifyOverdueDebts,telegramNotifyDailyReport:!!DB.telegramNotifyDailyReport,telegramNotifyNewDebt:DB.telegramNotifyNewDebt!==false,telegramDebtIncludeItems:DB.telegramDebtIncludeItems!==false,telegramDebtorNameStyle:DB.telegramDebtorNameStyle||'full',telegramDebtorGenericWord:DB.telegramDebtorGenericWord||'',telegramNotifyPayment:DB.telegramNotifyPayment!==false,telegramQuietHoursEnabled:!!DB.telegramQuietHoursEnabled,telegramQuietFrom:DB.telegramQuietFrom||'22:00',telegramQuietTo:DB.telegramQuietTo||'08:00',telegramTplNewDebt:DB.telegramTplNewDebt||'',telegramTplPayment:DB.telegramTplPayment||'',telegramTplLowstock:DB.telegramTplLowstock||'',telegramTplOverdue:DB.telegramTplOverdue||'',telegramTplDaily:DB.telegramTplDaily||'',telegramTplNewDebtAdmin:DB.telegramTplNewDebtAdmin||'',telegramTplPaymentAdmin:DB.telegramTplPaymentAdmin||'',telegramAutoReplyOutsideHours:!!DB.telegramAutoReplyOutsideHours,animSpeed:(typeof DB.animSpeed==='number')?DB.animSpeed:1,toastSeconds:(typeof DB.toastSeconds==='number')?DB.toastSeconds:2.6,uiSoundEnabled:!!DB.uiSoundEnabled,uiVibrationEnabled:!!DB.uiVibrationEnabled,uiSoundVolume:(typeof DB.uiSoundVolume==='number')?DB.uiSoundVolume:0.16,toastPosition:DB.toastPosition||'bottom-right',restrictedAdminPin:DB.restrictedAdminPin||'',restrictedAdminPermissions:DB.restrictedAdminPermissions||{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:DB.loyaltyTiers||window.getDefaultLoyaltyTiers(),coinSettings:DB.coinSettings||window.getDefaultCoinSettings(),coinEnabled:DB.coinEnabled!==false,telegramCommandsConfig:DB.telegramCommandsConfig||null,miniAppSectionsConfig:DB.miniAppSectionsConfig||null,scheduledBroadcasts:Array.isArray(DB.scheduledBroadcasts)?DB.scheduledBroadcasts:[],telegramButtonLabels:DB.telegramButtonLabels||null,defaultCreditLimit:(typeof DB.defaultCreditLimit==='number')?DB.defaultCreditLimit:0,debtReminderOffsets:Array.isArray(DB.debtReminderOffsets)?DB.debtReminderOffsets:[0,3,7],voiceAnnounceEnabled:!!DB.voiceAnnounceEnabled,voiceAnnounceTemplate:DB.voiceAnnounceTemplate||'',voiceLang:DB.voiceLang||'uz-UZ',voiceName:DB.voiceName||'',voiceRate:(typeof DB.voiceRate==='number')?DB.voiceRate:0.95,voicePitch:(typeof DB.voicePitch==='number')?DB.voicePitch:1,voiceVolume:(typeof DB.voiceVolume==='number')?DB.voiceVolume:1,branches:Array.isArray(DB.branches)?DB.branches:[]};
   (async ()=>{
     let versionForSave = localV+1;
     try{
@@ -5849,6 +6308,7 @@ function startListeners(){
       DB.workHours=d.workHours||'';
       DB.currencySymbol=d.currencySymbol||"so'm";
       DB.maxDiscountPercent=(typeof d.maxDiscountPercent==='number')?d.maxDiscountPercent:0;
+      DB.dailyGoal=(typeof d.dailyGoal==='number')?d.dailyGoal:(parseFloat(localStorage.getItem('dokon_daily_goal')||'0')||0);
       DB.overdueDaysGlobal=(typeof d.overdueDaysGlobal==='number')?d.overdueDaysGlobal:14;
       DB.brandAccent1=d.brandAccent1||'';
       DB.brandAccent2=d.brandAccent2||'';
@@ -6180,6 +6640,7 @@ async function init(){
           DB.workHours=d.workHours||'';
           DB.currencySymbol=d.currencySymbol||"so'm";
           DB.maxDiscountPercent=(typeof d.maxDiscountPercent==='number')?d.maxDiscountPercent:0;
+      DB.dailyGoal=(typeof d.dailyGoal==='number')?d.dailyGoal:(parseFloat(localStorage.getItem('dokon_daily_goal')||'0')||0);
           DB.overdueDaysGlobal=(typeof d.overdueDaysGlobal==='number')?d.overdueDaysGlobal:14;
           DB.brandAccent1=d.brandAccent1||'';
           DB.brandAccent2=d.brandAccent2||'';
@@ -6248,7 +6709,7 @@ async function init(){
           if(typeof window.applyBrandTheme==='function') window.applyBrandTheme(DB);
           if(typeof window.applyAnimSettings==='function') window.applyAnimSettings();
         } else {
-          setDoc(settingsRef,{pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,saleReceiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:window.getDefaultLoyaltyTiers()}).catch(()=>{});
+          setDoc(settingsRef,{dailyGoal:DB.dailyGoal||0,pins:DB.pins,sellers:DB.sellers,revertMinutes:DB.revertMinutes,lowStockThreshold:DB.lowStockThreshold,sellerName:DB.sellerName,shopName:DB.shopName,shopLogo:DB.shopLogo,autoLockMinutes:DB.autoLockMinutes||0,receiptLinks:DB.receiptLinks||[],shopAddress:'',shopPhone:'',receiptFooter:'',workHours:'',currencySymbol:"so'm",maxDiscountPercent:0,overdueDaysGlobal:14,brandAccent1:'',brandAccent2:'',appTitle:'',labelSettings:null,labelTemplates:null,receiptDesign:null,saleReceiptDesign:null,backupReminderDays:7,workSchedule:null,pinMinLength:4,telegramBotToken:'',telegramBotUsername:'',telegramChatId:'',telegramAdmins:[],telegramNotifyLowStock:false,telegramNotifyOverdueDebts:false,telegramNotifyDailyReport:false,animSpeed:1,toastSeconds:2.6,uiSoundEnabled:false,uiVibrationEnabled:false,uiSoundVolume:0.16,toastPosition:'bottom-right',restrictedAdminPin:'',restrictedAdminPermissions:{hideStockInOut:false,hideSellerLogin:false,disableDelete:false},loyaltyTiers:window.getDefaultLoyaltyTiers()}).catch(()=>{});
         }
       } else console.error("Sozlamalarni dastlabki yuklashda xatolik (onSnapshot orqali keyinroq keladi):", settingsR.reason);
 
@@ -6796,6 +7257,695 @@ function ccHash(str){ let h = 0x811c9dc5; for(let i=0;i<str.length;i++){ h ^= st
 function ccCheckChars(batch, seq){ const h = ccHash('MB|'+batch+'|'+seq) % (CC_ALPHA.length*CC_ALPHA.length); return CC_ALPHA[Math.floor(h/CC_ALPHA.length)] + CC_ALPHA[h%CC_ALPHA.length]; }
 function ccBuildCode(batch, seq){ return 'MB-'+batch+'-'+String(seq).padStart(7,'0')+'-'+ccCheckChars(batch, seq); }
 
+// ================== v20: TARTIB RAQAMLI (SERIYA) KODLAR ==================
+// Tovar kirim qilinganda har bir dona umumiy hisoblagichdan KETMA-KET raqam oladi: 0000001, 0000002, ...
+// Raqam butun do'kon bo'yicha noyob (hisoblagich Firestore'da 'dokon/serialCounter' hujjatida, tranzaksiya bilan
+// oshiriladi — ikki qurilma bir vaqtda kirim qilsa ham raqamlar takrorlanmaydi). Yorliq: Code 128 (chiziqli barcode),
+// ostida shu raqam. Sotish/skaner/qaytarish mavjud partiya kodlari bilan bir xil himoyada (soldCodes).
+const CC_SEQ_RE = /^\d{7,10}$/;
+function ccSeqCode(n){ return String(n).padStart(7,'0'); }
+function ccFmtNo(b, n){ return (b && b.kind==='seq') ? ccSeqCode(n) : Number(n).toLocaleString('en-US'); }
+function ccCodeOf(b, seq){ return (b && b.kind==='seq') ? ccSeqCode(seq) : ccBuildCode(b.id, seq); }
+function ccSoldKey(b){ return (b && b.kind==='seq') ? 'SEQ' : b.id; }
+// Sotilgan kodlar: { partiyaId: [raqamlar], SEQ: [raqamlar] }
+function ccSoldMap(p, withVoid){
+  const out = ccKeyMap(p.soldCodes);
+  if(withVoid){ const v = ccKeyMap(p.voidCodes); for(const k in v){ out[k] = (out[k] || []).concat(v[k]); } }
+  return out;
+}
+const CC_C128 = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+// Code 128 kodlovchi (kutubxonasiz, oflayn ishlaydi). Faqat raqamlar bo'lsa Code C (ixcham), aks holda Code B.
+function ccC128Codes(text){
+  const t = String(text), codes = [];
+  if(/^\d{2,}$/.test(t)){
+    let i = 0;
+    if(t.length % 2 === 0){ codes.push(105); }
+    else { codes.push(104); codes.push(t.charCodeAt(0)-32); codes.push(99); i = 1; }
+    for(; i < t.length; i += 2) codes.push(parseInt(t.substr(i,2),10));
+  } else {
+    codes.push(104);
+    for(let i=0;i<t.length;i++){ const v = t.charCodeAt(i)-32; if(v<0||v>95) throw new Error('Code128: ruxsat etilmagan belgi'); codes.push(v); }
+  }
+  let sum = codes[0]; for(let k=1;k<codes.length;k++) sum += codes[k]*k;
+  codes.push(sum % 103); codes.push(106);
+  return codes;
+}
+function ccC128Widths(text){ return ccC128Codes(text).map(v=>CC_C128[v]).join('').split('').map(Number); }
+function ccC128Canvas(text, moduleW, height, quietModules){
+  const w = ccC128Widths(text), q = (quietModules==null ? 10 : quietModules) * moduleW;
+  let mods = 0; w.forEach(x=>mods+=x);
+  const c = document.createElement('canvas'); c.width = mods*moduleW + 2*q; c.height = Math.max(8, Math.round(height));
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0,0,c.width,c.height); x.fillStyle = '#000';
+  let pos = q; w.forEach((n,i)=>{ if(i%2===0) x.fillRect(pos, 0, n*moduleW, c.height); pos += n*moduleW; });
+  return c;
+}
+window.ccC128Widths = ccC128Widths;
+
+// ---- hisoblagich ----
+async function ccSeqLocalMax(){ let m = 0; DB.products.forEach(p=>(p.codeBatches||[]).forEach(b=>{ if(b.kind==='seq' && b.to>m) m = b.to; })); return m; }
+async function ccSeqPeek(){
+  try{
+    const s = await getDoc(doc(db,'dokon','serialCounter'));
+    const v = (s.exists() && Number(s.data().next)) || 1;
+    return Math.max(v, (await ccSeqLocalMax()) + 1);
+  }catch(e){ return Math.max(1, (await ccSeqLocalMax()) + 1); }
+}
+async function ccSeqReserve(n){
+  const ref = doc(db,'dokon','serialCounter');
+  const floor = (await ccSeqLocalMax()) + 1;
+  return runTransaction(db, async (tx)=>{
+    const s = await tx.get(ref);
+    const next = Math.max((s.exists() && Number(s.data().next)) || 1, floor);
+    tx.set(ref, { next: next + n, updatedAt: new Date().toISOString() });
+    return next;
+  });
+}
+// Oddiy (qo'lda kiritilgan) raqamli barcode bilan to'qnashmaslik: tovar barcode/qrCode i oraliqqa tushsa — keyingi oraliq olinadi
+function ccSeqCollides(from, to){
+  for(const p of DB.products){
+    for(const v of [p.barcode, p.qrCode]){
+      if(v && CC_SEQ_RE.test(String(v))){ const n = parseInt(v,10); if(n>=from && n<=to && ccSeqCode(n)===String(v)) return true; }
+    }
+  }
+  return false;
+}
+let _ccSeqHintT = null;
+window.ccSeqHint = function(){ clearTimeout(_ccSeqHintT); _ccSeqHintT = setTimeout(ccSeqHintNow, 250); };
+async function ccSeqHintNow(){
+  const el = document.getElementById('cc-seqhint'); if(!el) return;
+  const on = !!document.getElementById('cc-seqmode')?.checked;
+  if(!on){ el.textContent = ''; return; }
+  const n = Math.max(1, Math.floor(Number(document.getElementById('cc-count')?.value) || 1));
+  const next = await ccSeqPeek();
+  el.innerHTML = 'Keyingi tartib raqam: <b style="font-family:monospace">'+ccSeqCode(next)+'</b> → shu kirimda <b style="font-family:monospace">'+ccSeqCode(next)+' – '+ccSeqCode(next+n-1)+'</b>';
+}
+window.rsSeqHint = async function(){
+  const el = document.getElementById('rs-seq-hint'); if(!el) return;
+  const on = !!document.getElementById('rs-seq')?.checked, n = parseInt(document.getElementById('rs-qty')?.value) || 0;
+  if(!on || !n){ el.textContent = ''; return; }
+  const next = await ccSeqPeek();
+  el.innerHTML = 'Raqamlar: <b style="font-family:monospace">'+ccSeqCode(next)+' – '+ccSeqCode(next+n-1)+'</b>';
+};
+window.ccSeqModeChanged = function(){
+  const on = !!document.getElementById('cc-seqmode')?.checked;
+  try{ localStorage.setItem('dokon_cc_seqmode', on ? '1' : '0'); }catch(e){}
+  const f = document.getElementById('cc-format'); if(on && f && f.value==='datamatrix') f.value = 'code128';
+  window.ccSeqHint(); if(window.ccPreview) window.ccPreview();
+};
+
+// ---- kirim + yorliq ----
+// ================== v21: KOD REYESTRI • YAROQSIZ KODLAR • CHOP ETISH TARIXI • KOD BO'YICHA REVIZI ==================
+const CC_VOID_MAX = 5000;      // bitta tovarda yaroqsiz deb belgilangan kodlar chegarasi (hujjat hajmi uchun)
+const CC_AUDIT_MAX = 200000;   // revizi hisobotida ko'rib chiqiladigan kodlar chegarasi
+function ccKeyMap(obj){
+  const out = {};
+  for(const k in (obj || {})){
+    const m = CC_BATCH_RE.exec(k);
+    if(m){ (out[m[1]] = out[m[1]] || []).push(parseInt(m[2],10)); }
+    else if(CC_SEQ_RE.test(k)){ (out.SEQ = out.SEQ || []).push(parseInt(k,10)); }
+  }
+  return out;
+}
+// Kodning holati: 'void' (yaroqsiz) | 'sold' (sotilgan) | 'stock' (omborda) | null (bu tovarniki emas)
+function ccCodeStatus(p, code){
+  if(!p) return null;
+  if(p.voidCodes && p.voidCodes[code]) return 'void';
+  if(p.soldCodes && p.soldCodes[code]) return 'sold';
+  if(p.serialCodes && p.serialCodes[code]) return 'stock';
+  return ccIsBatchOwned(p, code) ? 'stock' : null;
+}
+// Tovarning barcha kodlari (partiyalar -> eski ichki kodlar -> sotilgan/yaroqsiz eski kodlar) — kerak bo'lganda hosil qilinadi
+function* ccIterCodes(p){
+  for(const b of (p.codeBatches || [])){
+    for(let n = b.from; n <= b.to; n++){ const code = ccCodeOf(b, n); yield { code, batch:b, status: ccCodeStatus(p, code) }; }
+  }
+  const seen = new Set();
+  for(const k in (p.serialCodes || {})){ if(p.serialCodes[k] && !ccIsBatchOwned(p, k)){ seen.add(k); yield { code:k, batch:null, status: ccCodeStatus(p, k) }; } }
+  for(const k in (p.soldCodes || {})){ if(!seen.has(k) && !ccIsBatchOwned(p, k)){ seen.add(k); yield { code:k, batch:null, status:'sold' }; } }
+  for(const k in (p.voidCodes || {})){ if(!seen.has(k) && !ccIsBatchOwned(p, k)){ yield { code:k, batch:null, status:'void' }; } }
+}
+// Sotilgan kod qaysi savdoda ketgan (yangi savdolarda sotilgan kodlar savdo qatorida saqlanadi)
+let _ccSaleIdx = null, _ccSaleSig = '';
+function ccSaleIndex(){
+  let arr = []; try{ arr = mergedHistory('sales'); }catch(e){}
+  const last = arr.length ? arr[arr.length-1] : null, sig = arr.length+':'+(last ? last.id : '')+':'+(arr.filter?.(x=>x.reverted).length || 0);
+  if(_ccSaleIdx && sig === _ccSaleSig) return _ccSaleIdx;
+  const idx = new Map();
+  arr.forEach(s=>{ if(Array.isArray(s.codes) && !s.reverted) s.codes.forEach(c=>idx.set(c, s)); });
+  _ccSaleIdx = idx; _ccSaleSig = sig; return idx;
+}
+function ccSaleText(s){
+  if(!s) return '';
+  return String(s.date||'').slice(0,16).replace('T',' ') + ' · ' + (s.seller||'') + (s.receiptId ? ' · chek …'+String(s.receiptId).slice(-5) : '');
+}
+// "3, 7, 10-15, 0000020" -> kodlar ro'yxati (tovarga tegishli bo'lganlari)
+function ccParseCodeList(str, p){
+  const out = []; const seen = new Set();
+  const add = (c)=>{ if(!seen.has(c) && ccCodeStatus(p, c)){ seen.add(c); out.push(c); } };
+  String(str || '').split(/[,;\s]+/).filter(Boolean).forEach(tok=>{
+    const m = /^(\d{1,10})\s*[-–]\s*(\d{1,10})$/.exec(tok);
+    if(m){
+      let a = parseInt(m[1],10), b = parseInt(m[2],10); if(a > b){ const t = a; a = b; b = t; }
+      if(b - a > 20000) b = a + 20000;
+      for(let n = a; n <= b; n++) add(ccSeqCode(n));
+    } else if(/^\d{1,10}$/.test(tok)){
+      add(ccSeqCode(parseInt(tok,10))); if(tok.length >= 7) add(tok);
+    } else add(ccCanonicalCode(tok));
+  });
+  return out;
+}
+
+// ---- yaroqsiz qilish / tiklash / sotilgandan qaytarish (ombor soni bilan birga) ----
+function ccStockNote(p, type, n, reason){
+  const before = p.stock || 0;
+  return { id:uid(), productId:p.id, productName:p.name, volume:p.volume||'', type, qty:n,
+    stockBefore: type==='out' ? before + n : before - n, stockAfter: before, reason, date:new Date().toISOString() };
+}
+window.ccVoidCodes = async function(p, codes, reason){
+  codes = [...new Set(codes)].filter(c=>ccCodeStatus(p, c) === 'stock');
+  if(!codes.length){ toast("Yaroqsiz qilinadigan (omborda turgan) kod topilmadi",'amber'); return 0; }
+  const cur = Object.keys(p.voidCodes || {}).length;
+  if(cur + codes.length > CC_VOID_MAX){ toast('Bir tovarda ko\'pi bilan '+CC_VOID_MAX.toLocaleString('en-US')+' ta yaroqsiz kod saqlanadi (hozir '+cur+')','red'); return 0; }
+  const at = new Date().toISOString(), by = ccActor(); p.voidCodes = p.voidCodes || {};
+  const pairs = [];
+  codes.forEach(c=>{
+    const info = { at, by, reason: reason || '' }; p.voidCodes[c] = info; pairs.push(['voidCodes', c, info]);
+    if(p.serialCodes && p.serialCodes[c]){ delete p.serialCodes[c]; pairs.push(['serialCodes', c, deleteField()]); }
+  });
+  p.stock = (p.stock || 0) - codes.length;
+  await fbUpdateProductCodeFields(p.id, { stock: increment(-codes.length) }, pairs);
+  fbSaveRestock(ccStockNote(p, 'out', codes.length, 'Yaroqsiz kodlar'+(reason ? ': '+reason : '')+' ('+codes.length+' ta)'));
+  try{ logAudit('Kodlar yaroqsiz', p.name+': '+codes.length+' ta'+(reason?' — '+reason:'')); }catch(e){}
+  refreshProductViews(); toast('⛔ '+codes.length+' ta kod yaroqsiz qilindi (ombor −'+codes.length+')','amber');
+  return codes.length;
+};
+window.ccRestoreCodes = async function(p, codes){
+  codes = [...new Set(codes)].filter(c=>ccCodeStatus(p, c) === 'void');
+  if(!codes.length){ toast('Tiklanadigan kod yo\'q','amber'); return 0; }
+  const pairs = [];
+  codes.forEach(c=>{
+    if(p.voidCodes) delete p.voidCodes[c]; pairs.push(['voidCodes', c, deleteField()]);
+    if(!ccIsBatchOwned(p, c)){ p.serialCodes = p.serialCodes || {}; p.serialCodes[c] = true; pairs.push(['serialCodes', c, true]); }
+  });
+  p.stock = (p.stock || 0) + codes.length;
+  await fbUpdateProductCodeFields(p.id, { stock: increment(codes.length) }, pairs);
+  fbSaveRestock(ccStockNote(p, 'in', codes.length, 'Kodlar tiklandi ('+codes.length+' ta)'));
+  try{ logAudit('Kodlar tiklandi', p.name+': '+codes.length+' ta'); }catch(e){}
+  refreshProductViews(); toast('↩ '+codes.length+' ta kod omborga qaytarildi (ombor +'+codes.length+')','green');
+  return codes.length;
+};
+window.ccUnsellCodes = async function(p, codes, why){
+  codes = [...new Set(codes)].filter(c=>ccCodeStatus(p, c) === 'sold');
+  if(!codes.length){ toast('Omborga qaytariladigan sotilgan kod yo\'q','amber'); return 0; }
+  const pairs = [];
+  codes.forEach(c=>{
+    if(p.soldCodes) delete p.soldCodes[c]; pairs.push(['soldCodes', c, deleteField()]);
+    if(!ccIsBatchOwned(p, c)){ p.serialCodes = p.serialCodes || {}; p.serialCodes[c] = true; pairs.push(['serialCodes', c, true]); }
+  });
+  p.stock = (p.stock || 0) + codes.length;
+  await fbUpdateProductCodeFields(p.id, { stock: increment(codes.length) }, pairs);
+  fbSaveRestock(ccStockNote(p, 'in', codes.length, (why || 'Sotilgan kodlar omborga qaytarildi')+' ('+codes.length+' ta)'));
+  try{ logAudit('Sotilgan kodlar qaytarildi', p.name+': '+codes.length+' ta'); }catch(e){}
+  refreshProductViews(); toast('↩ '+codes.length+' ta kod omborga qaytarildi','green');
+  return codes.length;
+};
+
+// ---- chop etish tarixi ----
+let _ccLogCache = [];
+async function ccLogPrint(p, total, o, meta){
+  try{
+    const e = { id:uid(), date:new Date().toISOString(), by:ccActor(), productId:p.id, productName:p.name+(p.volume?' '+p.volume+'L':''), count:total, fmt:(o&&o.fmt)||'', kind:(meta&&meta.kind)||'other' };
+    if(meta){
+      if(meta.from != null) e.from = meta.from; if(meta.to != null) e.to = meta.to; if(meta.batchId) e.batchId = meta.batchId;
+      if(meta.codes && meta.codes.length && meta.codes.length <= 300) e.codes = meta.codes;
+    }
+    await setDoc(doc(db,'codePrintLog',e.id), e);
+    setTimeout(()=>{ window.ccLogLoad && window.ccLogLoad(); }, 1200);
+  }catch(err){ console.error('Chop etish tarixini saqlab bo\'lmadi', err); }
+}
+window.ccLogLoad = async function(){
+  const body = document.getElementById('cc-log-body'); if(!body) return;
+  try{
+    const snap = await getDocs(query(collection(db,'codePrintLog'), orderBy('date','desc'), limit(30)));   // v24: butun to'plamni emas, faqat oxirgi 30 tasini o'qiydi
+    _ccLogCache = snap.docs.map(d=>d.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,30);
+  }catch(e){ body.innerHTML = '<tr><td colspan="6" style="padding:.6rem;color:var(--text3)">Tarixni o\'qib bo\'lmadi (internet yoki ruxsat)</td></tr>'; return; }
+  const KIND = { intake:'Kirim', create:'Yaratildi', range:'Qayta chop', list:'Tanlangan', reprint:'Tarixdan qayta', audit:'Revizi' };
+  body.innerHTML = _ccLogCache.length ? _ccLogCache.map(e=>{
+    const rng = (e.from != null && e.to != null) ? (e.batchId && String(e.batchId).charAt(0)==='S' ? ccSeqCode(e.from)+'–'+ccSeqCode(e.to) : e.from+'–'+e.to) : (e.codes ? e.codes.length+' ta kod' : '');
+    return '<tr style="border-top:1px solid var(--border2)"><td style="padding:.3rem .4rem;white-space:nowrap">'+esc(String(e.date).slice(0,16).replace('T',' '))+'</td><td>'+esc(e.by||'')+'</td><td>'+esc(e.productName||'')+'</td><td>'+esc(KIND[e.kind]||e.kind)+'</td><td style="font-family:monospace">'+(e.from != null ? esc(rng)+' ' : '')+'<span style="color:var(--text3)">('+(e.count||0).toLocaleString('en-US')+' ta)</span></td><td><button class="btn sm" onclick="ccLogReprint(\''+e.id+'\')">🔁 Qayta chop etish</button></td></tr>';
+  }).join('') : '<tr><td colspan="6" style="padding:.6rem;color:var(--text3)">Hali chop etilmagan</td></tr>';
+};
+window.ccLogReprint = async function(id){
+  const e = _ccLogCache.find(x=>x.id === id); if(!e) return;
+  const p = DB.products.find(x=>x.id === e.productId); if(!p){ toast('Tovar topilmadi','red'); return; }
+  if(e.codes && e.codes.length){ const ok = e.codes.filter(c=>ccCodeStatus(p, c) && ccCodeStatus(p, c) !== 'void'); await ccPrintList(p, ok, null, { kind:'reprint', codes: ok }); return; }
+  const b = (p.codeBatches || []).find(x=>x.id === e.batchId);
+  if(!b || e.from == null){ toast('Partiya topilmadi — Kodlar markazidan oraliq bo\'yicha chop eting','red'); return; }
+  const o = ccReadOpts(); const cur = ccBatchCursor(p, [{ b, from:e.from, to:e.to }], true);
+  await ccStartPrintJob(p, ()=>ccBatchCursor(p, [{ b, from:e.from, to:e.to }], true), cur.total, o, ccLayout(o), { kind:'reprint', from:e.from, to:e.to, batchId:b.id });
+};
+
+// ---- reyestr ----
+let _rgSel = new Set(), _rgRows = [], _rgPage = 0;
+const CC_RG_SIZE = 25;
+function ccRgProduct(){ const s = ccEl('cc-product'); return s ? DB.products.find(x=>x.id === s.value) : null; }
+const CC_ST = { stock:['🟢 Omborda','var(--green)'], sold:['✅ Sotilgan','var(--text3)'], void:['⛔ Yaroqsiz','var(--red)'] };
+window.ccRgInit = function(){ _rgSel.clear(); window.ccRgRender(0); window.ccLogLoad && window.ccLogLoad(); window.ccAuRender && window.ccAuRender(); };
+window.ccRgRender = function(page){
+  const body = ccEl('cc-rg-body'); if(!body) return;
+  const p = ccRgProduct(); const sum = ccEl('cc-rg-sum'), pager = ccEl('cc-rg-pager');
+  if(!p){ body.innerHTML = ''; if(sum) sum.textContent = 'Tovarni tanlang'; if(pager) pager.innerHTML = ''; return; }
+  _rgPage = Math.max(0, page || 0);
+  const status = ccEl('cc-rg-status').value, q = (ccEl('cc-rg-q').value || '').trim();
+  const st = ccBatchStats(p); const batchTotal = st.reduce((a,x)=>a+x.total, 0);
+  const nSold = Object.keys(p.soldCodes || {}).length, nVoid = Object.keys(p.voidCodes || {}).length, nStock = ccRegisteredCount(p);
+  if(sum) sum.innerHTML = 'Jami kodlar: <b>'+(batchTotal + Object.keys(p.serialCodes||{}).filter(k=>!ccIsBatchOwned(p,k)).length).toLocaleString('en-US')+'</b> • 🟢 omborda: <b>'+nStock.toLocaleString('en-US')+'</b> • ✅ sotilgan: <b>'+nSold.toLocaleString('en-US')+'</b> • ⛔ yaroqsiz: <b>'+nVoid.toLocaleString('en-US')+'</b>'+(p.codeBatches && p.codeBatches.length ? '' : ' — bu tovarda hali kod partiyasi yo\'q')+ccConsistencyHtml(p)+ccStorageHtml(p);
+  let rows = [], total = 0;
+  if(q){
+    const cands = []; const c0 = ccCanonicalCode(q);
+    if(/^\d{1,10}$/.test(c0)){ cands.push(ccSeqCode(parseInt(c0,10))); if(c0.length >= 7) cands.push(c0); } else cands.push(c0);
+    [...new Set(cands)].forEach(c=>{ const s = ccCodeStatus(p, c); if(s && (status==='all' || status===s)) rows.push({ code:c, status:s }); });
+    total = rows.length;
+  } else {
+    total = status==='all' ? batchTotal + Object.keys(p.serialCodes||{}).filter(k=>!ccIsBatchOwned(p,k)).length + Object.keys(p.soldCodes||{}).filter(k=>!ccIsBatchOwned(p,k)).length + Object.keys(p.voidCodes||{}).filter(k=>!ccIsBatchOwned(p,k)).length : status==='stock' ? nStock : status==='sold' ? nSold : nVoid;
+    const off = _rgPage * CC_RG_SIZE; let seen = 0;
+    if(status==='sold' || status==='void'){
+      const keys = Object.keys(status==='sold' ? (p.soldCodes||{}) : (p.voidCodes||{})).sort();
+      keys.slice(off, off + CC_RG_SIZE).forEach(c=>rows.push({ code:c, status }));
+    } else {
+      for(const it of ccIterCodes(p)){
+        if(status==='stock' && it.status !== 'stock') continue;
+        if(seen++ < off) continue;
+        rows.push({ code:it.code, status:it.status }); if(rows.length >= CC_RG_SIZE) break;
+      }
+    }
+  }
+  _rgRows = rows;
+  const idx = ccSaleIndex();
+  body.innerHTML = rows.length ? rows.map((r,i)=>{
+    const sl = r.status==='sold' ? idx.get(r.code) : null; const vi = r.status==='void' ? (p.voidCodes||{})[r.code] : null;
+    const note = r.status==='sold' ? (sl ? '🧾 '+esc(ccSaleText(sl)) : '<span style="color:var(--text3)">savdo ma\'lumoti yo\'q (eski sotuv)</span>') : (vi ? esc((vi.reason||'—')+' · '+(vi.by||'')+' · '+String(vi.at||'').slice(0,10)) : '');
+    return '<tr style="border-top:1px solid var(--border2)"><td style="padding:.3rem .4rem"><input type="checkbox" '+(_rgSel.has(r.code)?'checked':'')+' onchange="ccRgToggle('+i+',this.checked)"></td><td style="font-family:monospace;font-weight:700">'+esc(r.code)+(ccIsPrinted(p, r.code) ? ' <span title="chop etilgan" style="font-size:11px">🖨</span>' : '')+'</td><td style="color:'+CC_ST[r.status][1]+';font-weight:600;white-space:nowrap">'+CC_ST[r.status][0]+'</td><td style="font-size:12px">'+note+'</td><td style="white-space:nowrap"><button class="btn sm" title="Shu kodni chop etish" onclick="ccRgOne('+i+',\'print\')">🖨</button> '+(r.status==='stock'?'<button class="btn sm" title="Yaroqsiz qilish" onclick="ccRgOne('+i+',\'void\')">⛔</button>':'')+(r.status==='void'?'<button class="btn sm" title="Tiklash" onclick="ccRgOne('+i+',\'restore\')">↩</button>':'')+(r.status==='sold'?'<button class="btn sm" title="Omborga qaytarish" onclick="ccRgOne('+i+',\'unsell\')">↩</button>':'')+'</td></tr>';
+  }).join('') : '<tr><td colspan="5" style="padding:.7rem;color:var(--text3)">Kod topilmadi</td></tr>';
+  const pages = Math.max(1, Math.ceil(total / CC_RG_SIZE));
+  if(pager) pager.innerHTML = q ? '' : '<button class="btn sm" '+(_rgPage<=0?'disabled':'')+' onclick="ccRgRender('+(_rgPage-1)+')">‹ Oldingi</button> <span style="font-size:13px">'+(_rgPage+1)+' / '+pages.toLocaleString('en-US')+'</span> <button class="btn sm" '+(_rgPage+1>=pages?'disabled':'')+' onclick="ccRgRender('+(_rgPage+1)+')">Keyingi ›</button>';
+  ccRgBulk();
+};
+function ccRgBulk(){
+  const el = ccEl('cc-rg-bulk'); if(!el) return; const n = _rgSel.size;
+  el.innerHTML = n ? '<div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin:.2rem 0 .6rem;padding:.45rem .6rem;border:1px solid var(--accent-border,var(--border2));border-radius:10px;background:var(--accent-bg,var(--surface2))"><b>Tanlangan: '+n.toLocaleString('en-US')+'</b><button class="btn sm blue" onclick="ccRgBulkDo(\'print\')">🖨 Chop etish</button><button class="btn sm" onclick="ccRgBulkDo(\'void\')">⛔ Yaroqsiz qilish</button><button class="btn sm" onclick="ccRgBulkDo(\'restore\')">↩ Tiklash</button><button class="btn sm" onclick="ccRgBulkDo(\'unsell\')">↩ Sotilgandan qaytarish</button><button class="btn sm" onclick="ccRgBulkDo(\'csv\')">📥 CSV</button><button class="btn sm" onclick="ccRgClear()">✖ Tozalash</button></div>' : '';
+}
+window.ccRgToggle = function(i, on){ const r = _rgRows[i]; if(!r) return; if(on) _rgSel.add(r.code); else _rgSel.delete(r.code); ccRgBulk(); };
+window.ccRgClear = function(){ _rgSel.clear(); window.ccRgRender(_rgPage); };
+window.ccRgSelectPage = function(on){ _rgRows.forEach(r=>{ if(on) _rgSel.add(r.code); else _rgSel.delete(r.code); }); window.ccRgRender(_rgPage); };
+window.ccRgSelectList = function(){
+  const p = ccRgProduct(); if(!p) return;
+  const codes = ccParseCodeList(ccEl('cc-rg-list').value, p);
+  if(!codes.length){ toast('Ro\'yxatdagi kodlar bu tovardan topilmadi','amber'); return; }
+  codes.forEach(c=>_rgSel.add(c)); toast('☑ '+codes.length.toLocaleString('en-US')+' ta kod tanlandi','green'); window.ccRgRender(_rgPage);
+};
+async function ccRgAct(p, act, codes){
+  if(act === 'print'){
+    const ok = codes.filter(c=>{ const s = ccCodeStatus(p, c); return s && s !== 'void'; });
+    if(!ok.length){ toast('Chop etiladigan kod yo\'q (yaroqsiz kodlar chop etilmaydi)','amber'); return; }
+    if(ok.length > 10000){ toast('Bir vaqtda 10 000 tagacha kod chop etiladi','red'); return; }
+    await ccPrintList(p, ok, null, { kind:'list', codes: ok });
+  } else if(act === 'void'){
+    const reason = (prompt('Yaroqsiz qilish sababi (masalan: yo\'qolgan, shikastlangan):', 'yo\'qolgan') || '').trim();
+    if(reason === '' ) { toast('Sabab kiritilmadi — bekor qilindi','amber'); return; }
+    await window.ccVoidCodes(p, codes, reason);
+  } else if(act === 'restore'){ await window.ccRestoreCodes(p, codes);
+  } else if(act === 'unsell'){ await window.ccUnsellCodes(p, codes, 'Sotilgan deb belgilangan kodlar omborga qaytarildi'); }
+  else if(act === 'csv'){
+    const idx = ccSaleIndex();
+    const lines = ['kod,holat,izoh'].concat(codes.map(c=>{ const s = ccCodeStatus(p, c); const sl = s==='sold' ? idx.get(c) : null; const vi = s==='void' ? p.voidCodes[c] : null; return [c, s||'', sl ? ccSaleText(sl) : (vi ? (vi.reason||'') : '')].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(','); }));
+    const blob = new Blob(['\ufeff'+lines.join('\n')], { type:'text/csv;charset=utf-8' }); const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'kodlar-'+String(p.name||'tovar').replace(/[^\w\-]+/g,'_')+'.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  }
+  _rgSel.clear(); window.ccRgRender(_rgPage); window.ccProductChanged && window.ccProductChanged();
+}
+window.ccRgOne = async function(i, act){ const p = ccRgProduct(), r = _rgRows[i]; if(!p || !r) return; await ccRgAct(p, act, [r.code]); };
+window.ccRgBulkDo = async function(act){ const p = ccRgProduct(); if(!p || !_rgSel.size) return; await ccRgAct(p, act, [..._rgSel]); };
+
+// ---- kod bo'yicha revizi (skaner): bitta tovar YOKI butun ombor (aralash tovarlar) ----
+let _au = null, _auTimer = null;
+function ccAuNew(mode, pid){ return { mode, pid: pid || null, sc:{}, sold:[], voidHit:[], foreign:[], unknown:[], dup:0, at:new Date().toISOString() }; }
+function ccAuSet(pid){ return (_au.sc[pid] = _au.sc[pid] || new Set()); }
+function ccAuTotal(){ let n = 0; for(const k in _au.sc) n += _au.sc[k].size; return n; }
+function ccAuLoad(){
+  try{
+    const j = JSON.parse(localStorage.getItem('dokon_cc_audit') || 'null');
+    if(j && j.mode){ _au = { mode:j.mode, pid:j.pid||null, sc:{}, sold:j.sold||[], voidHit:j.voidHit||[], foreign:j.foreign||[], unknown:j.unknown||[], dup:j.dup||0, at:j.at }; for(const k in (j.sc||{})) _au.sc[k] = new Set(j.sc[k]); }
+  }catch(e){}
+}
+function ccAuSave(){
+  clearTimeout(_auTimer);
+  _auTimer = setTimeout(()=>{ try{
+    if(!_au){ localStorage.removeItem('dokon_cc_audit'); return; }
+    const sc = {}; for(const k in _au.sc) sc[k] = [..._au.sc[k]];
+    localStorage.setItem('dokon_cc_audit', JSON.stringify({ mode:_au.mode, pid:_au.pid, sc, sold:_au.sold, voidHit:_au.voidHit, foreign:_au.foreign, unknown:_au.unknown, dup:_au.dup, at:_au.at }));
+  }catch(e){} }, 700);
+}
+window.ccAuStart = function(mode){
+  mode = mode === 'all' ? 'all' : 'one';
+  const p = ccRgProduct();
+  if(mode === 'one' && !p){ toast('Avval tovarni tanlang','amber'); return; }
+  _au = ccAuNew(mode, mode === 'one' ? p.id : null);
+  ccAuSave(); window.ccAuRender(); setTimeout(()=>{ const i = ccEl('cc-au-in'); if(i) i.focus(); }, 50);
+};
+window.ccAuReset = function(){ _au = null; ccAuSave(); const r = ccEl('cc-au-report'); if(r) r.innerHTML = ''; window.ccAuRender(); };
+window.ccAuScan = function(raw){
+  if(!_au) return;
+  const msg = ccEl('cc-au-msg'); const say = (t, c)=>{ if(msg){ msg.innerHTML = t; msg.style.color = c || 'var(--text2)'; } };
+  String(raw || '').split(/[\s,;]+/).filter(Boolean).forEach(tok=>{
+    const code = ccCanonicalCode(tok);
+    let prod = null, st = null;
+    if(_au.mode === 'one'){
+      prod = DB.products.find(x=>x.id === _au.pid); st = ccCodeStatus(prod, code);
+      if(!st){ const r = findProductByCode(code); if(r && r.product.id !== _au.pid){ _au.foreign.push(code+' → '+r.product.name); say('❌ <b>'+esc(code)+'</b> — boshqa tovarniki: '+esc(r.product.name),'var(--red)'); return; } }
+    } else {
+      const r = findProductByCode(code); prod = r ? r.product : null; st = prod ? ccCodeStatus(prod, code) : null;
+    }
+    const nm = (_au.mode === 'all' && prod) ? ' · '+esc(prod.name) : '';
+    if(st === 'stock'){
+      const set = ccAuSet(prod.id);
+      if(set.has(code)){ _au.dup++; say('🔁 Takror skanerlandi: <b>'+esc(code)+'</b>'+nm,'var(--amber)'); }
+      else { set.add(code); say('✅ <b>'+esc(code)+'</b> — omborda, hisobga olindi'+nm,'var(--green)'); }
+    } else if(st === 'sold'){
+      if(!_au.sold.some(x=>x.code === code)) _au.sold.push({ code, pid:prod.id });
+      say('⚠️ <b>'+esc(code)+'</b> — tizimda SOTILGAN, lekin omborda topildi'+nm,'var(--red)');
+    } else if(st === 'void'){
+      if(!_au.voidHit.some(x=>x.code === code)) _au.voidHit.push({ code, pid:prod.id });
+      say('⚠️ <b>'+esc(code)+'</b> — yaroqsiz deb belgilangan, lekin topildi'+nm,'var(--red)');
+    } else { _au.unknown.push(code); say('❓ <b>'+esc(code)+'</b> — tizimda topilmadi (dona kodi emas)','var(--red)'); }
+  });
+  ccAuSave(); window.ccAuRender(true);
+};
+window.ccAuRender = function(keepFocus){
+  const box = ccEl('cc-au-box'); if(!box) return;
+  const p = (_au && _au.mode === 'one') ? DB.products.find(x=>x.id === _au.pid) : null;
+  if(!_au || (_au.mode === 'one' && !p)){
+    box.innerHTML = '<div style="color:var(--text3);font-size:13px">Ombordagi donalarni skanerlang (skaner Enter yuboradi). Tugagach hisobot: nima topilmadi, nima ortiqcha. <b>Tanlangan tovar</b> bo\'yicha yoki <b>butun ombor</b> (aralash tovarlar bir javonda turgan bo\'lsa) bo\'yicha qilish mumkin.</div><div style="margin-top:.6rem;display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn sm blue" onclick="ccAuStart(\'one\')">▶ Tanlangan tovar bo\'yicha</button><button class="btn sm blue" onclick="ccAuStart(\'all\')">▶ Butun ombor (aralash)</button></div>';
+    return;
+  }
+  const head = _au.mode === 'one'
+    ? '<b>'+esc(p.name)+(p.volume?' '+esc(p.volume)+'L':'')+'</b> — tizimda omborda: <b>'+ccRegisteredCount(p).toLocaleString('en-US')+'</b> ta kod'
+    : '<b>Butun ombor</b> (aralash tovarlar) — skanerlangan tovarlar: <b>'+Object.keys(_au.sc).length+'</b>';
+  box.innerHTML = '<div style="font-size:13px;margin-bottom:.5rem">'+head+'</div>'
+    + '<div style="display:flex;gap:.9rem;flex-wrap:wrap;font-size:14px;margin-bottom:.5rem"><span>✅ topildi: <b id="cc-au-n">'+ccAuTotal().toLocaleString('en-US')+'</b></span><span>🔁 takror: <b>'+_au.dup+'</b></span><span>⚠️ sotilgan/yaroqsiz topildi: <b>'+(_au.sold.length+_au.voidHit.length)+'</b></span><span>❌ begona/noma\'lum: <b>'+(_au.foreign.length+_au.unknown.length)+'</b></span></div>'
+    + '<input id="cc-au-in" class="ccx-in" autocomplete="off" placeholder="Kodni skanerlang… (Enter)" style="font-size:16px;max-width:420px" onkeydown="if(event.key===\'Enter\'){ccAuScan(this.value);this.value=\'\'}">'
+    + '<div id="cc-au-msg" style="min-height:22px;margin:.4rem 0;font-size:14px"></div>'
+    + '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn sm blue" onclick="ccAuFinish()">⏹ Yakunlash va hisobot</button><button class="btn sm" onclick="if(confirm(\'Revizi bekor qilinsinmi? Skanerlangan kodlar o\\\'chadi.\'))ccAuReset()">✖ Bekor qilish</button></div>';
+  if(keepFocus){ const i = ccEl('cc-au-in'); if(i) i.focus(); }
+};
+function ccAuMissing(p){
+  const set = _au.sc[p.id] || new Set(); const missing = []; let n = 0, capped = false;
+  for(const it of ccIterCodes(p)){
+    if(it.status !== 'stock') continue;
+    if(++n > CC_AUDIT_MAX){ capped = true; break; }
+    if(!set.has(it.code)) missing.push(it.code);
+  }
+  return { missing, capped, expected:n, found:set.size };
+}
+function ccAuPids(){ return _au.mode === 'one' ? [_au.pid] : Object.keys(_au.sc); }
+window.ccAuFinish = function(){
+  if(!_au) return; const rep = ccEl('cc-au-report'); if(!rep) return;
+  const rows = ccAuPids().map(pid=>{ const p = DB.products.find(x=>x.id === pid); return p ? { p, r:ccAuMissing(p) } : null; }).filter(Boolean);
+  const T = { exp:0, found:0, miss:0 }; rows.forEach(x=>{ T.exp += x.r.expected; T.found += x.r.found; T.miss += x.r.missing.length; });
+  const list = (arr, max)=>arr.slice(0, max||60).map(c=>'<code style="font-size:12px">'+esc(c)+'</code>').join(' ') + (arr.length > (max||60) ? ' … +'+(arr.length-(max||60))+' ta' : '');
+  const nameOf = pid=>{ const p = DB.products.find(x=>x.id === pid); return p ? p.name : pid; };
+  let h = '<div style="border:1.5px solid var(--border2);border-radius:12px;padding:.8rem .9rem;margin-top:.8rem"><h4 style="margin:0 0 .5rem;font-size:15px">📋 Revizi hisoboti — '+(_au.mode==='one' ? esc(rows[0] ? rows[0].p.name : '') : 'butun ombor')+'</h4>'
+    + '<div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:14px;margin-bottom:.6rem"><span>Tizimda omborda: <b>'+T.exp.toLocaleString('en-US')+'</b></span><span>✅ Topildi: <b>'+T.found.toLocaleString('en-US')+'</b></span><span style="color:'+(T.miss?'var(--red)':'var(--green)')+'">❌ Topilmadi: <b>'+T.miss.toLocaleString('en-US')+'</b></span></div>';
+  if(rows.some(x=>x.r.capped)) h += '<div style="color:var(--amber);font-size:12px;margin-bottom:.4rem">Hisobot har tovarda dastlabki '+CC_AUDIT_MAX.toLocaleString('en-US')+' ta kod bo\'yicha tuzildi.</div>';
+  if(_au.mode === 'all'){
+    h += rows.map(x=>'<div style="border-top:1px solid var(--border2);padding:.45rem 0"><b>'+esc(x.p.name)+(x.p.volume?' '+esc(x.p.volume)+'L':'')+'</b> — omborda '+x.r.expected+', topildi '+x.r.found+', <span style="color:'+(x.r.missing.length?'var(--red)':'var(--green)')+'">topilmadi '+x.r.missing.length+'</span>'+(x.r.missing.length ? '<div style="margin-top:.2rem;line-height:1.7">'+list(x.r.missing,30)+'</div><button class="btn sm" style="margin-top:.3rem" onclick="ccAuVoidMissing(\''+x.p.id+'\')">⛔ Yaroqsiz qilish ('+x.r.missing.length+')</button>' : '')+'</div>').join('');
+    const touched = new Set(rows.map(x=>x.p.id)); const untouched = DB.products.filter(p=>!touched.has(p.id) && ccRegisteredCount(p) > 0);
+    if(untouched.length) h += '<div style="margin:.5rem 0;font-size:12.5px;color:var(--text3)">Skanerlanmagan, lekin kodli donasi bor tovarlar ('+untouched.length+'): '+esc(untouched.slice(0,15).map(p=>p.name+' ('+ccRegisteredCount(p)+')').join(', '))+(untouched.length>15?' …':'')+' — ularni alohida revizi qiling.</div>';
+    if(T.miss) h += '<div style="margin-top:.4rem"><button class="btn sm" onclick="ccAuCsv()">📥 Topilmaganlar CSV</button></div>';
+  } else {
+    const r = rows[0] ? rows[0].r : { missing:[] };
+    h += r.missing.length ? '<div style="margin:.4rem 0"><b>Topilmagan kodlar:</b><div style="margin-top:.25rem;line-height:1.7">'+list(r.missing)+'</div><div style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn sm" onclick="ccAuVoidMissing()">⛔ Topilmaganlarni yaroqsiz qilish (ombor −'+r.missing.length.toLocaleString('en-US')+')</button><button class="btn sm" onclick="ccAuCsv()">📥 CSV</button></div></div>' : '<div style="color:var(--green);margin:.4rem 0">✅ Omborda turishi kerak bo\'lgan hamma kod topildi.</div>';
+  }
+  if(_au.sold.length) h += '<div style="margin:.6rem 0"><b>⚠️ Sotilgan deb belgilangan, lekin omborda topilgan:</b><div style="margin-top:.25rem;line-height:1.7">'+list(_au.sold.map(x=>x.code))+'</div><div style="margin-top:.4rem"><button class="btn sm" onclick="ccAuUnsell()">↩ Omborga qaytarish (ombor +'+_au.sold.length+')</button> <span style="font-size:12px;color:var(--text3)">mijoz qaytargan, lekin savdo qaytarilmagan bo\'lishi mumkin</span></div></div>';
+  if(_au.voidHit.length) h += '<div style="margin:.6rem 0"><b>⚠️ Yaroqsiz deb belgilangan, lekin topilgan:</b><div style="margin-top:.25rem">'+list(_au.voidHit.map(x=>x.code))+'</div><div style="margin-top:.4rem"><button class="btn sm" onclick="ccAuRestoreVoid()">↩ Tiklash (ombor +'+_au.voidHit.length+')</button></div></div>';
+  if(_au.foreign.length || _au.unknown.length) h += '<div style="margin:.6rem 0"><b>❌ Begona yoki noma\'lum kodlar:</b><div style="margin-top:.25rem;line-height:1.7">'+list(_au.foreign.concat(_au.unknown))+'</div></div>';
+  h += '<div style="margin-top:.7rem"><button class="btn sm" onclick="ccAuReset()">✔ Reviziyani yopish</button></div></div>';
+  rep.innerHTML = h; rep.scrollIntoView({ behavior:'smooth', block:'nearest' });
+};
+window.ccAuVoidMissing = async function(pid){
+  if(!_au) return; const p = DB.products.find(x=>x.id === (pid || _au.pid)); if(!p) return;
+  const r = ccAuMissing(p); if(!r.missing.length) return;
+  if(!confirm(p.name+': '+r.missing.length.toLocaleString('en-US')+' ta kod "topilmadi" sabab bilan yaroqsiz qilinadi va ombor shuncha kamayadi. Davom etilsinmi?')) return;
+  await window.ccVoidCodes(p, r.missing, 'Revizi: topilmadi'); window.ccAuFinish(); window.ccRgRender(0);
+};
+async function ccAuGroupDo(list, fn){
+  const by = {}; list.forEach(x=>{ (by[x.pid] = by[x.pid] || []).push(x.code); });
+  for(const pid in by){ const p = DB.products.find(x=>x.id === pid); if(p) await fn(p, by[pid]); }
+}
+window.ccAuUnsell = async function(){ if(!_au) return; await ccAuGroupDo(_au.sold, (p, codes)=>window.ccUnsellCodes(p, codes, 'Revizi: sotilgan kod omborda topildi')); _au.sold = []; ccAuSave(); window.ccAuFinish(); window.ccRgRender(0); };
+window.ccAuRestoreVoid = async function(){ if(!_au) return; await ccAuGroupDo(_au.voidHit, (p, codes)=>window.ccRestoreCodes(p, codes)); _au.voidHit = []; ccAuSave(); window.ccAuFinish(); window.ccRgRender(0); };
+window.ccAuCsv = function(){
+  if(!_au) return; const lines = ['tovar,kod'];
+  ccAuPids().forEach(pid=>{ const p = DB.products.find(x=>x.id === pid); if(!p) return; ccAuMissing(p).missing.forEach(c=>lines.push('"'+String(p.name).replace(/"/g,'""')+'",'+c)); });
+  const blob = new Blob(['\ufeff'+lines.join('\n')], { type:'text/csv;charset=utf-8' }); const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'revizi-topilmadi.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+};
+ccAuLoad();
+
+// ================== v23: ALGORITM YAXSHILASH — to'qnashuv himoyasi • test varaq • yarim varaq • qaytarish • sifat baholash ==================
+// Qo'lda kiritilgan barcode/QR tartib raqamli kodlar oralig'iga tushsa — to'qnashadi: skaner qaysi tovarni topishini bilmaydi.
+function ccSeqConflict(code){
+  const c = String(code || '').trim(); if(!CC_SEQ_RE.test(c)) return null;
+  const n = parseInt(c, 10); if(ccSeqCode(n) !== c) return null;
+  return DB.products.find(p=>(p.codeBatches || []).some(b=>b.kind === 'seq' && n >= b.from && n <= b.to)) || null;
+}
+// Chiziqli (Code 128) barcode sifati: modul eni (mm) = mavjud kenglik / (modullar + jim zonalar)
+function ccLinearQuality(L, o, sample){
+  try{
+    if(o.fmt !== 'code128') return null;
+    const mods = ccC128Widths(sample).reduce((a,b)=>a+b, 0) + 20;
+    const mm = (L.w - 2*ccPadFor(L, o)) / mods;
+    let q, col, level;
+    if(mm >= 0.33){ q = "A'lo"; col = 'var(--green)'; level = 3; }
+    else if(mm >= 0.25){ q = 'Yaxshi'; col = 'var(--green)'; level = 2; }
+    else if(mm >= 0.19){ q = "Chegarada — sifatli skaner kerak"; col = 'var(--amber)'; level = 1; }
+    else { q = "O'qilmasligi mumkin — yorliqni kengaytiring yoki chekkani kamaytiring"; col = 'var(--red)'; level = 0; }
+    return { mm, q, col, level, mods };
+  }catch(e){ return null; }
+}
+// ---- A4: yarim ishlatilgan varaqni eslab qolish (varaq pulini tejaydi) ----
+function ccA4Sig(L){ return L.cols+'x'+L.rows+':'+L.w+'x'+L.h; }
+function ccA4UsedFor(L){
+  try{ const j = JSON.parse(localStorage.getItem('dokon_cc_a4used') || 'null'); if(j && j.sig === ccA4Sig(L) && j.used > 0) return j.used; }catch(e){}
+  return 0;
+}
+function ccA4Remember(L, o, total, skip){
+  if(!L || !L.a4) return;
+  const per = L.cols * L.rows, used = (((skip || 0) + total) % per);
+  try{ if(used > 0) localStorage.setItem('dokon_cc_a4used', JSON.stringify({ sig:ccA4Sig(L), used, at:new Date().toISOString() })); else localStorage.removeItem('dokon_cc_a4used'); }catch(e){}
+  const sk = ccEl('cc-skip'); if(sk) sk.value = '0';
+  window.ccA4UsedRender && window.ccA4UsedRender();
+}
+window.ccA4UsedRender = function(){
+  const el = ccEl('cc-a4-used'); if(!el) return;
+  const o = ccReadOpts({ skip:0 }); const L = ccLayout(o);
+  const u = L.a4 ? ccA4UsedFor(L) : 0, per = L.cols * L.rows;
+  if(!u){ el.innerHTML = ''; return; }
+  const on = ccEl('cc-a4-resume') ? ccEl('cc-a4-resume').checked : true;
+  el.innerHTML = '<label style="display:flex;gap:.5rem;align-items:flex-start;font-size:13px;padding:.5rem .7rem;border:1px dashed var(--accent-border,var(--border2));border-radius:10px;background:var(--accent-bg,var(--surface2));cursor:pointer"><input type="checkbox" id="cc-a4-resume" '+(on?'checked':'')+' style="margin-top:3px;width:auto;flex:none" onchange="window.ccA4UsedRender();window.ccLastPrintRender&&window.ccLastPrintRender()"><span>📄 Oxirgi varaq <b>'+u+'</b> katakkacha ishlatilgan — <b>keyingi chop etish '+(u+1)+'-katakdan</b> boshlanadi (varaq isrof bo\'lmaydi). <a href="#" onclick="event.preventDefault();ccA4NewSheet()">Yangi varaq bilan boshlash</a></span></label>';
+};
+window.ccA4NewSheet = function(){ try{ localStorage.removeItem('dokon_cc_a4used'); }catch(e){} window.ccA4UsedRender(); window.ccLastPrintRender && window.ccLastPrintRender(); };
+// ---- A4 test varaq: chop etish masshtabi, chekkalar va kataklar joyini yorliq sarflamasdan tekshirish ----
+window.ccA4TestSheet = async function(){
+  const o = ccReadOpts({ skip:0 }); const L = ccLayout(o);
+  if(!L.a4){ toast('Avval A4 varaq o\'lchamini tanlang','amber'); return; }
+  const n = L.cols * L.rows, cells = [];
+  for(let i=1;i<=n;i++) cells.push('<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;font:bold 9pt Arial;color:#444;border:0.2mm solid #999;box-sizing:border-box"><div>'+i+'</div><div style="font-weight:400;font-size:6.5pt">'+L.w+'×'+L.h+' mm</div></div>');
+  let html = ccDocHtml(cells, L, o, 0);
+  const ruler = '<div style="position:fixed;left:'+ccA4Left(L,o)+'mm;bottom:3mm;font:7pt Arial;color:#000">TEST VARAQ — chizg\'ich 100 mm bo\'lishi kerak:</div>'
+    + '<div style="position:fixed;left:'+ccA4Left(L,o)+'mm;bottom:2.5mm;width:100mm;height:0;border-top:0.3mm solid #000"></div>'
+    + Array.from({length:11}, (_,i)=>'<div style="position:fixed;left:'+(ccA4Left(L,o)+i*10)+'mm;bottom:0.5mm;width:0;height:2mm;border-left:0.3mm solid #000"></div>').join('');
+  html = html.replace('</body>', ruler + '</body>');
+  toast('Test varaq tayyorlanmoqda…','blue'); await ccPrintHtml(html);
+};
+// ---- chop etilgan belgisini qaytarish / qo'lda belgilash (printer tiqilsa, qog'oz tugasa va h.k.) ----
+window.ccUndoPrint = function(){
+  const p = ccProd(); if(!p || !p.lastPrint || !p.lastPrint.prev){ toast('Qaytariladigan chop etish yo\'q','amber'); return; }
+  const lp = p.lastPrint, up = lp.prev, back = lp.prevLast || null;
+  p.printedUpTo = up; p.lastPrint = back;
+  fbUpdateProductFields(p.id, { printedUpTo: up, lastPrint: back ? back : deleteField() });
+  try{ localStorage.removeItem('dokon_cc_a4used'); }catch(e){}
+  toast('↺ Oxirgi chop etish bekor qilindi — '+lp.from+' dan qayta chop etish mumkin','green');
+  window.ccLastPrintRender && window.ccLastPrintRender(); window.ccA4UsedRender && window.ccA4UsedRender(); window.ccRgRender && window.ccRgRender(0);
+};
+window.ccMarkUpTo = function(){
+  const p = ccProd(); if(!p) return;
+  const raw = (ccEl('cc-mark-n').value || '').trim(); if(!raw){ toast('Raqamni kiriting','amber'); return; }
+  const code = /^\d{1,10}$/.test(raw) && raw.length < 7 ? ccSeqCode(parseInt(raw,10)) : ccCanonicalCode(raw);
+  const pc = ccParseBatchCode(code);
+  const own = pc && pc.valid ? (p.codeBatches||[]).find(b=>(pc.kind==='seq' ? b.kind==='seq' : b.id===pc.batch) && pc.seq>=b.from && pc.seq<=b.to) : null;
+  if(!own){ toast('Bu raqam shu tovarning kodlari orasida yo\'q','red'); return; }
+  const up = {}; let reached = false;
+  for(const b of p.codeBatches){ if(b === own){ up[b.id] = pc.seq; reached = true; } else if(!reached){ up[b.id] = b.to; } }
+  const lp = { at:new Date().toISOString(), by:ccActor(), from:ccCodeOf(own, own.from), to:code, count:0, manual:true };
+  p.printedUpTo = up; p.lastPrint = lp;
+  fbUpdateProductFields(p.id, { printedUpTo: up, lastPrint: lp });
+  toast('✔ '+code+' gacha chop etilgan deb belgilandi','green');
+  window.ccLastPrintRender && window.ccLastPrintRender(); window.ccRgRender && window.ccRgRender(0);
+};
+
+function ccOrderCells(arr, L, o){
+  if(!o || o.order !== 'col') return arr;
+  const per = L.cols * L.rows, out = new Array(per).fill(null);
+  arr.forEach((it,k)=>{ const r = k % L.rows, c = Math.floor(k / L.rows); out[r*L.cols + c] = it; });
+  return out.map(x=>x || '<div class="ccl-empty"></div>');
+}
+// ================== v24: VEKTOR BARCODE • HISOBLAGICH NAZORATI • MOSLIK TEKSHIRUVI • SKANER SINOVI • PROFILLAR ==================
+// Code 128 — VEKTOR (SVG): har qanday printer/DPI da o'tkir qirralar, rastrga aylantirishdagi xiralashish yo'q, kutubxona kerak emas.
+function ccC128Svg(text){
+  const w = ccC128Widths(text), q = 10; let mods = 0; w.forEach(x=>mods += x);
+  const W = mods + 2*q; let x = q, rects = '';
+  w.forEach((n,i)=>{ if(i % 2 === 0) rects += '<rect x="'+x+'" y="0" width="'+n+'" height="1"/>'; x += n; });
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' 1" preserveAspectRatio="none" shape-rendering="crispEdges"><rect width="'+W+'" height="1" fill="#fff"/><g fill="#000">'+rects+'</g></svg>';
+}
+function ccC128SvgUrl(text){ return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ccC128Svg(text)); }
+// ---- tartib raqam hisoblagichi: ko'rish va faqat OSHIRISH (kamaytirish takrorlanishga olib keladi) ----
+window.ccSeqSetNext = async function(){
+  const el = document.getElementById('cc-seq-set'); const want = parseInt(el && el.value, 10);
+  if(!(want >= 1) || want > 9999999999){ toast('Raqamni kiriting (1 dan katta butun son)','amber'); return; }
+  if(navigator.onLine === false){ toast('Internet yo\'q — hisoblagichni o\'zgartirib bo\'lmaydi','red'); return; }
+  const ref = doc(db,'dokon','serialCounter'); const floor = (await ccSeqLocalMax()) + 1;
+  try{
+    const res = await runTransaction(db, async (tx)=>{
+      const s = await tx.get(ref); const cur = Math.max((s.exists() && Number(s.data().next)) || 1, floor);
+      if(want < cur) return { ok:false, cur };
+      tx.set(ref, { next:want, updatedAt:new Date().toISOString(), setBy:ccActor() }); return { ok:true, cur };
+    });
+    if(!res.ok){ toast('Hozirgi keyingi raqam '+ccSeqCode(res.cur)+' — undan kichik raqam qo\'yib bo\'lmaydi (raqamlar takrorlanib ketadi)','red'); return; }
+    try{ logAudit('Hisoblagich o\'zgartirildi', ccSeqCode(res.cur)+' → '+ccSeqCode(want)); }catch(e){}
+    toast('✓ Keyingi tartib raqam: '+ccSeqCode(want),'green'); if(el) el.value = ''; window.ccSeqHint && window.ccSeqHint();
+  }catch(e){ console.error(e); toast('Hisoblagichni o\'zgartirib bo\'lmadi (internet/ruxsat)','red'); }
+};
+// ---- moslik tekshiruvi: kodlangan donalar soni ombor sonidan ko'p bo'lmasligi kerak ----
+function ccConsistencyHtml(p){
+  const coded = ccRegisteredCount(p), stock = p.stock || 0;
+  if(coded > stock) return '<div style="margin-top:.35rem;color:var(--red)">⚠️ Omborda turgan kodlar (<b>'+coded.toLocaleString('en-US')+'</b>) ombor sonidan (<b>'+stock.toLocaleString('en-US')+'</b>) ko\'p — nomuvofiqlik bor. Kod bo\'yicha <b>reviziy</b> qiling yoki ortiqcha kodlarni "yaroqsiz" qiling.</div>';
+  return '';
+}
+// ---- skaner sinovi: skaner nimani yuborayotganini ko'rsatadi (prefiks, suffiks, klaviatura tili, tezlik) ----
+function ccScanAnalyze(raw, gaps, expected){
+  const s = String(raw); const L = [];
+  const show = [...s].map(ch=>{ const c = ch.charCodeAt(0); return (c < 32 || c === 127) ? '⟨0x'+c.toString(16).padStart(2,'0')+'⟩' : ch; }).join('');
+  L.push('Skaner yuborgan: <code style="font-size:13px">'+esc(show)+'</code> ('+s.length+' belgi)');
+  let ok = true;
+  const ctrlLead = /^[\x00-\x20\x7f]+/.exec(s), ctrlTail = /[\x00-\x20\x7f]+$/.exec(s);
+  if(ctrlLead){ ok = false; L.push('⚠️ Boshida ortiqcha belgi bor (prefiks): <b>'+ctrlLead[0].length+' ta</b> — skanerni "prefiksiz" rejimga sozlang'); }
+  if(ctrlTail){ ok = false; L.push('⚠️ Oxirida ortiqcha belgi bor (suffiks): <b>'+ctrlTail[0].length+' ta</b> (Enter/Tab dan boshqa) — skaner sozlamasini tekshiring'); }
+  const t = s.replace(/^[\x00-\x20\x7f]+|[\x00-\x20\x7f]+$/g, '');
+  if(/[\u0400-\u04FF]/.test(t)){ ok = false; L.push('❌ Kirill harflari bor — klaviatura tili lotinga o\'tkazilsin (skaner klaviatura sifatida ishlaydi)'); }
+  if(/[^\x20-\x7e]/.test(t.replace(/[\u0400-\u04FF]/g,''))){ ok = false; L.push('⚠️ Ko\'rinmas yoki g\'alati belgilar bor'); }
+  let kind = 'noma\'lum format';
+  if(CC_SEQ_RE.test(t)) kind = 'tartib raqamli kod (seriya)'; else if(CC_BATCH_RE.test(ccCanonicalCode(t))) kind = 'partiya kodi (MB-…)';
+  else if(/^\d{13}$/.test(t)) kind = 'EAN-13'; else if(/^\d{8}$/.test(t)) kind = 'EAN-8'; else if(/^\d{12}$/.test(t)) kind = 'UPC-A';
+  L.push('Format: <b>'+kind+'</b>');
+  if(gaps && gaps.length >= 3){
+    const avg = gaps.reduce((a,b)=>a+b,0) / gaps.length;
+    L.push('Kiritish tezligi: <b>'+Math.round(avg)+' ms/belgi</b> — '+(avg < 40 ? 'skaner ✅' : (avg < 100 ? 'tez yozilgan (skaner bo\'lishi mumkin)' : 'qo\'lda yozilgan ko\'rinadi')));
+  }
+  const code = ccCanonicalCode(t); const r = findProductByCode(code);
+  if(r){ const st = r.type === 'serial' ? ccCodeStatus(r.product, code) : null; L.push('Tovar: <b>'+esc(r.product.name)+'</b>'+(st ? ' · holati: '+({stock:'🟢 omborda',sold:'✅ sotilgan',void:'⛔ yaroqsiz'}[st]) : '')); }
+  else L.push('Bu kod tizimda topilmadi');
+  if(expected){
+    const e = ccCanonicalCode(String(expected).trim());
+    if(e === code) L.push('✅ Kutilgan kod bilan <b>mos</b>');
+    else { ok = false; let i = 0; while(i < e.length && i < code.length && e[i] === code[i]) i++; L.push('❌ Kutilgan: <code>'+esc(e)+'</code> — farq '+(i+1)+'-belgidan boshlanadi (yorliq noto\'g\'ri chiqqan yoki skaner xato o\'qigan)'); }
+  }
+  return { ok, html: L.join('<br>') };
+}
+let _stT = [];
+window.ccScanTestKey = function(ev){
+  const inp = ev.target; const now = performance.now();
+  if(ev.key === 'Enter'){
+    const res = ccScanAnalyze(inp.value, _stT.slice(1), (document.getElementById('cc-st-exp')||{}).value);
+    const out = document.getElementById('cc-st-out'); if(out){ out.style.borderColor = res.ok ? 'var(--green)' : 'var(--red)'; out.innerHTML = res.html; }
+    inp.value = ''; _stT = []; return;
+  }
+  if(ev.key.length === 1) _stT.push(_stT.length ? now - (_stT.__last || now) : 0);
+  _stT.__last = now;
+};
+// ---- profillar: har xil yorliq turi/printer uchun sozlamalarni nom bilan saqlash ----
+const CC_PROF_KEY = 'dokon_cc_profiles';
+const CC_PROF_MAP = { fmt:'cc-format', size:'cc-size', cw:'cc-cw', ch:'cc-ch', dpi:'cc-dpi', layout:'cc-layout', ox:'cc-ox', oy:'cc-oy', extra:'cc-extra', copies:'cc-copies', out:'cc-out', gap:'cc-gap',
+  a4cols:'cc-a4-cols', a4rows:'cc-a4-rows', a4w:'cc-a4-w', a4h:'cc-a4-h', mt:'cc-a4-mt', mr:'cc-a4-mr', mb:'cc-a4-mb', ml:'cc-a4-ml', gx:'cc-a4-gx', gy:'cc-a4-gy', padMm:'cc-a4-pad', cut:'cc-cut', order:'cc-order' };
+const CC_PROF_CHK = { showName:'cc-shname', showPrice:'cc-shprice', showCode:'cc-shcode', showDate:'cc-shdate', showSeq:'cc-shseq', inv:'cc-inv', cutFrame:'cc-cutframe' };
+function ccProfLoad(){ try{ return JSON.parse(localStorage.getItem(CC_PROF_KEY) || '{}'); }catch(e){ return {}; } }
+window.ccProfRender = function(sel){
+  const el = ccEl('cc-prof-sel'); if(!el) return; const P = ccProfLoad();
+  el.innerHTML = '<option value="">— saqlangan profil —</option>' + Object.keys(P).map(k=>'<option value="'+esc(k)+'">'+esc(k)+'</option>').join('');
+  if(sel) el.value = sel;
+};
+window.ccProfSave = function(){
+  const name = (prompt('Profil nomi (masalan: "A4 6×10", "Termo 40×30"):') || '').trim(); if(!name) return;
+  const o = ccReadOpts({ skip:0 }); delete o.skip; const P = ccProfLoad(); P[name] = o;
+  try{ localStorage.setItem(CC_PROF_KEY, JSON.stringify(P)); }catch(e){}
+  window.ccProfRender(name); toast('✓ Profil saqlandi: '+name,'green');
+};
+window.ccProfApply = function(name){
+  const o = ccProfLoad()[name]; if(!o) return;
+  for(const k in CC_PROF_MAP){ const e = ccEl(CC_PROF_MAP[k]); if(e) e.value = (o[k] == null ? '' : String(o[k])); }
+  for(const k in CC_PROF_CHK){ const e = ccEl(CC_PROF_CHK[k]); if(e && o[k] != null) e.checked = !!o[k]; }
+  const sz = ccEl('cc-size'); if(sz) sz.dispatchEvent(new Event('change'));
+  window.ccOutChanged && window.ccOutChanged(); window.ccPreview && window.ccPreview();
+  toast('Profil qo\'llandi: '+name,'green');
+};
+window.ccProfDelete = function(){
+  const el = ccEl('cc-prof-sel'); const name = el && el.value; if(!name){ toast('Profilni tanlang','amber'); return; }
+  const P = ccProfLoad(); delete P[name]; try{ localStorage.setItem(CC_PROF_KEY, JSON.stringify(P)); }catch(e){}
+  window.ccProfRender(); toast('Profil o\'chirildi','green');
+};
+
+window.ccTestApi = { ccStorageLoad, ccConsistencyHtml, ccScanAnalyze, ccC128Svg, ccProfLoad, ccSeqConflict, ccLinearQuality, ccA4UsedFor, ccA4Remember, ccOrderCells, ccDocHtml, ccLayout, ccReadOpts, ccLabelHtml, ccA4Left, ccNextUnprinted, ccPrintList, ccCodeStatus, ccParseCodeList, ccIterCodes, ccSaleIndex, ccBatchCursor, ccCodeOf, ccSymbol, ccLinearCanvas, ccParseBatchCode, findProductByCode, ccBatchStats, ccFindBatchOwner, hasUnsoldSerial, ccC128Codes, ccSeqCode, ccSeqPeek, ccLabelTexts };
+window.ccSeqIntake = async function(p, n, opt){
+  opt = opt || {};
+  if(!p){ toast('Tovarni tanlang','red'); return null; }
+  n = Math.floor(Number(n));
+  if(navigator.onLine === false){ toast('Internet yo\'q — tartib raqam olish uchun internet kerak (raqamlar takrorlanmasligi uchun hisoblagich serverda turadi)','red'); return null; }
+  if(!(n>=1) || n>CC_MAX_PER_OP){ toast('Soni 1 dan '+CC_MAX_PER_OP.toLocaleString('en-US')+' gacha bo\'lsin','red'); return null; }
+  let start;
+  try{
+    start = await ccSeqReserve(n);
+    let g = 0; while(ccSeqCollides(start, start+n-1) && g++ < 5){ start = await ccSeqReserve(n); }
+  }catch(e){
+    console.error(e);
+    toast('Tartib raqam olinmadi — internet kerak (raqamlar takrorlanmasligi uchun hisoblagich serverda turadi)','red');
+    return null;
+  }
+  const end = start + n - 1;
+  const batch = { id:'S'+ccSeqCode(start), kind:'seq', from:start, to:end, fmt:'code128', at:new Date().toISOString(), by:ccActor() };
+  p.codeBatches = (p.codeBatches||[]).concat([batch]);
+  const before = p.stock || 0;
+  if(opt.addStock) p.stock = before + n;
+  const upd = { codeBatches: arrayUnion(batch) };
+  if(opt.addStock) upd.stock = increment(n);
+  fbUpdateProductFields(p.id, upd);
+  if(opt.addStock){
+    fbSaveRestock({ id:uid(), productId:p.id, productName:p.name, volume:p.volume||'', type:'in', qty:n, stockBefore:before, stockAfter:before+n,
+      reason:(opt.reason || 'Kirim')+' — seriya '+ccSeqCode(start)+'–'+ccSeqCode(end), date:new Date().toISOString() });
+  }
+  try{ logAudit('Seriyali kirim', p.name+': '+n.toLocaleString('en-US')+' ta, '+ccSeqCode(start)+'–'+ccSeqCode(end)+(opt.addStock?' (+ ombor)':'')); }catch(e){}
+  refreshProductViews();
+  toast('✓ '+n.toLocaleString('en-US')+' ta: '+ccSeqCode(start)+' – '+ccSeqCode(end),'green');
+  try{ window.ccProductChanged && window.ccProductChanged(); window.ccSeqHint && window.ccSeqHint(); }catch(e){}
+  if(opt.print){
+    try{
+      const o = ccReadOpts(Object.assign({ showSeq:true, showCode:true }, opt.opts || {}, { fmt: (opt.fmt || ccReadOpts().fmt || 'code128') }));
+      if(o.fmt==='datamatrix' && !opt.fmt) o.fmt = 'code128';
+      await ccStartPrintJob(p, ()=>ccBatchCursor(p, [{ b:batch, from:start, to:end }], false), n, o, ccLayout(o), { kind:'intake', from:start, to:end, batchId:batch.id });
+    }catch(e){ console.error(e); toast('Chop etishda xatolik: '+(e.message||e),'red'); }
+  }
+  return batch;
+};
+
 // ---- Skaner/klaviatura xatolaridan himoya ----
 // USB/Bluetooth skaner klaviatura rejimida yozadi, shuning uchun: CapsLock (kichik harf),
 // RUS klaviatura tartibi (MB-K7QD → ЬИ-Л7ЙВ), tire o'rniga boshqa belgi, ortiqcha bo'sh joy
@@ -6811,6 +7961,7 @@ function ccCanonicalCode(raw){
 }
 function ccParseBatchCode(raw){
   const code = ccCanonicalCode(raw);
+  if(CC_SEQ_RE.test(code)) return { code, batch:'SEQ', seq:parseInt(code,10), check:'', valid:true, kind:'seq' };
   const m = CC_BATCH_RE.exec(code); if(!m) return null;
   const seq = parseInt(m[2],10);
   return { code, batch:m[1], seq, check:m[3], valid: ccCheckChars(m[1], seq) === m[3] };
@@ -6826,7 +7977,7 @@ function ccFindBatchOwner(pc){
   if(!pc || !pc.valid) return null;
   for(const p of DB.products){
     const bs = p.codeBatches; if(!bs || !bs.length) continue;
-    for(const b of bs){ if(b.id===pc.batch && pc.seq>=b.from && pc.seq<=b.to) return { product:p, batch:b }; }
+    for(const b of bs){ if((pc.kind==='seq' ? b.kind==='seq' : b.id===pc.batch) && pc.seq>=b.from && pc.seq<=b.to) return { product:p, batch:b }; }
   }
   return null;
 }
@@ -6834,12 +7985,13 @@ function ccFindBatchOwner(pc){
 function ccIsBatchOwned(p, code){
   const pc = ccParseBatchCode(code);
   if(!pc || !pc.valid || !p || !p.codeBatches) return false;
-  return p.codeBatches.some(b=>b.id===pc.batch && pc.seq>=b.from && pc.seq<=b.to);
+  return p.codeBatches.some(b=>(pc.kind==='seq' ? b.kind==='seq' : b.id===pc.batch) && pc.seq>=b.from && pc.seq<=b.to);
 }
 // Kod omborda (ro'yxatga olingan VA sotilmagan) turibdimi — eski serialCodes ham, yangi partiya ham
 function hasUnsoldSerial(p, code){
   if(!p) return false;
   if(p.serialCodes && p.serialCodes[code]) return true;
+  if(p.voidCodes && p.voidCodes[code]) return false;
   if(p.soldCodes && p.soldCodes[code]) return false;
   return ccIsBatchOwned(p, code);
 }
@@ -6847,18 +7999,14 @@ function hasUnsoldSerial(p, code){
 function ccBatchStats(p){
   const bs = Array.isArray(p.codeBatches) ? p.codeBatches : [];
   if(!bs.length) return [];
-  const soldBy = {};
-  const sold = p.soldCodes || {};
-  for(const k in sold){
-    if(k.charCodeAt(1)!==66) continue; // 'B'
-    const m = CC_BATCH_RE.exec(k); if(!m) continue;
-    (soldBy[m[1]] = soldBy[m[1]] || []).push(parseInt(m[2],10));
-  }
+  const soldBy = ccSoldMap(p);
+  const voidBy = ccKeyMap(p.voidCodes);
   return bs.map(b=>{
     const total = b.to - b.from + 1;
-    let s = 0; const arr = soldBy[b.id];
+    let s = 0; const arr = soldBy[ccSoldKey(b)];
     if(arr) for(let i=0;i<arr.length;i++){ if(arr[i]>=b.from && arr[i]<=b.to) s++; }
-    return { b, total, sold:s, left: total - s };
+    let v = 0; const va = voidBy[ccSoldKey(b)]; if(va) for(let i=0;i<va.length;i++){ if(va[i]>=b.from && va[i]<=b.to) v++; }
+    return { b, total, sold:s, void:v, left: total - s - v };
   });
 }
 // Tovardagi ro'yxatga olingan (omborda, sotilmagan) kodli donalar soni
@@ -6891,7 +8039,8 @@ const CC_SIZES = {
   custom:{ custom:true, label:'Boshqa o\'lcham (o\'zingiz kiriting)…' },
   a4_3x8:{ a4:true, cols:3, rows:8,  w:63.5, h:33.9, gx:2.5, gy:0, label:'A4 varaq · 3×8 (63.5×33.9 mm)' },
   a4_3x7:{ a4:true, cols:3, rows:7,  w:63.5, h:38.1, gx:2.5, gy:0, label:'A4 varaq · 3×7 (63.5×38.1 mm)' },
-  a4_5x13:{ a4:true, cols:5, rows:13, w:38.1, h:21.2, gx:2.5, gy:0, label:'A4 varaq · 5×13 (38.1×21.2 mm)' }
+  a4_5x13:{ a4:true, cols:5, rows:13, w:38.1, h:21.2, gx:2.5, gy:0, label:'A4 varaq · 5×13 (38.1×21.2 mm)' },
+  a4_custom:{ a4:true, acustom:true, label:"A4 varaq · o'zim sozlayman (ustun/qator, chekka, oraliq)" }
 };
 const CC_PREF_KEY = 'cc_prefs_v2';
 function ccLoadPrefs(){ try{ return JSON.parse(localStorage.getItem(CC_PREF_KEY)||'{}')||{}; }catch(e){ return {}; } }
@@ -6918,12 +8067,145 @@ function ccReadOpts(over){
     copies: Math.max(1, Math.min(10, parseInt(g('cc-copies')?.value) || 1)),
     out: g('cc-out')?.value || 'browser',
     gap: g('cc-gap')?.value || 'gap2',
-    inv: g('cc-inv') ? g('cc-inv').checked : false
+    inv: g('cc-inv') ? g('cc-inv').checked : false,
+    a4cols: num('cc-a4-cols', 6), a4rows: num('cc-a4-rows', 10), a4w: num('cc-a4-w', 0), a4h: num('cc-a4-h', 0),
+    mt: num('cc-a4-mt', 10), mr: num('cc-a4-mr', 10), mb: num('cc-a4-mb', 10), ml: num('cc-a4-ml', 10),
+    gx: num('cc-a4-gx', 2), gy: num('cc-a4-gy', 2),
+    padMm: (g('cc-a4-pad') && g('cc-a4-pad').value !== '' && isFinite(parseFloat(g('cc-a4-pad').value))) ? Math.max(0, parseFloat(g('cc-a4-pad').value)) : null,
+    cut: g('cc-cut')?.value || 'dashed', cutFrame: g('cc-cutframe') ? g('cc-cutframe').checked : true,
+    order: g('cc-order')?.value || 'row'
   };
-  return Object.assign(o, over||{});
+  Object.assign(o, over||{});
+  // v23: A4 da oxirgi varaq yarim ishlatilgan bo'lsa, keyingi chop etish bo'sh katakdan boshlanadi
+  if(!(over && over.skip != null) && o.skip === 0 && CC_SIZES[o.size] && CC_SIZES[o.size].a4){
+    const L0 = ccLayout(o), u = ccA4UsedFor(L0), rc = g('cc-a4-resume');
+    if(u && (!rc || rc.checked)) o.skip = u;
+  }
+  return o;
 }
+// ================== v22: A4 VARAQ — O'ZIM SOZLAYMAN • KESISH CHIZIQLARI • OXIRGI CHOP ETILGAN / DAVOM ETISH ==================
+function ccPadFor(L, o){ return (L && L.a4 && o && o.padMm != null) ? o.padMm : Math.max(1, Math.min(2, L.h*0.06)); }
+function ccA4Left(L, o){ return L.left != null ? L.left : (210 - (L.cols*L.w + (L.cols-1)*L.gx))/2 + (o.ox||0); }
+function ccA4Top(L, o){ return L.top != null ? L.top : (297 - (L.rows*L.h + (L.rows-1)*L.gy))/2 + (o.oy||0); }
+// "O'zim sozlayman": ustun/qator soni yoki yorliq o'lchami + sahifa chekkalari + yorliqlar oralig'i
+function ccA4CustomLayout(o){
+  const num = (v, a, b, d)=>{ v = Number(v); return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
+  const mt = num(o.mt,0,60,10), mr = num(o.mr,0,60,10), mb = num(o.mb,0,60,10), ml = num(o.ml,0,60,10);
+  const gx = num(o.gx,0,30,2), gy = num(o.gy,0,30,2);
+  const usableW = Math.max(20, 210 - ml - mr), usableH = Math.max(20, 296 - mt - mb);
+  const wIn = Number(o.a4w) > 0 ? num(o.a4w,8,200,0) : 0, hIn = Number(o.a4h) > 0 ? num(o.a4h,6,280,0) : 0;
+  let cols, rows, w, h;
+  if(wIn){ w = Math.min(wIn, usableW); cols = Math.max(1, Math.floor((usableW + gx)/(w + gx))); }
+  else { cols = Math.round(num(o.a4cols,1,20,6)); w = (usableW - (cols-1)*gx)/cols; }
+  if(hIn){ h = Math.min(hIn, usableH); rows = Math.max(1, Math.floor((usableH + gy)/(h + gy))); }
+  else { rows = Math.round(num(o.a4rows,1,40,10)); h = (usableH - (rows-1)*gy)/rows; }
+  const r2 = x=>Math.round(x*100)/100;
+  return { a4:true, acustom:true, cols, rows, w:r2(w), h:r2(h), gx, gy, left:r2(ml + (o.ox||0)), top:r2(mt + (o.oy||0)), mt, mr, mb, ml };
+}
+// Qator va ustunlar orasidagi kesish chiziqlari (mm koordinatalarda, sahifaning chap-yuqori burchagidan)
+function ccCutLines(L, o, count){
+  if(!o || !o.cut || o.cut === 'none') return '';
+  const cols = L.cols, usedRows = Math.max(1, (o && o.order === 'col') ? Math.min(L.rows, count) : Math.ceil(count / cols));
+  const left = ccA4Left(L, o), top = ccA4Top(L, o), gx = L.gx || 0, gy = L.gy || 0, frame = o.cutFrame !== false;
+  const gridW = cols*L.w + (cols-1)*gx, gridH = usedRows*L.h + (usedRows-1)*gy;
+  const x0 = left - (frame ? gx/2 : 0), x1 = left + gridW + (frame ? gx/2 : 0), y0 = top - (frame ? gy/2 : 0), y1 = top + gridH + (frame ? gy/2 : 0);
+  const xs = [], ys = [];
+  for(let k=1;k<cols;k++) xs.push(left + k*(L.w+gx) - gx/2);
+  for(let k=1;k<usedRows;k++) ys.push(top + k*(L.h+gy) - gy/2);
+  if(frame){ xs.unshift(x0); xs.push(x1); ys.unshift(y0); ys.push(y1); }
+  const f = n=>Math.round(n*100)/100; let h = '';
+  xs.forEach(x=>{ h += '<i class="cutv" style="left:'+f(x)+'mm;top:'+f(y0)+'mm;height:'+f(y1-y0)+'mm"></i>'; });
+  ys.forEach(y=>{ h += '<i class="cuth" style="top:'+f(y)+'mm;left:'+f(x0)+'mm;width:'+f(x1-x0)+'mm"></i>'; });
+  return h;
+}
+function ccCutCss(L, o){
+  if(!o || !o.cut || o.cut === 'none') return '.sheet{position:relative}';
+  const st = o.cut === 'solid' ? 'solid' : 'dashed';
+  return '.sheet{position:relative}.cutv,.cuth{position:absolute;display:block;margin:0;padding:0;z-index:5}.cutv{width:0;border-left:0.25mm '+st+' #555}.cuth{height:0;border-top:0.25mm '+st+' #555}';
+}
+// Sahifaning kichik ko'rinishi (oldindan)
+window.ccA4Prev = function(){
+  const box = ccEl('cc-a4-prev'); if(!box) return;
+  const o = ccReadOpts(); const L = ccLayout(o);
+  if(!L.a4){ box.innerHTML = ''; return; }
+  const left = ccA4Left(L,o), top = ccA4Top(L,o), S = 0.252;
+  let cells = '', n = 0;
+  for(let r=0;r<L.rows;r++) for(let c=0;c<L.cols;c++){
+    n++; cells += '<div style="position:absolute;left:'+(left+c*(L.w+L.gx))+'mm;top:'+(top+r*(L.h+L.gy))+'mm;width:'+L.w+'mm;height:'+L.h+'mm;background:#e6f3ee;border:0.3mm solid #8fbfae;box-sizing:border-box"></div>';
+  }
+  const css = ccCutCss(L,o).split('0.25mm').join('1.1mm');
+  const bad = (L.w < 18 || L.h < 10);
+  box.innerHTML = '<style>#cc-a4-pv '+css.split('}').join('}#cc-a4-pv ').replace(/#cc-a4-pv\s*$/,'')+'</style>'
+    + '<div style="width:'+(210*3.7795*S)+'px;height:'+(297*3.7795*S)+'px;border:1px solid var(--border2);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden;flex:none"><div id="cc-a4-pv" style="position:relative;width:210mm;height:297mm;transform:scale('+S+');transform-origin:0 0">'+cells+ccCutLines(L,o,L.cols*L.rows)+'</div></div>'
+    + '<div style="font-size:12.5px;color:var(--text2);line-height:1.7"><b>Yorliq: '+L.w+' × '+L.h+' mm</b><br>Sahifada: <b>'+L.cols+' × '+L.rows+' = '+(L.cols*L.rows)+' ta</b><br>Chekkalar: '+(L.acustom ? 'tepa '+L.mt+' • o\'ng '+L.mr+' • past '+L.mb+' • chap '+L.ml+' mm' : 'o\'rtaga joylanadi')+'<br>Oraliq: '+L.gx+' × '+L.gy+' mm'+(bad ? '<br><span style="color:var(--amber)">⚠ Yorliq juda kichik — barcode o\'qilmasligi mumkin</span>' : '')+'<br>Kesish chizig\'i: <b>'+(o.cut==='none' ? 'yo\'q' : (o.cut==='solid' ? 'to\'liq chiziq' : 'uzuq-uzuq'))+'</b>'+(o.cut!=='none' ? (o.cutFrame!==false ? ' (tashqi chegara bilan)' : ' (faqat orasida)') : '')+'<br><span style="color:var(--text3)">Kodlar chapdan o\'ngga, yuqoridan pastga ketma-ket joylashadi</span></div>';
+  box.style.display = 'flex'; box.style.gap = '1rem'; box.style.alignItems = 'flex-start'; box.style.margin = '.4rem 0 .8rem';
+};
+
+// ---- oxirgi chop etilgan kodlar va "davom etish" ----
+function ccMarkPrinted(p, codes){
+  try{
+    if(!p || !codes || !codes.length) return;
+    const list = [...new Set(codes)];
+    const up = Object.assign({}, p.printedUpTo || {});
+    list.forEach(c=>{
+      const pc = ccParseBatchCode(c); if(!pc || !pc.valid) return;
+      const own = (p.codeBatches || []).find(b=>(pc.kind==='seq' ? b.kind==='seq' : b.id===pc.batch) && pc.seq>=b.from && pc.seq<=b.to);
+      if(own && pc.seq > (up[own.id] == null ? own.from - 1 : up[own.id])) up[own.id] = pc.seq;
+    });
+    const prevUp = Object.assign({}, p.printedUpTo || {});
+    const _cut = (x, d)=>{ if(!x) return null; const c = Object.assign({}, x); if(d <= 0) delete c.prevLast; else if(c.prevLast) c.prevLast = _cut(c.prevLast, d-1); return c; };
+    const prevLast = _cut(p.lastPrint, 4);   // ko'p bosqichli qaytarish (oxirgi 5 ta chop etish)
+    const lp = { at:new Date().toISOString(), by:ccActor(), from:list[0], to:list[list.length-1], count:list.length, prev:prevUp, prevLast };
+    p.printedUpTo = up; p.lastPrint = lp;
+    fbUpdateProductFields(p.id, { printedUpTo: up, lastPrint: lp });
+    window.ccLastPrintRender && window.ccLastPrintRender();
+  }catch(e){ console.error('Chop etilganlarni belgilab bo\'lmadi', e); }
+}
+function ccNextUnprinted(p){
+  const sm = ccSoldMap(p, true); let remaining = 0; const segs = [];
+  for(const b of (p.codeBatches || [])){
+    const up = (p.printedUpTo || {})[b.id];
+    const from = Math.max(b.from, (up == null ? b.from - 1 : up) + 1); if(from > b.to) continue;
+    let cnt = b.to - from + 1; const arr = sm[ccSoldKey(b)];
+    if(arr) for(let i=0;i<arr.length;i++){ if(arr[i]>=from && arr[i]<=b.to) cnt--; }
+    if(cnt <= 0) continue; remaining += cnt; segs.push({ b, from, to:b.to });
+  }
+  const first = segs.length ? ccBatchCursor(p, segs, true).next(1)[0] : null;
+  return { remaining, segs, first };
+}
+function ccIsPrinted(p, code){
+  const pc = ccParseBatchCode(code); if(!pc || !pc.valid) return false;
+  const own = (p.codeBatches || []).find(b=>(pc.kind==='seq' ? b.kind==='seq' : b.id===pc.batch) && pc.seq>=b.from && pc.seq<=b.to);
+  return !!(own && (p.printedUpTo || {})[own.id] != null && pc.seq <= p.printedUpTo[own.id]);
+}
+window.ccLastPrintRender = function(){
+  const el = ccEl('cc-lastprint'); if(!el) return;
+  const p = ccProd(); const row = ccEl('cc-next-row');
+  if(!p){ el.innerHTML = ''; if(row) row.style.display = 'none'; return; }
+  const lp = p.lastPrint, nx = ccNextUnprinted(p);
+  let h = (lp && lp.manual) ? '✔ <b style="font-family:monospace">'+esc(lp.to)+'</b> gacha chop etilgan deb belgilangan (qo\'lda) · '+esc(String(lp.at).slice(0,16).replace('T',' '))+' · '+esc(lp.by||'') : lp ? '🖨 Oxirgi marta chop etilgan: <b style="font-family:monospace">'+esc(lp.from)+(lp.to !== lp.from ? ' – '+esc(lp.to) : '')+'</b> ('+lp.count.toLocaleString('en-US')+' ta) · '+esc(String(lp.at).slice(0,16).replace('T',' '))+' · '+esc(lp.by||'')
+    : ((p.codeBatches||[]).length ? '🖨 Bu tovarning kodlari hali chop etilmagan' : '');
+  if(nx.remaining > 0 && nx.first) h += '<br>▶ Keyingi chop etilmagan: <b style="font-family:monospace">'+esc(nx.first)+'</b> dan boshlab — jami <b>'+nx.remaining.toLocaleString('en-US')+'</b> ta qolgan';
+  else if((p.codeBatches||[]).length && lp) h += '<br>✅ Hamma kod chop etilgan';
+  el.innerHTML = h;
+  { const pt = ccEl('cc-pt'); if(pt){ pt.style.display = (p.codeBatches||[]).length ? 'flex' : 'none'; const ub = ccEl('cc-undo-btn'); if(ub) ub.style.display = (p.lastPrint && p.lastPrint.prev) ? '' : 'none'; } }
+  if(row){
+    row.style.display = (nx.remaining > 0) ? 'flex' : 'none';
+    const inp = ccEl('cc-next-n');
+    if(inp && (!inp.value || inp.dataset.auto === '1')){ const L = ccLayout(ccReadOpts()); inp.value = String(Math.min(nx.remaining, L.a4 ? Math.max(1, L.cols*L.rows - (ccReadOpts().skip||0)) : 30)); inp.dataset.auto = '1'; }
+  }
+};
+window.ccPrintNext = async function(){
+  const p = ccProd(); if(!p){ toast('Tovarni tanlang','amber'); return; }
+  const nx = ccNextUnprinted(p); if(!nx.remaining){ toast('Chop etilmagan kod yo\'q','amber'); return; }
+  const n = Math.max(1, Math.min(5000, nx.remaining, parseInt(ccEl('cc-next-n')?.value) || 1));
+  const codes = ccBatchCursor(p, nx.segs, true).next(n);
+  await ccPrintList(p, codes, null, { kind:'next', codes });
+};
+
 function ccLayout(o){
   let s = CC_SIZES[o.size] || CC_SIZES.t40x30;
+  if(s.acustom) return ccA4CustomLayout(o);
   if(s.custom){
     const w = Math.min(150, Math.max(15, o.cw||40)), h = Math.min(200, Math.max(10, o.ch||30));
     s = { custom:true, w, h };
@@ -6994,20 +8276,27 @@ async function ccSymbol(fmt, text){
     const url = await QRCode.toDataURL(text, {margin:2, width:560, errorCorrectionLevel:'M'});
     return { url, linear:false };
   }
-  await window.loadVendorLib('JsBarcode');
+  if(fmt !== 'ean13'){ try{ return { url: ccC128SvgUrl(text), linear:true, svg:true }; }catch(e){ /* quyida rastr zaxira */ } }
+  try{ await window.loadVendorLib('JsBarcode'); }catch(e){ /* quyida o'z kodlovchimiz */ }
   const c = document.createElement('canvas');
   const opt = {displayValue:false, height:80, margin:0, marginLeft:30, marginRight:30, width:3};
-  try{ JsBarcode(c, text, Object.assign({format: fmt==='ean13' ? 'EAN13' : 'CODE128'}, opt)); }
-  catch(e){ JsBarcode(c, text, Object.assign({format:'CODE128'}, opt)); }
-  return { url: c.toDataURL('image/png'), linear:true };
+  try{
+    if(typeof JsBarcode !== 'function') throw new Error("JsBarcode yo'q");
+    try{ JsBarcode(c, text, Object.assign({format: fmt==='ean13' ? 'EAN13' : 'CODE128'}, opt)); }
+    catch(e){ JsBarcode(c, text, Object.assign({format:'CODE128'}, opt)); }
+    return { url: c.toDataURL('image/png'), linear:true };
+  }catch(e){
+    // v20: kutubxona yuklanmasa ham (oflayn) Code 128 o'z kodlovchimiz bilan chiziladi
+    return { url: ccC128Canvas(text, 3, 80, 10).toDataURL('image/png'), linear:true };
+  }
 }
 
 // ---------- yorliq HTML / CSS ----------
 function ccLabelCss(L, o){
-  const w = L.w, h = L.h, pad = Math.max(1, Math.min(2, h*0.06));
-  const nf = w>=58 ? 9 : (w>=40 ? 7.5 : 6.5), pf = w>=58 ? 10 : (w>=40 ? 8.5 : 7), cf = w>=58 ? 7.5 : (w>=40 ? 6 : 5.5);
+  const w = L.w, h = L.h, pad = ccPadFor(L, o);
+  const nf = w>=58 ? 9 : (w>=40 ? 7.5 : 6.5), pf = w>=58 ? 10 : (w>=40 ? 8.5 : 7), cf = (L.a4 && L.h >= 20) ? 8 : (w>=58 ? 7.5 : (w>=40 ? 6 : 5.5));
   let css = '*{box-sizing:border-box} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
-    + '.ccl{width:'+w+'mm;height:'+h+'mm;padding:'+pad+'mm '+(pad+0.5)+'mm;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#000;background:#fff;font-family:Arial,Helvetica,sans-serif}'
+    + '.ccl{width:'+w+'mm;height:'+h+'mm;padding:'+(L.a4 && o && o.padMm != null ? pad+'mm' : pad+'mm '+(pad+0.5)+'mm')+';overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#000;background:#fff;font-family:Arial,Helvetica,sans-serif}'
     + '.ccl-row{display:flex;align-items:center;justify-content:center;gap:1.6mm;width:100%;min-height:0}'
     + '.ccl-s{flex:none;display:block;background:#fff}.ccl-s svg{display:block;width:100%;height:100%}'
     + '.ccl-side{flex:1 1 0;min-width:0;text-align:left}'
@@ -7022,7 +8311,7 @@ function ccLabelCss(L, o){
   return { css, pad, cf };
 }
 function ccLabelHtml(p, code, sym, L, o){
-  const w = L.w, h = L.h, pad = Math.max(1, Math.min(2, h*0.06));
+  const w = L.w, h = L.h, pad = ccPadFor(L, o);
   const small = w < 38;
   const T = ccLabelTexts(p, code, L, o);
   const nm = esc(T.nm);
@@ -7050,14 +8339,15 @@ function ccDocHtml(items, L, o, skipCells){
   const { css } = ccLabelCss(L, o);
   let style, body;
   if(L.a4){
-    const left = (210 - (L.cols*L.w + (L.cols-1)*L.gx))/2 + (o.ox||0);
-    const top = (297 - (L.rows*L.h + (L.rows-1)*L.gy))/2 + (o.oy||0);
+    const left = ccA4Left(L, o);
+    const top = ccA4Top(L, o);
     const per = L.cols*L.rows;
     style = '@page{size:A4;margin:0}'+css
       + '.sheet{width:210mm;height:296mm;padding-top:'+top+'mm;padding-left:'+left+'mm;display:grid;grid-template-columns:repeat('+L.cols+','+L.w+'mm);grid-auto-rows:'+L.h+'mm;column-gap:'+L.gx+'mm;row-gap:'+L.gy+'mm;align-content:start;overflow:hidden;page-break-after:always;break-after:page}'
       + '.sheet:last-child{page-break-after:auto;break-after:auto}.ccl-empty{width:'+L.w+'mm;height:'+L.h+'mm}';
+    style += ccCutCss(L, o);
     const all = []; for(let i=0;i<(skipCells||0);i++) all.push('<div class="ccl-empty"></div>'); items.forEach(x=>all.push(x));
-    const sheets = []; for(let i=0;i<all.length;i+=per) sheets.push('<div class="sheet">'+all.slice(i,i+per).join('')+'</div>');
+    const sheets = []; for(let i=0;i<all.length;i+=per) sheets.push('<div class="sheet">'+ccCutLines(L, o, Math.min(per, all.length - i))+ccOrderCells(all.slice(i,i+per), L, o).join('')+'</div>');
     body = sheets.join('');
   } else {
     style = '@page{size:'+L.w+'mm '+L.h+'mm;margin:0}'+css+'.ccl{page-break-after:always;break-after:page}.ccl:last-child{page-break-after:auto;break-after:auto}';
@@ -7074,10 +8364,14 @@ window.ccPreview = function(){
     const cust = ccEl('cc-custom-size'); const sz = ccEl('cc-size');
     if(cust && sz) cust.style.display = (sz.value==='custom') ? 'grid' : 'none';
     const a4 = ccEl('cc-a4-opts'); if(a4) a4.style.display = (CC_SIZES[sz?.value] && CC_SIZES[sz.value].a4) ? 'grid' : 'none';
+    { const isA4 = !!(CC_SIZES[sz?.value] && CC_SIZES[sz.value].a4), isC = !!(CC_SIZES[sz?.value] && CC_SIZES[sz.value].acustom);
+      const adv = ccEl('cc-a4-adv'); if(adv) adv.style.display = isA4 ? 'block' : 'none';
+      document.querySelectorAll('#cc-a4-adv .a4c-only').forEach(e=>{ e.style.display = isC ? '' : 'none'; });
+      window.ccA4Prev && window.ccA4Prev(); window.ccA4UsedRender && window.ccA4UsedRender(); window.ccLastPrintRender && window.ccLastPrintRender(); }
     ccSavePrefs();
     const p = ccProd();
     const o = ccReadOpts(); const L = ccLayout(o);
-    const sample = ccBuildCode('K7QD', 1);
+    const sample = (ccEl('cc-seqmode') && ccEl('cc-seqmode').checked) ? ccSeqCode(1) : ccBuildCode('K7QD', 1);
     let sym;
     try{ sym = await ccSymbol(o.fmt, sample); }catch(e){ box.innerHTML = '<span style="color:var(--text3);font-size:12px">Ko\'rinish yuklanmadi (kutubxona)</span>'; return; }
     const prod = p || { name:'Tovar nomi', price:12000, volume:'' };
@@ -7086,7 +8380,7 @@ window.ccPreview = function(){
     const scale = Math.min(2.2, 300/(L.w*3.78));
     box.innerHTML = '<style>'+css+'</style><div style="width:'+(L.w*3.78*scale)+'px;height:'+(L.h*3.78*scale)+'px"><div style="transform:scale('+scale+');transform-origin:0 0;width:'+L.w+'mm;height:'+L.h+'mm;box-shadow:0 0 0 1px #bbb;display:inline-block">'+html+'</div></div>';
     const info = ccEl('cc-preview-info'); if(info){
-      let t = 'Yorliq: '+L.w+'×'+L.h+' mm';
+      let t = 'Yorliq: '+L.w+'×'+L.h+' mm'+(L.a4 ? ' · sahifada '+L.cols+'×'+L.rows+' = '+(L.cols*L.rows)+' ta' : '');
       if(sym.total && !sym.linear){
         const symMm = ccSymMmFor(L, o, sym);
         const mod = symMm/sym.total; const dots = o.dpi ? mod*o.dpi/25.4 : 0;
@@ -7094,6 +8388,7 @@ window.ccPreview = function(){
         if(mod >= 0.5){ q = 'A\'lo'; col='var(--green)'; } else if(mod >= 0.33){ q = 'Yaxshi'; col='var(--green)'; } else if(mod >= 0.25){ q = 'Chegarada — sifatli printer kerak'; col='var(--amber)'; } else { q = 'JUDA MAYDA — kattaroq yorliq tanlang'; col='var(--red)'; }
         t += ' · Kod: '+sym.total+'×'+sym.total+' modul, '+symMm.toFixed(1)+' mm · modul '+mod.toFixed(2)+' mm'+(dots?' ('+dots.toFixed(1)+' nuqta)':'')+' · o\'qilish sifati: <b style="color:'+col+'">'+q+'</b>';
       }
+      if(sym.linear && o.fmt === 'code128'){ const lq = ccLinearQuality(L, o, sample); if(lq) t += ' · Barcode moduli: <b>'+lq.mm.toFixed(2)+' mm</b> — <b style="color:'+lq.col+'">'+lq.q+'</b>'; }
       info.innerHTML = t;
     }
   }, 120);
@@ -7106,13 +8401,13 @@ function ccArrayCursor(arr){ let i = 0; return { total: arr.length, next(n){ con
 function ccBatchCursor(p, segs, onlyUnsold){
   const soldBy = {};
   if(onlyUnsold){
-    const sc = p.soldCodes || {};
-    for(const k in sc){ const m = CC_BATCH_RE.exec(k); if(m){ (soldBy[m[1]] = soldBy[m[1]] || new Set()).add(parseInt(m[2],10)); } }
+    const sm = ccSoldMap(p, true);
+    for(const k in sm){ soldBy[k] = new Set(sm[k]); }
   }
   let total = 0;
   segs.forEach(s=>{
     let t = s.to - s.from + 1;
-    if(onlyUnsold && soldBy[s.b.id]){ soldBy[s.b.id].forEach(x=>{ if(x>=s.from && x<=s.to) t--; }); }
+    if(onlyUnsold && soldBy[ccSoldKey(s.b)]){ soldBy[ccSoldKey(s.b)].forEach(x=>{ if(x>=s.from && x<=s.to) t--; }); }
     total += t;
   });
   let si = 0, seq = segs.length ? segs[0].from : 0;
@@ -7120,10 +8415,10 @@ function ccBatchCursor(p, segs, onlyUnsold){
     while(si < segs.length){
       const s = segs[si];
       if(seq > s.to){ si++; if(si<segs.length) seq = segs[si].from; continue; }
-      const skipIt = onlyUnsold && soldBy[s.b.id] && soldBy[s.b.id].has(seq);
+      const skipIt = onlyUnsold && soldBy[ccSoldKey(s.b)] && soldBy[ccSoldKey(s.b)].has(seq);
       const cur = seq; seq++;
       if(skipIt) continue;
-      return build ? ccBuildCode(s.b.id, cur) : true;
+      return build ? ccCodeOf(s.b, cur) : true;
     }
     return null;
   }
@@ -7155,9 +8450,11 @@ async function ccRenderPart(job, idx, onProgress){
     items.push(ccLabelHtml(job.p, codes[i], sym, job.L, job.o));
     if(i%12===11){ if(onProgress) onProgress((i+1)/codes.length); await new Promise(r=>setTimeout(r,0)); }
   }
+  job.lastCodes = codes;
   return ccDocHtml(items, job.L, job.o, (job.L.a4 && idx===0) ? job.skipCells : 0);
 }
-async function ccStartPrintJob(p, mk, total, o, L){
+async function ccStartPrintJob(p, mk, total, o, L, meta){
+  if(total > 0) ccLogPrint(p, total, o, meta);
   if(o.copies > 1){ const mk0 = mk; mk = ()=>ccCopiesCursor(mk0(), o.copies); total = total * o.copies; }
   if(o.out && o.out !== 'browser'){
     if(L.a4){ toast("A4 varaq uchun brauzer orqali chop etiladi (termo usul faqat yorliq printerlari uchun)", 'amber'); }
@@ -7174,6 +8471,8 @@ async function ccStartPrintJob(p, mk, total, o, L){
     toast('Yorliqlar tayyorlanmoqda...','blue');
     const html = await ccRenderPart(job, 0);
     await ccPrintHtml(html);
+    ccMarkPrinted(p, job.lastCodes);
+    ccA4Remember(job.L, job.o, job.total, job.skipCells);
     return;
   }
   _ccJob = job; ccPanelRender(); ccPanelMsg(`Jami ${total.toLocaleString('en-US')} ta yorliq ${sizes.length} qismga bo'lindi (printer navbati o'chib qolmasligi uchun). "Chop etish"ni bosing.`);
@@ -7207,7 +8506,9 @@ window.ccJobPrint = async function(){
     ccPanelMsg(`${at+1}-qism tayyorlanmoqda...`);
     const html = await ccRenderPart(j, at, f=>{ const b = document.getElementById('cc-pp-bar'); if(b) b.style.width = Math.round(100*(at+f)/j.sizes.length)+'%'; });
     await ccPrintHtml(html);
+    ccMarkPrinted(j.p, j.lastCodes);
     j.idx = at + 1; j.busy = false;
+    if(j.idx >= j.sizes.length) ccA4Remember(j.L, j.o, j.total, j.skipCells);
     ccPanelRender();
     ccPanelMsg(j.idx >= j.sizes.length ? '' : `✓ ${at+1}-qism printerga yuborildi. Tugagach keyingisini bosing.`);
   }catch(e){
@@ -7215,15 +8516,16 @@ window.ccJobPrint = async function(){
   }
 };
 // Ixtiyoriy kodlar ro'yxatini chop etish (eski/zavod kodlar, barcode yorliqlari)
-async function ccPrintList(p, codes, over){
+async function ccPrintList(p, codes, over, meta){
   if(!codes.length) return;
   const o = ccReadOpts(over); const L = ccLayout(o);
-  await ccStartPrintJob(p, ()=>ccArrayCursor(codes), codes.length, o, L);
+  await ccStartPrintJob(p, ()=>ccArrayCursor(codes), codes.length, o, L, meta || { kind:'list', codes });
 }
 
 // ---------- sahifa ----------
 let _ccSel = new Set();
 window.renderCodeCenter = function(){
+  try{ const _sm=document.getElementById('cc-seqmode'); if(_sm && !_sm.dataset.init){ _sm.dataset.init='1'; _sm.checked=(localStorage.getItem('dokon_cc_seqmode')!=='0'); const _f=document.getElementById('cc-format'); if(_sm.checked && _f && _f.value==='datamatrix') _f.value='code128'; setTimeout(()=>{ window.ccSeqHint&&window.ccSeqHint(); },0); } }catch(e){}
   const sel = ccEl('cc-product'); if(!sel) return;
   // birinchi ochilishda o'lcham ro'yxatini to'ldirib, saqlangan sozlamalarni tiklaymiz
   const szSel = ccEl('cc-size');
@@ -7235,6 +8537,7 @@ window.renderCodeCenter = function(){
     set('cc-format', pr.fmt); set('cc-size', pr.size); set('cc-cw', pr.cw); set('cc-ch', pr.ch); set('cc-dpi', pr.dpi!=null?String(pr.dpi):null);
     chk('cc-shname', pr.showName); chk('cc-shprice', pr.showPrice); chk('cc-shcode', pr.showCode); set('cc-ox', pr.ox); set('cc-oy', pr.oy);
     set('cc-layout', pr.layout); chk('cc-shdate', pr.showDate); chk('cc-shseq', pr.showSeq); set('cc-extra', pr.extra); set('cc-copies', pr.copies); set('cc-out', pr.out); set('cc-gap', pr.gap); chk('cc-inv', pr.inv);
+    set('cc-a4-cols', pr.a4cols); set('cc-a4-rows', pr.a4rows); set('cc-a4-w', pr.a4w); set('cc-a4-h', pr.a4h); set('cc-a4-mt', pr.mt); set('cc-a4-mr', pr.mr); set('cc-a4-mb', pr.mb); set('cc-a4-ml', pr.ml); set('cc-a4-gx', pr.gx); set('cc-a4-gy', pr.gy); set('cc-a4-pad', pr.padMm); set('cc-cut', pr.cut); chk('cc-cutframe', pr.cutFrame); set('cc-order', pr.order);
     if(window.ccOutChanged) window.ccOutChanged();
   }
   const keep = sel.value;
@@ -7259,6 +8562,10 @@ window.ccProductChanged = function(){
   info.innerHTML = 'Omborda: <b>'+(p.stock||0)+'</b> ta &nbsp;•&nbsp; kodlangan: <b>'+reg.toLocaleString('en-US')+'</b> ta &nbsp;•&nbsp; kodlanmagan: <b style="color:'+((p.stock||0)>reg?'var(--amber)':'inherit')+'">'+Math.max(0,(p.stock||0)-reg)+'</b> ta';
   info.innerHTML += ccStorageHtml(p);
   window.ccRenderBatches(); window.ccRenderList(); window.ccPreview();
+  window.ccSeqHint && window.ccSeqHint();
+  window.ccRgInit && window.ccRgInit();
+  window.ccLastPrintRender && window.ccLastPrintRender();
+  window.ccProfRender && window.ccProfRender();
 };
 window.ccQuick = function(n){ ccEl('cc-count').value = n; };
 window.ccFillUncoded = function(){
@@ -7276,6 +8583,7 @@ window.ccCreate = async function(print){
   const addStock = !!ccEl('cc-stock').checked;
   const o = ccReadOpts();
   const go = async ()=>{
+    if(ccEl('cc-seqmode') && ccEl('cc-seqmode').checked){ await ccSeqIntake(p, n, { addStock, print:!!print, reason:'Kod partiyasi yaratildi (kirim)', fmt:o.fmt, opts:o }); return; }
     const used = ccUsedBatchIds(); const batches = []; let left = n;
     while(left > 0){ const cnt = Math.min(left, CC_BATCH_MAX); batches.push({ id: ccNewBatchId(used), from:1, to:cnt, fmt:o.fmt, at:new Date().toISOString(), by:ccActor() }); left -= cnt; }
     p.codeBatches = (p.codeBatches||[]).concat(batches);
@@ -7294,7 +8602,7 @@ window.ccCreate = async function(print){
     if(print){
       try{
         const segs = batches.map(b=>({ b, from:b.from, to:b.to }));
-        await ccStartPrintJob(p, ()=>ccBatchCursor(p, segs, false), n, o, ccLayout(o));
+        await ccStartPrintJob(p, ()=>ccBatchCursor(p, segs, false), n, o, ccLayout(o), { kind:'create' });
       }catch(e){ console.error(e); toast('Chop etishda xatolik: '+(e.message||e),'red'); }
     }
   };
@@ -7317,10 +8625,10 @@ window.ccRenderBatches = function(){
   let total=0, left=0, sold=0; st.forEach(x=>{ total+=x.total; left+=x.left; sold+=x.sold; });
   box.innerHTML = '<div style="font-size:12px;color:var(--text2);margin-bottom:.4rem">Jami: <b>'+total.toLocaleString('en-US')+'</b> • omborda: <b style="color:var(--green)">'+left.toLocaleString('en-US')+'</b> • sotilgan: <b>'+sold.toLocaleString('en-US')+'</b></div>'
     + '<div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--text3)"><th style="padding:.25rem .4rem">Partiya</th><th>Oraliq</th><th>Qoldi</th><th>Sotilgan</th><th>Sana</th><th></th></tr></thead><tbody>'
-    + st.slice().reverse().map(x=>'<tr style="border-top:1px solid var(--border2)"><td style="padding:.3rem .4rem;font-family:monospace;font-weight:700">'+esc(x.b.id)+'</td><td>'+x.b.from.toLocaleString('en-US')+'–'+x.b.to.toLocaleString('en-US')+'</td><td style="color:var(--green);font-weight:600">'+x.left.toLocaleString('en-US')+'</td><td>'+x.sold.toLocaleString('en-US')+'</td><td style="color:var(--text3);white-space:nowrap">'+esc((x.b.at||'').slice(0,10))+'</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="window.ccPickBatch(\''+esc(x.b.id)+'\')">Tanlash</button></td></tr>').join('')
+    + st.slice().reverse().map(x=>'<tr style="border-top:1px solid var(--border2)"><td style="padding:.3rem .4rem;font-family:monospace;font-weight:700">'+(x.b.kind==='seq'?'🔢 Seriya':esc(x.b.id))+'</td><td>'+ccFmtNo(x.b,x.b.from)+'–'+ccFmtNo(x.b,x.b.to)+'</td><td style="color:var(--green);font-weight:600">'+x.left.toLocaleString('en-US')+'</td><td>'+x.sold.toLocaleString('en-US')+'</td><td style="color:var(--text3);white-space:nowrap">'+esc((x.b.at||'').slice(0,10))+'</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="window.ccPickBatch(\''+esc(x.b.id)+'\')">Tanlash</button></td></tr>').join('')
     + '</tbody></table></div>';
   if(rsel){
-    rsel.innerHTML = st.slice().reverse().map(x=>'<option value="'+esc(x.b.id)+'">'+esc(x.b.id)+' ('+x.b.from.toLocaleString('en-US')+'–'+x.b.to.toLocaleString('en-US')+', qoldi '+x.left.toLocaleString('en-US')+')</option>').join('');
+    rsel.innerHTML = st.slice().reverse().map(x=>'<option value="'+esc(x.b.id)+'">'+(x.b.kind==='seq'?'Seriya':esc(x.b.id))+' ('+ccFmtNo(x.b,x.b.from)+'–'+ccFmtNo(x.b,x.b.to)+', qoldi '+x.left.toLocaleString('en-US')+')</option>').join('');
     if(keep && st.some(x=>x.b.id===keep)) rsel.value = keep;
     window.ccRangeFill();
   }
@@ -7340,7 +8648,7 @@ window.ccPrintRange = async function(){
   const o = ccReadOpts();
   const cur = ccBatchCursor(r.p, [{b:r.b, from:r.from, to:r.to}], r.onlyUnsold);
   if(!cur.total){ toast('Chop etiladigan kod yo\'q (hammasi sotilgan)','amber'); return; }
-  try{ await ccStartPrintJob(r.p, ()=>ccBatchCursor(r.p, [{b:r.b, from:r.from, to:r.to}], r.onlyUnsold), cur.total, o, ccLayout(o)); }
+  try{ await ccStartPrintJob(r.p, ()=>ccBatchCursor(r.p, [{b:r.b, from:r.from, to:r.to}], r.onlyUnsold), cur.total, o, ccLayout(o), { kind:'range', from:r.from, to:r.to, batchId:r.b.id }); }
   catch(e){ console.error(e); toast('Chop etishda xatolik: '+(e.message||e),'red'); }
 };
 window.ccCsvRange = function(){
@@ -7352,7 +8660,7 @@ window.ccCsvRange = function(){
   const parts = ['\ufeffkod,tovar,narx,partiya,raqam,holat\n'];
   let buf = [];
   for(let seq=r.from; seq<=r.to; seq++){
-    const code = ccBuildCode(r.b.id, seq);
+    const code = ccCodeOf(r.b, seq);
     buf.push(q(code)+','+q(r.p.name+(r.p.volume?' '+r.p.volume+'L':''))+','+(r.p.price||0)+','+r.b.id+','+seq+','+(sold[code]?'sotilgan':'omborda'));
     if(buf.length >= 20000){ parts.push(buf.join('\n')+'\n'); buf = []; }
   }
@@ -7409,6 +8717,7 @@ window.ccCheck = function(raw){
     }
   } else {
     kind = gs.isGS1 ? 'GS1 DataMatrix (zavod kodi)' : code.startsWith('MC-') ? "Qo'lda yaratilgan ichki kod (eski)" : "Oddiy kod (barcode/QR)";
+    if(CC_SEQ_RE.test(code) && ccFindBatchOwner(ccParseBatchCode(code))){ kind = 'Tartib raqamli kod (seriya) № '+code; }
     const soldOwner = DB.products.find(p=>p.soldCodes && p.soldCodes[code]);
     if(soldOwner){ prod = soldOwner; status = '❌ <b style="color:var(--red)">Sotilgan</b> — bu kod bilan qayta sotib bo\'lmaydi'; }
     else {
@@ -7420,6 +8729,15 @@ window.ccCheck = function(raw){
         else if(r.type==='barcode') status = '📦 Umumiy barcode — donalar bo\'yicha kuzatilmaydi';
         else status = '📷 Tovarga biriktirilgan QR/DataMatrix';
       }
+    }
+  }
+  // v21: yaroqsiz kod va sotilgan kodning savdo izi
+  if(prod){
+    const _vi = prod.voidCodes && prod.voidCodes[code];
+    if(_vi){ status = '⛔ <b style="color:var(--red)">Yaroqsiz deb belgilangan</b> — '+esc(_vi.reason||'sabab ko\'rsatilmagan')+' ('+esc(_vi.by||'')+', '+esc(String(_vi.at||'').slice(0,10))+')'; }
+    else if(prod.soldCodes && prod.soldCodes[code]){
+      const _sl = ccSaleIndex().get(code);
+      extra += '<div style="margin-top:.3rem;font-size:12px;color:var(--text2)">🧾 '+(_sl ? 'Sotilgan: <b>'+esc(ccSaleText(_sl))+'</b>' : 'Savdo ma\'lumoti saqlanmagan (eski sotuv)')+'</div>';
     }
   }
   box.innerHTML = '<div style="padding:.6rem .8rem;border:1.5px solid var(--border2);border-radius:var(--radius)"><div>'+status+'</div>'+(prod?'<div style="margin-top:.3rem"><b>'+esc(prod.name)+'</b>'+(prod.volume?' · '+esc(String(prod.volume))+' L':'')+' — '+fmt_(prod.price)+' so\'m, omborda '+(prod.stock||0)+' ta</div>':'')+extra+'<div style="margin-top:.3rem;color:var(--text3);font-size:12px">Tur: '+kind+'</div></div>';
@@ -7475,9 +8793,10 @@ const CC_KEYS_LIMIT = 18000;      // xavfsiz yuqori chegara (kalitlar soni)
 const CC_BYTES_LIMIT = 950000;    // hujjat 1 MiB
 function ccStorageLoad(p){
   let keys = 0, bytes = 0;
-  const sc = (p && p.serialCodes) || {}, so = (p && p.soldCodes) || {};
+  const sc = (p && p.serialCodes) || {}, so = (p && p.soldCodes) || {}, vo = (p && p.voidCodes) || {};
   for(const k in sc){ keys++; bytes += k.length + 4; }
   for(const k in so){ keys++; bytes += k.length + 4; }
+  for(const k in vo){ keys++; bytes += k.length + 4 + 40; }   // v24: yaroqsiz kodlar (sabab/sana bilan)
   const fill = Math.max(keys / CC_KEYS_LIMIT, bytes / CC_BYTES_LIMIT);
   return { keys, bytes, fill };
 }
@@ -7508,7 +8827,7 @@ function ccLabelTexts(p, code, L, o){
   const price = fmt_(p.price) + " so'm";
   const ex = [];
   if(o.showDate){ const d = new Date(); ex.push(String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()); }
-  if(o.showSeq){ const pc = ccParseBatchCode(code); if(pc && pc.valid) ex.push('№ '+pc.seq.toLocaleString('en-US')); }
+  if(o.showSeq){ const pc = ccParseBatchCode(code); if(pc && pc.valid) ex.push('№ '+(pc.kind==='seq' ? ccSeqCode(pc.seq) : pc.seq.toLocaleString('en-US'))); }
   if(o.extra) ex.push(String(o.extra).slice(0,40));
   return { nm, price, ex: ex.join(' · ') };
 }
@@ -7564,7 +8883,11 @@ async function ccSymbolImage(sym, px){
   return img;
 }
 async function ccLinearCanvas(text, fmt, targetW, h){
-  await window.loadVendorLib('JsBarcode');
+  try{ await window.loadVendorLib('JsBarcode'); }catch(e){}
+  if(typeof JsBarcode !== 'function'){
+    const base = ccC128Canvas(text, 1, h, 0); const m0 = Math.max(1, Math.floor(targetW / base.width));
+    return m0 === 1 ? base : ccC128Canvas(text, m0, h, 0);
+  }
   const mk = (w)=>{ const c = document.createElement('canvas'); const opt = { displayValue:false, height:Math.max(10, Math.round(h)), margin:0, width:w };
     try{ JsBarcode(c, text, Object.assign({ format: fmt==='ean13' ? 'EAN13' : 'CODE128' }, opt)); }catch(e){ JsBarcode(c, text, Object.assign({ format:'CODE128' }, opt)); } return c; };
   const c1 = mk(1); const m = Math.max(1, Math.floor(targetW / c1.width));
@@ -7790,10 +9113,12 @@ window.ccDpRun = async function(){
       j.pending = bytes; j.pendingN = codes.length; j.pendingOff = 0;
       await ccDpSend(bytes, 0, off=>{ j.pendingOff = off; });
       j.pending = null; j.done += codes.length; j.pendingN = 0; j.pendingOff = 0;
+      (j.sentCodes = j.sentCodes || []).push(...codes);
       ccDpPanelRender();
       await new Promise(r=>setTimeout(r, 0));
     }
   }catch(e){ j.err = (e && e.message) || String(e); }
+  if(j.sentCodes && j.sentCodes.length){ ccMarkPrinted(j.p, j.sentCodes); j.sentCodes = []; }
   j.running = false; ccDpPanelRender();
 };
 window.ccDpTest = async function(){
@@ -7847,7 +9172,7 @@ window.showPage = function(page, role){
     const shn=document.getElementById('shop-name-input'); if(shn) shn.value=DB.shopName||"Do'kon";
     const slp=document.getElementById('shop-logo-preview'), slb=document.getElementById('shop-logo-remove-btn');
     if(slp){ if(DB.shopLogo){ slp.src=DB.shopLogo; slp.style.display='inline-block'; if(slb) slb.style.display='inline-block'; } else { slp.style.display='none'; if(slb) slb.style.display='none'; } }
-    const dgi=document.getElementById('daily-goal-input'); if(dgi) dgi.value = localStorage.getItem('dokon_daily_goal')||'';
+    const dgi=document.getElementById('daily-goal-input'); if(dgi) dgi.value = DB.dailyGoal || localStorage.getItem('dokon_daily_goal') || '';
     const odt=document.getElementById('overdue-days-threshold'); if(odt) odt.value = (typeof getOverdueDays==='function') ? getOverdueDays() : (localStorage.getItem('dokon_overdue_days')||'14');
     if(typeof window.renderReceiptLinksSettings==='function') window.renderReceiptLinksSettings();
     if(typeof window.fillBusinessSettingsForm==='function') window.fillBusinessSettingsForm();
@@ -7902,7 +9227,7 @@ window.renderDashboard = async function(){
   // Maqsad belgilanmagan bo'lsa, widget butunlay yashiriladi.
   const goalWidget = document.getElementById('daily-goal-widget');
   if(goalWidget){
-    const goal = parseFloat(localStorage.getItem('dokon_daily_goal')||'0');
+    const goal = (DB.dailyGoal || parseFloat(localStorage.getItem('dokon_daily_goal')||'0') || 0);
     if(!goal || goal<=0){
       goalWidget.style.display='none';
     } else {
@@ -8175,7 +9500,7 @@ window.renderProducts = function(){
   const none=document.getElementById('no-products');
   if(!grid) return;
   const q=(document.getElementById('prod-search')?.value||'').toLowerCase().trim();
-  const list = q ? (window.smartSearchProducts ? (()=>{ const _hit=new Set(window.smartSearchProducts(DB.products,q)); return DB.products.filter(p=>_hit.has(p)||(p.barcode&&String(p.barcode).includes(q))); })() : DB.products.filter(p=>p.name.toLowerCase().includes(q))) : DB.products;
+  const list = q ? DB.products.filter(p=>p.name.toLowerCase().includes(q)) : DB.products;
   if(!list.length){
     grid.innerHTML='';
     none.style.display='block';
@@ -8448,6 +9773,14 @@ window.saveProduct=async function(){
     const dupQ=DB.products.find(x=>x.id!==editingProductId && x.qrCode && codesMatch(x.qrCode, qrCode));
     if(dupQ){ toast(`Bu QR/DataMatrix kodi allaqachon "${dupQ.name}" tovarida ishlatilgan`,'red'); return; }
   }
+  { // v23: qo'lda kiritilgan raqamli barcode tartib raqamli kodlar oralig'iga tushsa — skaner adashadi
+    const _old = editingProductId ? DB.products.find(x=>x.id===editingProductId) : null;
+    for(const _v of [document.getElementById('p-barcode').value.trim(), barcode, qrCode]){
+      if(!_v || (_old && (_old.barcode === _v || _old.qrCode === _v))) continue;
+      const _cf = ccSeqConflict(_v);
+      if(_cf){ toast(`⚠️ ${_v} raqami "${_cf.name}" tovarining tartib raqamli kodlari oralig'iga tushadi — skaner adashadi. Boshqa barcode kiriting`,'red'); return; }
+    }
+  }
   if(editingProductId){
     const p=DB.products.find(x=>x.id===editingProductId);
     // YANGI: narx tannarxdan PAST kiritilsa (odatda xato terish natijasida),
@@ -8521,6 +9854,7 @@ window.deleteProduct=function(id){
   });
 }
 window.openRestock=function(id){
+  try{ const _c=document.getElementById('rs-seq'); if(_c) _c.checked=(localStorage.getItem('dokon_rs_seq')!=='0'); setTimeout(()=>{ window.rsSeqHint&&window.rsSeqHint(); },50); }catch(e){}
   const p=DB.products.find(x=>x.id===id); if(!p) return;
   restockId=id;
   document.getElementById('rs-name').textContent=p.name+(p.volume?' · '+p.volume+'L':'');
@@ -8543,6 +9877,12 @@ window.doRestock=async function(){
   const n=parseInt(document.getElementById('rs-qty').value);
   if(!n||n<1){ toast('Miqdorni kiriting','red'); return; }
   const reason=document.getElementById('rs-reason').value.trim()||'Kirim';
+  // v20: tartib raqamli yorliqlar belgilangan bo'lsa — kirim + raqam berish + chop etish bitta amalda
+  if(document.getElementById('rs-seq') && document.getElementById('rs-seq').checked){
+    closeModal('modal-restock');
+    await ccSeqIntake(p, n, { addStock:true, print:true, reason, fmt:'code128' });
+    return;
+  }
   const stockBefore=p.stock;
   const stockAfter=p.stock+n;
   const restock={
@@ -8762,6 +10102,21 @@ window.updateSingleCard = function(id){
 // belgisini olib tashlaydi va stockni +1 qaytaradi — bu scanAddToCart'da
 // qilingan "darhol kamaytirish"ni to'g'ri orqaga qaytaradi (aks holda
 // checkout qilinmagan kod abadiy "sotilgan" bo'lib qolib ketardi).
+// v20: tugallangan sotuv qaytarilganda sotilgan donalarning kodlari ham omborga qaytadi
+// (avval qaytarilgan savdoning kodlari "sotilgan" bo'lib qolib, qayta sotib bo'lmasdi).
+// Stock alohida applyStockDelta orqali qaytariladi — bu yerda faqat kod belgilari tiklanadi.
+function restoreSoldCodesFor(s){
+  const codes = Array.isArray(s && s.codes) ? s.codes : [];
+  if(!codes.length) return null;
+  const p = DB.products.find(x=>x.id===s.productId); if(!p) return null;
+  const pairs = [];
+  codes.forEach(code=>{
+    if(!ccIsBatchOwned(p, code)){ if(!p.serialCodes) p.serialCodes = {}; p.serialCodes[code] = true; pairs.push(['serialCodes', code, true]); }
+    if(p.soldCodes) delete p.soldCodes[code];
+    pairs.push(['soldCodes', code, deleteField()]);
+  });
+  return fbUpdateProductCodeFields(p.id, null, pairs);
+}
 function revertCartSerialCode(id){
   const codes = cartSerialCodes[id];
   if(!codes || !codes.length) return false;
@@ -9360,7 +10715,8 @@ window.renderDebts = async function(){
   if(from) dateFiltered = dateFiltered.filter(d=>new Date(d.date)>=new Date(from));
   if(to)   dateFiltered = dateFiltered.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(q) dateFiltered = dateFiltered.filter(d=>
-    (window.smartTextMatch ? (window.smartTextMatch(d.debtorName,q) || window.smartTextMatch(d.org,q)) : ((d.debtorName||'').toLowerCase().includes(q) || (d.org||'').toLowerCase().includes(q)))
+    (d.debtorName||'').toLowerCase().includes(q) ||
+    (d.org||'').toLowerCase().includes(q)
   );
 
   // 2-bosqich: holat filtri (Faol/To'langan/Tashkilot/Shaxs) — TANLANGAN
@@ -9891,7 +11247,7 @@ window.doCartSell=async function(){
       try{
         const p=DB.products.find(x=>x.id===id);
         if(!p) throw new Error('Tovar topilmadi: '+id);
-        const sale={id:uid(),receiptId:saleGroupId,productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',branchId:window.currentBranchId(),payMethod:(document.getElementById('cart-pay-method')?.value||'cash'),date:now,reverted:false};
+        const sale={id:uid(),receiptId:saleGroupId,productId:p.id,productName:p.name,volume:p.volume||'',qty,price:p.price,cost:p.cost||0,total:p.price*qty,seller:currentSellerName||'Sotuvchi',branchId:window.currentBranchId(),payMethod:(document.getElementById('cart-pay-method')?.value||'cash'),date:now,reverted:false,...((cartSerialCodes[id]||[]).length?{codes:cartSerialCodes[id].slice()}:{})};
         // TUZATILDI: productId ham saqlanadi — pastda applyCustomerPurchase()
         // har bir tovarning ALOHIDA belgilangan coin/ball miqdorini (agar
         // mahsulot tahrirlashda "p-points" maydoniga qiymat kiritilgan
@@ -9961,6 +11317,7 @@ window.handleSellSearchKey=function(e){
     {
       const _sold = DB.products.find(pp=>pp.soldCodes && pp.soldCodes[q]);
       if(_sold){ toast(`❌ Bu kod allaqachon sotilgan: ${q}`,'red'); document.getElementById('sell-search').value=''; renderSellGrid(); return; }
+      if(DB.products.some(pp=>pp.voidCodes && pp.voidCodes[q])){ toast(`⛔ Bu kod yaroqsiz deb belgilangan (yo'qolgan/shikastlangan): ${q}`,'red'); document.getElementById('sell-search').value=''; renderSellGrid(); return; }
       let _r = findProductByCode(q);
       if(!_r){ const _n = normalizeScanCode(q); if(_n!==q) _r = findProductByCode(_n); }
       if(_r && _r.type==='serial'){
@@ -9978,7 +11335,7 @@ window.handleSellSearchKey=function(e){
     // soldCodes/serialCodes umuman TEKSHIRILMASDAN qo'shilardi)
     if(!match){ match = DB.products.find(p=>p.qrCode && codesMatch(p.qrCode, q) && p.stock>0); if(match) matchType='qrCode'; }
     // Topilmasa nom bo'yicha
-    if(!match){ match = (window.smartSearchProducts?window.smartSearchProducts(DB.products.filter(p=>p.stock>0),q)[0]:DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0)); matchType=null; }
+    if(!match){ match = DB.products.find(p=>p.name.toLowerCase().includes(q.toLowerCase()) && p.stock>0); matchType=null; }
     if(match){
       if(matchType==='qrCode'){
         const res = sellCodeMatch(match, q, 'qrCode', 1);
@@ -9996,14 +11353,14 @@ window.handleSellSearchKey=function(e){
     }
     return;
   }
-  clearTimeout(window._sellSearchT); window._sellSearchT=setTimeout(function(){ renderSellGrid(); },110); // v8: debounce
+  renderSellGrid();
 }
 window.renderSellGrid=function(){
   const q=(document.getElementById('sell-search')?.value||'').trim();
   const ql=q.toLowerCase();
   const grid=document.getElementById('sell-grid'); const none=document.getElementById('no-sell');
   if(!grid) return;
-  const prods=!q?DB.products:(()=>{ const byCode=DB.products.filter(p=>(p.barcode&&p.barcode.includes(q))||(p.qrCode&&p.qrCode.includes(q))); const byName=window.smartSearchProducts?window.smartSearchProducts(DB.products,q):DB.products.filter(p=>p.name.toLowerCase().includes(ql)); return [...new Set([...byCode,...byName])]; })();
+  const prods=DB.products.filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.barcode&&p.barcode.includes(q))||(p.qrCode&&p.qrCode.includes(q)));
   if(!prods.length){ grid.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
 
@@ -10119,6 +11476,7 @@ window.revertSaleGroup=function(receiptId){
     const p=DB.products.find(x=>x.id===s.productId);
     writes.push(fbUpdateSale(s.id,{reverted:true}));
     if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
+    writes.push(restoreSoldCodesFor(s));
   });
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
@@ -10134,6 +11492,7 @@ window.adminRevertGroup=function(receiptId){
       const p=DB.products.find(x=>x.id===s.productId);
       writes.push(fbUpdateSale(s.id,{reverted:true}));
       if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
+    writes.push(restoreSoldCodesFor(s));
     });
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
@@ -10234,6 +11593,7 @@ window.revertSale=function(id){
   toast('Savdo qaytarildi','amber');
   const writes=[fbUpdateSale(id,{reverted:true})];
   if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
+    writes.push(restoreSoldCodesFor(s));
   Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
 }
 
@@ -10323,6 +11683,7 @@ window.adminRevert=function(id){
     toast('Savdo qaytarildi','amber');
     const writes=[fbUpdateSale(id,{reverted:true})];
     if(p){ writes.push(window.applyStockDelta(p, s.branchId, s.qty)); }
+    writes.push(restoreSoldCodesFor(s));
     Promise.all(writes).catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   });
 }
@@ -10341,7 +11702,7 @@ window.quickHistoryFilter=function(type){
   renderHistory();
 }
 window.exportCSV=async function(){
-  // TUZATILDI: ilgari filtrlar (sana/sotuvchi/tovar) qo'llanган bo'lsa ham,
+  // TUZATILDI: ilgari filtrlar (sana/sotuvchi/tovar) qo'llangan bo'lsa ham,
   // CSV har doim DB.sales'dagi BARCHA yozuvlarni eksport qilardi — bu
   // foydalanuvchini chalg'itardi (ekranda 10 ta savdo ko'rinsa-yu, fayldan
   // 500 tasi chiqsa). Endi ekranda ko'rinayotgan xuddi shu filtrlangan
@@ -10353,7 +11714,7 @@ window.exportCSV=async function(){
   sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
   // "\uFEFF" (BOM) — Excel'da o'zbekcha belgilar (o', g', apostrof)
   // to'g'ri ko'rinishi uchun qo'shildi, aks holda Excel UTF-8'ni
-  // noto'g'ri kodировкада ochib, belgilarni buzib ko'rsatardi.
+  // noto'g'ri kodirovkada ochib, belgilarni buzib ko'rsatardi.
   download('savdo_tarixi.csv','text/csv','\uFEFF'+csv);
   toast(`✓ ${sales.length} ta yozuv CSV formatda yuklandi`,'green');
 }
@@ -10499,7 +11860,8 @@ window.printDebtsList=async function(){
   if(from) list = list.filter(d=>new Date(d.date)>=new Date(from));
   if(to)   list = list.filter(d=>new Date(d.date)<=new Date(to+'T23:59:59'));
   if(q) list = list.filter(d=>
-    (window.smartTextMatch ? (window.smartTextMatch(d.debtorName,q) || window.smartTextMatch(d.org,q)) : ((d.debtorName||'').toLowerCase().includes(q) || (d.org||'').toLowerCase().includes(q)))
+    (d.debtorName||'').toLowerCase().includes(q) ||
+    (d.org||'').toLowerCase().includes(q)
   );
   if(debtFilter==='active') list = list.filter(d=>!d.paid);
   else if(debtFilter==='paid') list = list.filter(d=>d.paid);
@@ -10887,7 +12249,7 @@ window.renderStockHistory=async function(){
   document.getElementById('sh-stats').innerHTML=`
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">+${totalIn} ta</div><div class="lbl">📦 Jami kirim</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">−${totalOut} ta</div><div class="lbl">↩ Jami chiqim</div></div>
-    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">${rows.length}</div><div class="lbl">📋 Amалlar soni</div></div>`;
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">${rows.length}</div><div class="lbl">📋 Amallar soni</div></div>`;
   const tbody=document.getElementById('sh-body'), none=document.getElementById('no-sh');
   if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
@@ -12140,7 +13502,7 @@ window.autoCheckTelegramToken = async function(){
 // Ilgari bular FAQAT qo'lda, brauzerda alohida URL'ga kirib bajarilardi
 // (yuqoridagi "📖 Qanday sozlanadi?" qo'llanmasiga qarang). Endi shu uchta
 // tugma orqali to'g'ridan-to'g'ri shu sahifadan, Telegram Bot API'ga
-// bevosita (serverга йuqlanish shart emas) amalga oshiriladi.
+// bevosita (serverga yuklanish shart emas) amalga oshiriladi.
 function _tgWebhookStatusEl(){ return document.getElementById('tg-webhook-status'); }
 window.checkTelegramConnection = async function(){
   const token = (document.getElementById('tg-bot-token')?.value||'').trim();
@@ -12395,12 +13757,18 @@ setInterval(()=>{ if(currentRole==='admin' && typeof window.checkAndSendTelegram
 // ishlamay qolishi mumkin.
 const TG_ADMIN_COMMANDS = [
   { key:'/qarzlar', label:'📋 /qarzlar — faol qarzlar' },
+  { key:'/qarz', label:'🔎 /qarz — mijoz qarzini qidirish' },
   { key:'/muddatlar', label:"⏰ /muddatlar — muddati o'tgan" },
   { key:'/statistika', label:'📊 /statistika — bugungi savdo' },
   { key:'/haftalik', label:'📈 /haftalik — haftalik hisobot' },
   { key:'/oylik', label:'📅 /oylik — oylik hisobot' },
   { key:'/top', label:'🏆 /top — top qarzdorlar' },
   { key:'/ombor', label:'📦 /ombor — ombor holati' },
+  { key:'/kassa', label:'💵 /kassa — bugungi kassa' },
+  { key:'/sotuvlar', label:"🧾 /sotuvlar — so'nggi sotuvlar" },
+  { key:'/top_tovar', label:"🏆 /top_tovar — eng ko'p sotilgan tovarlar" },
+  { key:'/mahsulot', label:"🔍 /mahsulot — tovar narxi va qoldig'i" },
+  { key:'/eslatma', label:"🔔 /eslatma — mijozga eslatma" },
   { key:'/export', label:'📤 /export — Excel eksport' },
   { key:'/adminlar', label:'👮 /adminlar — adminlar ro\'yxati' },
   { key:'/tolov', label:"💵 /tolov — to'lov qabul qilish" },
@@ -12743,7 +14111,7 @@ window.openReceiptModal=function(receiptData, skipSave){
   if(copiesEl) copiesEl.value = '1';
   document.getElementById('receipt-items').innerHTML = receiptData.items.map(i=>`
     <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
-      <span>${esc(i.name)} x${i.qty}${srd.showUnitPrice && i.qty>1 ? ` <span style="color:#888">(${fmt(i.price!=null?i.price:Math.round(i.total/i.qty))}/dona)</span>`:''}</span>
+      <span>${esc(i.name)} x${i.qty}${srd.showUnitPrice ? ` <span style="color:#888">(${fmt(i.price!=null?i.price:Math.round(i.total/i.qty))}/dona)</span>`:''}</span>
       <span>${fmt(i.total)}</span>
     </div>`).join('');
   document.getElementById('receipt-total').textContent = fmt(receiptData.total)+" so'm";
@@ -12817,18 +14185,27 @@ window.printReceipt=function(){
 window.shareReceipt=function(){
   if(!lastReceiptData) { toast('Chek topilmadi','red'); return; }
   const rd = lastReceiptData;
+  // v14: matnli chek ham "Sotuv cheki sozlamalari"ga amal qiladi (avval hammasini ko'rsatardi)
+  const srd = Object.assign(defaultSaleReceiptDesign(), DB.saleReceiptDesign||{});
+  const cur = (DB.currencySymbol || "so'm");
   const shopName = DB.shopName || "Do'kon";
   const lines = [];
+  if(srd.eyebrow) lines.push(srd.eyebrow);
   lines.push(`🏪 ${shopName}`);
-  lines.push(rd.date.toLocaleString('uz-UZ'));
-  lines.push(`Sotuvchi: ${rd.sellerName}`);
+  const meta = [srd.showAddress?DB.shopAddress:'', srd.showPhone?DB.shopPhone:'', srd.showHours?DB.workHours:''].filter(Boolean).join(' · ');
+  if(meta) lines.push(meta);
+  if(srd.showDate) lines.push(rd.date.toLocaleString('uz-UZ'));
+  if(srd.showSeller) lines.push(`Sotuvchi: ${rd.sellerName}`);
+  if(srd.showReceiptNumber && rd.id) lines.push('Chek №: '+String(rd.id).slice(-8).toUpperCase());
   lines.push('----------------------------');
   rd.items.forEach(i=>{
-    lines.push(`${i.name} x${i.qty} — ${fmt(i.total)} so'm`);
+    const unit = srd.showUnitPrice ? ` (${fmt(i.price!=null?i.price:Math.round(i.total/(i.qty||1)))}/dona)` : '';
+    lines.push(`${i.name} x${i.qty}${unit} — ${fmt(i.total)} ${cur}`);
   });
   lines.push('----------------------------');
-  lines.push(`JAMI: ${fmt(rd.total)} so'm`);
-  lines.push('Xaridingiz uchun rahmat!');
+  lines.push(`JAMI: ${fmt(rd.total)} ${cur}`);
+  if(srd.showFooterText) lines.push(DB.receiptFooter || 'Xaridingiz uchun rahmat!');
+  (Array.isArray(srd.customLines) ? srd.customLines : []).forEach(l=>{ if(l && l.text) lines.push(l.text); });
   const text = lines.join('\n');
   if(navigator.share){
     navigator.share({ title:'Chek', text }).catch(()=>{ /* foydalanuvchi bekor qildi — xato emas */ });
@@ -13201,7 +14578,7 @@ function timeStr(iso){
   return d.toLocaleDateString('uz-UZ',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
 }
 function isSameDay(a,b){ return a.toDateString()===b.toDateString(); }
-function isThisWeek(d,now){ const start=new Date(now); const dow=(now.getDay()+6)%7; start.setDate(now.getDate()-dow); start.setHours(0,0,0,0); return d>=start; } // v8: dushanba
+function isThisWeek(d,now){ const start=new Date(now); start.setDate(now.getDate()-now.getDay()); start.setHours(0,0,0,0); return d>=start; }
 function download(name,type,content){ const url=URL.createObjectURL(new Blob([content],{type})); const a=document.createElement('a'); a.href=url; a.download=name; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{ a.remove(); URL.revokeObjectURL(url); },1500); }
 
 // ===== YANGI: UMUMIY CHOP ETISH (PRINT) YORDAMCHISI =====
@@ -13317,7 +14694,7 @@ function printTable(title, subtitleLines, headers, rows){
 // ===== YANGI: EXCEL (.xlsx) VA PDF HISOBOT EKSPORTI =====
 // Umumiy yordamchi funksiya — headers (ustun nomlari) va rows (2 o'lchamli
 // massiv) asosida haqiqiy .xlsx (Excel) fayl yaratadi. CSV'dan farqli
-// o'laroq, Excel'da ochilganda kodировка/formatlash muammosi bo'lmaydi,
+// o'laroq, Excel'da ochilganda kodirovka/formatlash muammosi bo'lmaydi,
 // ustunlar avtomatik kenglikka moslanadi.
 function exportToExcel(filename, sheetName, headers, rows){
   if(typeof XLSX === 'undefined'){ toast("Excel kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return false; }
@@ -14359,7 +15736,7 @@ function dotPeenMergeCleanCanvas(src, blockSize){
 // YANGI — Otsu global chegaralash: adaptiveThreshold mahalliy o'rtachaga
 // asoslangani uchun juda notekis yorug'likda ba'zan xato qiladi. Otsu esa
 // butun tasvir uchun statistik jihatdan ENG OPTIMAL bitta chegara
-// qiymatini topadi — laser bilan qattiq, keskin qora fonga qarshi tushган
+// qiymatini topadi — laser bilan qattiq, keskin qora fonga qarshi tushgan
 // och nuqtalar uchun ko'pincha adaptivedan ham ishonchli natija beradi.
 function otsuThresholdCanvas(src){
   const gray = toGrayscaleCanvas(src);
@@ -14614,7 +15991,7 @@ function startDecoding(video){
   // uchun, aynan native BarcodeDetector'ga ega bo'lmagan (asosan iOS
   // Safari) qurilmalarda kamera ko'rinishi "sekin/qotib qolgan" his
   // qilinardi — va "Enhanced Scan" tugmasi bu tezlikka umuman ta'sir
-  // qilmasdi (chunki heч joyda tekshirilmasdi). Endi:
+  // qilmasdi (chunki hech joyda tekshirilmasdi). Endi:
   //   - Enhanced Scan YOQIQ (standart holat) — to'liq, ikki dekoderli
   //     (worker jsQR + ZXing) tekshiruv, qiyin kodlarni ham topadi.
   //   - Enhanced Scan O'CHIQ — faqat yengil, Worker ipidagi jsQR (asosiy
@@ -15088,6 +16465,11 @@ function findProductByCode(code){
     if(_own) return { product: _own.product, type: 'serial' };
     return null;
   }
+  // v20: tartib raqamli (seriya) kod — 0000001 ... (oddiy barcode bilan to'qnashsa, oddiy barcode ustun)
+  if(CC_SEQ_RE.test(code) && !DB.products.some(pp=>pp.barcode===code || pp.qrCode===code)){
+    const _o2 = ccFindBatchOwner(ccParseBatchCode(code));
+    if(_o2) return { product: _o2.product, type: 'serial' };
+  }
 
   // 1) Avval — bu ANIQ kod allaqachon biror tovarning serialCodes
   //    ro'yxatida ro'yxatga olinganmi (avval kirim qilingan noyob dona)?
@@ -15164,6 +16546,7 @@ window.processCode = function(code){
     
     // 3) AGAR BU NOYOB KOD BO'LSA - SOTILGANLIGINI TEKSHIRISH
     if(result.type === 'serial'){
+      if(prod.voidCodes && prod.voidCodes[code]){ setScanStatus(`⛔ Bu kod yaroqsiz deb belgilangan! (${code})`, 'err'); toast('⚠️ Yaroqsiz kod','red'); return; }
       // Bu kod allaqachon sotilganmi?
       if(prod.soldCodes && prod.soldCodes[code]){
         setScanStatus(`❌ Bu kod allaqachon sotilgan! (${code})`, 'err');
@@ -15396,6 +16779,7 @@ window.scanDoRestock = function(){
       return;
     }
     
+    if(prod.voidCodes && prod.voidCodes[code]){ toast(`⛔ Bu kod yaroqsiz deb belgilangan: ${code}`, 'red'); resetScanForNext(); return; }
     // Kod allaqachon sotilganmi?
     if(prod.soldCodes && prod.soldCodes[code]){
       toast(`❌ Bu kod allaqachon sotilgan: ${code}`, 'red');
@@ -16939,11 +18323,14 @@ window.saveDailyGoal = function(){
   const num = parseFloat(v);
   if(v==='' || isNaN(num) || num<=0){
     localStorage.removeItem('dokon_daily_goal');
-    toast("Kunlik maqsad o'chirildi",'green');
+    DB.dailyGoal = 0;
+    toast("Kunlik maqsad o'chirildi (barcha qurilmalarda)",'green');
   } else {
     localStorage.setItem('dokon_daily_goal', String(num));
-    toast('✓ Kunlik maqsad saqlandi','green');
+    DB.dailyGoal = num;
+    toast('✓ Kunlik maqsad saqlandi (barcha qurilmalarda)','green');
   }
+  fbSaveSettings().catch(e=>{ console.error(e); toast('Saqlashda xatolik','red'); });
   if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
 }
 
@@ -17515,7 +18902,7 @@ function buildLabelInnerHTML(p, s, refWidthOverride){
 // ham kattaroq chiqadi (nisbat chop etilgan natijaga mos keladi), shunchaki
 // ekranda yaxshi ko'rinishi uchun kattalashtirilgan.
 const MM_TO_PX = 96/25.4;           // haqiqiy CSS mm->px nisbati (chop etishda ishlatiladi)
-const PREVIEW_PX_PER_MM = 5;        // ko'rinishdagi "1mm nechа ekran pikseli" — faqat preview uchun
+const PREVIEW_PX_PER_MM = 5;        // ko'rinishdagi "1mm necha ekran pikseli" — faqat preview uchun
 const LABEL_PREVIEW_RENDER_CAP = 25; // unumsizlikning oldini olish uchun DOM'da ko'rsatiladigan maksimal nusxa
 
 // Bir nechta yorliqni orasidagi masofa bilan birlashtiradi — chop etish va
@@ -17964,22 +19351,7 @@ function computeNotifications(){
   if(typeof isOutsideWorkSchedule==='function' && isOutsideWorkSchedule()){
     list.push({ id:'out_of_schedule', icon:'🌙', text:"Hozir belgilangan ish vaqtidan tashqari (dam olish kuni yoki yopiq soat)", action:()=>showPage('settings','admin') });
   }
-  // YANGI: agar 7 kundan buyon (yoki umuman hech qachon) zaxira nusxa
-  // olinmagan bo'lsa va tizimda ma'lumot bo'lsa, adminga eslatma beriladi —
-  // internet/qurilma muammosi holida ma'lumot yo'qolmasligi uchun.
-  if((DB.products.length || DB.sales.length)){
-    const lastBackup = parseInt(localStorage.getItem('dokon_last_backup_at')||'0', 10);
-    const daysSince = lastBackup ? Math.floor((Date.now()-lastBackup)/86400000) : Infinity;
-    const backupReminderDays = DB.backupReminderDays || 7;
-    if(daysSince>=backupReminderDays){
-      list.push({
-        id:'backup_reminder',
-        icon:'💾',
-        text: lastBackup ? `So'nggi zaxira nusxa ${daysSince} kun oldin olingan — yangilash tavsiya etiladi` : "Hali birorta zaxira nusxa olinmagan — ma'lumotlaringizni saqlab qo'ying",
-        action:()=>showPage('settings','admin')
-      });
-    }
-  }
+  // v16: zaxira nusxa eslatmasi olib tashlandi (admin so'ramaydi)
   (DB.products||[]).filter(p=>p.stock<=(DB.lowStockThreshold||5)).forEach(p=>{
     list.push({
       id:'low_'+p.id,
@@ -18577,7 +19949,7 @@ function generateAiInsights(){
   }
 
   // Qarzlar muddati o'tgan
-  const overdueDays = parseInt(localStorage.getItem('dokon_overdue_days')||'14',10);
+  const overdueDays = (typeof getOverdueDays==='function') ? getOverdueDays() : parseInt(localStorage.getItem('dokon_overdue_days')||'14',10);
   const overdue = (DB.debts||[]).filter(d=>!d.paid && (Date.now()-new Date(d.date).getTime())>overdueDays*AI_DAY_MS);
   if(overdue.length){
     const overdueSum = aiSum(overdue, d=>debtRemaining(d));
@@ -19275,6 +20647,8 @@ window.renderAiAssistant = function(){
   // Shaxsiy tanlovlardan tashqari, istalgan rangni (hex color picker orqali)
   // tanlash mumkin. Bu rang shu qurilmada (localStorage) saqlanadi va sahifa
   // qayta yuklanganda avtomatik qo'llanadi — admin brend rangidan ustun turadi.
+  // v14: safeToast avval boshqa IIFE ichida e'lon qilingan edi -> ReferenceError (avtoqulf, animatsiya, tovush, tebranish sozlamalari)
+  function safeToast(msg, type){ try{ if(typeof toast === 'function') toast(msg, type); }catch(e){} }
   window.applyCustomThemeColor = function(){
     const c1 = document.getElementById('custom-accent-1')?.value || '#4f46e5';
     const c2 = document.getElementById('custom-accent-2')?.value || '#0ea5a4';
@@ -19492,6 +20866,8 @@ window.renderAiAssistant = function(){
     }
     const speedNum = document.getElementById('anim-speed-custom');
     if(speedNum && document.activeElement!==speedNum) speedNum.value = String(scale);
+    const speedNum2 = document.getElementById('anim-speed-custom-num');
+    if(speedNum2 && document.activeElement!==speedNum2) speedNum2.value = String(scale);
     const toastSel = document.getElementById('toast-duration-select');
     const toastSec = (window.DB && typeof DB.toastSeconds==='number') ? DB.toastSeconds : 2.6;
     if(toastSel){
@@ -20068,6 +21444,7 @@ window.checkNavOverflow = function(){
       if(sellerNav) sellerNav.style.display = sellerWasDisplay;
     }
   }
+  if(window.innerWidth>=1025) needsCompact=false; // v8: desktopda yon panel
   body.classList.toggle('nav-compact', needsCompact);
 };
 let _navOverflowResizeTimer = null;
@@ -20389,7 +21766,7 @@ document.addEventListener('keydown', function(e){
   function renderStreakDashBody(){
     const wrap = document.getElementById('streak-dash-body');
     if(!wrap) return;
-    const goal = parseFloat(localStorage.getItem('dokon_daily_goal')||'0');
+    const goal = (DB.dailyGoal || parseFloat(localStorage.getItem('dokon_daily_goal')||'0') || 0);
     if(!goal || goal<=0){
       wrap.innerHTML = `Ketma-ket kunlar hisoblanishi uchun avval <b>Sozlamalar</b> bo'limida "Kunlik savdo maqsadi"ni belgilang.<br><button class="btn sm blue" style="margin-top:.5rem" onclick="window.showPage && window.showPage('settings','admin')">⚙️ Sozlamalarga o'tish</button>`;
       return;
@@ -21466,6 +22843,15 @@ document.addEventListener('keydown', function(e){
     if(!productId){ toast2('Tovarni tanlang','amber'); return; }
     if(!value || value<=0){ toast2('Chegirma qiymatini kiriting','amber'); return; }
     if(type==='percent' && value>100){ toast2("Foizli chegirma 100% dan katta bo'lishi mumkin emas",'amber'); return; }
+    // v14: "Maksimal chegirma (%)" sozlamasi endi haqiqatan ishlaydi (bosh admin cheklanmaydi)
+    const maxD = Number(DB.maxDiscountPercent) || 0;
+    const isOwner = window.currentRole==='admin' && !window.isRestrictedAdmin;
+    if(maxD > 0 && !isOwner){
+      const pr0 = DB.products.find(x=>x.id===productId);
+      const base0 = pr0 ? (pr0.price||0) : 0;
+      const pct = type==='percent' ? value : (base0 > 0 ? value / base0 * 100 : 100);
+      if(pct > maxD){ toast2(`Ruxsat etilgan maksimal chegirma — ${maxD}% (Sozlamalar → Rekvizitlar)`,'amber'); return; }
+    }
     if(!end){ toast2('Tugash sanasini kiriting','amber'); return; }
     const p = DB.products.find(x=>x.id===productId);
     const promo = { id: uid2(), productId, productName: p?p.name:'', type, value, end, createdAt: new Date().toISOString() };
@@ -21721,12 +23107,12 @@ document.addEventListener('keydown', function(e){
       statusEl.textContent = lastAt
         ? `🕒 Oxirgi zaxira: ${daysAgo===0?'bugun':daysAgo+' kun oldin'}`
         : '🕒 Oxirgi zaxira: hali olinmagan';
-      statusEl.style.color = (reminderDays>0 && (daysAgo===null || daysAgo>=reminderDays)) ? 'var(--red)' : 'var(--text2)';
+      statusEl.style.color = 'var(--text2)';
     }
     // Bosh sahifadagi ogohlantirish banneri — faqat admin uchun (zaxira
     // sozlamalari faqat adminga tegishli)
     const banner = document.getElementById('backup-reminder-banner');
-    const shouldWarn = reminderDays>0 && (daysAgo===null || daysAgo>=reminderDays) && window.currentRole==='admin';
+    const shouldWarn = false; // v16: eslatma banneri o'chirilgan
     if(banner) banner.style.display = shouldWarn ? 'flex' : 'none';
   };
 
@@ -22560,141 +23946,6 @@ document.addEventListener('keydown', function(e){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     if(e.key && e.key.length === 1){ if(now - last > 80) buf = ''; buf += e.key; last = now; }
   }, true);
-})();
-</script>
-
-<style id="desktop-v8">
-/* ===== v8: KOMPYUTER (>=1100px) — chap yon panel, keng kontent, qulay jadval/kartalar ===== */
-@media (min-width:1100px){
-  :root{--sb-w:244px;--sb-w-c:68px}
-  #app{display:block}
-  body.has-sidebar #app>nav{position:fixed;left:0;top:0;bottom:0;width:var(--sb-w);flex-direction:column;align-items:stretch;gap:.35rem;padding:.9rem .7rem!important;min-height:100vh!important;overflow-y:auto;overflow-x:hidden;z-index:120;transition:width .2s ease}
-  body.has-sidebar #app>nav .logo{font-size:17px;padding:.25rem .4rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:.35rem}
-  body.has-sidebar #nav-admin,body.has-sidebar #nav-seller{flex-direction:column!important;gap:2px!important;flex-wrap:nowrap!important;overflow:visible!important}
-  body.has-sidebar #app>nav button.tab{width:100%;text-align:left;justify-content:flex-start;padding:.62rem .8rem;border-radius:10px;font-size:13.5px;white-space:nowrap;border:0;transition:background .15s,transform .15s}
-  body.has-sidebar #app>nav button.tab:hover{background:rgba(255,255,255,.09);transform:translateX(2px)}
-  body.has-sidebar #app>nav button.tab.active{background:linear-gradient(90deg,#1f9d77,#188564);color:#fff;box-shadow:0 4px 14px rgba(24,133,100,.35)}
-  body.has-sidebar .nav-right-tools{display:flex!important;flex-wrap:wrap;gap:.35rem;margin-top:auto;padding-top:.8rem;border-top:1px solid rgba(255,255,255,.1)}
-  body.has-sidebar #nav-more-btn{display:none!important}
-  body.has-sidebar #user-badge,body.has-sidebar .user-badge{margin:.25rem 0}
-  body.has-sidebar .page{margin-left:var(--sb-w);width:auto;max-width:none;padding:1.4rem 2rem 2rem;transition:margin .2s ease}
-  body.has-sidebar.sb-collapsed #app>nav{width:var(--sb-w-c)}
-  body.has-sidebar.sb-collapsed .page{margin-left:var(--sb-w-c)}
-  body.has-sidebar.sb-collapsed #app>nav button.tab{font-size:0;padding:.62rem 0;text-align:center}
-  body.has-sidebar.sb-collapsed #app>nav button.tab::first-letter{font-size:18px}
-  body.has-sidebar.sb-collapsed #app>nav .logo span,body.has-sidebar.sb-collapsed #nav-clock{display:none}
-  body.has-sidebar.sb-collapsed .nav-right-tools{justify-content:center}
-  #sb-toggle{display:flex;align-items:center;justify-content:center;width:100%;margin-top:.3rem;padding:.4rem;border-radius:8px;border:1px dashed rgba(255,255,255,.2);background:transparent;color:#9fb3ac;cursor:pointer;font-size:12px}
-  #sb-toggle:hover{color:#fff;border-color:rgba(255,255,255,.45)}
-  /* kartalar va jadvallar */
-  .page table{border-collapse:separate;border-spacing:0}
-  .page thead th{position:sticky;top:0;z-index:5;backdrop-filter:blur(6px)}
-  .page tbody tr{transition:background .12s}
-  .page tbody tr:hover{background:rgba(24,133,100,.07)}
-  .stat-card,.card{transition:transform .15s,box-shadow .15s}
-  .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.1)}
-  ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:rgba(120,140,135,.45);border-radius:10px;border:2px solid transparent;background-clip:content-box}
-  ::-webkit-scrollbar-thumb:hover{background:rgba(120,140,135,.75);background-clip:content-box}
-  :focus-visible{outline:2px solid #1f9d77;outline-offset:2px}
-}
-@media (max-width:1099px){ #sb-toggle{display:none} }
-@media print{ #sb-toggle{display:none} body.has-sidebar .page{margin-left:0!important} }
-@media (min-width:1100px){
-  .modal{max-width:640px}
-  .modal-overlay{backdrop-filter:blur(3px)}
-  #dash-grid{grid-template-columns:1.5fr 1fr!important;gap:1.25rem!important}
-  .section-header{position:sticky;top:0;z-index:20;padding:.35rem 0 .6rem;background:var(--bg,transparent)}
-  .tbl-wrap{max-height:calc(100vh - 260px);overflow:auto;border-radius:12px}
-  .btn{transition:transform .12s,box-shadow .12s,filter .12s}
-  .btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
-  .btn:active{transform:translateY(0)}
-  body.has-sidebar #app>nav button.tab[data-k]::after{content:attr(data-k);margin-left:auto;font-size:10.5px;opacity:.45;border:1px solid currentColor;border-radius:5px;padding:0 5px;line-height:16px}
-  body.has-sidebar.sb-collapsed #app>nav button.tab[data-k]::after{display:none}
-  body.dark .page tbody tr:hover{background:rgba(31,157,119,.14)}
-}
-@media (min-width:1700px){ body.has-sidebar .page{padding:1.6rem 3rem 2.5rem} }
-</style>
-
-<script id="desktop-v8-js">
-/* ===== v8: aqlli qidiruv + yon panel boshqaruvi + Alt+raqam navigatsiya ===== */
-(function(){
-  'use strict';
-  // Kirill -> lotin, apostrof va diakritiklarni tenglashtirish (Uzbek: o', g', sh, ch)
-  const CYR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'j',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'x',ц:'s',ч:'ch',ш:'sh',щ:'sh',ъ:'',ы:'i',ь:'',э:'e',ю:'yu',я:'ya',ў:'o',қ:'q',ғ:'g',ҳ:'h'};
-  function norm(t){
-    return String(t==null?'':t).toLowerCase()
-      .replace(/[а-яёўқғҳ]/g,c=>CYR[c]!==undefined?CYR[c]:c)
-      .replace(/[ʻʼ’‘`´']/g,'')
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/\s+/g,' ').trim();
-  }
-  // Tartiblangan qidiruv: barcha so'zlar mos bo'lishi shart (AND); ball: aniq > boshidan > so'z boshi > ichida
-  window.smartSearchProducts=function(list,q){
-    const nq=norm(q); if(!nq) return list.slice();
-    const toks=nq.split(' ');
-    const out=[];
-    for(const p of list){
-      const nn=norm(p&&p.name); if(!nn) continue;
-      let score=0, ok=true;
-      for(const t of toks){
-        if(nn===t) score+=100;
-        else if(nn.startsWith(t)) score+=60;
-        else if((' '+nn).includes(' '+t)) score+=40;
-        else if(nn.includes(t)) score+=20;
-        else { ok=false; break; }
-      }
-      if(ok){ if((p.stock||0)>0) score+=3; out.push({p,score}); }
-    }
-    out.sort((a,b)=>b.score-a.score||String(a.p.name).length-String(b.p.name).length);
-    return out.map(x=>x.p);
-  };
-
-  window.smartTextMatch=function(text,q){
-    const nt=norm(text), toks=norm(q).split(' ').filter(Boolean);
-    return !!nt && toks.every(function(t){ return nt.includes(t); });
-  };
-  function isDesktop(){ return window.matchMedia('(min-width:1100px)').matches; }
-  function setup(){
-    const app=document.getElementById('app'); if(!app) return;
-    const nav=app.querySelector(':scope>nav'); if(!nav) return;
-    document.body.classList.add('has-sidebar');
-    try{ if(localStorage.getItem('sb-collapsed')==='1') document.body.classList.add('sb-collapsed'); }catch(e){}
-    if(!document.getElementById('sb-toggle')){
-      const b=document.createElement('button'); b.id='sb-toggle'; b.type='button';
-      b.title='Panelni yig\'ish / ochish (Ctrl+B)'; b.textContent='◀ Yig\'ish';
-      b.onclick=toggle; nav.appendChild(b);
-    }
-  }
-  function toggle(){
-    const c=document.body.classList.toggle('sb-collapsed');
-    try{ localStorage.setItem('sb-collapsed',c?'1':'0'); }catch(e){}
-    const b=document.getElementById('sb-toggle'); if(b) b.textContent=c?'▶':'◀ Yig\'ish';
-  }
-  // F2 — sotuv sahifasiga o'tib, qidiruv maydoniga fokus
-  document.addEventListener('keydown',function(e){
-    if(e.key!=='F2'||e.ctrlKey||e.altKey||e.metaKey||!window.currentRole) return;
-    e.preventDefault();
-    try{ if(typeof window.showPage==='function') window.showPage('sell',window.currentRole==='admin'?'admin':'seller'); }catch(_){}
-    setTimeout(function(){ const i=document.getElementById('sell-search'); if(i){ i.focus(); i.select(); } },60);
-  });
-  // Alt+1..9 — ko'rinib turgan sahifa tugmalariga o'tish; Ctrl+B — panel
-  document.addEventListener('keydown',function(e){
-    const tag=(e.target&&e.target.tagName||'').toLowerCase();
-    const typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
-    if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='b'&&isDesktop()){ e.preventDefault(); toggle(); return; }
-    if(e.altKey&&!e.ctrlKey&&!e.metaKey&&!typing&&/^[1-9]$/.test(e.key)){
-      const tabs=[...document.querySelectorAll('#nav-admin:not([style*="display:none"]) .tab, #nav-seller:not([style*="display:none"]) .tab')].filter(t=>t.offsetParent!==null);
-      const t=tabs[Number(e.key)-1]; if(t){ e.preventDefault(); t.click(); }
-    }
-  });
-  function labelTabs(){
-    ['nav-admin','nav-seller'].forEach(function(id){
-      const box=document.getElementById(id); if(!box) return;
-      [...box.querySelectorAll('.tab')].forEach(function(t,i){ if(i<9){ t.setAttribute('data-k','Alt+'+(i+1)); } t.title=t.textContent.replace(/\s+/g,' ').trim(); });
-    });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setup(); labelTabs(); }); else { setup(); labelTabs(); }
 })();
 </script>
 </body>

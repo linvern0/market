@@ -5430,7 +5430,7 @@ window.quickHistoryFilter=function(type){
   renderHistory();
 }
 window.exportCSV=function(){
-  // TUZATILDI: ilgari filtrlar (sana/sotuvchi/tovar) qo'llanган bo'lsa ham,
+  // TUZATILDI: ilgari filtrlar (sana/sotuvchi/tovar) qo'llangan bo'lsa ham,
   // CSV har doim DB.sales'dagi BARCHA yozuvlarni eksport qilardi — bu
   // foydalanuvchini chalg'itardi (ekranda 10 ta savdo ko'rinsa-yu, fayldan
   // 500 tasi chiqsa). Endi ekranda ko'rinayotgan xuddi shu filtrlangan
@@ -5441,7 +5441,7 @@ window.exportCSV=function(){
   sales.forEach(s=>{ csv+=`"${timeStr(s.date)}","${s.productName}",${s.qty},${s.price},${s.total},"${s.seller}","${s.reverted?'Qaytarilgan':'Aktiv'}"\n`; });
   // "\uFEFF" (BOM) — Excel'da o'zbekcha belgilar (o', g', apostrof)
   // to'g'ri ko'rinishi uchun qo'shildi, aks holda Excel UTF-8'ni
-  // noto'g'ri kodировкада ochib, belgilarni buzib ko'rsatardi.
+  // noto'g'ri kodirovkada ochib, belgilarni buzib ko'rsatardi.
   download('savdo_tarixi.csv','text/csv','\uFEFF'+csv);
   toast(`✓ ${sales.length} ta yozuv CSV formatda yuklandi`,'green');
 }
@@ -5893,7 +5893,7 @@ window.renderStockHistory=function(){
   document.getElementById('sh-stats').innerHTML=`
     <div class="stat green" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">+${totalIn} ta</div><div class="lbl">📦 Jami kirim</div></div>
     <div class="stat red" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">−${totalOut} ta</div><div class="lbl">↩ Jami chiqim</div></div>
-    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">${rows.length}</div><div class="lbl">📋 Amалlar soni</div></div>`;
+    <div class="stat blue" style="padding:.85rem 1.25rem;border-radius:10px;min-width:150px"><div class="val" style="font-size:20px">${rows.length}</div><div class="lbl">📋 Amallar soni</div></div>`;
   const tbody=document.getElementById('sh-body'), none=document.getElementById('no-sh');
   if(!rows.length){ tbody.innerHTML=''; none.style.display='block'; return; }
   none.style.display='none';
@@ -6648,7 +6648,7 @@ function printTable(title, subtitleLines, headers, rows){
 // ===== YANGI: EXCEL (.xlsx) VA PDF HISOBOT EKSPORTI =====
 // Umumiy yordamchi funksiya — headers (ustun nomlari) va rows (2 o'lchamli
 // massiv) asosida haqiqiy .xlsx (Excel) fayl yaratadi. CSV'dan farqli
-// o'laroq, Excel'da ochilganda kodировка/formatlash muammosi bo'lmaydi,
+// o'laroq, Excel'da ochilganda kodirovka/formatlash muammosi bo'lmaydi,
 // ustunlar avtomatik kenglikka moslanadi.
 function exportToExcel(filename, sheetName, headers, rows){
   if(typeof XLSX === 'undefined'){ toast("Excel kutubxonasi yuklanmadi. Internetni tekshiring.",'red'); return false; }
@@ -7570,7 +7570,7 @@ function dotPeenMergeCleanCanvas(src, blockSize){
 // YANGI — Otsu global chegaralash: adaptiveThreshold mahalliy o'rtachaga
 // asoslangani uchun juda notekis yorug'likda ba'zan xato qiladi. Otsu esa
 // butun tasvir uchun statistik jihatdan ENG OPTIMAL bitta chegara
-// qiymatini topadi — laser bilan qattiq, keskin qora fonga qarshi tushган
+// qiymatini topadi — laser bilan qattiq, keskin qora fonga qarshi tushgan
 // och nuqtalar uchun ko'pincha adaptivedan ham ishonchli natija beradi.
 function otsuThresholdCanvas(src){
   const gray = toGrayscaleCanvas(src);
@@ -7824,7 +7824,7 @@ function startDecoding(video){
   // uchun, aynan native BarcodeDetector'ga ega bo'lmagan (asosan iOS
   // Safari) qurilmalarda kamera ko'rinishi "sekin/qotib qolgan" his
   // qilinardi — va "Enhanced Scan" tugmasi bu tezlikka umuman ta'sir
-  // qilmasdi (chunki heч joyda tekshirilmasdi). Endi:
+  // qilmasdi (chunki hech joyda tekshirilmasdi). Endi:
   //   - Enhanced Scan YOQIQ (standart holat) — to'liq, ikki dekoderli
   //     (worker jsQR + ZXing) tekshiruv, qiyin kodlarni ham topadi.
   //   - Enhanced Scan O'CHIQ — faqat yengil, Worker ipidagi jsQR (asosiy
